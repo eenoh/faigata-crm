@@ -25,7 +25,7 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 🔧 Hydration-safe: only render the real sidebar after mount
+  // Hydration-safe: only render the real sidebar after mount
   useEffect(() => {
     setMounted(true);
   }, []);
