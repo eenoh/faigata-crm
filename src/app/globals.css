@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
+/* Design tokens */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Light app shell */
+  --background: #f8fafc;   /* slate-50 */
+  --foreground: #0f172a;   /* slate-900 */
 
-@theme inline {
+  /* Tailwind v4 theme hooks (optional) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Don’t auto-switch colors based on OS theme – 
+   we’ll control them explicitly in the app */
+html,
 body {
-  background: var(--background);
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* Headings darker by default; Tailwind can still override */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #0f172a; /* slate-900 */
+}
+
+/* Links inherit text color so Tailwind classes (e.g. text-slate-500, text-indigo-600)
+   control the actual color */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Make form controls readable by default, without killing Tailwind styles */
+input,
+select,
+textarea {
+  color: #0f172a;          /* dark text */
+  font-size: 0.875rem;     /* 14px – matches text-sm */
+}
+
+/* Placeholder readable but clearly lighter */
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;          /* slate-400 */
+  opacity: 1;
 }

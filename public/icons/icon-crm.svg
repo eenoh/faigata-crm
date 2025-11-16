@@ -1,0 +1,23 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background tile -->
+  <rect x="10" y="10" width="180" height="180" rx="40" fill="#EEF2FF"></rect>
+
+  <!-- Left stacked cards (pipeline / records) -->
+  <rect x="42" y="60" width="44" height="18" rx="6" fill="#4F46E5" opacity="0.95"></rect>
+  <rect x="42" y="88" width="44" height="18" rx="6" fill="#4F46E5" opacity="0.8"></rect>
+  <rect x="42" y="116" width="44" height="18" rx="6" fill="#4F46E5" opacity="0.65"></rect>
+
+  <!-- Right focus node (lead / contact) -->
+  <circle cx="132" cy="88" r="16" fill="#4F46E5"></circle>
+  <circle cx="132" cy="88" r="9" fill="white" opacity="0.9"></circle>
+
+  <!-- Connector from records to focus node -->
+  <path d="M86 126
+       C100 126 110 118 118 108
+       C124 101 127 96 130 92" stroke="#6366F1" stroke-width="6" stroke-linecap="round" fill="none"></path>
+
+  <!-- Small metric / badge chip below node -->
+  <rect x="116" y="118" width="40" height="18" rx="9" fill="white" opacity="0.95"></rect>
+  <circle cx="124" cy="127" r="4" fill="#22C55E"></circle>
+  <rect x="132" y="123" width="18" height="8" rx="4" fill="#CBD5F5"></rect>
+</svg>
