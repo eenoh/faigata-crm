@@ -133,33 +133,24 @@ export async function POST(req: Request) {
     /* 6) Insert custom lead fields */
     if (Array.isArray(fields) && fields.length > 0) {
       const fieldRows = fields.map((f: any, index: number) => {
-        // Always an array for Postgres (NOT NULL)
         let optionsArray: string[] = [];
 
-        // Only dropdown fields use options; others get []
-        if (
-          f.type === "select" &&
-          typeof f.options === "string" &&
-          f.options.trim() !== ""
-        ) {
+        if (typeof f.options === "string" && f.options.trim() !== "") {
           optionsArray = f.options
             .split(",")
             .map((s: string) => s.trim())
             .filter(Boolean);
         }
 
-        // map UI type → DB enum type
         const dbType =
-          f.type === "url"
-            ? "text" // URL stored as text in DB
-            : f.type; // "text" | "number" | "select" | "boolean"
+          f.type === "url" ? "text" : f.type; // map "url" → "text" to match enum
 
         return {
           team_id: teamId,
           key: f.key,
           label: f.label,
-          type: dbType,      // must match lead_field_type enum
-          options: optionsArray, // JS array → Postgres text[]
+          type: dbType,
+          options: optionsArray, // <-- ALWAYS array, never null
           position: index,
         };
       });
@@ -173,9 +164,6 @@ export async function POST(req: Request) {
         throw fieldsError;
       }
     }
-
-
-
 
     /* 7) Insert pipeline stages and remember their ids by name */
     let stageIdByName: Record<string, string> = {};

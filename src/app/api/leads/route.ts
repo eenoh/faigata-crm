@@ -1,71 +1,161 @@
 // src/app/api/leads/route.ts
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-interface DbLead {
-  id: number;
-  team_id: number;
-  campaign_id: number | null;
-  name: string;
-  company: string | null;
-  stage: string;
-  custom_values: Record<string, any> | null;
-  created_at: string;
+function getTeamIdFromRequest(req: Request): string | null {
+  const url = new URL(req.url);
+  return url.searchParams.get("teamId");
 }
 
-// Create a new lead
+function getLeadIdFromRequest(req: Request): string | null {
+  const url = new URL(req.url);
+  return url.searchParams.get("id");
+}
+
+/* ---------- CREATE lead ---------- */
 export async function POST(req: Request) {
-  const teamId = 1; // TODO: get from session/auth
-
-  try {
-    const body = await req.json();
-
-    const result = await pool.query<DbLead>(
-      `
-        INSERT INTO leads (
-          team_id, campaign_id, name, company, stage, custom_values
-        )
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING
-          id, team_id, campaign_id, name, company, stage, custom_values, created_at
-      `,
-      [
-        teamId,
-        body.campaignId ?? null,
-        body.name,
-        body.company ?? null,
-        body.stage,
-        body.customValues ?? {},
-      ]
-    );
-
-    const lead = result.rows[0];
-    return NextResponse.json(lead);
-  } catch (err) {
-    console.error("Error creating lead", err);
-    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+  const teamId = getTeamIdFromRequest(req);
+  if (!teamId) {
+    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
   }
+
+  const body = await req.json();
+
+  const { data, error } = await supabaseAdmin
+    .from("leads")
+    .insert({
+      team_id: teamId,
+      stage: body.stage,
+      custom_values: body.customValues ?? {},
+    })
+    .select("id, team_id, stage, custom_values, created_at")
+    .single();
+
+  if (error) {
+    console.error("Error creating lead", error);
+    return NextResponse.json(
+      { error: "Failed to create lead" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data);
 }
 
-// List leads for the current team
-export async function GET() {
-  const teamId = 1; // TODO: dynamic team when auth is added
-
-  try {
-    const result = await pool.query<DbLead>(
-      `
-        SELECT
-          id, team_id, campaign_id, name, company, stage, custom_values, created_at
-        FROM leads
-        WHERE team_id = $1
-        ORDER BY id DESC
-      `,
-      [teamId]
-    );
-
-    return NextResponse.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching leads", err);
-    return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });
+/* ---------- GET lead(s) ---------- */
+export async function GET(req: Request) {
+  const teamId = getTeamIdFromRequest(req);
+  if (!teamId) {
+    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
   }
+
+  const id = getLeadIdFromRequest(req);
+
+  if (id) {
+    // Single lead
+    const { data, error } = await supabaseAdmin
+      .from("leads")
+      .select("id, team_id, stage, custom_values, created_at")
+      .eq("team_id", teamId)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching lead", error);
+      return NextResponse.json(
+        { error: "Failed to fetch lead" },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  }
+
+  // List leads
+  const { data, error } = await supabaseAdmin
+    .from("leads")
+    .select("id, team_id, stage, custom_values, created_at")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching leads", error);
+    return NextResponse.json(
+      { error: "Failed to fetch leads" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data ?? []);
+}
+
+/* ---------- UPDATE lead ---------- */
+export async function PATCH(req: Request) {
+  const teamId = getTeamIdFromRequest(req);
+  const id = getLeadIdFromRequest(req);
+
+  if (!teamId || !id) {
+    return NextResponse.json(
+      { error: "Missing teamId or id" },
+      { status: 400 }
+    );
+  }
+
+  const body = await req.json();
+
+  const payload: any = {};
+  if (body.stage !== undefined) payload.stage = body.stage;
+  if (body.customValues !== undefined)
+    payload.custom_values = body.customValues;
+
+  const { data, error } = await supabaseAdmin
+    .from("leads")
+    .update(payload)
+    .eq("team_id", teamId)
+    .eq("id", id)
+    .select("id, team_id, stage, custom_values, created_at")
+    .single();
+
+  if (error) {
+    console.error("Error updating lead", error);
+    return NextResponse.json(
+      { error: "Failed to update lead" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data);
+}
+
+/* ---------- DELETE lead ---------- */
+export async function DELETE(req: Request) {
+  const teamId = getTeamIdFromRequest(req);
+  const id = getLeadIdFromRequest(req);
+
+  if (!teamId || !id) {
+    return NextResponse.json(
+      { error: "Missing teamId or id" },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await supabaseAdmin
+    .from("leads")
+    .delete()
+    .eq("team_id", teamId)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting lead", error);
+    return NextResponse.json(
+      { error: "Failed to delete lead" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true });
 }

@@ -1,10 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import {
   BellIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
+import { useSidebar } from "@/context/SidebarContext";
 
 function getSectionName(pathname: string): string {
   if (pathname.startsWith("/leads/new")) return "Add lead";
@@ -17,10 +20,60 @@ function getSectionName(pathname: string): string {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const section = getSectionName(pathname);
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+
+  const { collapsed } = useSidebar();
+
+  const leftClass = collapsed ? "left-16" : "left-64";
+
+  // Keep local state in sync if URL q changes
+  useEffect(() => {
+    setSearch(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    setSearch(value);
+
+    // Only drive search via URL when we are on the Leads section
+    if (!pathname.startsWith("/leads")) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (value.trim()) {
+      params.set("q", value.trim());
+    } else {
+      params.delete("q");
+    }
+
+    const qs = params.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
+
+    // Avoid scrolling to top when changing search
+    router.replace(url);
+  }
+
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/70 px-6 py-3 backdrop-blur">
+    <header
+      className={`
+        fixed
+        top-0
+        right-0
+        ${leftClass}
+        z-20
+        flex items-center justify-between
+        border-b border-slate-200
+        bg-white/80
+        px-6 py-3
+        backdrop-blur
+        transition-all duration-300
+      `}
+    >
       {/* Left: breadcrumb / context */}
       <div className="flex flex-col">
         <span className="text-[11px] uppercase tracking-wide text-slate-400">
@@ -39,6 +92,8 @@ export function AppHeader() {
             type="text"
             placeholder="Search leads, companies…"
             className="w-40 bg-transparent text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none"
+            value={search}
+            onChange={handleSearchChange}
           />
         </div>
 

@@ -1,10 +1,10 @@
-// src/components/layout/AppSidebar.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useSidebar } from "@/context/SidebarContext";
 import {
   HomeIcon,
   UsersIcon,
@@ -12,6 +12,7 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
+import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
@@ -20,33 +21,118 @@ const navItems = [
   { href: "/settings/lead-fields", label: "Lead Fields", icon: Cog6ToothIcon },
 ];
 
+type WorkspaceContext = {
+  userId: string | null;
+  teamId: string | null;
+  teamName: string | null;
+};
+
 export function AppSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggle } = useSidebar();
   const [mounted, setMounted] = useState(false);
+  const [ctx, setCtx] = useState<WorkspaceContext>({
+    userId: null,
+    teamId: null,
+    teamName: null,
+  });
 
-  // Hydration-safe: only render the real sidebar after mount
+  // Hydration-safe render
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // While not mounted, render a minimal placeholder sidebar
+  // Load current user + team from Supabase
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
+
+        if (userError || !userRes.user) {
+          console.warn("[Sidebar] No authenticated user", userError);
+          if (!cancelled) {
+            setCtx({ userId: null, teamId: null, teamName: null });
+          }
+          return;
+        }
+
+        const userId = userRes.user.id;
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("team_id")
+          .eq("id", userId)
+          .single();
+
+        if (profileError) {
+          console.error("[Sidebar] Failed to load profile", profileError);
+          if (!cancelled) {
+            setCtx({ userId, teamId: null, teamName: null });
+          }
+          return;
+        }
+
+        const teamId = profile?.team_id ?? null;
+        let teamName: string | null = null;
+
+        if (teamId) {
+          const { data: team, error: teamError } = await supabase
+            .from("teams")
+            .select("name")
+            .eq("id", teamId)
+            .single();
+
+          if (teamError) {
+            console.error("[Sidebar] Failed to load team", teamError);
+          } else {
+            teamName = team?.name ?? null;
+          }
+        }
+
+        if (!cancelled) {
+          setCtx({ userId, teamId, teamName });
+        }
+      } catch (err) {
+        console.error("[Sidebar] Failed to load workspace context", err);
+        if (!cancelled) {
+          setCtx({ userId: null, teamId: null, teamName: null });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Placeholder while not mounted
   if (!mounted) {
     return (
-      <aside className="relative flex flex-col border-r border-slate-200 bg-white shadow-sm w-16" />
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r border-slate-200 bg-white shadow-sm" />
     );
   }
 
+  // Build query string ?team=...&user=...
+  const query = new URLSearchParams();
+  if (ctx.teamId) query.set("team", ctx.teamId);
+  if (ctx.userId) query.set("user", ctx.userId);
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+
   return (
     <aside
-      className={`relative flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${
+      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
       {/* Brand row */}
       <div className="flex items-center px-3 pt-4 pb-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          {/* Fixed CRM icon */}
+        <Link
+          href={`/dashboard${queryString}`}
+          className="flex items-center gap-2"
+        >
           <Image
             src="/icons/icon-crm.svg"
             alt="Faigata CRM"
@@ -56,7 +142,6 @@ export function AppSidebar() {
             priority
           />
 
-          {/* Animated brand text */}
           <div
             className={`overflow-hidden transition-all duration-300 ${
               collapsed ? "w-0 opacity-0" : "w-36 opacity-100"
@@ -80,10 +165,15 @@ export function AppSidebar() {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
 
+          const href =
+            queryString && ctx.teamId
+              ? `${item.href}${queryString}`
+              : item.href;
+
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={href}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-indigo-50 text-indigo-600"
@@ -98,21 +188,28 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Footer mini section – animated */}
+      {/* Footer mini section */}
       <div
         className={`ml-5 border-t border-slate-100 text-[11px] text-slate-400 overflow-hidden transition-all duration-300 ${
           collapsed ? "max-h-0 opacity-0 py-0" : "max-h-12 opacity-100 py-3"
         }`}
       >
-        {!collapsed && <p>Workspace: Default team</p>}
+        {!collapsed && (
+          <p>
+            Workspace:{" "}
+            <span className="font-medium">
+              {ctx.teamName ?? ctx.teamId ?? "Loading…"}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* Collapse/Expand Button */}
       <button
         type="button"
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
       >
         <ChevronLeftIcon
           className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${

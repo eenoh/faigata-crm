@@ -1,35 +1,55 @@
 // src/app/api/lead-fields/route.ts
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { LeadFieldDefinition } from "@/types/lead";
 
-// How the row looks in Postgres
-interface DbLeadField {
-  id: number;
-  team_id: number;
+type DbLeadField = {
+  id: string;
+  team_id: string;
   key: string;
   label: string;
-  type: "text" | "number" | "select" | "boolean";
-  options: string[] | null; // stored as text[] or jsonb[]
-  order: number;
+  type: "text" | "number" | "select" | "boolean" | "link";
+  options: string[];
+  position: number;
+};
+
+
+// TEMP helper: get teamId from query: /api/lead-fields?teamId=...
+function getTeamIdFromRequest(req: Request): string | null {
+  const url = new URL(req.url);
+  return url.searchParams.get("teamId");
 }
 
-// GET: return lead fields for current team
-export async function GET() {
-  const teamId = 1; // TODO: replace with real team from session
+/* ---------- GET: return lead fields for a team ---------- */
+
+export async function GET(req: Request) {
+  const teamId = getTeamIdFromRequest(req);
+
+  if (!teamId) {
+    return NextResponse.json(
+      { error: "Missing teamId" },
+      { status: 400 }
+    );
+  }
 
   try {
-    const result = await pool.query<DbLeadField>(
-      `
-        SELECT id, team_id, key, label, type, options, "order"
-        FROM lead_fields
-        WHERE team_id = $1
-        ORDER BY "order" ASC
-      `,
-      [teamId]
-    );
+    const { data, error } = await supabaseAdmin
+      .from("lead_fields")
+      .select("id, team_id, key, label, type, options, position")
+      .eq("team_id", teamId)
+      .order("position", { ascending: true });
 
-    const fields: LeadFieldDefinition[] = result.rows.map((f) => ({
+    if (error) {
+      console.error("Error fetching lead fields", error);
+      return NextResponse.json(
+        { error: "Failed to fetch lead fields" },
+        { status: 500 }
+      );
+    }
+
+    const rows = (data ?? []) as DbLeadField[];
+
+    const fields: LeadFieldDefinition[] = rows.map((f) => ({
       key: f.key,
       label: f.label,
       type: f.type,
@@ -46,51 +66,76 @@ export async function GET() {
   }
 }
 
-// POST: replace lead fields for current team (used by onboarding/settings)
+/* ---------- POST: replace lead fields for a team ---------- */
+
 export async function POST(req: Request) {
-  const teamId = 1; // TODO: from auth/session
+  const teamId = getTeamIdFromRequest(req);
+
+  if (!teamId) {
+    return NextResponse.json(
+      { error: "Missing teamId" },
+      { status: 400 }
+    );
+  }
 
   try {
     const body = (await req.json()) as {
       fields: {
         key: string;
         label: string;
-        type: "text" | "number" | "select" | "boolean";
-        options?: string; // comma separated from onboarding/settings
+        type: "text" | "number" | "select" | "boolean" | "link";
+        options?: string;
       }[];
     };
 
-    // Use a transaction: delete existing + insert new
-    await pool.query("BEGIN");
+    // 1) Delete existing fields
+    const { error: deleteError } = await supabaseAdmin
+      .from("lead_fields")
+      .delete()
+      .eq("team_id", teamId);
 
-    await pool.query(`DELETE FROM lead_fields WHERE team_id = $1`, [teamId]);
-
-    for (let index = 0; index < body.fields.length; index++) {
-      const f = body.fields[index];
-
-      const optionsArray =
-        f.type === "select" && f.options
-          ? f.options
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [];
-
-      await pool.query(
-        `
-          INSERT INTO lead_fields (team_id, key, label, type, options, "order")
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `,
-        [teamId, f.key, f.label, f.type, optionsArray, index]
+    if (deleteError) {
+      console.error("Error deleting lead fields", deleteError);
+      return NextResponse.json(
+        { error: "Failed to save lead fields" },
+        { status: 500 }
       );
     }
 
-    await pool.query("COMMIT");
+    // 2) Insert new fields
+    const rows = body.fields.map((f, index) => {
+      const optionsArray =
+        f.type === "select" && Array.isArray(f.options)
+          ? f.options.filter(Boolean)
+          : [];
 
-    return NextResponse.json({ ok: true, count: body.fields.length });
+      return {
+        team_id: teamId,
+        key: f.key,
+        label: f.label,
+        type: f.type, // must match lead_field_type enum
+        options: optionsArray, // text[] NOT NULL
+        position: index,
+      };
+    });
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from("lead_fields")
+        .insert(rows);
+
+      if (insertError) {
+        console.error("Error inserting lead fields", insertError);
+        return NextResponse.json(
+          { error: "Failed to save lead fields" },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json({ ok: true, count: rows.length });
   } catch (err) {
     console.error("Error saving lead fields", err);
-    await pool.query("ROLLBACK");
     return NextResponse.json(
       { error: "Failed to save lead fields" },
       { status: 500 }

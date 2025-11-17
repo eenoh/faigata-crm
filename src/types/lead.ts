@@ -1,6 +1,6 @@
 export type LeadStage = "new" | "contacted" | "replied" | "qualified" | "booked_call" | "showed_up" | "offer" | "closed";
 
-export type CustomFieldType = "text" | "number" | "select" | "boolean";
+export type CustomFieldType = "text" | "number" | "select" | "boolean" | "link";
 
 export interface LeadFieldDefinition {
   key: string;          // "industry"
@@ -16,3 +16,4 @@ export interface Lead {
   stage: LeadStage;
   customValues?: Record<string, string | number | boolean | null>;
 }
+
