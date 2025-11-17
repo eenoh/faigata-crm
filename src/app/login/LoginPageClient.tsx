@@ -1,15 +1,12 @@
-// src/app/register/RegisterPageClient.tsx
+// src/app/login/LoginPageClient.tsx
 "use client";
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { supabase } from "@/lib/supabaseClient"; // ✅ rename here
+import { supabase } from "@/lib/supabaseClient";
 
-export function RegisterPageClient() {
+export function LoginPageClient() {
   const [loading, setLoading] = useState(false);
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -17,27 +14,47 @@ export function RegisterPageClient() {
     e.preventDefault();
     setLoading(true);
 
-    // Supabase handles password hashing for you
-    const { data, error } = await supabase.auth.signUp({  // ✅ use `supabase` here
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        },
-      },
     });
 
     setLoading(false);
 
-    if (error) {
+    if (error || !data.user) {
       console.error(error);
-      alert(error.message || "Registration failed");
+      alert(error?.message || "Invalid email or password");
       return;
     }
 
-    window.location.href = "/onboarding";
+    try {
+      // Ask the backend if this user (and their team) still need onboarding
+      const res = await fetch("/api/auth/after-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: data.user.id }),
+      });
+
+      if (!res.ok) {
+        console.error("after-login check failed", await res.text());
+        // If something goes wrong, just send them to the app.
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      const payload = (await res.json()) as {
+        needsOnboarding: boolean;
+      };
+
+      if (payload.needsOnboarding) {
+        window.location.href = "/onboarding";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      console.error("after-login error", err);
+      window.location.href = "/dashboard";
+    }
   }
 
   return (
@@ -54,33 +71,16 @@ export function RegisterPageClient() {
           </div>
 
           <h1 className="text-3xl font-semibold text-slate-900 mt-4 tracking-tight">
-            Create your Faigata account
+            Welcome back to Faigata
           </h1>
 
           <p className="text-sm text-slate-500 mt-1">
-            One login for all Faigata modules.
+            Log in to continue where you left off.
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <FloatingInput
-              label="First name"
-              type="text"
-              required
-              value={firstName}
-              onChange={setFirstName}
-            />
-            <FloatingInput
-              label="Last name"
-              type="text"
-              required
-              value={lastName}
-              onChange={setLastName}
-            />
-          </div>
-
           <FloatingInput
             label="Work email"
             type="email"
@@ -102,17 +102,17 @@ export function RegisterPageClient() {
             disabled={loading}
             className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
           >
-            {loading ? "Creating your account..." : "Continue"}
+            {loading ? "Signing you in..." : "Log in"}
           </button>
         </form>
 
         <p className="mt-6 text-xs text-slate-500 text-center">
-          Already have an account?{" "}
+          New to Faigata?{" "}
           <Link
-            href="/login"
+            href="/register"
             className="text-indigo-600 font-medium hover:underline"
           >
-            Log in
+            Create an account
           </Link>
         </p>
       </div>
