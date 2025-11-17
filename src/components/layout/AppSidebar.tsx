@@ -18,7 +18,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { href: "/leads", label: "Leads", icon: UsersIcon },
   { href: "/pipeline", label: "Pipeline", icon: Squares2X2Icon },
-  { href: "/settings/lead-fields", label: "Lead Fields", icon: Cog6ToothIcon },
+  // ⬇️ renamed + pointed at /settings root
+  { href: "/settings", label: "Settings", icon: Cog6ToothIcon },
 ];
 
 type WorkspaceContext = {
