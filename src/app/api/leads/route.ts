@@ -46,7 +46,10 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const teamId = getTeamIdFromRequest(req);
   if (!teamId) {
-    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing teamId" },
+      { status: 400 }
+    );
   }
 
   const id = getLeadIdFromRequest(req);
@@ -58,7 +61,7 @@ export async function GET(req: Request) {
       .select("id, team_id, stage, custom_values, created_at")
       .eq("team_id", teamId)
       .eq("id", id)
-      .maybeSingle();
+      .single();
 
     if (error) {
       console.error("Error fetching lead", error);
@@ -66,10 +69,6 @@ export async function GET(req: Request) {
         { error: "Failed to fetch lead" },
         { status: 500 }
       );
-    }
-
-    if (!data) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
     return NextResponse.json(data);
@@ -111,6 +110,8 @@ export async function PATCH(req: Request) {
   if (body.stage !== undefined) payload.stage = body.stage;
   if (body.customValues !== undefined)
     payload.custom_values = body.customValues;
+
+  payload.updated_at = new Date().toISOString();
 
   const { data, error } = await supabaseAdmin
     .from("leads")

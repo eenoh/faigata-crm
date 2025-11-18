@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import ProfileSettingsClient from "./ProfileSettingsClient";
 
 export const metadata: Metadata = {
-  title: "Profile & Account Settings",
+  title: "Profile Settings",
   description: "Manage your name, role, and profile picture in FaigataCRM.",
 };
 
