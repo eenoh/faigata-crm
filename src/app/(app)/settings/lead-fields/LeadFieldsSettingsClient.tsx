@@ -154,7 +154,7 @@ export function LeadFieldsSettingsClient() {
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
-            Lead fields
+            Lead Fields
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             Define exactly which data points your team tracks on every lead.
@@ -236,17 +236,7 @@ export function LeadFieldsSettingsClient() {
                   </select>
                 </div>
 
-                {/* Key hint */}
-                <p className="text-[11px] text-slate-400">
-                  API key:{" "}
-                  <code className="rounded bg-slate-50 px-1 py-0.5">
-                    {(field.key || field.label)
-                      .toLowerCase()
-                      .trim()
-                      .replace(/\s+/g, "_")
-                      .replace(/[^a-z0-9_]/g, "")}
-                  </code>
-                </p>
+
               </div>
 
               {/* Remove button */}

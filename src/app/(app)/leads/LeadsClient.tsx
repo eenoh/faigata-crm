@@ -12,7 +12,9 @@ import {
   EyeIcon,
   PencilSquareIcon,
   TrashIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
+
 
 interface LeadRow {
   id: string;
@@ -232,10 +234,17 @@ export function LeadsClient() {
                     {/* Actions column */}
                     <td className="border-b border-slate-100 px-3 py-2 align-top">
                       <div className="flex justify-end gap-3">
+                        {/* NEW: open message logging page */}
                         <Link
-                          href={`/leads/${lead.id}?team=${encodeURIComponent(
-                            teamId!
-                          )}`}
+                          href={`/leads/${lead.id}/messages?team=${encodeURIComponent(teamId!)}`}
+                          className="p-1 !text-emerald-600 hover:!text-emerald-700 cursor-pointer transition-colors"
+                          title="Log outbound / inbound messages"
+                        >
+                          <PlusCircleIcon className="h-5 w-5" />
+                        </Link>
+
+                        <Link
+                          href={`/leads/${lead.id}?team=${encodeURIComponent(teamId!)}`}
                           className="p-1 !text-slate-600 hover:!text-slate-900 cursor-pointer transition-colors"
                           title="View details"
                         >
@@ -243,9 +252,7 @@ export function LeadsClient() {
                         </Link>
 
                         <Link
-                          href={`/leads/${lead.id}/edit?team=${encodeURIComponent(
-                            teamId!
-                          )}`}
+                          href={`/leads/${lead.id}/edit?team=${encodeURIComponent(teamId!)}`}
                           className="p-1 !text-indigo-600 hover:!text-indigo-700 cursor-pointer transition-colors"
                           title="Edit lead"
                         >
@@ -253,9 +260,7 @@ export function LeadsClient() {
                         </Link>
 
                         <Link
-                          href={`/leads/${lead.id}/delete?team=${encodeURIComponent(
-                            teamId!
-                          )}`}
+                          href={`/leads/${lead.id}/delete?team=${encodeURIComponent(teamId!)}`}
                           className="p-1 !text-rose-500 hover:!text-rose-600 cursor-pointer transition-colors"
                           title="Delete lead"
                         >

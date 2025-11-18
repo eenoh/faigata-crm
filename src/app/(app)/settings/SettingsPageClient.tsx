@@ -112,7 +112,7 @@ export default function SettingsPageClient() {
             className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
           >
             <h2 className="text-sm font-semibold text-slate-900">
-              Lead fields
+              Lead Fields
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               Choose which custom fields your team tracks on every lead.
@@ -128,7 +128,7 @@ export default function SettingsPageClient() {
           className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
         >
           <h2 className="text-sm font-semibold text-slate-900">
-            Profile &amp; account
+            Profile &amp; Account
           </h2>
           <p className="mt-1 text-xs text-slate-500">
             Edit your name, avatar, and other account details.

@@ -318,7 +318,12 @@ export function PipelineClient() {
                           <span className="line-clamp-1 text-[13px] font-semibold text-slate-900">
                             {getLeadTitle(lead)}
                           </span>
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+                          <span
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide 
+                                      text-slate-500 transition-colors 
+                                      group-hover:text-indigo-600
+                                      font-semibold"
+                          >
                             {stage.name}
                           </span>
                         </div>
