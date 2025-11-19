@@ -18,7 +18,6 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { href: "/leads", label: "Leads", icon: UsersIcon },
   { href: "/pipeline", label: "Pipeline", icon: Squares2X2Icon },
-  // ⬇️ renamed + pointed at /settings root
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon },
 ];
 
@@ -43,7 +42,7 @@ export function AppSidebar() {
     setMounted(true);
   }, []);
 
-  // Load current user + team from Supabase
+  // Always load current user + current team from Supabase
   useEffect(() => {
     let cancelled = false;
 
@@ -60,23 +59,32 @@ export function AppSidebar() {
           return;
         }
 
-        const userId = userRes.user.id;
+        const user = userRes.user;
+        const userId = user.id;
 
+        // 1) Try to get team from profiles
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("team_id")
           .eq("id", userId)
           .single();
 
-        if (profileError) {
+        if (profileError && profileError.code !== "PGRST116") {
+          // PGRST116 = no rows found
           console.error("[Sidebar] Failed to load profile", profileError);
-          if (!cancelled) {
-            setCtx({ userId, teamId: null, teamName: null });
-          }
-          return;
         }
 
-        const teamId = profile?.team_id ?? null;
+        let teamId: string | null = profile?.team_id ?? null;
+
+        // 2) Fallback: if profile has no team yet, use auth metadata.primary_team_id
+        if (!teamId) {
+          const metaTeam = (user.user_metadata as any)?.primary_team_id;
+          if (typeof metaTeam === "string" && metaTeam.length > 0) {
+            teamId = metaTeam;
+          }
+        }
+
+        // 3) Load team name from teams table
         let teamName: string | null = null;
 
         if (teamId) {
@@ -109,7 +117,6 @@ export function AppSidebar() {
     };
   }, []);
 
-  // Placeholder while not mounted
   if (!mounted) {
     return (
       <aside className="fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r border-slate-200 bg-white shadow-sm" />

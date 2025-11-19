@@ -3,9 +3,14 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 export function LoginPageClient() {
+  const searchParams = useSearchParams();
+  const inviteId = searchParams.get("invite");
+  const teamIdParam = searchParams.get("team");
+
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,28 +33,34 @@ export function LoginPageClient() {
     }
 
     try {
-      // Ask the backend if this user (and their team) still need onboarding
       const res = await fetch("/api/auth/after-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: data.user.id }),
+        body: JSON.stringify({
+          userId: data.user.id,
+          inviteId,
+          teamId: teamIdParam,
+        }),
       });
 
       if (!res.ok) {
         console.error("after-login check failed", await res.text());
-        // If something goes wrong, just send them to the app.
         window.location.href = "/dashboard";
         return;
       }
 
       const payload = (await res.json()) as {
         needsOnboarding: boolean;
+        teamId?: string | null;
       };
 
       if (payload.needsOnboarding) {
         window.location.href = "/onboarding";
       } else {
-        window.location.href = "/dashboard";
+        const suffix = payload.teamId
+          ? `?team=${encodeURIComponent(payload.teamId)}`
+          : "";
+        window.location.href = `/dashboard${suffix}`;
       }
     } catch (err) {
       console.error("after-login error", err);
@@ -109,7 +120,14 @@ export function LoginPageClient() {
         <p className="mt-6 text-xs text-slate-500 text-center">
           New to Faigata?{" "}
           <Link
-            href="/register"
+            href={
+              inviteId || teamIdParam
+                ? `/register?${new URLSearchParams({
+                    ...(inviteId ? { invite: inviteId } : {}),
+                    ...(teamIdParam ? { team: teamIdParam } : {}),
+                  }).toString()}`
+                : "/register"
+            }
             className="text-indigo-600 font-medium hover:underline"
           >
             Create an account

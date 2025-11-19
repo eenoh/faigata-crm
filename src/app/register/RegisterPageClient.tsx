@@ -2,10 +2,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import { supabase } from "@/lib/supabaseClient"; // ✅ rename here
+import { useState, type FormEvent, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export function RegisterPageClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const inviteId = searchParams.get("invite");
+  const teamIdParam = searchParams.get("team");
+  const companyIdParam = searchParams.get("company");
+
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -13,12 +22,45 @@ export function RegisterPageClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // If user is already signed in and already has a team -> go straight to dashboard
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes.user ?? null;
+
+      if (!user) {
+        if (!cancelled) setInitializing(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("team_id")
+        .eq("id", user.id)
+        .single();
+
+      if (cancelled) return;
+      setInitializing(false);
+
+      if (profile?.team_id) {
+        router.replace(
+          `/dashboard?team=${encodeURIComponent(profile.team_id)}`
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
-    // Supabase handles password hashing for you
-    const { data, error } = await supabase.auth.signUp({  // ✅ use `supabase` here
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -31,13 +73,61 @@ export function RegisterPageClient() {
 
     setLoading(false);
 
-    if (error) {
+    if (error || !data.user) {
       console.error(error);
-      alert(error.message || "Registration failed");
+      alert(error?.message || "Registration failed");
       return;
     }
 
-    window.location.href = "/onboarding";
+    const hasInviteContext = Boolean(inviteId || teamIdParam || companyIdParam);
+
+    // No invite / team / company in URL → standard onboarding flow
+    if (!hasInviteContext) {
+      // here the onboarding flow will create the first team & attach profile/team/company
+      window.location.href = "/onboarding";
+      return;
+    }
+
+    // Invite / team / company present → complete registration on backend
+    try {
+      const res = await fetch("/api/auth/complete-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: data.user.id,
+          teamId: teamIdParam,
+          inviteId,
+          companyId: companyIdParam ?? null,
+          firstName,        // <-- send names to API
+          lastName,         // <--
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("complete-registration failed", await res.text());
+        const suffix = teamIdParam ? `?team=${encodeURIComponent(teamIdParam)}` : "";
+        window.location.href = `/dashboard${suffix}`;
+        return;
+      }
+
+      const payload = (await res.json()) as { redirectTo: string };
+      window.location.href = payload.redirectTo;
+    } catch (err) {
+      console.error("complete-registration error", err);
+      const suffix = teamIdParam ? `?team=${encodeURIComponent(teamIdParam)}` : "";
+      window.location.href = `/dashboard${suffix}`;
+    }
+  }
+
+
+  if (initializing) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
+        <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-8 border border-slate-200 text-center text-sm text-slate-500">
+          Checking your session…
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -109,7 +199,15 @@ export function RegisterPageClient() {
         <p className="mt-6 text-xs text-slate-500 text-center">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href={
+              inviteId || teamIdParam || companyIdParam
+                ? `/login?${new URLSearchParams({
+                    ...(inviteId ? { invite: inviteId } : {}),
+                    ...(teamIdParam ? { team: teamIdParam } : {}),
+                    ...(companyIdParam ? { company: companyIdParam } : {}),
+                  }).toString()}`
+                : "/login"
+            }
             className="text-indigo-600 font-medium hover:underline"
           >
             Log in

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Profile = {
-  role: string | null;
+  role: string[] | null; // now an array
   team_id: string | null;
 };
 
@@ -23,7 +23,6 @@ export default function SettingsPageClient() {
 
     (async () => {
       try {
-        // 1) Get current auth user
         const { data: userRes, error: userError } =
           await supabase.auth.getUser();
 
@@ -37,7 +36,6 @@ export default function SettingsPageClient() {
 
         setUserId(uid);
 
-        // 2) Load profile row
         const { data, error: profileError } = await supabase
           .from("profiles")
           .select("role, team_id")
@@ -50,8 +48,9 @@ export default function SettingsPageClient() {
           console.error("[Settings] Failed to load profile", profileError);
           setProfile({ role: null, team_id: null });
         } else {
+          // role is now text[]
           setProfile({
-            role: data?.role ?? null,
+            role: (data?.role as string[] | null) ?? null,
             team_id: data?.team_id ?? null,
           });
         }
@@ -91,9 +90,18 @@ export default function SettingsPageClient() {
     );
   }
 
-  const role = profile.role ?? "Member";
   const teamId = profile.team_id;
-  const isManager = role === "Manager" || role === "Admin";
+  const roles = profile.role ?? [];
+
+  // For display you can pick a "primary" role if you want
+  const primaryRole =
+    roles.includes("Admin") ? "Admin" :
+    roles.includes("Manager") ? "Manager" :
+    roles[0] ?? "Member";
+
+  // Permissions: anyone with Manager OR Admin in their roles
+  const isManagerOrAdmin =
+    roles.includes("Manager") || roles.includes("Admin");
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -102,11 +110,14 @@ export default function SettingsPageClient() {
         <p className="mt-1 text-sm text-slate-600">
           Configure how FaigataCRM works for your team and manage your account.
         </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Your role: <span className="font-medium">{primaryRole}</span>
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Lead fields card — only for Manager + Admin */}
-        {isManager && (
+        {isManagerOrAdmin && (
           <Link
             href={`/settings/lead-fields?team=${encodeURIComponent(teamId)}`}
             className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
@@ -134,6 +145,37 @@ export default function SettingsPageClient() {
             Edit your name, avatar, and other account details.
           </p>
         </Link>
+
+        {/* NEW: Invite team members (Manager + Admin only) */}
+        {isManagerOrAdmin && (
+          <Link
+            href={`/settings/team/invite?team=${encodeURIComponent(teamId)}`}
+            className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">
+              Invite team members
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Send invitations and assign roles like Prospector, Setter or
+              Closer.
+            </p>
+          </Link>
+        )}
+
+        {/* NEW: Manage team roles (Manager + Admin only) */}
+        {isManagerOrAdmin && (
+          <Link
+            href={`/settings/team/members?team=${encodeURIComponent(teamId)}`}
+            className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">
+              Manage team roles
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Update roles for existing members. Managers can’t promote admins.
+            </p>
+          </Link>
+        )}
       </div>
     </div>
   );
