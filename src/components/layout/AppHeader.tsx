@@ -2,8 +2,12 @@
 "use client";
 
 import type React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   BellIcon,
@@ -24,7 +28,7 @@ function getSectionName(pathname: string): string {
 type HeaderUser = {
   firstName: string | null;
   lastName: string | null;
-  avatarPath: string | null; // what is stored in profiles.avatar_url
+  avatarPath: string | null;
   role: string | null;
 };
 
@@ -38,7 +42,10 @@ export function AppHeader() {
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [user, setUser] = useState<HeaderUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // signed/full URL used for display
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement | null>(null);
 
   const leftClass = collapsed ? "left-16" : "left-64";
 
@@ -53,16 +60,14 @@ export function AppHeader() {
       return;
     }
 
-    // Legacy: full URL already stored (public / signed)
     if (path.startsWith("http://") || path.startsWith("https://")) {
       setAvatarUrl(path);
       return;
     }
 
-    // New: we store filePath (e.g. userId/filename.jpg)
     const { data, error } = await supabase.storage
       .from("avatars")
-      .createSignedUrl(path, 60 * 60 * 24); // 24h
+      .createSignedUrl(path, 60 * 60 * 24);
 
     if (error) {
       console.error("[Header] createSignedUrl error", error);
@@ -137,6 +142,28 @@ export function AppHeader() {
     };
   }, []);
 
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!profileRef.current) return;
+      if (!profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+
+    if (profileOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileOpen]);
+
+  // Close on route change
+  useEffect(() => {
+    setProfileOpen(false);
+  }, [pathname]);
+
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setSearch(value);
@@ -194,6 +221,16 @@ export function AppHeader() {
     }
   })();
 
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("[Header] signOut error", err);
+    } finally {
+      router.replace("/login");
+    }
+  }
+
   return (
     <header
       className={`
@@ -234,32 +271,73 @@ export function AppHeader() {
           <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
         </button>
 
-        <div className="flex items-center gap-2">
-          {loadingUser ? (
-            <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
-          ) : avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={displayName}
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
-              {initials}
+        {/* Profile area with click-to-open menu */}
+        <div ref={profileRef} className="relative flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((open) => !open)}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            {loadingUser ? (
+              <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
+            ) : avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={displayName}
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+                {initials}
+              </div>
+            )}
+
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-xs font-medium text-slate-900 cursor-pointer">
+                {displayName}
+              </span>
+              <span className="text-[11px] text-slate-400 cursor-pointer">
+                {displayRole}
+              </span>
+            </div>
+          </button>
+
+          {/* Dropdown menu */}
+          {!loadingUser && (
+            <div
+              className={`
+                absolute right-0 top-9 mt-2 w-44
+                rounded-xl border border-slate-200 bg-white shadow-lg
+                transition-all duration-150 ease-out origin-top-right
+                ${
+                  profileOpen
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "opacity-0 translate-y-1 scale-95 pointer-events-none"
+                }
+              `}
+            >
+              <div className="px-3 pt-2 pb-1 text-xs text-slate-500">
+                <p className="font-medium text-slate-900">
+                  {displayName}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {displayRole}
+                </p>
+              </div>
+              <div className="border-t border-slate-100 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition"
+                >
+                  Log out
+                </button>
+              </div>
             </div>
           )}
-
-          <div className="hidden sm:flex flex-col">
-            <span className="text-xs font-medium text-slate-900">
-              {displayName}
-            </span>
-            <span className="text-[11px] text-slate-400">
-              {displayRole}
-            </span>
-          </div>
         </div>
       </div>
     </header>

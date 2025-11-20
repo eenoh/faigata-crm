@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { LogoutButton } from "./LogoutButton";
+
 
 type Profile = {
   role: string[] | null; // now an array
@@ -173,6 +175,9 @@ export default function SettingsPageClient() {
             </p>
           </Link>
         )}
+        <div className="mt-6">
+          <LogoutButton />
+        </div>
       </div>
     </div>
   );
