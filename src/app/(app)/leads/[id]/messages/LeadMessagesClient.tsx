@@ -16,6 +16,7 @@ type LeadSummary = {
   id: string;
   stage: string;
   custom_values: Record<string, any>;
+  created_at: string;
 };
 
 type UserProfile = {
@@ -23,8 +24,6 @@ type UserProfile = {
   last_name: string | null;
   avatar_url: string | null; // stored path OR full URL
 };
-
-type ThreadMessage = LeadMessage & { indent: number };
 
 export function LeadMessagesClient() {
   const { id } = useParams<{ id: string }>();
@@ -64,7 +63,7 @@ export function LeadMessagesClient() {
     );
   }
 
-  // display label: DM, EMAIL, CALL, SMS, OTHER
+  // display label: DM, EMAIL, CALL, SMS, OTHER, PIPELINE
   function formatChannel(c: string | null): string {
     if (!c) return "DM";
     return c.toUpperCase();
@@ -296,184 +295,225 @@ export function LeadMessagesClient() {
 
   const leadInitials = initialsFromSingleString(leadLabel);
 
-  // threaded view
-  const threadedMessages: ThreadMessage[] = useMemo(() => {
+  // linear timeline: newest first
+  const sortedMessages: LeadMessage[] = useMemo(() => {
     if (!messages.length) return [];
-    const sorted = [...messages].sort(
+    return [...messages].sort(
       (a, b) =>
-        new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
+        new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
     );
-
-    let lastDirection: "inbound" | "outbound" | null = null;
-    let lastIndent = 0;
-
-    return sorted.map((m) => {
-      let indent = lastIndent;
-      if (lastDirection === null) {
-        indent = 0;
-      } else if (m.direction !== lastDirection) {
-        indent = Math.min(lastIndent + 1, 4);
-      }
-      lastDirection = m.direction;
-      lastIndent = indent;
-      return { ...m, indent };
-    });
   }, [messages]);
 
+  const created = lead ? new Date(lead.created_at) : null;
+
   return (
-    <div className="max-w-3xl space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
-          Log messages for this lead
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Track outbound and inbound conversations so you always know the last
-          touch.
-        </p>
-        {lead && (
-          <p className="mt-2 text-xs text-slate-500">
-            Lead: <span className="font-medium">{leadLabel}</span> · Stage:{" "}
-            <span className="font-medium">
-              {lead.stage || "Unassigned"}
-            </span>
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-3xl space-y-6 pb-6">
+        {/* Header */}
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <h1 className="text-xl font-semibold text-slate-900">
+            Log messages for this lead
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Track outbound and inbound conversations so you always know the last
+            touch.
           </p>
-        )}
-      </div>
-
-      {/* Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-      >
-        <div className="flex gap-2">
-          <select
-            className="w-32 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
-            value={direction}
-            onChange={(e) =>
-              setDirection(e.target.value as "inbound" | "outbound")
-            }
-          >
-            <option value="outbound">Outbound</option>
-            <option value="inbound">Inbound</option>
-          </select>
-
-          <select
-            className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
-            value={channel}
-            onChange={(e) => setChannel(e.target.value)}
-          >
-            <option value="dm">DM</option>
-            <option value="email">EMAIL</option>
-            <option value="call">CALL</option>
-            <option value="sms">SMS</option>
-            <option value="other">OTHER</option>
-          </select>
+          {lead && (
+            <p className="mt-2 text-xs text-slate-500">
+              Lead: <span className="font-medium">{leadLabel}</span> · Stage:{" "}
+              <span className="font-medium">
+                {lead.stage || "Unassigned"}
+              </span>
+            </p>
+          )}
         </div>
 
-        <textarea
-          className="h-28 w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder={placeholder}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex gap-2">
+            <select
+              className="w-32 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+              value={direction}
+              onChange={(e) =>
+                setDirection(e.target.value as "inbound" | "outbound")
+              }
+            >
+              <option value="outbound">Outbound</option>
+              <option value="inbound">Inbound</option>
+            </select>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving || !body.trim()}
-            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Log message"}
-          </button>
-        </div>
-      </form>
+            <select
+              className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+            >
+              <option value="dm">DM</option>
+              <option value="email">EMAIL</option>
+              <option value="call">CALL</option>
+              <option value="sms">SMS</option>
+              <option value="other">OTHER</option>
+            </select>
+          </div>
 
-      {/* Conversation history */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-800">
-          Conversation History
-        </h2>
+          <textarea
+            className="h-28 w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder={placeholder}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
 
-        {loadingMessages ? (
-          <p className="text-xs text-slate-500">Loading messages…</p>
-        ) : threadedMessages.length === 0 ? (
-          <p className="text-xs text-slate-500">
-            No messages logged yet. Your conversation with this lead will show
-            up here.
-          </p>
-        ) : (
-          <div className="space-y-3 text-xs">
-            {threadedMessages.map((m) => {
-              const ts = new Date(m.sent_at);
-              const isOutbound = m.direction === "outbound";
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving || !body.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving…" : "Log message"}
+            </button>
+          </div>
+        </form>
 
-              const authorName = isOutbound
-                ? userFullName || "You"
-                : leadLabel;
+        {/* Activity / Conversation history */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-slate-800">
+            Activity Timeline
+          </h2>
 
-              const avatarUrl = isOutbound ? userAvatarUrl : null;
-
-              const initials = isOutbound ? userInitials : leadInitials;
-
-              const indentClass = m.indent
-                ? `ml-${Math.min(m.indent * 4, 16)}`
-                : "";
-
-              return (
-                <div
-                  key={m.id}
-                  className={`flex gap-2 ${indentClass}`}
-                >
-                  {/* avatar */}
-                  <div className="flex flex-col items-center">
-                    {avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatarUrl}
-                        alt={authorName}
-                        className="h-8 w-8 rounded-full object-cover border border-slate-200"
-                      />
-                    ) : (
-                      <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${
-                          isOutbound ? "bg-indigo-600" : "bg-slate-500"
-                        }`}
-                      >
-                        {initials}
+          {loadingMessages ? (
+            <p className="text-xs text-slate-500">Loading activity…</p>
+          ) : sortedMessages.length === 0 ? (
+            <>
+              <p className="text-xs text-slate-500">
+                No messages logged yet. Your conversation with this lead will
+                show up here.
+              </p>
+              {created && (
+                <div className="mt-4 text-xs">
+                  <div className="flex gap-2">
+                    <div className="flex flex-col items-center">
+                      <div className="flex h-8 w-8 items-center justify-center">
+                        {/* green dot for lead created */}
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                       </div>
-                    )}
-                    <div className="mt-1 h-full w-px flex-1 bg-slate-200" />
-                  </div>
-
-                  {/* bubble */}
-                  <div className="flex-1">
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                        <span className="flex items-center gap-1">
+                    </div>
+                    <div className="flex-1">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                           <span className="font-semibold text-slate-700">
-                            {authorName}
+                            Lead created
                           </span>
-                          <span className="text-slate-400">
-                            · {isOutbound ? "Setter" : "Lead"} ·{" "}
-                            {formatChannel(m.channel)}
+                          <span>
+                            {created.toLocaleDateString()}{" "}
+                            {created.toLocaleTimeString()}
                           </span>
-                        </span>
-                        <span>
-                          {ts.toLocaleDateString()}{" "}
-                          {ts.toLocaleTimeString()}
-                        </span>
+                        </div>
                       </div>
-                      <p className="whitespace-pre-wrap text-[11px] text-slate-800">
-                        {m.body}
-                      </p>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+            </>
+          ) : (
+            <div className="space-y-3 text-xs">
+              {sortedMessages.map((m) => {
+                const ts = new Date(m.sent_at);
+                const isOutbound = m.direction === "outbound";
+                const isPipeline =
+                  (m.channel ?? "").toLowerCase() === "pipeline";
+
+                const authorName = isOutbound
+                  ? userFullName || "You"
+                  : leadLabel;
+
+                const avatarUrl = isOutbound ? userAvatarUrl : null;
+
+                const initials = isOutbound ? userInitials : leadInitials;
+
+                return (
+                  <div key={m.id} className="flex gap-2">
+                    {/* icon / circle */}
+                    <div className="flex flex-col items-center">
+                      <div className="flex h-8 w-8 items-center justify-center">
+                        {isPipeline ? (
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        ) : avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={avatarUrl}
+                            alt={authorName}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
+                        ) : (
+                          <div
+                            className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${
+                              isOutbound ? "bg-indigo-600" : "bg-slate-500"
+                            }`}
+                          >
+                            {initials}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* bubble */}
+                    <div className="flex-1">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">
+                              {authorName}
+                            </span>
+                            <span className="text-slate-400">
+                              · {isPipeline ? "Setter" : isOutbound ? "Setter" : "Lead"} ·{" "}
+                              {formatChannel(m.channel)}
+                            </span>
+                          </span>
+                          <span>
+                            {ts.toLocaleDateString()}{" "}
+                            {ts.toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          {m.body}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Lead created at the end of timeline (oldest) */}
+              {created && (
+                <div className="pt-1">
+                  <div className="flex gap-2">
+                    <div className="flex flex-col items-center">
+                      <div className="flex h-8 w-8 items-center justify-center">
+                        {/* green dot for lead created */}
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-700">
+                            Lead created
+                          </span>
+                          <span>
+                            {created.toLocaleDateString()}{" "}
+                            {created.toLocaleTimeString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

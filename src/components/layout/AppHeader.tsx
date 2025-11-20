@@ -17,7 +17,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import { supabase } from "@/lib/supabaseClient";
 
 function getSectionName(pathname: string): string {
-  if (pathname.startsWith("/leads/new")) return "Add lead";
+  if (pathname.startsWith("/leads/new")) return "Add Leads";
   if (pathname.startsWith("/leads")) return "Leads";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
   if (pathname.startsWith("/settings")) return "Settings";
@@ -264,7 +264,7 @@ export function AppHeader() {
 
         <button
           type="button"
-          className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition"
+          className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition cursor-pointer"
           aria-label="Notifications"
         >
           <BellIcon className="h-4 w-4" />

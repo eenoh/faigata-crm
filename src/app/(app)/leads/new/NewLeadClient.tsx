@@ -8,6 +8,7 @@ import type { LeadFieldDefinition } from "@/types/lead";
 import { getPipelineStages } from "@/data/pipelineStages";
 import type { PipelineStageDef } from "@/data/pipelineStages";
 
+
 type CsvStatus = "idle" | "parsing" | "valid" | "invalid";
 
 function parseCsv(text: string) {
@@ -325,6 +326,7 @@ export function NewLeadClient() {
   /* ---------- UI ---------- */
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="max-w-5xl">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-slate-900">Add Leads</h1>
@@ -551,6 +553,7 @@ export function NewLeadClient() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

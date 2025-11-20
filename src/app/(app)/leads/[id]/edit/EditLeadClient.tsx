@@ -111,6 +111,7 @@ export function EditLeadClient() {
   }
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -259,6 +260,7 @@ export function EditLeadClient() {
           </button>
         </div>
       </form>
+    </div>
     </div>
   );
 }

@@ -97,6 +97,7 @@ export function DeleteLeadClient() {
   }
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="max-w-xl space-y-4">
       <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
         <h1 className="text-lg font-semibold text-rose-800">
@@ -155,6 +156,7 @@ export function DeleteLeadClient() {
           Cancel
         </button>
       </div>
+    </div>
     </div>
   );
 }

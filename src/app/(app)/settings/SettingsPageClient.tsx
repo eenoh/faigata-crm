@@ -152,7 +152,7 @@ export default function SettingsPageClient() {
             className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
           >
             <h2 className="text-sm font-semibold text-slate-900">
-              Invite team members
+              Invite Team Members
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               Send invitations and assign roles like Prospector, Setter or
@@ -168,7 +168,7 @@ export default function SettingsPageClient() {
             className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
           >
             <h2 className="text-sm font-semibold text-slate-900">
-              Manage team roles
+              Manage Team Roles
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               Update roles for existing members. Managers can’t promote admins.

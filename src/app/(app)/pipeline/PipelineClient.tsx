@@ -1,4 +1,3 @@
-// src/app/(app)/pipeline/PipelineClient.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { getLeadFieldDefinitions } from "@/data/leadFields";
 import { getPipelineStages } from "@/data/pipelineStages";
+import { supabase } from "@/lib/supabaseClient";
 import type { LeadFieldDefinition } from "@/types/lead";
 import type { PipelineStageDef } from "@/data/pipelineStages";
 
@@ -27,7 +27,6 @@ export function PipelineClient() {
   const searchParams = useSearchParams();
   const teamId = searchParams.get("team");
   const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
-
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
@@ -129,30 +128,29 @@ export function PipelineClient() {
   }
 
   function matchesSearch(lead: LeadCard, q: string): boolean {
-  if (!q) return true;
+    if (!q) return true;
 
-  const needle = q.toLowerCase();
+    const needle = q.toLowerCase();
 
-  const title = getLeadTitle(lead).toLowerCase();
-  if (title.includes(needle)) return true;
+    const title = getLeadTitle(lead).toLowerCase();
+    if (title.includes(needle)) return true;
 
-  const subtitle = getLeadSubtitle(lead).toLowerCase();
-  if (subtitle.includes(needle)) return true;
+    const subtitle = getLeadSubtitle(lead).toLowerCase();
+    if (subtitle.includes(needle)) return true;
 
-  // fall back: search in all custom field values
-  for (const value of Object.values(lead.customValues)) {
-    if (
-      value !== null &&
-      value !== undefined &&
-      String(value).toLowerCase().includes(needle)
-    ) {
-      return true;
+    // fall back: search in all custom field values
+    for (const value of Object.values(lead.customValues)) {
+      if (
+        value !== null &&
+        value !== undefined &&
+        String(value).toLowerCase().includes(needle)
+      ) {
+        return true;
+      }
     }
+
+    return false;
   }
-
-  return false;
-}
-
 
   function handleDragStart(leadId: string, fromStage: string) {
     setDragState({ leadId, fromStage });
@@ -160,6 +158,38 @@ export function PipelineClient() {
 
   function handleDragEnd() {
     setDragState({ leadId: null, fromStage: null });
+  }
+
+  // log a pipeline stage change into lead-messages
+  async function logStageChange(
+    leadId: string,
+    fromStage: string,
+    toStage: string
+  ) {
+    if (!teamId) return;
+
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const senderId = userRes.user?.id ?? null;
+
+      await fetch(
+        `/api/lead-messages?teamId=${encodeURIComponent(
+          teamId
+        )}&leadId=${encodeURIComponent(leadId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            direction: "outbound",
+            channel: "pipeline",
+            body: `Stage changed from "${fromStage}" to "${toStage}"`,
+            sender_profile_id: senderId,
+          }),
+        }
+      );
+    } catch (err) {
+      console.error("[Pipeline] Failed to log stage change", err);
+    }
   }
 
   // drop handler – targetX / targetY are coords relative to boardRef
@@ -170,6 +200,12 @@ export function PipelineClient() {
   ) {
     if (!dragState.leadId || !teamId) return;
     const leadId = dragState.leadId;
+    const fromStage = dragState.fromStage;
+
+    setDragState({ leadId: null, fromStage: null });
+
+    // if stage didn't actually change, do nothing
+    if (!fromStage || fromStage === targetStage) return;
 
     // optimistic update
     setLeads((prev) =>
@@ -182,7 +218,6 @@ export function PipelineClient() {
           : l
       )
     );
-    setDragState({ leadId: null, fromStage: null });
 
     // firework at precise local coords
     setCelebratePos({ x: targetX, y: targetY });
@@ -192,9 +227,9 @@ export function PipelineClient() {
       setCelebratePos(null);
     }, 1000);
 
-    // persist to DB
+    // persist to DB + log stage change
     try {
-      await fetch(
+      const res = await fetch(
         `/api/leads?teamId=${encodeURIComponent(
           teamId
         )}&id=${encodeURIComponent(leadId)}`,
@@ -204,6 +239,15 @@ export function PipelineClient() {
           body: JSON.stringify({ stage: targetStage }),
         }
       );
+
+      if (!res.ok) {
+        console.error(
+          "[Pipeline] Failed to update stage",
+          await res.text().catch(() => "")
+        );
+      } else {
+        await logStageChange(leadId, fromStage, targetStage);
+      }
     } catch (err) {
       console.error("[Pipeline] Failed to update stage", err);
     }
@@ -265,7 +309,7 @@ export function PipelineClient() {
           {stages.map((stage, stageIndex) => {
             const allStageLeads = leadsByStage[stage.name] ?? [];
 
-            // 🔎 apply search filter
+            // apply search filter
             const stageLeads = searchQuery
               ? allStageLeads.filter((lead) => matchesSearch(lead, searchQuery))
               : allStageLeads;
