@@ -141,7 +141,9 @@ export function AppHeader() {
     const value = e.target.value;
     setSearch(value);
 
-    if (!pathname.startsWith("/leads")) return;
+    if (!pathname.startsWith("/leads") && !pathname.startsWith("/pipeline")) {
+      return;
+    }
 
     const params = new URLSearchParams(searchParams.toString());
 

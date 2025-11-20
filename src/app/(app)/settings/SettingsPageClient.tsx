@@ -110,9 +110,6 @@ export default function SettingsPageClient() {
         <p className="mt-1 text-sm text-slate-600">
           Configure how FaigataCRM works for your team and manage your account.
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Your role: <span className="font-medium">{primaryRole}</span>
-        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -26,6 +26,8 @@ type CelebratePos = { x: number; y: number } | null;
 export function PipelineClient() {
   const searchParams = useSearchParams();
   const teamId = searchParams.get("team");
+  const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
+
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
@@ -125,6 +127,32 @@ export function PipelineClient() {
     const v = lead.customValues[secondaryField.key];
     return v ? String(v) : "";
   }
+
+  function matchesSearch(lead: LeadCard, q: string): boolean {
+  if (!q) return true;
+
+  const needle = q.toLowerCase();
+
+  const title = getLeadTitle(lead).toLowerCase();
+  if (title.includes(needle)) return true;
+
+  const subtitle = getLeadSubtitle(lead).toLowerCase();
+  if (subtitle.includes(needle)) return true;
+
+  // fall back: search in all custom field values
+  for (const value of Object.values(lead.customValues)) {
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).toLowerCase().includes(needle)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
   function handleDragStart(leadId: string, fromStage: string) {
     setDragState({ leadId, fromStage });
@@ -235,7 +263,13 @@ export function PipelineClient() {
           transition={{ type: "spring", stiffness: 120, damping: 20 }}
         >
           {stages.map((stage, stageIndex) => {
-            const stageLeads = leadsByStage[stage.name] ?? [];
+            const allStageLeads = leadsByStage[stage.name] ?? [];
+
+            // 🔎 apply search filter
+            const stageLeads = searchQuery
+              ? allStageLeads.filter((lead) => matchesSearch(lead, searchQuery))
+              : allStageLeads;
+
             const isActiveDrop =
               dragState.leadId !== null &&
               dragState.fromStage !== stage.name;
