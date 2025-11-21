@@ -7,7 +7,12 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import {
   BellIcon,
@@ -26,11 +31,91 @@ function getSectionName(pathname: string): string {
 }
 
 type HeaderUser = {
+  id: string;
   firstName: string | null;
   lastName: string | null;
   avatarPath: string | null;
   role: string | null;
 };
+
+// minimal DB shapes used for reminders
+type HeaderLead = {
+  id: string;
+  team_id: string;
+  setter_id: string | null;
+  stage: string;
+  custom_values: Record<string, any> | null;
+  created_at: string;
+};
+
+type HeaderMessage = {
+  id: string;
+  team_id: string;
+  lead_id: string;
+  direction: "inbound" | "outbound";
+  channel: string | null;
+  sent_at: string;
+};
+
+type ReminderType = "no_inbound" | "stage_stuck";
+
+type Reminder = {
+  id: string;
+  type: ReminderType;
+  leadId: string;
+  leadName: string;
+  text: string;
+};
+
+function diffHours(a: Date, b: Date) {
+  return (a.getTime() - b.getTime()) / (1000 * 60 * 60);
+}
+
+// Use the same heuristic as LeadMessagesClient to label leads
+function leadDisplayName(lead: HeaderLead): string {
+  const cv = lead.custom_values ?? {};
+
+  const preferredKeys = [
+    "name",
+    "full_name",
+    "first_name",
+    "last_name",
+    "company",
+    "account",
+    "email",
+  ];
+
+  const lowerEntries = Object.entries(cv).map(([k, v]) => [
+    k.toLowerCase(),
+    v,
+  ]);
+
+  // 1) try preferred keys
+  for (const pref of preferredKeys) {
+    const match = lowerEntries.find(
+      ([key, value]) =>
+        key.includes(pref) &&
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+    );
+    if (match) return String(match[1]).trim();
+  }
+
+  // 2) otherwise any non-empty string field
+  const anyField = lowerEntries.find(
+    ([, value]) =>
+      value !== null &&
+      value !== undefined &&
+      typeof value === "string" &&
+      String(value).trim() !== ""
+  );
+  if (anyField) return String(anyField[1]).trim();
+
+  // 3) final fallback – use stage instead of ugly id
+  const stageLabel = lead.stage || "Pipeline";
+  return `Lead in “${stageLabel}” stage`;
+}
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -45,9 +130,16 @@ export function AppHeader() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  // notifications
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loadingReminders, setLoadingReminders] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
   const profileRef = useRef<HTMLDivElement | null>(null);
 
   const leftClass = collapsed ? "left-16" : "left-64";
+
+  const teamId = searchParams.get("team");
 
   useEffect(() => {
     setSearch(searchParams.get("q") ?? "");
@@ -78,6 +170,7 @@ export function AppHeader() {
     setAvatarUrl(data?.signedUrl ?? null);
   }
 
+  // load current user
   useEffect(() => {
     let cancelled = false;
 
@@ -107,6 +200,7 @@ export function AppHeader() {
           console.error("[Header] Failed to load profile", profileError);
           if (!cancelled) {
             setUser({
+              id: userId,
               firstName: null,
               lastName: null,
               avatarPath: null,
@@ -116,6 +210,7 @@ export function AppHeader() {
           }
         } else if (!cancelled) {
           const headerUser: HeaderUser = {
+            id: userId,
             firstName: profile?.first_name ?? null,
             lastName: profile?.last_name ?? null,
             avatarPath: profile?.avatar_url ?? null,
@@ -162,6 +257,7 @@ export function AppHeader() {
   // Close on route change
   useEffect(() => {
     setProfileOpen(false);
+    setNotificationsOpen(false);
   }, [pathname]);
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -231,15 +327,194 @@ export function AppHeader() {
     }
   }
 
+  // --------- REMINDERS (auto follow-ups + stage stuck) ----------
+
+  const computeReminders = useCallback(async () => {
+    if (!user || !teamId) {
+      setReminders([]);
+      return;
+    }
+
+    setLoadingReminders(true);
+
+    try {
+      // 1) Load leads for this setter
+      const { data: leads, error: leadsError } = await supabase
+        .from("leads")
+        .select(
+          "id, team_id, setter_id, stage, custom_values, created_at"
+        )
+        .eq("team_id", teamId)
+        .eq("setter_id", user.id);
+
+      if (leadsError) {
+        console.error("[Header] leads error", leadsError);
+        setReminders([]);
+        return;
+      }
+
+      if (!leads || leads.length === 0) {
+        setReminders([]);
+        return;
+      }
+
+      const leadIds = leads.map((l) => l.id);
+
+      // 2) Load all messages for those leads
+      const { data: msgs, error: msgsError } = await supabase
+        .from("lead_messages")
+        .select(
+          "id, team_id, lead_id, direction, channel, sent_at"
+        )
+        .eq("team_id", teamId)
+        .in("lead_id", leadIds)
+        .order("sent_at", { ascending: false });
+
+      if (msgsError) {
+        console.error("[Header] lead_messages error", msgsError);
+        setReminders([]);
+        return;
+      }
+
+      const byLead = new Map<string, HeaderMessage[]>();
+      (msgs ?? []).forEach((m) => {
+        const list = byLead.get(m.lead_id) ?? [];
+        list.push(m as HeaderMessage);
+        byLead.set(m.lead_id, list);
+      });
+
+      const now = new Date();
+      const newReminders: Reminder[] = [];
+
+      // thresholds in hours for no-inbound after outbound
+      const followupThresholds = [
+        { hours: 48, label: "No reply in 48 hours" },
+        { hours: 96, label: "No reply in 4 days" },
+        { hours: 168, label: "No reply in 1 week" },
+      ];
+
+      const stageThresholdHours = 72; // 3 days in same stage – tweak as needed
+
+      for (const lead of leads as HeaderLead[]) {
+        const leadMsgs = byLead.get(lead.id) ?? [];
+
+        // ----- no inbound after outbound -----
+        const lastOutbound = leadMsgs.find(
+          (m) => m.direction === "outbound"
+        );
+        const lastInbound = leadMsgs.find(
+          (m) => m.direction === "inbound"
+        );
+
+        if (
+          lastOutbound &&
+          (!lastInbound ||
+            new Date(lastInbound.sent_at) <
+              new Date(lastOutbound.sent_at))
+        ) {
+          const hoursSince = diffHours(
+            now,
+            new Date(lastOutbound.sent_at)
+          );
+
+          // pick highest threshold that is passed
+          let followLabel: string | null = null;
+          for (let i = followupThresholds.length - 1; i >= 0; i--) {
+            if (hoursSince >= followupThresholds[i].hours) {
+              followLabel = followupThresholds[i].label;
+              break;
+            }
+          }
+
+          if (followLabel) {
+            newReminders.push({
+              id: `noinbound-${lead.id}`,
+              type: "no_inbound",
+              leadId: lead.id,
+              leadName: leadDisplayName(lead),
+              text: `${followLabel} after your last message.`,
+            });
+          }
+        }
+
+        // ----- stage stuck -----
+        const stageMsgs = leadMsgs.filter(
+          (m) =>
+            (m.channel ?? "").toLowerCase() === "pipeline"
+        );
+        const lastStageChange = stageMsgs.length
+          ? new Date(stageMsgs[0].sent_at)
+          : new Date(lead.created_at);
+
+        const hoursInStage = diffHours(now, lastStageChange);
+
+        if (hoursInStage >= stageThresholdHours) {
+          newReminders.push({
+            id: `stage-${lead.id}`,
+            type: "stage_stuck",
+            leadId: lead.id,
+            leadName: leadDisplayName(lead),
+            text: `In stage "${lead.stage}" for more than 3 days.`,
+          });
+        }
+      }
+
+      setReminders(newReminders);
+    } catch (err) {
+      console.error("[Header] computeReminders error", err);
+      setReminders([]);
+    } finally {
+      setLoadingReminders(false);
+    }
+  }, [user, teamId]);
+
+  // initial & on user/team change
+  useEffect(() => {
+    if (!user || !teamId) {
+      setReminders([]);
+      return;
+    }
+    computeReminders();
+  }, [user, teamId, computeReminders]);
+
+  // re-run reminders when a message is logged for this team
+  useEffect(() => {
+    if (!user || !teamId) return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{
+        teamId?: string;
+        leadId?: string;
+      }>;
+      if (custom.detail?.teamId && custom.detail.teamId !== teamId) {
+        return;
+      }
+      // recompute reminders for this team
+      computeReminders();
+    };
+
+    window.addEventListener(
+      "lead-message-logged",
+      handler as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "lead-message-logged",
+        handler as EventListener
+      );
+    };
+  }, [user, teamId, computeReminders]);
+
+  const unreadCount = reminders.length;
+
   return (
     <header
-      className={`
-        fixed top-0 right-0 ${leftClass}
+      className={`fixed top-0 right-0 ${leftClass}
         z-20 flex items-center justify-between
         border-b border-slate-200
         bg-white/80 px-6 py-3
-        backdrop-blur transition-all duration-300
-      `}
+        backdrop-blur transition-all duration-300`}
     >
       <div className="flex flex-col">
         <span className="text-[11px] uppercase tracking-wide text-slate-400">
@@ -262,14 +537,94 @@ export function AppHeader() {
           />
         </div>
 
-        <button
-          type="button"
-          className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition cursor-pointer"
-          aria-label="Notifications"
-        >
-          <BellIcon className="h-4 w-4" />
-          <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        </button>
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen((open) => !open)}
+            className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition cursor-pointer"
+            aria-label="Notifications"
+          >
+            <BellIcon className="h-4 w-4" />
+
+            {/* Badge */}
+            {unreadCount === 0 ? (
+              // green dot when there are NO notifications
+              <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            ) : (
+              // red badge with the number when there ARE notifications
+              <span className="absolute -right-1 -top-1 min-h-[18px] min-w-[18px] rounded-full bg-rose-500 px-1.5 flex items-center justify-center">
+                <span className="text-[10px] font-semibold text-white">
+                  {unreadCount}
+                </span>
+              </span>
+            )}
+          </button>
+
+          {/* dropdown */}
+          <div
+            className={`absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg text-xs 
+              transition-all duration-150 ease-out origin-top-right ${
+                notificationsOpen
+                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                  : "opacity-0 translate-y-1 scale-95 pointer-events-none"
+              }`}
+          >
+            <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+              <span className="font-semibold text-slate-800">
+                Reminders
+              </span>
+              {loadingReminders ? (
+                <span className="text-[11px] text-slate-400">
+                  Checking…
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-400">
+                  {unreadCount} open
+                </span>
+              )}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto">
+              {unreadCount === 0 ? (
+                <p className="px-3 py-3 text-[11px] text-slate-500">
+                  No follow-ups due right now.
+                </p>
+              ) : (
+                reminders.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/leads/${r.leadId}/messages?team=${encodeURIComponent(
+                          teamId ?? ""
+                        )}`
+                      )
+                    }
+                    className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 cursor-pointer"
+                  >
+                    <span
+                      className={`mt-1 h-1.5 w-1.5 rounded-full ${
+                        r.type === "no_inbound"
+                          ? "bg-amber-500"
+                          : "bg-indigo-500"
+                      }`}
+                    />
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-800">
+                        {r.leadName}
+                      </p>
+                      <p className="text-[11px] text-slate-600">
+                        {r.text}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Profile area with click-to-open menu */}
         <div ref={profileRef} className="relative flex items-center gap-2">
@@ -308,16 +663,13 @@ export function AppHeader() {
           {/* Dropdown menu */}
           {!loadingUser && (
             <div
-              className={`
-                absolute right-0 top-9 mt-2 w-44
+              className={`absolute right-0 top-9 mt-2 w-44
                 rounded-xl border border-slate-200 bg-white shadow-lg
-                transition-all duration-150 ease-out origin-top-right
-                ${
+                transition-all duration-150 ease-out origin-top-right ${
                   profileOpen
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "opacity-0 translate-y-1 scale-95 pointer-events-none"
-                }
-              `}
+                }`}
             >
               <div className="px-3 pt-2 pb-1 text-xs text-slate-500">
                 <p className="font-medium text-slate-900">

@@ -161,18 +161,19 @@ export function PipelineClient() {
   }
 
   // log a pipeline stage change into lead-messages
+  // return true if the log succeeded (for triggering reminders)
   async function logStageChange(
     leadId: string,
     fromStage: string,
     toStage: string
-  ) {
-    if (!teamId) return;
+  ): Promise<boolean> {
+    if (!teamId) return false;
 
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const senderId = userRes.user?.id ?? null;
 
-      await fetch(
+      const res = await fetch(
         `/api/lead-messages?teamId=${encodeURIComponent(
           teamId
         )}&leadId=${encodeURIComponent(leadId)}`,
@@ -187,8 +188,19 @@ export function PipelineClient() {
           }),
         }
       );
+
+      if (!res.ok) {
+        console.error(
+          "[Pipeline] Failed to log stage change",
+          await res.text().catch(() => "")
+        );
+        return false;
+      }
+
+      return true;
     } catch (err) {
       console.error("[Pipeline] Failed to log stage change", err);
+      return false;
     }
   }
 
@@ -245,8 +257,18 @@ export function PipelineClient() {
           "[Pipeline] Failed to update stage",
           await res.text().catch(() => "")
         );
-      } else {
-        await logStageChange(leadId, fromStage, targetStage);
+        return;
+      }
+
+      const logged = await logStageChange(leadId, fromStage, targetStage);
+
+      // 🔔 Tell AppHeader to recompute reminders (stage-stuck + follow-ups)
+      if (logged && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("lead-message-logged", {
+            detail: { teamId, leadId },
+          })
+        );
       }
     } catch (err) {
       console.error("[Pipeline] Failed to update stage", err);

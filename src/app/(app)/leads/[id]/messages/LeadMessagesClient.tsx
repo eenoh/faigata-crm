@@ -215,6 +215,15 @@ export function LeadMessagesClient() {
       const created = (await res.json()) as LeadMessage;
       setMessages((prev) => [...prev, created]);
       setBody("");
+
+      // notify the rest of the app (AppHeader) that a message was logged
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("lead-message-logged", {
+            detail: { teamId, leadId: id },
+          })
+        );
+      }
     } catch (err) {
       console.error("[Messages] Failed to create message", err);
     } finally {
