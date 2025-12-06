@@ -1,6 +1,6 @@
 // src/app/(app)/pipeline/page.tsx
 import type { Metadata } from "next";
-import { PipelineClient } from "./PipelineClient";
+import { PipelineClient } from "../../../modules/crm/components/PipelineClient";
 
 export const metadata: Metadata = {
   title: "Pipeline",

@@ -1,6 +1,6 @@
 // src/app/(app)/settings/page.tsx
 import type { Metadata } from "next";
-import SettingsPageClient from "./SettingsPageClient";
+import SettingsPageClient from "../../../modules/crm/components/SettingsPageClient";
 
 export const metadata: Metadata = {
   title: "Settings",

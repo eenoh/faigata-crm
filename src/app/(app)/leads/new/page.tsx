@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { NewLeadClient } from "./NewLeadClient";
+import { NewLeadClient } from "../../../../modules/crm/components/NewLeadClient";
 
 export const metadata: Metadata = {
   title: "Add lead",

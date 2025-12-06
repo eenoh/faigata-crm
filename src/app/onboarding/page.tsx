@@ -1,6 +1,6 @@
 // src/app/onboarding/page.tsx
 import type { Metadata } from "next";
-import { OnboardingPageClient } from "./OnboardingPageClient";
+import { OnboardingPageClient } from "../../modules/crm/components/OnboardingPageClient";
 
 export const metadata: Metadata = {
   title: "Onboarding",

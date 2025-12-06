@@ -1,6 +1,6 @@
 // src/app/(app)/leads/page.tsx
 import type { Metadata } from "next";
-import { LeadsClient } from "./LeadsClient";
+import { LeadsClient } from "../../../modules/crm/components/LeadsClient";
 
 export const metadata: Metadata = {
   title: "Leads",

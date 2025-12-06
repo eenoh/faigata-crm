@@ -1,6 +1,6 @@
 // src/app/invite/accept/page.tsx
 import type { Metadata } from "next";
-import AcceptInviteClient from "./AcceptInviteClient";
+import AcceptInviteClient from "../../../modules/crm/components/AcceptInviteClient";
 
 export const metadata: Metadata = {
   title: "Accept your Invitation",

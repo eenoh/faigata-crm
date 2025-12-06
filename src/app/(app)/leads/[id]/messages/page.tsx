@@ -1,6 +1,6 @@
 // src/app/(app)/leads/[id]/messages/page.tsx
 import type { Metadata } from "next";
-import { LeadMessagesClient } from "./LeadMessagesClient";
+import { LeadMessagesClient } from "../../../../../modules/crm/components/LeadMessagesClient";
 
 export const metadata: Metadata = {
   title: "Log Lead Messages",

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ManageTeamRolesClient } from "./ManageTeamRolesClient";
+import { ManageTeamRolesClient } from "../../../../../modules/crm/components/ManageTeamRolesClient";
 
 export const metadata: Metadata = {
   title: "Manage Team Roles",
