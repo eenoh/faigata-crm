@@ -143,6 +143,37 @@ export default function SettingsPageClient() {
           </Link>
         )}
 
+        {/* Pipeline Stages */}
+        {isManagerOrAdmin && (
+          <Link
+            href="/settings/pipeline-stages"
+            className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">
+              Pipeline Stages
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Define and reorder your pipeline stages used for all leads.
+            </p>
+          </Link>
+        )}
+
+        {/* Pipeline Conversion Rates */}
+        {isManagerOrAdmin && (
+          <Link
+            href="/settings/conversion-metrics"
+            className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">
+              Conversion Metrics
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Define named conversion metrics like reply rate or booking rate.
+            </p>
+          </Link>
+        )}
+
+
         {/* Profile / user settings card */}
         <Link
           href="/settings/profile"

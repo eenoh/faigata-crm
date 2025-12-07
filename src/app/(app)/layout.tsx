@@ -28,19 +28,20 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const marginClass = collapsed ? "ml-16" : "ml-64";
 
   return (
-    <div className="h-screen overflow-hidden bg-[#F1F5F9]">
+    <div className="min-h-screen overflow-y-auto bg-[#F1F5F9]">
       <AppSidebar />
 
       <div
         className={`
           ${marginClass}
-          flex h-screen flex-col overflow-hidden
+          flex min-h-screen flex-col
           transition-all duration-300
         `}
       >
         <AppHeader />
 
-        <main className="flex-1 px-6 pt-16 pb-6 overflow-hidden mt-5">
+        {/* Allow vertical scrolling inside the main content */}
+        <main className="flex-1 px-6 pt-16 pb-6 overflow-y-auto mt-5">
           {children}
         </main>
       </div>

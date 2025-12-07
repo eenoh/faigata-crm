@@ -1,4 +1,3 @@
-// src/app/onboarding/OnboardingPageClient.tsx
 "use client";
 
 import { useState, type DragEvent, type ChangeEvent } from "react";
