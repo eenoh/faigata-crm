@@ -14,12 +14,126 @@ function getLeadIdFromRequest(req: Request): string | null {
 }
 
 const LEAD_SELECT_COLUMNS =
-  "id, team_id, stage, custom_values, prospector_id, score, score_updated_at, created_at";
+  "id, team_id, stage, custom_values, prospector_id, setter_id, score, score_updated_at, created_at";
+
+/**
+ * Decide which setter_id to use for a new lead.
+ *
+ * Rules:
+ * 1) If current user (prospectorId) has BOTH Prospector + Setter roles → setter_id = prospectorId
+ * 2) Else if user has Prospector but not Setter →
+ *    distribute leads as evenly as possible between all Setters on this team
+ *    (based on leads created this month).
+ * 3) Otherwise → no setter assigned (null).
+ */
+async function assignSetterId(
+  teamId: string,
+  prospectorId: string | null
+): Promise<string | null> {
+  if (!prospectorId) return null;
+
+  // Load current user's profile + roles
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id, team_id, role")
+    .eq("id", prospectorId)
+    .single();
+
+  if (profileError || !profile) {
+    console.error("[LeadsAPI] Failed to load profile for setter assignment", {
+      profileError,
+    });
+    return null;
+  }
+
+  const roles: string[] = Array.isArray(profile.role) ? profile.role : [];
+  const isProspector = roles.includes("Prospector");
+  const isSetter = roles.includes("Setter");
+
+  // Rule 1: user is both Prospector and Setter -> assign to themselves
+  if (isProspector && isSetter) {
+    return prospectorId;
+  }
+
+  // If user is not a Prospector, don't auto-assign a setter
+  if (!isProspector) {
+    return null;
+  }
+
+  // Rule 2: user is Prospector but NOT Setter
+  // → find all setters in this team and balance load between them.
+
+  // Get all setter profiles on this team
+  const { data: setterProfiles, error: settersError } = await supabaseAdmin
+    .from("profiles")
+    .select("id, role")
+    .eq("team_id", teamId)
+    .contains("role", ["Setter"]); // role is a text[] containing "Setter"
+
+  if (settersError) {
+    console.error("[LeadsAPI] Failed to load setters", { settersError });
+    return null;
+  }
+
+  const setterIds = (setterProfiles ?? []).map((p) => p.id).filter(Boolean);
+
+  if (setterIds.length === 0) {
+    // No setters configured for this team → no setter assignment
+    return null;
+  }
+
+  // Count leads per setter for the current month, so we can pick the least-loaded one.
+  const now = new Date();
+  const firstOfMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+
+  const { data: leadsThisMonth, error: leadsError } = await supabaseAdmin
+    .from("leads")
+    .select("setter_id, created_at")
+    .eq("team_id", teamId)
+    .in("setter_id", setterIds)
+    .gte("created_at", firstOfMonth.toISOString());
+
+  if (leadsError) {
+    console.error(
+      "[LeadsAPI] Failed to load leads for setter balancing",
+      leadsError
+    );
+    // Fallback: just pick the first setter deterministically
+    return setterIds[0] ?? null;
+  }
+
+  const counts: Record<string, number> = {};
+  setterIds.forEach((id) => {
+    counts[id] = 0;
+  });
+
+  for (const row of leadsThisMonth ?? []) {
+    const id = row.setter_id as string | null;
+    if (!id) continue;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+
+  // Pick setter with the smallest count (ties broken by order in setterIds)
+  let bestId: string | null = null;
+  let bestCount = Infinity;
+
+  for (const id of setterIds) {
+    const c = counts[id] ?? 0;
+    if (c < bestCount) {
+      bestCount = c;
+      bestId = id;
+    }
+  }
+
+  return bestId;
+}
 
 /* ---------- CREATE lead ---------- */
 export async function POST(req: Request) {
   const urlTeamId = getTeamIdFromRequest(req);
-  const body = await req.json().catch(() => ({} as any));
+  const body = (await req.json().catch(() => ({}))) as any;
 
   const teamId: string | null = urlTeamId ?? body.teamId ?? null;
 
@@ -35,11 +149,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing stage" }, { status: 400 });
   }
 
+  // 🔁 Decide setter_id according to roles & monthly load
+  const setterId = await assignSetterId(teamId, prospectorId);
+
   const insertPayload: any = {
     team_id: teamId,
     stage,
     custom_values: customValues,
     prospector_id: prospectorId,
+    setter_id: setterId,
   };
 
   const { data, error } = await supabaseAdmin
@@ -49,7 +167,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !data) {
-    console.error("Error creating lead", error);
+    console.error("[LeadsAPI] Error creating lead", error);
     return NextResponse.json(
       { error: "Failed to create lead" },
       { status: 500 }
@@ -83,6 +201,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const urlTeamId = getTeamIdFromRequest(req);
   const teamId = urlTeamId;
+
   if (!teamId) {
     return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
   }
@@ -98,7 +217,7 @@ export async function GET(req: Request) {
       .single();
 
     if (error) {
-      console.error("Error fetching lead", error);
+      console.error("[LeadsAPI] Error fetching lead", error);
       return NextResponse.json(
         { error: "Failed to fetch lead" },
         { status: 500 }
@@ -115,7 +234,7 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching leads", error);
+    console.error("[LeadsAPI] Error fetching leads", error);
     return NextResponse.json(
       { error: "Failed to fetch leads" },
       { status: 500 }
@@ -129,7 +248,7 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const urlTeamId = getTeamIdFromRequest(req);
   const urlId = getLeadIdFromRequest(req);
-  const body = await req.json().catch(() => ({} as any));
+  const body = (await req.json().catch(() => ({}))) as any;
 
   const teamId: string | null = urlTeamId ?? body.teamId ?? null;
   const id: string | null = urlId ?? body.id ?? null;
@@ -157,6 +276,10 @@ export async function PATCH(req: Request) {
   if (updates.prospectorId !== undefined) {
     payload.prospector_id = updates.prospectorId;
   }
+  if (updates.setterId !== undefined) {
+    // allow explicit setter override via PATCH when needed
+    payload.setter_id = updates.setterId;
+  }
 
   payload.updated_at = new Date().toISOString();
 
@@ -169,7 +292,7 @@ export async function PATCH(req: Request) {
     .single();
 
   if (error || !data) {
-    console.error("Error updating lead", error);
+    console.error("[LeadsAPI] Error updating lead", error);
     return NextResponse.json(
       { error: "Failed to update lead" },
       { status: 500 }
@@ -202,7 +325,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const urlTeamId = getTeamIdFromRequest(req);
   const urlId = getLeadIdFromRequest(req);
-  const body = await req.json().catch(() => ({} as any));
+  const body = (await req.json().catch(() => ({}))) as any;
 
   const teamId: string | null = urlTeamId ?? body.teamId ?? null;
   const id: string | null = urlId ?? body.id ?? null;
@@ -221,7 +344,7 @@ export async function DELETE(req: Request) {
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting lead", error);
+    console.error("[LeadsAPI] Error deleting lead", error);
     return NextResponse.json(
       { error: "Failed to delete lead" },
       { status: 500 }
