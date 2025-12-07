@@ -11,6 +11,16 @@ interface LeadData {
   stage: string;
   custom_values: Record<string, any>;
   created_at: string;
+  score?: number | null;
+  score_grade?: string | null; // still optional if you keep it on the API
+  score_breakdown?:
+    | {
+        ruleId: string;
+        label: string;
+        points: number;
+      }[]
+    | null;
+  score_updated_at?: string | null;
 }
 
 type LeadMessage = {
@@ -28,6 +38,8 @@ type LeadMessage = {
   } | null;
 };
 
+type ScoreThresholds = { low: number; high: number };
+
 export function LeadDetailClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -37,6 +49,7 @@ export function LeadDetailClient() {
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [lead, setLead] = useState<LeadData | null>(null);
+  const [thresholds, setThresholds] = useState<ScoreThresholds | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [messages, setMessages] = useState<LeadMessage[]>([]);
@@ -136,7 +149,7 @@ export function LeadDetailClient() {
       }
 
       try {
-        const [defs, leadRes] = await Promise.all([
+        const [defs, leadRes, configRes] = await Promise.all([
           getLeadFieldDefinitions(teamId),
           (async () => {
             const res = await fetch(
@@ -171,12 +184,32 @@ export function LeadDetailClient() {
 
             return (await res.json()) as LeadData;
           })(),
+          (async (): Promise<ScoreThresholds | null> => {
+            const res = await fetch("/api/crm/lead-scoring-config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ teamId, action: "get" }),
+            });
+
+            const ct = res.headers.get("content-type") ?? "";
+            if (!res.ok || !ct.includes("application/json")) {
+              return null;
+            }
+
+            const json = await res.json();
+            const low = Number(json.thresholds?.low);
+            const high = Number(json.thresholds?.high);
+
+            if (Number.isNaN(low) || Number.isNaN(high)) return null;
+            return { low, high };
+          })(),
         ]);
 
         if (cancelled) return;
 
         setFields(defs);
         setLead(leadRes);
+        setThresholds(configRes);
       } catch (err) {
         console.error("[LeadDetail] Failed to load lead detail", err);
       } finally {
@@ -192,7 +225,6 @@ export function LeadDetailClient() {
       }
 
       try {
-        // ✅ Just GET the messages for this lead
         const res = await fetch(
           `/api/crm/lead-messages?teamId=${encodeURIComponent(
             teamId
@@ -281,6 +313,49 @@ export function LeadDetailClient() {
     return c.toUpperCase();
   }
 
+  function getScoreGrade(score: number | null) {
+    if (score == null) {
+      return {
+        label: "Unscored",
+        short: "?",
+        circle: "bg-slate-100 text-slate-500",
+      };
+    }
+
+    // if thresholds not configured yet, keep a neutral amber badge
+    if (!thresholds) {
+      return {
+        label: "Scored",
+        short: "S",
+        circle: "bg-amber-100 text-amber-800",
+      };
+    }
+
+    const { low, high } = thresholds;
+
+    if (score < low) {
+      return {
+        label: "Low",
+        short: "L",
+        circle: "bg-rose-100 text-rose-800",
+      };
+    }
+
+    if (score >= high) {
+      return {
+        label: "High",
+        short: "H",
+        circle: "bg-emerald-100 text-emerald-800",
+      };
+    }
+
+    return {
+      label: "Medium",
+      short: "M",
+      circle: "bg-amber-100 text-amber-800",
+    };
+  }
+
   /* ---------- derived values ---------- */
 
   const leadLabel: string = useMemo(() => {
@@ -359,6 +434,12 @@ export function LeadDetailClient() {
   }
 
   const created = new Date(lead.created_at);
+  const scoreUpdated = lead.score_updated_at
+    ? new Date(lead.score_updated_at)
+    : null;
+
+  const score = lead.score ?? null;
+  const gradeInfo = getScoreGrade(score);
 
   /* ---------- render ---------- */
 
@@ -394,6 +475,58 @@ export function LeadDetailClient() {
                 Delete
               </button>
             </div>
+          </div>
+
+          {/* Lead score */}
+          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              Lead Score
+            </h2>
+            {score != null ? (
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${gradeInfo.circle}`}
+                >
+                  {gradeInfo.short}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {score} · {gradeInfo.label}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {scoreUpdated
+                      ? `Last updated ${scoreUpdated.toLocaleDateString()} at ${scoreUpdated.toLocaleTimeString()}`
+                      : "Higher is better."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                No score yet. Configure lead scoring in Settings → Lead
+                scoring.
+              </p>
+            )}
+
+            {lead.score_breakdown && lead.score_breakdown.length > 0 && (
+              <div className="mt-3 border-t border-slate-100 pt-2">
+                <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Why this score
+                </h3>
+                <ul className="space-y-1 text-[11px] text-slate-700">
+                  {lead.score_breakdown.map((item) => (
+                    <li
+                      key={item.ruleId}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{item.label}</span>
+                      <span className="font-semibold text-emerald-600">
+                        +{item.points}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
@@ -486,8 +619,8 @@ export function LeadDetailClient() {
             ) : sortedMessages.length === 0 ? (
               <>
                 <p className="text-xs text-slate-500">
-                  No messages yet. Use the “+” button above to log your outbound
-                  / inbound touches.
+                  No messages yet. Use the “+” button above to log your
+                  outbound / inbound touches.
                 </p>
                 {/* Lead created entry */}
                 <div className="mt-4 text-xs">

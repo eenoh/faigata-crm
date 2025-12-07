@@ -128,6 +128,21 @@ export default function SettingsPageClient() {
           </Link>
         )}
 
+        {/* Lead Scoring */}
+        {isManagerOrAdmin && (
+          <Link
+            href="/settings/lead-scoring"
+            className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">
+              Lead Scoring
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Configure how fields and behaviors turn into a lead score.
+            </p>
+          </Link>
+        )}
+
         {/* Profile / user settings card */}
         <Link
           href="/settings/profile"

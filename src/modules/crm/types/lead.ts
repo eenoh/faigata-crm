@@ -3,10 +3,10 @@
   export type CustomFieldType = "text" | "number" | "select" | "boolean" | "link";
 
   export interface LeadFieldDefinition {
-    key: string;          // "industry"
-    label: string;        // "Industry"
+    key: string;          
+    label: string;        
     type: CustomFieldType;
-    options?: string[];   // for select fields
+    options?: string[];   
   }
 
   export interface Lead {
@@ -15,5 +15,14 @@
     company: string;
     stage: LeadStage;
     customValues?: Record<string, string | number | boolean | null>;
+
+    score?: number | null;
+    score_grade?: string | null;
+    score_breakdown?: ScoreBreakdownItem[] | null;
   }
 
+  export interface ScoreBreakdownItem {
+    ruleId: string;
+    label: string;
+    points: number;
+}

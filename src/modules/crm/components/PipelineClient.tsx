@@ -16,6 +16,7 @@ type LeadCard = {
   id: string;
   stage: string;
   customValues: Record<string, any>;
+  score?: number | null;
 };
 
 type DragState = {
@@ -151,6 +152,7 @@ export function PipelineClient() {
             id: l.id,
             stage: l.stage,
             customValues: l.custom_values ?? {},
+            score: l.score ?? null,
           }))
         );
       } catch (err) {
@@ -292,14 +294,12 @@ export function PipelineClient() {
         return false;
       }
 
-      // if you don’t need the body, you can skip res.json() entirely
       return true;
     } catch (err) {
       console.error("[Pipeline] Failed to log stage change", err);
       return false;
     }
   }
-
 
   async function handleDrop(
     targetStage: string,
@@ -510,14 +510,21 @@ export function PipelineClient() {
                           <span className="line-clamp-1 text-[13px] font-semibold text-slate-900">
                             {getLeadTitle(lead)}
                           </span>
-                          <span
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide 
-                                      text-slate-500 transition-colors 
-                                      group-hover:text-indigo-600
-                                      font-semibold"
-                          >
-                            {stage.name}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            {lead.score != null && (
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                                {lead.score}
+                              </span>
+                            )}
+                            <span
+                              className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide 
+                                        text-slate-500 transition-colors 
+                                        group-hover:text-indigo-600
+                                        font-semibold"
+                            >
+                              {stage.name}
+                            </span>
+                          </div>
                         </div>
                         {getLeadSubtitle(lead) && (
                           <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">

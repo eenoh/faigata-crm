@@ -298,14 +298,14 @@ export function EditLeadClient() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70"
+              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 cursor-pointer"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
             <button
               type="button"
               onClick={() => router.push(`/leads/${id}`)}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              className="text-sm text-slate-500 hover:text-slate-700 cursor-pointer"
             >
               Cancel
             </button>

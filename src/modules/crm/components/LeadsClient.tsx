@@ -16,10 +16,16 @@ import {
   PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 
+type ScoreThresholds = {
+  low: number;
+  high: number;
+};
+
 interface LeadRow {
   id: string;
   stage: string;
   customValues: Record<string, any>;
+  score?: number | null;
 }
 
 export function LeadsClient() {
@@ -29,12 +35,14 @@ export function LeadsClient() {
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [thresholds, setThresholds] = useState<ScoreThresholds | null>(null);
   const [loading, setLoading] = useState(true);
 
   const searchParams = useSearchParams();
   const query = (searchParams.get("q") ?? "").trim().toLowerCase();
 
-  // 1) Load teamId from Supabase
+  /* ---------- 1) Load teamId from Supabase ---------- */
+
   useEffect(() => {
     let cancelled = false;
 
@@ -92,7 +100,8 @@ export function LeadsClient() {
     };
   }, []);
 
-  // 2) Load leads/fields for that team
+  /* ---------- 2) Load leads / fields / thresholds once teamId is known ---------- */
+
   useEffect(() => {
     let cancelled = false;
 
@@ -107,29 +116,42 @@ export function LeadsClient() {
       try {
         setLoading(true);
 
-      const [fieldDefs, stageDefs, leadsRes] = await Promise.all([
-        getLeadFieldDefinitions(teamId),
-        getPipelineStages(teamId),
-        (async () => {
+        const [fieldDefs, stageDefs, leadsRes, scoringConfig] =
+          await Promise.all([
+            getLeadFieldDefinitions(teamId),
+            getPipelineStages(teamId),
+            (async () => {
+              const res = await fetch(
+                `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`
+              );
+              if (!res.ok) {
+                const text = await res.text();
+                console.error(
+                  "[Leads] Failed to load leads",
+                  res.status,
+                  text.slice(0, 200)
+                );
+                throw new Error("Failed to load leads");
+              }
+              return (await res.json()) as any[];
+            })(),
+            (async (): Promise<ScoreThresholds | null> => {
+              const res = await fetch("/api/crm/lead-scoring-config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teamId, action: "get" }),
+              });
 
-          // ✅ new – use GET with teamId query param
-          const res = await fetch(
-            `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`
-          );
+              const ct = res.headers.get("content-type") ?? "";
+              if (!res.ok || !ct.includes("application/json")) return null;
 
-          if (!res.ok) {
-            const text = await res.text();
-            console.error(
-              "[Leads] Failed to load leads",
-              res.status,
-              text.slice(0, 200)
-            );
-            throw new Error("Failed to load leads");
-          }
-
-          return (await res.json()) as any[];
-        })(),
-      ]);
+              const json = await res.json();
+              const low = Number(json.thresholds?.low);
+              const high = Number(json.thresholds?.high);
+              if (Number.isNaN(low) || Number.isNaN(high)) return null;
+              return { low, high };
+            })(),
+          ]);
 
         if (cancelled) return;
 
@@ -140,8 +162,10 @@ export function LeadsClient() {
             id: l.id,
             stage: l.stage,
             customValues: l.custom_values ?? {},
+            score: l.score ?? null,
           }))
         );
+        setThresholds(scoringConfig);
       } catch (err) {
         console.error("[Leads] Failed to load leads", err);
       } finally {
@@ -155,15 +179,25 @@ export function LeadsClient() {
     };
   }, [teamId, workspaceLoaded]);
 
+  /* ---------- table helpers ---------- */
+
   const columns = useMemo(
     () => [
+      { key: "__score", label: "Score", type: null, isScore: true as const },
       ...fields.map((f) => ({
         key: f.key,
         label: f.label,
         type: f.type,
         isStage: false,
+        isScore: false,
       })),
-      { key: "__stage", label: "Stage", type: null, isStage: true as const },
+      {
+        key: "__stage",
+        label: "Stage",
+        type: null,
+        isStage: true as const,
+        isScore: false,
+      },
     ],
     [fields]
   );
@@ -192,6 +226,33 @@ export function LeadsClient() {
       </div>
     );
   }
+
+  function getScoreBadgeClasses(score: number | null): string {
+    if (score == null) {
+      return "bg-slate-100 text-slate-400";
+    }
+
+    if (!thresholds) {
+      // fallback if config not set yet
+      return "bg-amber-50 text-amber-700";
+    }
+
+    const { low, high } = thresholds;
+
+    if (score < low) {
+      // low = red
+      return "bg-rose-50 text-rose-700";
+    }
+    if (score >= high) {
+      // high = green
+      return "bg-emerald-50 text-emerald-700";
+    }
+
+    // between low & high = medium (yellow)
+    return "bg-amber-50 text-amber-700";
+  }
+
+  /* ---------- render ---------- */
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
@@ -256,7 +317,29 @@ export function LeadsClient() {
                 {filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-slate-50">
                     {columns.map((col) => {
-                      if (col.isStage) {
+                      if ((col as any).isScore) {
+                        const score = lead.score ?? null;
+                        const classes = getScoreBadgeClasses(score);
+
+                        return (
+                          <td
+                            key={col.key}
+                            className="border-b border-slate-100 px-3 py-2 align-top"
+                          >
+                            {score != null ? (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${classes}`}
+                              >
+                                {score}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                        );
+                      }
+
+                      if ((col as any).isStage) {
                         return (
                           <td
                             key={col.key}

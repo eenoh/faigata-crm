@@ -1,6 +1,7 @@
 // src/app/api/crm/lead-messages/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
 function getTeamId(req: Request) {
   return new URL(req.url).searchParams.get("teamId");
@@ -106,6 +107,14 @@ export async function POST(req: Request) {
       { error: "Failed to create message" },
       { status: 500 }
     );
+  }
+
+  // 🔁 Recompute score after the new message (for inbound frequency / pipeline moves)
+  try {
+    await recomputeLeadScore(teamId, leadId);
+  } catch (e) {
+    console.error("[API] Failed to recompute score after message", e);
+    // we still return 201 for the message; scoring failure shouldn’t block UI
   }
 
   return NextResponse.json(data);
