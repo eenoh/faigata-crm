@@ -1,3 +1,4 @@
+// src/app/leads/[id]/LeadDetailClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -11,8 +12,9 @@ interface LeadData {
   stage: string;
   custom_values: Record<string, any>;
   created_at: string;
+  prospector_id?: string | null; // NEW: who created / owns the lead as prospector
   score?: number | null;
-  score_grade?: string | null; // still optional if you keep it on the API
+  score_grade?: string | null;
   score_breakdown?:
     | {
         ruleId: string;
@@ -40,6 +42,13 @@ type LeadMessage = {
 
 type ScoreThresholds = { low: number; high: number };
 
+type CreatorProfile = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+};
+
 export function LeadDetailClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -54,6 +63,8 @@ export function LeadDetailClient() {
 
   const [messages, setMessages] = useState<LeadMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(true);
+
+  const [creator, setCreator] = useState<CreatorProfile | null>(null); // NEW
 
   /* ---------- 1) Load teamId from Supabase ---------- */
 
@@ -210,6 +221,33 @@ export function LeadDetailClient() {
         setFields(defs);
         setLead(leadRes);
         setThresholds(configRes);
+
+        // NEW: load creator (prospector) profile for "Lead created" entry
+        setCreator(null);
+        if (leadRes.prospector_id) {
+          const { data: creatorProfile, error: creatorError } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name, avatar_url")
+            .eq("id", leadRes.prospector_id)
+            .single();
+
+          if (!cancelled && !creatorError && creatorProfile) {
+            const signedAvatar = await resolveAvatarUrl(
+              creatorProfile.avatar_url
+            );
+            if (!cancelled) {
+              setCreator({
+                ...creatorProfile,
+                avatar_url: signedAvatar,
+              });
+            }
+          } else if (creatorError) {
+            console.error(
+              "[LeadDetail] Failed to load creator profile",
+              creatorError
+            );
+          }
+        }
       } catch (err) {
         console.error("[LeadDetail] Failed to load lead detail", err);
       } finally {
@@ -322,7 +360,6 @@ export function LeadDetailClient() {
       };
     }
 
-    // if thresholds not configured yet, keep a neutral amber badge
     if (!thresholds) {
       return {
         label: "Scored",
@@ -413,6 +450,21 @@ export function LeadDetailClient() {
         new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
     );
   }, [messages]);
+
+  const creatorName = useMemo(() => {
+    if (!creator) return "Prospector";
+    const first = creator.first_name ?? "";
+    const last = creator.last_name ?? "";
+    const full = `${first} ${last}`.trim();
+    return full || "Prospector";
+  }, [creator]);
+
+  const creatorInitials = useMemo(
+    () => initialsFromName(creator?.first_name, creator?.last_name),
+    [creator?.first_name, creator?.last_name]
+  );
+
+  const creatorAvatarUrl = creator?.avatar_url ?? null;
 
   /* ---------- early returns ---------- */
 
@@ -622,25 +674,45 @@ export function LeadDetailClient() {
                   No messages yet. Use the “+” button above to log your
                   outbound / inbound touches.
                 </p>
-                {/* Lead created entry */}
+
+                {/* Lead created entry (no other messages) */}
                 <div className="mt-4 text-xs">
                   <div className="flex gap-2">
                     <div className="flex flex-col items-center">
                       <div className="flex h-8 w-8 items-center justify-center">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        {creatorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={creatorAvatarUrl}
+                            alt={creatorName}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-white">
+                            {creatorInitials}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex-1">
                       <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                         <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span className="font-semibold text-slate-700">
-                            Lead created
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">
+                              {creatorName}
+                            </span>
+                            <span className="text-slate-400">
+                              · Prospector
+                            </span>
                           </span>
                           <span>
                             {created.toLocaleDateString()}{" "}
                             {created.toLocaleTimeString()}
                           </span>
                         </div>
+                        <p className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          Lead created
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -717,25 +789,44 @@ export function LeadDetailClient() {
                   );
                 })}
 
-                {/* Lead created entry at the end */}
+                {/* Lead created entry at the end (with messages) */}
                 <div className="pt-1">
                   <div className="flex gap-2">
                     <div className="flex flex-col items-center">
                       <div className="flex h-8 w-8 items-center justify-center">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        {creatorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={creatorAvatarUrl}
+                            alt={creatorName}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-white">
+                            {creatorInitials}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex-1">
                       <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                         <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span className="font-semibold text-slate-700">
-                            Lead created
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">
+                              {creatorName}
+                            </span>
+                            <span className="text-slate-400">
+                              · Prospector
+                            </span>
                           </span>
                           <span>
                             {created.toLocaleDateString()}{" "}
                             {created.toLocaleTimeString()}
                           </span>
                         </div>
+                        <p className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          Lead created
+                        </p>
                       </div>
                     </div>
                   </div>
