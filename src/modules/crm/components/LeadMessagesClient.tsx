@@ -17,6 +17,7 @@ type LeadSummary = {
   stage: string;
   custom_values: Record<string, any>;
   created_at: string;
+  prospector_id: string | null;
 };
 
 type UserProfile = {
@@ -36,8 +37,14 @@ export function LeadMessagesClient() {
   const [messages, setMessages] = useState<LeadMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(true);
+
+  // current user (for outbound messages)
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+  // creator / prospector (for "Lead created" entry)
+  const [creatorProfile, setCreatorProfile] = useState<UserProfile | null>(null);
+  const [creatorAvatarUrl, setCreatorAvatarUrl] = useState<string | null>(null);
 
   const [direction, setDirection] = useState<"inbound" | "outbound">(
     "outbound"
@@ -131,7 +138,7 @@ export function LeadMessagesClient() {
     };
   }, []);
 
-  /* ---------- 2) Load lead, messages, current user ---------- */
+  /* ---------- 2) Load lead, messages, current user, creator ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -181,7 +188,42 @@ export function LeadMessagesClient() {
           return;
         }
         const leadRes = (await res.json()) as LeadSummary;
-        if (!cancelled) setLead(leadRes);
+
+        if (cancelled) return;
+
+        setLead(leadRes);
+
+        // load creator / prospector profile for "Lead created" entry
+        if (leadRes.prospector_id) {
+          try {
+            const { data, error } = await supabase
+              .from("profiles")
+              .select("first_name, last_name, avatar_url")
+              .eq("id", leadRes.prospector_id)
+              .single();
+
+            if (error) {
+              console.error(
+                "[Messages] Failed to load creator profile",
+                error
+              );
+            } else if (!cancelled && data) {
+              const prof: UserProfile = {
+                first_name: data.first_name ?? null,
+                last_name: data.last_name ?? null,
+                avatar_url: data.avatar_url ?? null,
+              };
+              setCreatorProfile(prof);
+
+              const signed = await resolveAvatarUrl(prof.avatar_url);
+              if (!cancelled) {
+                setCreatorAvatarUrl(signed);
+              }
+            }
+          } catch (err) {
+            console.error("[Messages] load creator profile error", err);
+          }
+        }
       } catch (err) {
         console.error("[Messages] Failed to load lead", err);
       } finally {
@@ -247,31 +289,9 @@ export function LeadMessagesClient() {
 
         setCurrentUser(profile);
 
-        if (profile.avatar_url) {
-          if (
-            profile.avatar_url.startsWith("http://") ||
-            profile.avatar_url.startsWith("https://")
-          ) {
-            setUserAvatarUrl(profile.avatar_url);
-          } else {
-            try {
-              const { data: signed, error: signedErr } =
-                await supabase.storage
-                  .from("avatars")
-                  .createSignedUrl(profile.avatar_url, 60 * 60 * 24 * 7);
-              if (signedErr) {
-                console.error("[Messages] createSignedUrl error", signedErr);
-                setUserAvatarUrl(null);
-              } else {
-                setUserAvatarUrl(signed?.signedUrl ?? null);
-              }
-            } catch (err) {
-              console.error("[Messages] avatar sign error", err);
-              setUserAvatarUrl(null);
-            }
-          }
-        } else {
-          setUserAvatarUrl(null);
+        const signed = await resolveAvatarUrl(profile.avatar_url);
+        if (!cancelled) {
+          setUserAvatarUrl(signed);
         }
       } catch (err) {
         console.error("[Messages] Failed to load current user", err);
@@ -416,6 +436,17 @@ export function LeadMessagesClient() {
 
   const leadInitials = initialsFromSingleString(leadLabel);
 
+  const creatorFullName =
+    (creatorProfile?.first_name || creatorProfile?.last_name) &&
+    `${creatorProfile?.first_name ?? ""} ${
+      creatorProfile?.last_name ?? ""
+    }`.trim();
+
+  const creatorInitials = initialsFromName(
+    creatorProfile?.first_name,
+    creatorProfile?.last_name
+  );
+
   const sortedMessages: LeadMessage[] = useMemo(() => {
     if (!messages.length) return [];
     return [...messages].sort(
@@ -517,20 +548,39 @@ export function LeadMessagesClient() {
                   <div className="flex gap-2">
                     <div className="flex flex-col items-center">
                       <div className="flex h-8 w-8 items-center justify-center">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        {creatorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={creatorAvatarUrl}
+                            alt={creatorFullName || "Prospector"}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
+                        ) : creatorProfile ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-white">
+                            {creatorInitials}
+                          </div>
+                        ) : (
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        )}
                       </div>
                     </div>
                     <div className="flex-1">
                       <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                         <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span className="font-semibold text-slate-700">
-                            Lead created
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">
+                              {creatorFullName || "Prospector"}
+                            </span>
+                            <span className="text-slate-400">· Prospector</span>
                           </span>
                           <span>
                             {created.toLocaleDateString()}{" "}
                             {created.toLocaleTimeString()}
                           </span>
                         </div>
+                        <p className="text-[11px] text-slate-700">
+                          Lead created
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -585,8 +635,13 @@ export function LeadMessagesClient() {
                               {authorName}
                             </span>
                             <span className="text-slate-400">
-                              · {isPipeline ? "Setter" : isOutbound ? "Setter" : "Lead"} ·{" "}
-                              {formatChannel(m.channel)}
+                              ·{" "}
+                              {isPipeline
+                                ? "Setter"
+                                : isOutbound
+                                ? "Setter"
+                                : "Lead"}{" "}
+                              · {formatChannel(m.channel)}
                             </span>
                           </span>
                           <span>
@@ -608,20 +663,41 @@ export function LeadMessagesClient() {
                   <div className="flex gap-2">
                     <div className="flex flex-col items-center">
                       <div className="flex h-8 w-8 items-center justify-center">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        {creatorAvatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={creatorAvatarUrl}
+                            alt={creatorFullName || "Prospector"}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
+                        ) : creatorProfile ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-white">
+                            {creatorInitials}
+                          </div>
+                        ) : (
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        )}
                       </div>
                     </div>
                     <div className="flex-1">
                       <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                         <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span className="font-semibold text-slate-700">
-                            Lead created
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">
+                              {creatorFullName || "Prospector"}
+                            </span>
+                            <span className="text-slate-400">
+                              · Prospector
+                            </span>
                           </span>
                           <span>
                             {created.toLocaleDateString()}{" "}
                             {created.toLocaleTimeString()}
                           </span>
                         </div>
+                        <p className="text-[11px] text-slate-700">
+                          Lead created
+                        </p>
                       </div>
                     </div>
                   </div>
