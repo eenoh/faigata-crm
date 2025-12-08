@@ -17,13 +17,14 @@ function getLeadIdFromRequest(req: Request): string | null {
 
 // Keep this in sync with your leads table schema
 const LEAD_SELECT_COLUMNS =
-  "id, team_id, stage, custom_values, prospector_id, setter_id, closer_id, score, score_updated_at, created_at";
+  "id, team_id, stage, custom_values, prospector_id, setter_id, closer_id, notes, score, score_updated_at, created_at";
 
 type NewLeadBody = {
   teamId?: string;
   stage?: string;
   customValues?: Record<string, any>;
   prospectorId?: string | null;
+  notes?: string | null;
 };
 
 /* ---------- CREATE lead ---------- */
@@ -35,6 +36,10 @@ export async function POST(req: Request) {
   const stage: string | undefined = body.stage;
   const customValues: Record<string, any> = body.customValues ?? {};
   const prospectorId: string | null = body.prospectorId ?? null;
+  const notes: string | null =
+    typeof body.notes === "string" && body.notes.trim() !== ""
+      ? body.notes.trim()
+      : null;
 
   if (!teamId) {
     return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
@@ -49,7 +54,10 @@ export async function POST(req: Request) {
   try {
     setterId = await assignSetterId(teamId, prospectorId);
   } catch (err) {
-    console.error("[LeadsAPI] assignSetterId failed – continuing without setter", err);
+    console.error(
+      "[LeadsAPI] assignSetterId failed – continuing without setter",
+      err
+    );
     setterId = null;
   }
 
@@ -59,6 +67,7 @@ export async function POST(req: Request) {
     custom_values: customValues,
     prospector_id: prospectorId,
     setter_id: setterId,
+    notes, // <-- NEW
   };
 
   const { data, error } = await supabaseAdmin
@@ -181,6 +190,12 @@ export async function PATCH(req: Request) {
   }
   if (updates.closerId !== undefined) {
     payload.closer_id = updates.closerId;
+  }
+  if (updates.notes !== undefined) {
+    payload.notes =
+      typeof updates.notes === "string" && updates.notes.trim() !== ""
+        ? updates.notes.trim()
+        : null;
   }
 
   payload.updated_at = new Date().toISOString();

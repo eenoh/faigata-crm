@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { LeadMessagesClient } from "../../../../../modules/crm/components/LeadMessagesClient";
 
 export const metadata: Metadata = {
-  title: "Log Lead Messages",
+  title: "Log Lead Conversations",
   description:
     "Track outbound and inbound conversations with a specific lead.",
 };

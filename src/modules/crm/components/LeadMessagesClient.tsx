@@ -465,7 +465,7 @@ export function LeadMessagesClient() {
         {/* Header */}
         <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">
-            Log messages for this lead
+            Log Conversations for this Lead
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             Track outbound and inbound conversations so you always know the last

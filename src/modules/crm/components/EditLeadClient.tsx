@@ -15,6 +15,7 @@ interface LeadRow {
   team_id: string;
   stage: string;
   custom_values: Record<string, any> | null;
+  notes: string | null; 
 }
 
 export function EditLeadClient() {
@@ -26,6 +27,7 @@ export function EditLeadClient() {
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [stage, setStage] = useState("");
   const [customValues, setCustomValues] = useState<Record<string, any>>({});
+  const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function EditLeadClient() {
         // 2) The lead itself (by id)
         const { data: lead, error: leadError } = await supabase
           .from("leads")
-          .select("id, team_id, stage, custom_values")
+          .select("id, team_id, stage, custom_values, notes")
           .eq("id", id)
           .single<LeadRow>();
 
@@ -84,6 +86,7 @@ export function EditLeadClient() {
         setStages(stageDefs ?? []);
         setStage(lead.stage || (stageDefs[0]?.name ?? ""));
         setCustomValues(lead.custom_values ?? {});
+        setNotes(lead.notes ?? "");
         setError(null);
       } catch (err) {
         console.error("[EditLead] unexpected load error", err);
@@ -119,6 +122,7 @@ export function EditLeadClient() {
         .update({
           stage,
           custom_values: customValues,
+          notes: notes.trim() === "" ? null : notes.trim(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -293,6 +297,22 @@ export function EditLeadClient() {
               </div>
             </div>
           )}
+
+          {/* Notes */}
+          <div className="border-t border-slate-100 pt-4">
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              Notes
+            </h2>
+            <p className="mb-2 text-xs text-slate-500">
+              Internal notes about this lead. Only visible to your team.
+            </p>
+            <textarea
+              className="min-h-[120px] w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add context, objections, personal details, or anything else that helps your team close this deal."
+            />
+          </div>
 
           <div className="flex gap-2 pt-2">
             <button

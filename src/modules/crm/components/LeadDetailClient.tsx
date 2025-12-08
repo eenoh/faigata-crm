@@ -12,7 +12,8 @@ interface LeadData {
   stage: string;
   custom_values: Record<string, any>;
   created_at: string;
-  prospector_id?: string | null; // NEW: who created / owns the lead as prospector
+  prospector_id?: string | null; 
+  notes?: string | null; 
   score?: number | null;
   score_grade?: string | null;
   score_breakdown?:
@@ -640,6 +641,23 @@ export function LeadDetailClient() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Notes card */}
+          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+            <h2 className="mb-0 text-sm font-semibold text-slate-800">
+              Notes
+            </h2>
+            {lead.notes && lead.notes.trim() !== "" ? (
+              <p className="whitespace-pre-wrap text-sm text-slate-800">
+                {lead.notes}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                No notes yet. Press the <span className="font-medium">Edit</span>{" "}
+                Button to add notes about this Lead.
+              </p>
+            )}
           </div>
         </div>
 
