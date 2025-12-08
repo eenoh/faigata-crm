@@ -11,14 +11,16 @@ import {
   Squares2X2Icon,
   Cog6ToothIcon,
   ChevronLeftIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
+  { href: "/dashboard", label: "Dashboard", icon: ChartBarIcon },
   { href: "/leads", label: "Leads", icon: UsersIcon },
   { href: "/pipeline", label: "Pipeline", icon: Squares2X2Icon },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon },
+  { href: "/product-suite", label: "Home", icon: HomeIcon },
 ];
 
 type WorkspaceContext = {
@@ -157,7 +159,7 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      {/* Nav items */}
+      {/* Nav items (Home + Dashboard + others) */}
       <nav className="flex-1 space-y-1 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -182,7 +184,7 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Footer mini section */}
+      {/* Footer mini section – workspace info */}
       <div
         className={`ml-5 border-t border-slate-100 text-[11px] text-slate-400 overflow-hidden transition-all duration-300 ${
           collapsed ? "max-h-0 opacity-0 py-0" : "max-h-12 opacity-100 py-3"

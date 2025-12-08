@@ -44,7 +44,8 @@ export function LoginPageClient() {
 
       if (!res.ok) {
         console.error("after-login check failed", await res.text());
-        window.location.href = "/dashboard";
+        // Fallback: send user to the hub, it will handle auth + teams.
+        window.location.href = "/product-suite";
         return;
       }
 
@@ -56,14 +57,12 @@ export function LoginPageClient() {
       if (payload.needsOnboarding) {
         window.location.href = "/onboarding";
       } else {
-        const suffix = payload.teamId
-          ? `?team=${encodeURIComponent(payload.teamId)}`
-          : "";
-        window.location.href = `/dashboard${suffix}`;
+        // Regardless of specific team, take them to the hub.
+        window.location.href = "/product-suite";
       }
     } catch (err) {
       console.error("after-login error", err);
-      window.location.href = "/dashboard";
+      window.location.href = "/product-suite";
     }
   }
 

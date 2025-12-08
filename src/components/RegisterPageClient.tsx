@@ -45,9 +45,7 @@ export function RegisterPageClient() {
       setInitializing(false);
 
       if (profile?.team_id) {
-        router.replace(
-          `/dashboard?team=${encodeURIComponent(profile.team_id)}`
-        );
+        router.replace("/product-suite");
       }
     })();
 
@@ -105,17 +103,23 @@ export function RegisterPageClient() {
 
       if (!res.ok) {
         console.error("complete-registration failed", await res.text());
-        const suffix = teamIdParam ? `?team=${encodeURIComponent(teamIdParam)}` : "";
-        window.location.href = `/dashboard${suffix}`;
+        // fall back to the product hub; it will show the teams the user is in
+        window.location.href = "/product-suite";
         return;
       }
 
       const payload = (await res.json()) as { redirectTo: string };
-      window.location.href = payload.redirectTo;
+
+      if (payload.redirectTo?.startsWith("/dashboard")) {
+        window.location.href = "/product-suite";
+      } else if (payload.redirectTo) {
+        window.location.href = payload.redirectTo;
+      } else {
+        window.location.href = "/product-suite";
+      }
     } catch (err) {
       console.error("complete-registration error", err);
-      const suffix = teamIdParam ? `?team=${encodeURIComponent(teamIdParam)}` : "";
-      window.location.href = `/dashboard${suffix}`;
+      window.location.href = "/product-suite";
     }
   }
 

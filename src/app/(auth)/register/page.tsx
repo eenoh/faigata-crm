@@ -1,6 +1,6 @@
 // src/app/register/page.tsx
 import type { Metadata } from "next";
-import { RegisterPageClient } from "../../../modules/crm/components/RegisterPageClient";
+import { RegisterPageClient } from "../../../components/RegisterPageClient";
 
 export const metadata: Metadata = {
   title: "Register",
