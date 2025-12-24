@@ -1,18 +1,16 @@
-// src/app/api/team-invites/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { randomUUID } from "crypto";
 
-const AVAILABLE_ROLES = [
-  "Prospector",
-  "Setter",
-  "Closer",
-  "Manager",
-  "Admin",
-] as const;
+export const runtime = "nodejs";
+
+const AVAILABLE_ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
-type DbRole = TeamRole;
 
-const TO_DB_ROLE: Record<TeamRole, DbRole> = {
+/**
+ * Must match your Postgres enum values exactly.
+ */
+const TO_DB_ROLE: Record<TeamRole, TeamRole> = {
   Prospector: "Prospector",
   Setter: "Setter",
   Closer: "Closer",
@@ -20,116 +18,161 @@ const TO_DB_ROLE: Record<TeamRole, DbRole> = {
   Admin: "Admin",
 };
 
+function baseUrl(req: NextRequest) {
+  const env =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+  return env.replace(/\/$/, "");
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const teamId = req.nextUrl.searchParams.get("teamId");
-    if (!teamId) {
-      return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
+    // 1) Verify caller
+    const authHeader = req.headers.get("authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Missing Authorization header" }, { status: 401 });
+    }
+    const jwt = authHeader.slice("Bearer ".length);
+
+    const { data: userRes, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
+    const user = userRes?.user;
+    if (userErr || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { email, roles, companyId } = (await req.json()) as {
+    // 2) Parse body
+    const body = (await req.json()) as {
       email?: string;
       roles?: TeamRole[];
       companyId?: string | null;
     };
 
-    if (!email || !roles || roles.length === 0) {
+    const email = body.email?.trim();
+    const roles = (body.roles ?? []).filter((r): r is TeamRole =>
+      AVAILABLE_ROLES.includes(r as TeamRole)
+    );
+
+    if (!email || roles.length === 0) {
       return NextResponse.json(
         { error: "Email and at least one role are required." },
         { status: 400 }
       );
     }
 
-    const primaryRole = roles[0];
+    // 3) Resolve teamId server-side (workspace)
+    let teamId: string | null = null;
+    let resolvedCompanyId: string | null = body.companyId ?? null;
 
-    // 1) Create invite row in your DB (NO auth user yet)
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("team_id, company_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.team_id) teamId = profile.team_id;
+    if (!resolvedCompanyId && profile?.company_id) resolvedCompanyId = profile.company_id;
+
+    if (!teamId) {
+      const { data: member } = await supabaseAdmin
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (member?.team_id) teamId = member.team_id;
+    }
+
+    if (!teamId) {
+      const metaTeam = (user.user_metadata as any)?.primary_team_id;
+      if (typeof metaTeam === "string" && metaTeam.length > 0) teamId = metaTeam;
+    }
+
+    if (!teamId) {
+      return NextResponse.json({ error: "Could not resolve teamId for current user." }, { status: 400 });
+    }
+
+    // 4) Create invite row (✅ role is ARRAY in your DB)
+    const token = randomUUID();
+    const rolesDb = roles.map((r) => TO_DB_ROLE[r]); // array of enum strings
+
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("team_invites")
       .insert({
         team_id: teamId,
         email,
-        role: TO_DB_ROLE[primaryRole],
+        role: rolesDb,               // ✅ ARRAY FIX
+        invited_by: user.id,
+        token,
+        company_id: resolvedCompanyId,
       })
-      .select("id, created_at")
+      .select("id, token")
       .single();
 
     if (inviteError || !invite) {
       console.error("[team-invites] insert error", inviteError);
       return NextResponse.json(
-        { error: "Failed to create invite" },
+        {
+          error: "Failed to create invite",
+          supabase: {
+            message: inviteError?.message,
+            details: (inviteError as any)?.details,
+            hint: (inviteError as any)?.hint,
+            code: (inviteError as any)?.code,
+          },
+        },
         { status: 500 }
       );
     }
 
-    const inviteId = invite.id as string;
+    // 5) Optional: also store per-role rows
+    const roleRows = rolesDb.map((r) => ({ invite_id: invite.id, role: r }));
+    const { error: rolesError } = await supabaseAdmin.from("team_invite_roles").insert(roleRows);
+    if (rolesError) console.warn("[team-invite-roles] insert error", rolesError);
 
-    // 2) Store all roles in team_invite_roles
-    const roleRows = roles.map((r) => ({
-      invite_id: inviteId,
-      role: TO_DB_ROLE[r],
-    }));
+    // 6) Accept link
+    const acceptUrl = `${baseUrl(req)}/invite/accept?invite=${encodeURIComponent(invite.id)}`;
 
-    const { error: roleError } = await supabaseAdmin
-      .from("team_invite_roles")
-      .insert(roleRows);
-
-    if (roleError) {
-      console.error("[team-invite-roles] insert error", roleError);
-      // Not fatal – the base invite row still exists
-    }
-
-    // 3) Build accept link: /invite/accept?invite=...&team=...&company=...
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      process.env.NEXT_PUBLIC_SITE_URL ??
-      "http://localhost:3000";
-
-    const acceptUrl =
-      `${baseUrl}/invite/accept` +
-      `?invite=${encodeURIComponent(inviteId)}` +
-      `&team=${encodeURIComponent(teamId)}` +
-      (companyId ? `&company=${encodeURIComponent(companyId)}` : "");
-
-    // 4) Use Supabase's email tool: inviteUserByEmail
-    // This sends the email and the link redirects to acceptUrl
+    // 7) Send Supabase invite email
     const { data: invitedUser, error: inviteUserError } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         redirectTo: acceptUrl,
         data: {
-          invite_id: inviteId,
+          invite_id: invite.id,
           team_id: teamId,
-          company_id: companyId ?? null,
-          roles,
+          company_id: resolvedCompanyId,
+          roles: rolesDb,
         },
       });
 
     if (inviteUserError) {
       console.error("[team-invites] inviteUserByEmail error", inviteUserError);
-      // You might optionally delete the invite row here, but we just report error:
       return NextResponse.json(
-        { error: "Failed to send invite email." },
+        {
+          error: "Failed to send invite email.",
+          supabase: {
+            message: inviteUserError.message,
+            status: (inviteUserError as any).status,
+            name: inviteUserError.name,
+          },
+        },
         { status: 500 }
       );
     }
 
-    // 5) Store the auth user id on the invite row
-    const userId = invitedUser?.user?.id;
-    if (userId) {
-      const { error: updateInviteError } = await supabaseAdmin
+    // 8) Store auth user id if returned
+    const invitedUserId = invitedUser?.user?.id;
+    if (invitedUserId) {
+      const { error: updErr } = await supabaseAdmin
         .from("team_invites")
-        .update({ user_id: userId })
-        .eq("id", inviteId);
+        .update({ user_id: invitedUserId })
+        .eq("id", invite.id);
 
-      if (updateInviteError) {
-        console.error(
-          "[team-invites] failed to store user_id on invite",
-          updateInviteError
-        );
-        // Not fatal for the email flow, but useful to know in logs
-      }
+      if (updErr) console.warn("[team-invites] failed to store user_id", updErr);
     }
 
-    return NextResponse.json({ ok: true, acceptUrl });
+    return NextResponse.json({ ok: true, acceptUrl, inviteId: invite.id });
   } catch (err) {
     console.error("[team-invites] unexpected error", err);
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 });

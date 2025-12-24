@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,7 +24,7 @@ type LeadSummary = {
 type UserProfile = {
   first_name: string | null;
   last_name: string | null;
-  avatar_url: string | null; // stored path OR full URL
+  avatar_url: string | null; 
 };
 
 export function LeadMessagesClient() {
@@ -504,8 +505,6 @@ export function LeadMessagesClient() {
               onChange={(e) => setChannel(e.target.value)}
             >
               <option value="dm">DM</option>
-              <option value="email">EMAIL</option>
-              <option value="call">CALL</option>
               <option value="sms">SMS</option>
               <option value="other">OTHER</option>
             </select>
@@ -607,7 +606,13 @@ export function LeadMessagesClient() {
                     <div className="flex flex-col items-center">
                       <div className="flex h-8 w-8 items-center justify-center">
                         {isPipeline ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                          <Image
+                            src="/icons/stage-change.svg"
+                            alt="Stage change"
+                            width={32}
+                            height={32}
+                            className="h-8 w-8"
+                          />
                         ) : avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img

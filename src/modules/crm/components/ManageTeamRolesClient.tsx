@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { TrashIcon } from "@heroicons/react/24/outline";
 
-
-const AVAILABLE_ROLES = [
-  "Prospector",
-  "Setter",
-  "Closer",
-  "Manager",
-  "Admin",
-] as const;
+const AVAILABLE_ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
 
 type MemberRow = {
@@ -23,6 +17,9 @@ type MemberRow = {
   roles: TeamRole[];
 };
 
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
 
 export function ManageTeamRolesClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
@@ -31,216 +28,308 @@ export function ManageTeamRolesClient() {
   const [currentUserRoles, setCurrentUserRoles] = useState<TeamRole[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingUserId, setSavingUserId] = useState<string | null>(null);
 
+  const [toast, setToast] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
+
+  const isAdmin = useMemo(() => currentUserRoles.includes("Admin"), [currentUserRoles]);
+  const isManager = useMemo(() => currentUserRoles.includes("Manager") || isAdmin, [currentUserRoles, isAdmin]);
+  const pageLoading = workspaceLoading || loading;
 
   useEffect(() => {
     if (workspaceLoading || !teamId) return;
+
     let cancelled = false;
 
-    async function load() {
+    (async () => {
       try {
+        setLoading(true);
+        setLoadError(null);
+
         const { data: userRes } = await supabase.auth.getUser();
         if (!userRes.user) {
           router.replace("/login");
           return;
         }
 
-        // load current user's roles
-        const { data: profile } = await supabase
+        // Caller roles from profiles.role (array)
+        const { data: myProfile, error: myProfErr } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, team_id")
           .eq("id", userRes.user.id)
-          .single();
+          .maybeSingle();
 
-        if (!cancelled && profile?.role) {
-          setCurrentUserRoles(profile.role as TeamRole[]);
+        if (!cancelled) {
+          const roles = Array.isArray(myProfile?.role) ? (myProfile!.role as TeamRole[]) : [];
+          setCurrentUserRoles(roles);
+
+          // extra safety: if their profile team doesn't match workspace team
+          if (myProfile?.team_id && myProfile.team_id !== teamId) {
+            setLoadError("Workspace/team mismatch. Please re-select your team.");
+          }
         }
 
-        // load team members
-        const { data: rows, error } = await supabase
-          .from("team_members")
-          .select(`
-              user_id,
-              role,
-              profiles:profiles!team_members_user_id_fkey (
-                email, first_name, last_name
-              )
-          `)
-          .eq("team_id", teamId);
-
-        if (!cancelled && !error && rows) {
-          setMembers(
-            rows.map((r: any) => ({
-              user_id: r.user_id,
-              roles: (r.role as TeamRole[]) ?? [],
-              email: r.profiles?.email ?? null,
-              first_name: r.profiles?.first_name ?? null,
-              last_name: r.profiles?.last_name ?? null,
-            }))
-          );
+        const { data: sessionRes } = await supabase.auth.getSession();
+        const token = sessionRes.session?.access_token;
+        if (!token) {
+          router.replace("/login");
+          return;
         }
+
+        // teamId is taken server-side (cookie/workspace fallback), but send it too for safety
+        const res = await fetch(`/api/crm/team-roles?teamId=${encodeURIComponent(teamId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const text = await res.text();
+        let json: any = null;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          json = null;
+        }
+
+        if (cancelled) return;
+
+        if (!res.ok || !json?.ok) {
+          setMembers([]);
+          setLoadError(json?.error ?? `Failed to load members (HTTP ${res.status}).`);
+          return;
+        }
+
+        setMembers((json.members as MemberRow[]) ?? []);
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
+    })();
 
-    load();
     return () => {
       cancelled = true;
     };
   }, [router, teamId, workspaceLoading]);
 
+  if (pageLoading) {
+  return (
+    <div className="max-w-6xl space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
+        <div className="mt-2 h-4 w-96 animate-pulse rounded bg-slate-100" />
+      </div>
 
-  if (workspaceLoading) {
-    return <p className="text-sm text-slate-500">Loading workspace…</p>;
-  }
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Team members
+        </div>
 
-  if (!teamId) {
-    return (
-      <p className="text-sm text-rose-500">
-        Could not determine your workspace team.
-      </p>
-    );
-  }
+        <div className="divide-y divide-slate-100">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-4">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-56 animate-pulse rounded bg-slate-100" />
+              </div>
 
+              <div className="flex gap-3">
+                {AVAILABLE_ROLES.map((r) => (
+                  <div
+                    key={r}
+                    className="h-4 w-4 animate-pulse rounded bg-slate-200"
+                  />
+                ))}
+              </div>
 
-  const isAdmin = currentUserRoles.includes("Admin");
-  const isManager = currentUserRoles.includes("Manager") || isAdmin;
+              <div className="h-8 w-8 animate-pulse rounded bg-slate-200" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  if (!teamId) return <p className="text-sm text-rose-500">Could not determine your workspace team.</p>;
 
   if (!loading && !isManager) {
-    return (
-      <p className="text-sm text-rose-500">
-        You don&apos;t have permission to manage roles.
-      </p>
-    );
+    return <p className="text-sm text-rose-500">You don&apos;t have permission to manage roles.</p>;
   }
 
-  function toggleRole(userId: string, role: TeamRole) {
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.user_id === userId
-          ? {
-              ...m,
-              roles: m.roles.includes(role)
-                ? m.roles.filter((r) => r !== role)
-                : [...m.roles, role],
-            }
-          : m
-      )
-    );
+  function setSaving(userId: string, v: boolean) {
+    setSavingMap((prev) => ({ ...prev, [userId]: v }));
   }
 
-  async function saveRoles(userId: string) {
-    const member = members.find((m) => m.user_id === userId);
-    if (!member) return;
+  function updateLocalRoles(userId: string, nextRoles: TeamRole[]) {
+    setMembers((prev) => prev.map((m) => (m.user_id === userId ? { ...m, roles: nextRoles } : m)));
+  }
 
-    setSavingUserId(userId);
+  async function applyRolesImmediately(userId: string, nextRolesRaw: TeamRole[]) {
+    const prev = members.find((m) => m.user_id === userId);
+    if (!prev) return;
+
+    const nextRoles = uniq(isAdmin ? nextRolesRaw : nextRolesRaw.filter((r) => r !== "Admin"));
+
+    if (nextRoles.length === 0) {
+      setToast("At least one role is required.");
+      setTimeout(() => setToast(null), 1500);
+      return;
+    }
+
+    const prevRoles = prev.roles;
+    updateLocalRoles(userId, nextRoles);
+
+    setSaving(userId, true);
+    setToast(null);
+
     try {
-      let nextRoles = member.roles;
-
-      // Managers can't give Admin; ensure it on client as well
-      if (!isAdmin) {
-        nextRoles = nextRoles.filter((r) => r !== "Admin");
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes.session?.access_token;
+      if (!token) {
+        router.replace("/login");
+        return;
       }
 
-      const { error } = await supabase
-        .from("team_members")
-        .update({ role: nextRoles })
-        .eq("team_id", teamId)
-        .eq("user_id", userId);
+      const res = await fetch("/api/crm/team-roles", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          teamId,
+          userId,
+          roles: nextRoles,
+        }),
+      });
 
-      if (error) {
-        console.error("[ManageRoles] save error", error);
+      const text = await res.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
       }
-    } catch (err) {
-      console.error("[ManageRoles] save error", err);
+
+      if (!res.ok || !json?.ok) {
+        updateLocalRoles(userId, prevRoles);
+        setToast(json?.error ?? `Failed to save (HTTP ${res.status}).`);
+        setTimeout(() => setToast(null), 2000);
+        return;
+      }
+
+      setToast("Saved ✅");
+      setTimeout(() => setToast(null), 1200);
     } finally {
-      setSavingUserId(null);
+      setSaving(userId, false);
     }
   }
 
+  function onToggle(userId: string, role: TeamRole, checked: boolean) {
+    const member = members.find((m) => m.user_id === userId);
+    if (!member) return;
+
+    const next = checked ? uniq([...member.roles, role]) : member.roles.filter((r) => r !== role);
+    applyRolesImmediately(userId, next);
+  }
+
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-6xl space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
-          Manage team roles
-        </h1>
+        <h1 className="text-xl font-semibold text-slate-900">Manage team roles</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Assign Prospector, Setter, Closer, Manager and Admin roles to your
-          team. Managers can&apos;t grant Admin; only Admins can.
+          Toggle roles to update immediately. Managers can&apos;t grant Admin; only Admins can.
         </p>
+        {toast && <p className="mt-2 text-xs font-medium text-slate-700">{toast}</p>}
+        {loadError && <p className="mt-2 text-xs font-medium text-rose-600">{loadError}</p>}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
           Team members
         </div>
 
         {loading ? (
-          <p className="px-4 py-3 text-xs text-slate-500">
-            Loading members…
-          </p>
+          <p className="px-4 py-3 text-xs text-slate-500">Loading members…</p>
         ) : (
-          <div className="divide-y divide-slate-100 text-sm">
-            {members.map((m) => {
-              const name =
-                `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() ||
-                m.email ||
-                "User";
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-600">
+                <tr>
+                  <th className="px-4 py-2 text-left font-semibold">Member</th>
+                  {AVAILABLE_ROLES.map((r) => (
+                    <th key={r} className="px-3 py-2 text-center font-semibold">
+                      {r}
+                    </th>
+                  ))}
+                  <th className="px-4 py-2 text-right font-semibold">Action</th>
+                </tr>
+              </thead>
 
-              return (
-                <div
-                  key={m.user_id}
-                  className="flex items-center justify-between gap-4 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">
-                      {name}
-                    </p>
-                    {m.email && (
-                      <p className="truncate text-xs text-slate-500">
-                        {m.email}
-                      </p>
-                    )}
-                  </div>
+              <tbody className="divide-y divide-slate-100">
+                {members.map((m) => {
+                  const name =
+                    `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() ||
+                    m.email ||
+                    "User";
 
-                  <div className="flex flex-1 justify-end gap-4">
-                    {AVAILABLE_ROLES.map((role) => {
-                      const disabled =
-                        role === "Admin" && !isAdmin; // managers can't toggle admin
+                  const saving = Boolean(savingMap[m.user_id]);
 
-                      return (
-                        <label
-                          key={role}
-                          className={`flex items-center gap-2 text-xs ${
-                            disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                          }`}
+                  return (
+                    <tr key={m.user_id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900">{name}</p>
+                        {m.email && <p className="text-xs text-slate-500">{m.email}</p>}
+                      </td>
+
+                      {AVAILABLE_ROLES.map((role) => {
+                        const disabled = (role === "Admin" && !isAdmin) || saving;
+                        return (
+                          <td key={role} className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              className={`h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                                disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+                              }`}
+                              disabled={disabled}
+                              checked={m.roles.includes(role)}
+                              onChange={(e) => onToggle(m.user_id, role, e.target.checked)}
+                              title={
+                                role === "Admin" && !isAdmin
+                                  ? "Only Admins can grant Admin."
+                                  : saving
+                                  ? "Saving…"
+                                  : ""
+                              }
+                            />
+                          </td>
+                        );
+                      })}
+
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(`/settings/team/members/${m.user_id}/delete`)
+                          }
+                          title="Remove team member"
+                          className="inline-flex items-center justify-center rounded-lg p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
                         >
-                          <input
-                            type="checkbox"
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            disabled={disabled}
-                            checked={m.roles.includes(role)}
-                            onChange={() => !disabled && toggleRole(m.user_id, role)}
-                          />
-                          <span>{role}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
 
-                  <button
-                    type="button"
-                    onClick={() => saveRoles(m.user_id)}
-                    disabled={savingUserId === m.user_id}
-                    className="rounded-lg bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {savingUserId === m.user_id ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              );
-            })}
+                {members.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-sm text-slate-500" colSpan={AVAILABLE_ROLES.length + 2}>
+                      No members found for this team.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

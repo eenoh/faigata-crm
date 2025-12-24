@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ProductSuitePageClient from "../../components/ProductSuitePageClient";
 
 export const metadata: Metadata = {
-  title: "Product Suite",
+  title: "FaigataCRM",
   description: "See all Faigata products and open your CRM teams.",
 };
 

@@ -238,7 +238,7 @@ export function DeleteLeadClient() {
               disabled={deleting}
               className="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-70 cursor-pointer"
             >
-              {deleting ? "Deleting…" : "Delete lead"}
+              {deleting ? "Deleting…" : "Delete Lead"}
             </button>
             <button
               type="button"

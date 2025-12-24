@@ -10,6 +10,53 @@ type TeamRow = {
   role: string | null;
 };
 
+/** ---------- role ranking helpers ---------- */
+
+const ROLE_RANK: Record<string, number> = {
+  admin: 5,
+  manager: 4,
+  closer: 3,
+  setter: 2,
+  prospector: 1,
+};
+
+function normalizeRoleList(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+  if (typeof raw === "string" && raw.trim()) return [raw.trim()];
+  return [];
+}
+
+function bestRole(raw: unknown): string | null {
+  const roles = normalizeRoleList(raw);
+  if (!roles.length) return null;
+
+  // pick the role with the highest rank
+  let best = roles[0];
+  let bestRank = ROLE_RANK[best.toLowerCase()] ?? 0;
+
+  for (const r of roles) {
+    const rank = ROLE_RANK[r.toLowerCase()] ?? 0;
+    if (rank > bestRank) {
+      best = r;
+      bestRank = rank;
+    }
+  }
+
+  // normalize casing to your preferred display (lowercase)
+  const key = best.toLowerCase();
+  if (key === "admin") return "admin";
+  if (key === "manager") return "manager";
+  if (key === "closer") return "closer";
+  if (key === "setter") return "setter";
+  if (key === "prospector") return "prospector";
+  return best;
+}
+
+function rankOf(role: string | null): number {
+  if (!role) return 0;
+  return ROLE_RANK[role.toLowerCase()] ?? 0;
+}
+
 export default function ProductSuitePageClient() {
   const router = useRouter();
 
@@ -38,31 +85,55 @@ export default function ProductSuitePageClient() {
           .eq("user_id", user.id);
 
         if (memberError) {
-          console.error(
-            "[ProductSuite] failed to load team_members",
-            memberError
-          );
+          console.error("[ProductSuite] failed to load team_members", memberError);
         }
 
         let rows: TeamRow[] = [];
 
         if (memberships && memberships.length > 0) {
-          rows = memberships
-            .filter((m: any) => m.teams)
-            .map((m: any) => ({
-              id: m.teams.id as string,
-              name: m.teams.name as string,
-              role: (m.role as string | null) ?? null,
-            }));
+          // Collapse to ONE row per team, with the HIGHEST role THIS USER has on that team.
+          const byTeam = new Map<string, TeamRow>();
+
+          for (const m of memberships as any[]) {
+            if (!m?.teams?.id) continue;
+
+            const teamId = String(m.teams.id);
+            const incoming: TeamRow = {
+              id: teamId,
+              name: String(m.teams.name ?? ""),
+              role: bestRole(m.role), // <- role(s) for THIS user membership row
+            };
+
+            const existing = byTeam.get(teamId);
+            if (!existing) {
+              byTeam.set(teamId, incoming);
+              continue;
+            }
+
+            // keep whichever has higher role rank
+            if (rankOf(incoming.role) > rankOf(existing.role)) {
+              byTeam.set(teamId, incoming);
+            }
+          }
+
+          rows = Array.from(byTeam.values());
+
+          // (optional) sort by role desc then name
+          rows.sort((a, b) => {
+            const d = rankOf(b.role) - rankOf(a.role);
+            if (d !== 0) return d;
+            return a.name.localeCompare(b.name);
+          });
         } else {
           // ---- 2) fallback: legacy single team via profiles.team_id ----
+          // IMPORTANT: role should come from CURRENT USER's profile.role (text[]) NOT hardcoded admin
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("team_id")
+            .select("team_id, role")
             .eq("id", user.id)
             .single();
 
-          if (profileError && profileError.code !== "PGRST116") {
+          if (profileError && (profileError as any).code !== "PGRST116") {
             console.error("[ProductSuite] failed to load profile", profileError);
           }
 
@@ -74,16 +145,13 @@ export default function ProductSuitePageClient() {
               .single();
 
             if (teamError) {
-              console.error(
-                "[ProductSuite] failed to load team by profile",
-                teamError
-              );
+              console.error("[ProductSuite] failed to load team by profile", teamError);
             } else if (team) {
               rows = [
                 {
                   id: team.id,
                   name: team.name,
-                  role: "Owner",
+                  role: bestRole(profile.role), // ✅ highest role the CURRENT USER possesses
                 },
               ];
             }
@@ -94,11 +162,7 @@ export default function ProductSuitePageClient() {
 
         setTeams(rows);
 
-        const hasAdminRole = rows.some((t) =>
-          (t.role ?? "").toLowerCase().includes("owner") ||
-          (t.role ?? "").toLowerCase().includes("admin")
-        );
-
+        const hasAdminRole = rows.some((t) => (t.role ?? "").toLowerCase() === "admin");
         setCanCreateTeam(hasAdminRole || rows.length === 0);
       } catch (err) {
         console.error("[ProductSuite] unexpected error", err);
@@ -129,7 +193,6 @@ export default function ProductSuitePageClient() {
         return;
       }
 
-      // Team is now stored server-side (e.g. in profile/cookie)
       router.push("/dashboard");
     } catch (err) {
       console.error("[ProductSuite] select-team error", err);
@@ -149,15 +212,11 @@ export default function ProductSuitePageClient() {
       {/* header area for the card */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900 mt-5">
-            FaigataCRM
-          </h2>
+          <h2 className="text-2xl font-semibold text-slate-900 mt-5">FaigataCRM</h2>
           <p className="text-sm text-slate-500">
             {totalCount === 0
               ? "You don’t have any CRM teams yet."
-              : `You’re a member of ${totalCount} CRM team${
-                  totalCount === 1 ? "" : "s"
-                }.`}
+              : `You’re a member of ${totalCount} CRM team${totalCount === 1 ? "" : "s"}.`}
           </p>
         </div>
 
@@ -176,24 +235,19 @@ export default function ProductSuitePageClient() {
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-800">CRM Teams</h3>
-            <p className="text-xs text-slate-500">
-              Select a team to open its CRM workspace.
-            </p>
+            <p className="text-xs text-slate-500">Select a team to open its CRM workspace.</p>
           </div>
         </div>
 
         {loading ? (
-          <div className="px-4 py-6 text-sm text-slate-500">
-            Loading your teams…
-          </div>
+          <div className="px-4 py-6 text-sm text-slate-500">Loading your teams…</div>
         ) : totalCount === 0 ? (
           <div className="px-4 py-6 text-sm text-slate-500">
             You’re not in any CRM team yet.
             {canCreateTeam && (
               <>
                 {" "}
-                Click <span className="font-semibold">Add team</span> to create
-                your first one.
+                Click <span className="font-semibold">Add team</span> to create your first one.
               </>
             )}
           </div>
@@ -227,7 +281,9 @@ export default function ProductSuitePageClient() {
                         {team.name}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-500 text-xs">
-                        {team.role || "Member"}
+                        {team.role
+                          ? team.role.charAt(0).toUpperCase() + team.role.slice(1)
+                          : "Member"}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2 align-top text-right">
                         <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">

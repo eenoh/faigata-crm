@@ -1,4 +1,3 @@
-// src/app/(app)/leads/LeadsClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +27,85 @@ interface LeadRow {
   score?: number | null;
 }
 
+/* -------------------- loading state -------------------- */
+
+function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
+  const rows = Array.from({ length: 10 });
+
+  return (
+    <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="max-h-[800px] overflow-hidden rounded-xl">
+        {/* header skeleton */}
+        <div className="border-b border-slate-200 bg-slate-100 px-3 py-2">
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+          >
+            {Array.from({ length: Math.max(0, colCount - 1) }).map((_, i) => (
+              <div
+                key={i}
+                className="h-4 w-24 rounded bg-slate-200/80 animate-pulse"
+              />
+            ))}
+            <div className="ml-auto h-4 w-16 rounded bg-slate-200/80 animate-pulse" />
+          </div>
+        </div>
+
+        {/* body skeleton */}
+        <div className="divide-y divide-slate-100">
+          {rows.map((_, rIdx) => (
+            <div key={rIdx} className="px-3 py-3">
+              <div
+                className="grid items-center gap-3"
+                style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+              >
+                {/* score badge */}
+                <div>
+                  <div className="h-5 w-10 rounded-full bg-slate-200/80 animate-pulse" />
+                </div>
+
+                {/* “cells” */}
+                {Array.from({ length: Math.max(0, colCount - 3) }).map(
+                  (_, cIdx) => (
+                    <div
+                      key={cIdx}
+                      className="h-4 w-full max-w-[220px] rounded bg-slate-200/70 animate-pulse"
+                    />
+                  )
+                )}
+
+                {/* stage pill */}
+                <div className="justify-self-start">
+                  <div className="h-6 w-20 rounded-full bg-slate-200/80 animate-pulse" />
+                </div>
+
+                {/* actions */}
+                <div className="justify-self-end">
+                  <div className="flex justify-end gap-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-6 w-6 rounded bg-slate-200/80 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* optional subtle footer hint */}
+        <div className="border-t border-slate-100 bg-white px-3 py-2">
+          <div className="h-3 w-40 rounded bg-slate-200/60 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- component -------------------- */
+
 export function LeadsClient() {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
@@ -41,6 +119,13 @@ export function LeadsClient() {
   const searchParams = useSearchParams();
   const query = (searchParams.get("q") ?? "").trim().toLowerCase();
 
+  const ROW_HEIGHT_PX = 44;      // adjust if your rows are taller/shorter
+  const HEADER_HEIGHT_PX = 40;   // thead height
+  const VISIBLE_ROWS = 16;
+
+  const TABLE_BODY_MAX_HEIGHT = HEADER_HEIGHT_PX + ROW_HEIGHT_PX * VISIBLE_ROWS;
+
+
   /* ---------- 1) Load teamId from Supabase ---------- */
 
   useEffect(() => {
@@ -48,8 +133,7 @@ export function LeadsClient() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } =
-          await supabase.auth.getUser();
+        const { data: userRes, error: userError } = await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           console.warn("[Leads] No authenticated user", userError);
@@ -116,42 +200,35 @@ export function LeadsClient() {
       try {
         setLoading(true);
 
-        const [fieldDefs, stageDefs, leadsRes, scoringConfig] =
-          await Promise.all([
-            getLeadFieldDefinitions(teamId),
-            getPipelineStages(teamId),
-            (async () => {
-              const res = await fetch(
-                `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`
-              );
-              if (!res.ok) {
-                const text = await res.text();
-                console.error(
-                  "[Leads] Failed to load leads",
-                  res.status,
-                  text.slice(0, 200)
-                );
-                throw new Error("Failed to load leads");
-              }
-              return (await res.json()) as any[];
-            })(),
-            (async (): Promise<ScoreThresholds | null> => {
-              const res = await fetch("/api/crm/lead-scoring-config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ teamId, action: "get" }),
-              });
+        const [fieldDefs, stageDefs, leadsRes, scoringConfig] = await Promise.all([
+          getLeadFieldDefinitions(teamId),
+          getPipelineStages(teamId),
+          (async () => {
+            const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`);
+            if (!res.ok) {
+              const text = await res.text();
+              console.error("[Leads] Failed to load leads", res.status, text.slice(0, 200));
+              throw new Error("Failed to load leads");
+            }
+            return (await res.json()) as any[];
+          })(),
+          (async (): Promise<ScoreThresholds | null> => {
+            const res = await fetch("/api/crm/lead-scoring-config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ teamId, action: "get" }),
+            });
 
-              const ct = res.headers.get("content-type") ?? "";
-              if (!res.ok || !ct.includes("application/json")) return null;
+            const ct = res.headers.get("content-type") ?? "";
+            if (!res.ok || !ct.includes("application/json")) return null;
 
-              const json = await res.json();
-              const low = Number(json.thresholds?.low);
-              const high = Number(json.thresholds?.high);
-              if (Number.isNaN(low) || Number.isNaN(high)) return null;
-              return { low, high };
-            })(),
-          ]);
+            const json = await res.json();
+            const low = Number(json.thresholds?.low);
+            const high = Number(json.thresholds?.high);
+            if (Number.isNaN(low) || Number.isNaN(high)) return null;
+            return { low, high };
+          })(),
+        ]);
 
         if (cancelled) return;
 
@@ -191,13 +268,7 @@ export function LeadsClient() {
         isStage: false,
         isScore: false,
       })),
-      {
-        key: "__stage",
-        label: "Stage",
-        type: null,
-        isStage: true as const,
-        isScore: false,
-      },
+      { key: "__stage", label: "Stage", type: null, isStage: true as const, isScore: false },
     ],
     [fields]
   );
@@ -221,34 +292,18 @@ export function LeadsClient() {
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a
-        workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
       </div>
     );
   }
 
   function getScoreBadgeClasses(score: number | null): string {
-    if (score == null) {
-      return "bg-slate-100 text-slate-400";
-    }
-
-    if (!thresholds) {
-      // fallback if config not set yet
-      return "bg-amber-50 text-amber-700";
-    }
+    if (score == null) return "bg-slate-100 text-slate-400";
+    if (!thresholds) return "bg-amber-50 text-amber-700";
 
     const { low, high } = thresholds;
-
-    if (score < low) {
-      // low = red
-      return "bg-rose-50 text-rose-700";
-    }
-    if (score >= high) {
-      // high = green
-      return "bg-emerald-50 text-emerald-700";
-    }
-
-    // between low & high = medium (yellow)
+    if (score < low) return "bg-rose-50 text-rose-700";
+    if (score >= high) return "bg-emerald-50 text-emerald-700";
     return "bg-amber-50 text-amber-700";
   }
 
@@ -260,7 +315,9 @@ export function LeadsClient() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Leads</h1>
           <p className="text-sm text-slate-500">
-            {query
+            {loading
+              ? "Loading your leads…"
+              : query
               ? `Showing ${visibleCount} of ${totalCount} leads for your current team.`
               : `Showing ${totalCount} leads for your current team.`}
           </p>
@@ -275,27 +332,25 @@ export function LeadsClient() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading leads…</p>
+        <LeadsLoadingState colCount={Math.max(6, columns.length + 1)} />
       ) : totalCount === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
           <p>No leads yet.</p>
           <p>
-            Click <span className="font-semibold">+ Add lead</span> to create
-            your first one.
+            Click <span className="font-semibold">+ Add Lead</span> to create your first one.
           </p>
         </div>
       ) : visibleCount === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          <p className="font-semibold text-slate-700">
-            No leads match “{query}”.
-          </p>
-          <p className="mt-1">
-            Try searching for a different name, field value, or stage.
-          </p>
+          <p className="font-semibold text-slate-700">No leads match “{query}”.</p>
+          <p className="mt-1">Try searching for a different name, field value, or stage.</p>
         </div>
       ) : (
         <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[800px] overflow-y-auto overflow-x-auto rounded-xl">
+          <div
+            className="overflow-y-auto overflow-x-auto rounded-xl"
+            style={{ maxHeight: TABLE_BODY_MAX_HEIGHT }}
+          >
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-slate-100">
                 <tr className="text-left">
@@ -322,14 +377,9 @@ export function LeadsClient() {
                         const classes = getScoreBadgeClasses(score);
 
                         return (
-                          <td
-                            key={col.key}
-                            className="border-b border-slate-100 px-3 py-2 align-top"
-                          >
+                          <td key={col.key} className="border-b border-slate-100 px-3 py-2 align-top">
                             {score != null ? (
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${classes}`}
-                              >
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${classes}`}>
                                 {score}
                               </span>
                             ) : (
@@ -341,10 +391,7 @@ export function LeadsClient() {
 
                       if ((col as any).isStage) {
                         return (
-                          <td
-                            key={col.key}
-                            className="border-b border-slate-100 px-3 py-2 align-top"
-                          >
+                          <td key={col.key} className="border-b border-slate-100 px-3 py-2 align-top">
                             <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                               {lead.stage || "—"}
                             </span>
@@ -354,21 +401,12 @@ export function LeadsClient() {
 
                       const value = lead.customValues[col.key];
 
-                      if (
-                        col.type === "link" &&
-                        typeof value === "string" &&
-                        value.trim() !== ""
-                      ) {
+                      if (col.type === "link" && typeof value === "string" && value.trim() !== "") {
                         const raw = value.trim();
-                        const href = /^https?:\/\//i.test(raw)
-                          ? raw
-                          : `https://${raw}`;
+                        const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
                         return (
-                          <td
-                            key={col.key}
-                            className="border-b border-slate-100 px-3 py-2 align-top text-slate-800"
-                          >
+                          <td key={col.key} className="border-b border-slate-100 px-3 py-2 align-top text-slate-800">
                             <a
                               href={href}
                               target="_blank"
@@ -382,13 +420,8 @@ export function LeadsClient() {
                       }
 
                       return (
-                        <td
-                          key={col.key}
-                          className="border-b border-slate-100 px-3 py-2 align-top text-slate-800"
-                        >
-                          {value !== null && value !== undefined
-                            ? String(value)
-                            : "—"}
+                        <td key={col.key} className="border-b border-slate-100 px-3 py-2 align-top text-slate-800">
+                          {value !== null && value !== undefined ? String(value) : "—"}
                         </td>
                       );
                     })}

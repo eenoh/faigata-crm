@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FaigataCRM",
-  description: "FaigataCRM",
+  title: "Faigata",
+  description: "Faigata CRM",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50">
+      <body className="min-h-screen bg-slate-50" suppressHydrationWarning>
         {children}
       </body>
     </html>

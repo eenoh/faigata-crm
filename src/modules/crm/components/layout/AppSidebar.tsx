@@ -1,6 +1,7 @@
+// src/components/layout/AppSidebar.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -12,15 +13,19 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChartBarIcon,
+  CalendarDaysIcon, // ✅ add
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
 
-const navItems = [
+type NavItem = { href: string; label: string; icon: any };
+
+const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: ChartBarIcon },
   { href: "/leads", label: "Leads", icon: UsersIcon },
   { href: "/pipeline", label: "Pipeline", icon: Squares2X2Icon },
+  // Calendar will be injected conditionally right before Settings
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon },
-  { href: "/product-suite", label: "Home", icon: HomeIcon },
+  { href: "/crm", label: "Home", icon: HomeIcon },
 ];
 
 type WorkspaceContext = {
@@ -29,34 +34,41 @@ type WorkspaceContext = {
   teamName: string | null;
 };
 
+const CALENDAR_ALLOWED_ROLES = new Set(["closer", "manager", "admin"]);
+
+function hasCalendarAccess(roles: unknown): boolean {
+  if (!Array.isArray(roles)) return false;
+  return roles.some(
+    (r) => typeof r === "string" && CALENDAR_ALLOWED_ROLES.has(r.toLowerCase())
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
   const [mounted, setMounted] = useState(false);
+
   const [ctx, setCtx] = useState<WorkspaceContext>({
     userId: null,
     teamId: null,
     teamName: null,
   });
 
-  // Hydration-safe render
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [canSeeCalendar, setCanSeeCalendar] = useState(false);
 
-  // Always load current user + current team from Supabase
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const { data: userRes, error: userError } =
-          await supabase.auth.getUser();
+        const { data: userRes, error: userError } = await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
-          console.warn("[Sidebar] No authenticated user", userError);
           if (!cancelled) {
             setCtx({ userId: null, teamId: null, teamName: null });
+            setCanSeeCalendar(false);
           }
           return;
         }
@@ -64,31 +76,29 @@ export function AppSidebar() {
         const user = userRes.user;
         const userId = user.id;
 
-        // 1) Try to get team from profiles
+        // ✅ load team_id + role array
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("team_id")
+          .select("team_id, role")
           .eq("id", userId)
           .single();
 
         if (profileError && profileError.code !== "PGRST116") {
-          // PGRST116 = no rows found
           console.error("[Sidebar] Failed to load profile", profileError);
         }
 
         let teamId: string | null = profile?.team_id ?? null;
 
-        // 2) Fallback: if profile has no team yet, use auth metadata.primary_team_id
         if (!teamId) {
           const metaTeam = (user.user_metadata as any)?.primary_team_id;
-          if (typeof metaTeam === "string" && metaTeam.length > 0) {
-            teamId = metaTeam;
-          }
+          if (typeof metaTeam === "string" && metaTeam.length > 0) teamId = metaTeam;
         }
 
-        // 3) Load team name from teams table
-        let teamName: string | null = null;
+        // ✅ gate calendar tab
+        const allowed = hasCalendarAccess(profile?.role);
+        if (!cancelled) setCanSeeCalendar(allowed);
 
+        let teamName: string | null = null;
         if (teamId) {
           const { data: team, error: teamError } = await supabase
             .from("teams")
@@ -96,20 +106,16 @@ export function AppSidebar() {
             .eq("id", teamId)
             .single();
 
-          if (teamError) {
-            console.error("[Sidebar] Failed to load team", teamError);
-          } else {
-            teamName = team?.name ?? null;
-          }
+          if (teamError) console.error("[Sidebar] Failed to load team", teamError);
+          else teamName = team?.name ?? null;
         }
 
-        if (!cancelled) {
-          setCtx({ userId, teamId, teamName });
-        }
+        if (!cancelled) setCtx({ userId, teamId, teamName });
       } catch (err) {
         console.error("[Sidebar] Failed to load workspace context", err);
         if (!cancelled) {
           setCtx({ userId: null, teamId: null, teamName: null });
+          setCanSeeCalendar(false);
         }
       }
     })();
@@ -118,6 +124,25 @@ export function AppSidebar() {
       cancelled = true;
     };
   }, []);
+
+  const navItems = useMemo(() => {
+    const items = [...BASE_NAV_ITEMS];
+    if (!canSeeCalendar) return items;
+
+    const settingsIdx = items.findIndex((i) => i.href === "/settings");
+    const calendarItem: NavItem = {
+      href: "/calendar",
+      label: "Calendar",
+      icon: CalendarDaysIcon,
+    };
+
+    if (settingsIdx === -1) return [...items, calendarItem];
+    return [
+      ...items.slice(0, settingsIdx),
+      calendarItem,
+      ...items.slice(settingsIdx),
+    ];
+  }, [canSeeCalendar]);
 
   if (!mounted) {
     return (
@@ -159,12 +184,11 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      {/* Nav items (Home + Dashboard + others) */}
+      {/* Nav items */}
       <nav className="flex-1 space-y-1 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
             <Link
@@ -193,9 +217,7 @@ export function AppSidebar() {
         {!collapsed && (
           <p>
             Workspace:{" "}
-            <span className="font-medium">
-              {ctx.teamName ?? ctx.teamId ?? "Loading…"}
-            </span>
+            <span className="font-medium">{ctx.teamName ?? ctx.teamId ?? "Loading…"}</span>
           </p>
         )}
       </div>
@@ -205,7 +227,7 @@ export function AppSidebar() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors cursor-pointer"
       >
         <ChevronLeftIcon
           className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${

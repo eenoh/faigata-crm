@@ -45,7 +45,7 @@ export function LoginPageClient() {
       if (!res.ok) {
         console.error("after-login check failed", await res.text());
         // Fallback: send user to the hub, it will handle auth + teams.
-        window.location.href = "/product-suite";
+        window.location.href = "/crm";
         return;
       }
 
@@ -58,11 +58,11 @@ export function LoginPageClient() {
         window.location.href = "/onboarding";
       } else {
         // Regardless of specific team, take them to the hub.
-        window.location.href = "/product-suite";
+        window.location.href = "/crm";
       }
     } catch (err) {
       console.error("after-login error", err);
-      window.location.href = "/product-suite";
+      window.location.href = "/crm";
     }
   }
 

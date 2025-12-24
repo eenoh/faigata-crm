@@ -1,0 +1,34 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft circular background -->
+  <circle cx="60" cy="60" r="56" fill="#EEF2FF" stroke="#E2E8F0" stroke-width="2"></circle>
+
+  <!-- outer ring accent -->
+  <circle cx="60" cy="60" r="40" fill="#F8FAFC" stroke="#4F46E5" stroke-width="1.5" stroke-dasharray="4 4"></circle>
+
+  <!-- left person -->
+  <circle cx="42" cy="52" r="11" fill="#E5E7EB"></circle>
+  <path d="M42 45C39.2386 45 37 47.2386 37 50C37 50.9 37.2 51.75 37.57 52.52C38.5 54.5 40.15 56 42 56C43.85 56 45.5 54.5 46.43 52.52C46.8 51.75 47 50.9 47 50C47 47.2386 44.7614 45 42 45Z" fill="#F9A8D4"></path>
+  <!-- left body -->
+  <path d="M32 71C32 66.029 36.0294 62 41 62H43C47.9706 62 52 66.0294 52 71V74C52 75.1046 51.1046 76 50 76H34C32.8954 76 32 75.1046 32 74V71Z" fill="#4F46E5" opacity="0.95"></path>
+
+  <!-- right person -->
+  <circle cx="78" cy="52" r="11" fill="#E5E7EB"></circle>
+  <path d="M78 45C75.2386 45 73 47.2386 73 50C73 50.9 73.2 51.75 73.57 52.52C74.5 54.5 76.15 56 78 56C79.85 56 81.5 54.5 82.43 52.52C82.8 51.75 83 50.9 83 50C83 47.2386 80.7614 45 78 45Z" fill="#93C5FD"></path>
+  <!-- right body -->
+  <path d="M68 71C68 66.029 72.0294 62 77 62H79C83.9706 62 88 66.0294 88 71V74C88 75.1046 87.1046 76 86 76H70C68.8954 76 68 75.1046 68 74V71Z" fill="#4F46E5"></path>
+
+  <!-- connecting arrows / line to show 1:1 -->
+  <path d="M50 58H55.5C59 58 61 60 63 62C65 60 67 58 70.5 58H76" stroke="#4F46E5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  <!-- small chat bubbles between them -->
+  <rect x="54" y="36" width="13" height="9" rx="2" fill="#FFFFFF" stroke="#CBD5F5" stroke-width="1"></rect>
+  <circle cx="57" cy="40.5" r="0.9" fill="#94A3B8"></circle>
+  <circle cx="60.5" cy="40.5" r="0.9" fill="#94A3B8"></circle>
+  <circle cx="64" cy="40.5" r="0.9" fill="#94A3B8"></circle>
+
+  <rect x="53" y="80" width="14" height="9" rx="2" fill="#EEF2FF" stroke="#CBD5F5" stroke-width="1"></rect>
+  <circle cx="56" cy="84.5" r="0.9" fill="#6366F1"></circle>
+  <circle cx="59.5" cy="84.5" r="0.9" fill="#6366F1"></circle>
+  <circle cx="63" cy="84.5" r="0.9" fill="#6366F1"></circle>
+
+</svg>

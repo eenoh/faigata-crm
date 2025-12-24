@@ -315,18 +315,18 @@ export function LeadFieldsSettingsClient() {
         <button
           type="button"
           onClick={addField}
-          className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
         >
-          + Add field
+          + Add Field
         </button>
 
         <button
           type="button"
           onClick={handleSave}
           disabled={saveState === "saving"}
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
-          {saveState === "saving" ? "Saving…" : "Save changes"}
+          {saveState === "saving" ? "Saving…" : "Save Changes"}
         </button>
 
         {saveState === "idle" && fields.length > 0 && (

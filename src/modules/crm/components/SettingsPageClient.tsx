@@ -173,17 +173,29 @@ export default function SettingsPageClient() {
           </Link>
         )}
 
-
-        {/* Profile / user settings card */}
+        {/* Calendar Connections */}
         <Link
-          href="/settings/profile"
+          href="/settings/integrations"
           className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
         >
           <h2 className="text-sm font-semibold text-slate-900">
-            Profile &amp; Account
+            Add Integrations
           </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Edit your name, avatar, and other account details.
+            Connect your Google Calendar to power booking links and keep meetings in sync.
+          </p>
+        </Link>
+
+        {/* Schedule / Meeting Links */}
+        <Link
+          href="/settings/booking-links"
+          className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
+        >
+          <h2 className="text-sm font-semibold text-slate-900">
+            Schedule Pages
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Create and manage your booking links that leads use to schedule calls.
           </p>
         </Link>
 
@@ -217,11 +229,10 @@ export default function SettingsPageClient() {
             </p>
           </Link>
         )}
-
+      </div>
         <div className="mt-6">
           <LogoutButton />
         </div>
-      </div>
     </div>
   );
 }

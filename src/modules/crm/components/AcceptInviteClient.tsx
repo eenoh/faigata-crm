@@ -60,7 +60,7 @@ export default function AcceptInviteClient() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/invite/accept?inviteId=${encodeURIComponent(inviteId)}`
+          `/api/crm/invite/accept?inviteId=${encodeURIComponent(inviteId)}`
         );
 
         let json: any = null;
@@ -122,7 +122,7 @@ export default function AcceptInviteClient() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/invite/accept", {
+      const res = await fetch("/api/crm/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -298,9 +298,9 @@ export default function AcceptInviteClient() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
+            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
-            {submitting ? "Creating your account…" : "Accept invite"}
+            {submitting ? "Creating your account…" : "Accept Invite"}
           </button>
         </form>
 

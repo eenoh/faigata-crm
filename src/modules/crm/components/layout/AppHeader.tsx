@@ -2,28 +2,20 @@
 "use client";
 
 import type React from "react";
-import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   BellIcon,
   MagnifyingGlassIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import { useSidebar } from "@/context/SidebarContext";
 import { supabase } from "@/lib/supabaseClient";
 
 function getSectionName(pathname: string): string {
-  if (pathname.startsWith("/leads/new")) return "Add Leads";
   if (pathname.startsWith("/leads")) return "Leads";
+  if (pathname.startsWith("/calendar")) return "Calendar";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/dashboard")) return "Dashboard";
@@ -37,7 +29,6 @@ type HeaderUser = {
   avatarPath: string | null;
   role: string | null;
 };
-
 
 // minimal DB shapes used for reminders
 type HeaderLead = {
@@ -119,10 +110,7 @@ function leadDisplayName(lead: HeaderLead): string {
     "email",
   ];
 
-  const lowerEntries = Object.entries(cv).map(([k, v]) => [
-    k.toLowerCase(),
-    v,
-  ]);
+  const lowerEntries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v]);
 
   // 1) try preferred keys
   for (const pref of preferredKeys) {
@@ -180,6 +168,15 @@ function getHighestRole(rawRoles: unknown): string | null {
   return bestRole;
 }
 
+/** -------------------------------------------
+ * NEW: Google Calendar reconnect banner (header)
+ * ------------------------------------------ */
+const GC_RECONNECT_FLAG_KEY = "faigatacrm.googleCalendarReconnectRequired";
+
+function readGcReconnectFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(GC_RECONNECT_FLAG_KEY) === "1";
+}
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -199,15 +196,33 @@ export function AppHeader() {
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  // NEW: gc reconnect banner state
+  const [gcReconnectNeeded, setGcReconnectNeeded] = useState(false);
+
   const profileRef = useRef<HTMLDivElement | null>(null);
 
   const leftClass = collapsed ? "left-16" : "left-64";
-
   const teamId = searchParams.get("team");
 
   useEffect(() => {
     setSearch(searchParams.get("q") ?? "");
   }, [searchParams]);
+
+  // NEW: listen for reconnect-required / cleared events + initial read
+  useEffect(() => {
+    setGcReconnectNeeded(readGcReconnectFlag());
+
+    const onNeed = () => setGcReconnectNeeded(true);
+    const onCleared = () => setGcReconnectNeeded(false);
+
+    window.addEventListener("gc-reconnect-required", onNeed as EventListener);
+    window.addEventListener("gc-reconnect-cleared", onCleared as EventListener);
+
+    return () => {
+      window.removeEventListener("gc-reconnect-required", onNeed as EventListener);
+      window.removeEventListener("gc-reconnect-cleared", onCleared as EventListener);
+    };
+  }, []);
 
   // Turn stored avatar path into a signed URL (or use legacy full URL)
   async function refreshAvatar(path: string | null) {
@@ -240,8 +255,7 @@ export function AppHeader() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } =
-          await supabase.auth.getUser();
+        const { data: userRes, error: userError } = await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           if (!cancelled) {
@@ -273,14 +287,14 @@ export function AppHeader() {
             setAvatarUrl(null);
           }
         } else if (!cancelled) {
-          const highestRole = getHighestRole(profile?.role); // <- 🔥 pick best one
+          const highestRole = getHighestRole(profile?.role); // pick best one
 
           const headerUser: HeaderUser = {
             id: userId,
             firstName: profile?.first_name ?? null,
             lastName: profile?.last_name ?? null,
             avatarPath: profile?.avatar_url ?? null,
-            role: highestRole, // store only the highest
+            role: highestRole,
           };
 
           setUser(headerUser);
@@ -386,8 +400,6 @@ export function AppHeader() {
     }
   })();
 
-
-
   async function handleLogout() {
     try {
       await supabase.auth.signOut();
@@ -399,7 +411,6 @@ export function AppHeader() {
   }
 
   // --------- REMINDERS (auto follow-ups + stage stuck) ----------
-
   const computeReminders = useCallback(async () => {
     if (!user || !teamId) {
       setReminders([]);
@@ -412,9 +423,7 @@ export function AppHeader() {
       // 1) Load leads for this setter
       const { data: leads, error: leadsError } = await supabase
         .from("leads")
-        .select(
-          "id, team_id, setter_id, stage, custom_values, created_at"
-        )
+        .select("id, team_id, setter_id, stage, custom_values, created_at")
         .eq("team_id", teamId)
         .eq("setter_id", user.id);
 
@@ -434,9 +443,7 @@ export function AppHeader() {
       // 2) Load all messages for those leads
       const { data: msgs, error: msgsError } = await supabase
         .from("lead_messages")
-        .select(
-          "id, team_id, lead_id, direction, channel, sent_at"
-        )
+        .select("id, team_id, lead_id, direction, channel, sent_at")
         .eq("team_id", teamId)
         .in("lead_id", leadIds)
         .order("sent_at", { ascending: false });
@@ -464,29 +471,21 @@ export function AppHeader() {
         { hours: 168, label: "No reply in 1 week" },
       ];
 
-      const stageThresholdHours = 72; // 3 days in same stage – tweak as needed
+      const stageThresholdHours = 72; // 3 days
 
       for (const lead of leads as HeaderLead[]) {
         const leadMsgs = byLead.get(lead.id) ?? [];
 
         // ----- no inbound after outbound -----
-        const lastOutbound = leadMsgs.find(
-          (m) => m.direction === "outbound"
-        );
-        const lastInbound = leadMsgs.find(
-          (m) => m.direction === "inbound"
-        );
+        const lastOutbound = leadMsgs.find((m) => m.direction === "outbound");
+        const lastInbound = leadMsgs.find((m) => m.direction === "inbound");
 
         if (
           lastOutbound &&
           (!lastInbound ||
-            new Date(lastInbound.sent_at) <
-              new Date(lastOutbound.sent_at))
+            new Date(lastInbound.sent_at) < new Date(lastOutbound.sent_at))
         ) {
-          const hoursSince = diffHours(
-            now,
-            new Date(lastOutbound.sent_at)
-          );
+          const hoursSince = diffHours(now, new Date(lastOutbound.sent_at));
 
           // pick highest threshold that is passed
           let followLabel: string | null = null;
@@ -498,8 +497,6 @@ export function AppHeader() {
           }
 
           if (followLabel) {
-            // NEW: include outbound timestamp in ID so when user sends a new message,
-            // the reminder naturally disappears on recompute
             const reminderId = `noinbound-${lead.id}-${lastOutbound.sent_at}`;
 
             candidateReminders.push({
@@ -514,8 +511,7 @@ export function AppHeader() {
 
         // ----- stage stuck -----
         const stageMsgs = leadMsgs.filter(
-          (m) =>
-            (m.channel ?? "").toLowerCase() === "pipeline"
+          (m) => (m.channel ?? "").toLowerCase() === "pipeline"
         );
         const lastStageChange = stageMsgs.length
           ? new Date(stageMsgs[0].sent_at)
@@ -524,8 +520,6 @@ export function AppHeader() {
         const hoursInStage = diffHours(now, lastStageChange);
 
         if (hoursInStage >= stageThresholdHours) {
-          // NEW: include lastStageChange in ID so when stage changes,
-          // this reminder disappears on recompute
           const reminderId = `stage-${lead.id}-${lastStageChange.toISOString()}`;
 
           candidateReminders.push({
@@ -538,7 +532,7 @@ export function AppHeader() {
         }
       }
 
-      // NEW: apply 24h TTL per reminder instance
+      // apply 24h TTL per reminder instance
       const seenMap = loadReminderSeenMap();
       const ttlHours = REMINDER_TTL_HOURS;
       const filteredReminders: Reminder[] = [];
@@ -555,7 +549,6 @@ export function AppHeader() {
       for (const r of candidateReminders) {
         const existing = seenMap[r.id];
         if (!existing) {
-          // first time we see this reminder; show it and store timestamp
           seenMap[r.id] = now.toISOString();
           filteredReminders.push(r);
           continue;
@@ -565,16 +558,13 @@ export function AppHeader() {
         const ageHours = diffHours(now, firstSeen);
 
         if (ageHours < ttlHours) {
-          // still within 24h window; keep
           filteredReminders.push(r);
         } else {
-          // older than 24h – let it disappear automatically
           delete seenMap[r.id];
         }
       }
 
       saveReminderSeenMap(seenMap);
-
       setReminders(filteredReminders);
     } catch (err) {
       console.error("[Header] computeReminders error", err);
@@ -598,55 +588,36 @@ export function AppHeader() {
     if (!user || !teamId) return;
 
     const handler = (event: Event) => {
-      const custom = event as CustomEvent<{
-        teamId?: string;
-        leadId?: string;
-      }>;
+      const custom = event as CustomEvent<{ teamId?: string; leadId?: string }>;
       if (custom.detail?.teamId && custom.detail.teamId !== teamId) {
         return;
       }
-      // recompute reminders for this team
       computeReminders();
     };
 
-    window.addEventListener(
-      "lead-message-logged",
-      handler as EventListener
-    );
+    window.addEventListener("lead-message-logged", handler as EventListener);
 
     return () => {
-      window.removeEventListener(
-        "lead-message-logged",
-        handler as EventListener
-      );
+      window.removeEventListener("lead-message-logged", handler as EventListener);
     };
   }, [user, teamId, computeReminders]);
 
-  // NEW: optional – re-run when stage is updated (if you dispatch this event elsewhere)
+  // optional – re-run when stage is updated
   useEffect(() => {
     if (!user || !teamId) return;
 
     const handler = (event: Event) => {
-      const custom = event as CustomEvent<{
-        teamId?: string;
-        leadId?: string;
-      }>;
+      const custom = event as CustomEvent<{ teamId?: string; leadId?: string }>;
       if (custom.detail?.teamId && custom.detail.teamId !== teamId) {
         return;
       }
       computeReminders();
     };
 
-    window.addEventListener(
-      "lead-stage-updated",
-      handler as EventListener
-    );
+    window.addEventListener("lead-stage-updated", handler as EventListener);
 
     return () => {
-      window.removeEventListener(
-        "lead-stage-updated",
-        handler as EventListener
-      );
+      window.removeEventListener("lead-stage-updated", handler as EventListener);
     };
   }, [user, teamId, computeReminders]);
 
@@ -664,9 +635,7 @@ export function AppHeader() {
         <span className="text-[11px] uppercase tracking-wide text-slate-400">
           FaigataCRM
         </span>
-        <span className="text-sm font-semibold text-slate-900">
-          {section}
-        </span>
+        <span className="text-sm font-semibold text-slate-900">{section}</span>
       </div>
 
       <div className="flex items-center gap-4">
@@ -681,6 +650,19 @@ export function AppHeader() {
           />
         </div>
 
+        {/* NEW: Google Calendar reconnect banner "at the clock" */}
+        {gcReconnectNeeded && (
+          <button
+            type="button"
+            onClick={() => router.push("/settings/calendar")}
+            className="hidden sm:inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
+            title="Reconnect Google Calendar to keep booking links working"
+          >
+            <ClockIcon className="h-4 w-4" />
+            Reconnect Google Calendar
+          </button>
+        )}
+
         {/* Notifications */}
         <div className="relative">
           <button
@@ -693,10 +675,8 @@ export function AppHeader() {
 
             {/* Badge */}
             {unreadCount === 0 ? (
-              // green dot when there are NO notifications
               <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
             ) : (
-              // red badge with the number when there ARE notifications
               <span className="absolute -right-1 -top-1 min-h-[18px] min-w-[18px] rounded-full bg-rose-500 px-1.5 flex items-center justify-center">
                 <span className="text-[10px] font-semibold text-white">
                   {unreadCount}
@@ -715,13 +695,9 @@ export function AppHeader() {
               }`}
           >
             <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-              <span className="font-semibold text-slate-800">
-                Reminders
-              </span>
+              <span className="font-semibold text-slate-800">Reminders</span>
               {loadingReminders ? (
-                <span className="text-[11px] text-slate-400">
-                  Checking…
-                </span>
+                <span className="text-[11px] text-slate-400">Checking…</span>
               ) : (
                 <span className="text-[11px] text-slate-400">
                   {unreadCount} open
@@ -759,9 +735,7 @@ export function AppHeader() {
                       <p className="text-[11px] font-semibold text-slate-800">
                         {r.leadName}
                       </p>
-                      <p className="text-[11px] text-slate-600">
-                        {r.text}
-                      </p>
+                      <p className="text-[11px] text-slate-600">{r.text}</p>
                     </div>
                   </button>
                 ))
@@ -816,12 +790,8 @@ export function AppHeader() {
                 }`}
             >
               <div className="px-3 pt-2 pb-1 text-xs text-slate-500">
-                <p className="font-medium text-slate-900">
-                  {displayName}
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  {displayRole}
-                </p>
+                <p className="font-medium text-slate-900">{displayName}</p>
+                <p className="text-[11px] text-slate-400">{displayRole}</p>
               </div>
               <div className="border-t border-slate-100 px-3 py-2">
                 <button

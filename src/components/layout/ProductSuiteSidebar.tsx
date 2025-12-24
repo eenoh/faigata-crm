@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
   {
-    href: "/product-suite",
+    href: "/crm",
     label: "FaigataCRM",
     iconSrc: "/icons/icon-crm.svg",
   },
@@ -59,7 +59,7 @@ export function ProductSuiteSidebar() {
     >
       {/* Brand row */}
       <div className="flex items-center px-3 pt-4 pb-6">
-        <Link href="/product-suite" className="flex items-center gap-2">
+        <Link href="/crm" className="flex items-center gap-2">
           <Image
             src="/icons/icon-faigata.svg"
             alt="Faigata"
@@ -120,13 +120,21 @@ export function ProductSuiteSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+          className="flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
           title={collapsed ? "Log out" : undefined}
         >
           <ArrowRightOnRectangleIcon className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && (
-            <span>{loggingOut ? "Logging out…" : "Log out"}</span>
-          )}
+
+          {/* Smooth text reveal/hide, icon stays fixed */}
+          <div
+            className={`ml-1 overflow-hidden transition-[width,opacity] duration-300 ${
+              collapsed ? "w-0 opacity-0" : "w-[60px] opacity-100"
+            }`}
+          >
+            <span className="whitespace-nowrap">
+              {loggingOut ? "Logging out…" : "Log out"}
+            </span>
+          </div>
         </button>
       </div>
 
@@ -135,7 +143,7 @@ export function ProductSuiteSidebar() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors cursor-pointer"
       >
         <ChevronLeftIcon
           className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${
