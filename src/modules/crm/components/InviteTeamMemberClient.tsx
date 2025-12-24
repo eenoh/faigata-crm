@@ -196,9 +196,9 @@ export function InviteTeamMemberClient() {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
           >
-            {saving ? "Sending…" : "Send invite"}
+            {saving ? "Sending…" : "Send Invite"}
           </button>
         </div>
       </form>

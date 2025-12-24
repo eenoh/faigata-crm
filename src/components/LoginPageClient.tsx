@@ -23,9 +23,8 @@ export function LoginPageClient() {
       password,
     });
 
-    setLoading(false);
-
     if (error || !data.user) {
+      setLoading(false);
       console.error(error);
       alert(error?.message || "Invalid email or password");
       return;
@@ -44,7 +43,6 @@ export function LoginPageClient() {
 
       if (!res.ok) {
         console.error("after-login check failed", await res.text());
-        // Fallback: send user to the hub, it will handle auth + teams.
         window.location.href = "/crm";
         return;
       }
@@ -57,17 +55,22 @@ export function LoginPageClient() {
       if (payload.needsOnboarding) {
         window.location.href = "/onboarding";
       } else {
-        // Regardless of specific team, take them to the hub.
         window.location.href = "/crm";
       }
     } catch (err) {
       console.error("after-login error", err);
       window.location.href = "/crm";
+    } finally {
+      // If you navigate away, this won't matter, but it's correct for edge cases.
+      setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4 relative">
+      {/* ✅ Loading overlay */}
+      {loading && <LoadingOverlay />}
+
       <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-10 border border-slate-200">
         {/* Logo */}
         <div className="mb-8 text-center">
@@ -109,7 +112,7 @@ export function LoginPageClient() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
+            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
             {loading ? "Signing you in..." : "Log in"}
           </button>
@@ -133,6 +136,32 @@ export function LoginPageClient() {
         </p>
       </div>
     </main>
+  );
+}
+
+/* --------------------------
+   Loading Overlay (3 bouncing dots)
+--------------------------- */
+
+function LoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* blurred backdrop */}
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-md" />
+
+      {/* loader card */}
+      <div className="relative z-10 rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl px-10 py-8 shadow-xl">
+        <div className="flex items-end justify-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.1s]" />
+          <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce" />
+        </div>
+
+        <p className="mt-4 text-center text-sm font-semibold text-slate-700">
+          Loading
+        </p>
+      </div>
+    </div>
   );
 }
 

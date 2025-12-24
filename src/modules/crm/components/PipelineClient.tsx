@@ -17,6 +17,10 @@ type LeadCard = {
   stage: string;
   customValues: Record<string, any>;
   score?: number | null;
+
+  // ✅ RBAC fields (must come from /api/crm/leads)
+  setter_id?: string | null;
+  closer_id?: string | null;
 };
 
 type DragState = {
@@ -37,6 +41,11 @@ export function PipelineClient() {
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [leads, setLeads] = useState<LeadCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ✅ who is the user + what can they see
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isManagerOrAdmin, setIsManagerOrAdmin] = useState(false);
+
   const [dragState, setDragState] = useState<DragState>({
     leadId: null,
     fromStage: null,
@@ -46,20 +55,21 @@ export function PipelineClient() {
 
   const boardRef = useRef<HTMLDivElement | null>(null);
 
-  /* ---------- 1) Load workspace (teamId) from Supabase ---------- */
+  /* ---------- 1) Load workspace (teamId) + role from Supabase ---------- */
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const { data: userRes, error: userError } =
-          await supabase.auth.getUser();
+        const { data: userRes, error: userError } = await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           console.warn("[Pipeline] No authenticated user", userError);
           if (!cancelled) {
             setTeamId(null);
+            setCurrentUserId(null);
+            setIsManagerOrAdmin(false);
             setWorkspaceLoaded(true);
           }
           return;
@@ -68,9 +78,11 @@ export function PipelineClient() {
         const user = userRes.user;
         const userId = user.id;
 
+        if (!cancelled) setCurrentUserId(userId);
+
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("team_id")
+          .select("team_id, role")
           .eq("id", userId)
           .single();
 
@@ -87,14 +99,22 @@ export function PipelineClient() {
           }
         }
 
+        const roles = (profile?.role ?? []) as string[];
+        const normRoles = roles.map((r) => String(r).trim().toLowerCase());
+        const managerOrAdmin =
+          normRoles.includes("manager") || normRoles.includes("admin");
+
         if (!cancelled) {
           setTeamId(tId);
+          setIsManagerOrAdmin(managerOrAdmin);
           setWorkspaceLoaded(true);
         }
       } catch (err) {
         console.error("[Pipeline] Failed to load workspace context", err);
         if (!cancelled) {
           setTeamId(null);
+          setCurrentUserId(null);
+          setIsManagerOrAdmin(false);
           setWorkspaceLoaded(true);
         }
       }
@@ -105,7 +125,7 @@ export function PipelineClient() {
     };
   }, []);
 
-  /* ---------- 2) Load stages + leads once we know the teamId ---------- */
+  /* ---------- 2) Load stages + leads once we know teamId ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -147,14 +167,29 @@ export function PipelineClient() {
 
         setFields(fieldDefs);
         setStages(stageDefs || []);
-        setLeads(
-          (leadsRes ?? []).map((l: any) => ({
-            id: l.id,
-            stage: l.stage,
-            customValues: l.custom_values ?? {},
-            score: l.score ?? null,
-          }))
-        );
+
+        // ✅ map leads including setter_id / closer_id
+        const mapped: LeadCard[] = (leadsRes ?? []).map((l: any) => ({
+          id: l.id,
+          stage: l.stage,
+          customValues: l.custom_values ?? {},
+          score: l.score ?? null,
+          setter_id: l.setter_id ?? null,
+          closer_id: l.closer_id ?? null,
+        }));
+
+        // ✅ VISIBILITY RULE:
+        // - manager/admin => see all
+        // - everyone else => only leads where currentUserId === setter_id OR closer_id
+        const visible =
+          isManagerOrAdmin || !currentUserId
+            ? mapped
+            : mapped.filter(
+                (l) =>
+                  l.setter_id === currentUserId || l.closer_id === currentUserId
+              );
+
+        setLeads(visible);
       } catch (err) {
         console.error("[Pipeline] Failed to load data", err);
       } finally {
@@ -166,7 +201,7 @@ export function PipelineClient() {
     return () => {
       cancelled = true;
     };
-  }, [teamId, workspaceLoaded]);
+  }, [teamId, workspaceLoaded, currentUserId, isManagerOrAdmin]);
 
   /* ---------- memoised helpers & render logic ---------- */
 
@@ -301,11 +336,7 @@ export function PipelineClient() {
     }
   }
 
-  async function handleDrop(
-    targetStage: string,
-    targetX: number,
-    targetY: number
-  ) {
+  async function handleDrop(targetStage: string, targetX: number, targetY: number) {
     if (!dragState.leadId || !teamId) return;
     const leadId = dragState.leadId;
     const fromStage = dragState.fromStage;
@@ -315,14 +346,7 @@ export function PipelineClient() {
     if (!fromStage || fromStage === targetStage) return;
 
     setLeads((prev) =>
-      prev.map((l) =>
-        l.id === leadId
-          ? {
-              ...l,
-              stage: targetStage,
-            }
-          : l
-      )
+      prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l))
     );
 
     setCelebratePos({ x: targetX, y: targetY });
@@ -368,8 +392,8 @@ export function PipelineClient() {
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a
-        workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a workspace,
+        or complete onboarding first.
       </div>
     );
   }
@@ -429,8 +453,7 @@ export function PipelineClient() {
             const stageLeads = filteredByStage(stage.name);
 
             const isActiveDrop =
-              dragState.leadId !== null &&
-              dragState.fromStage !== stage.name;
+              dragState.leadId !== null && dragState.fromStage !== stage.name;
 
             const conversion = getStageConversion(stage);
 
@@ -464,8 +487,7 @@ export function PipelineClient() {
                       {stage.name}
                     </h2>
                     <p className="text-[11px] text-slate-400">
-                      {stageLeads.length} lead
-                      {stageLeads.length === 1 ? "" : "s"}
+                      {stageLeads.length} lead{stageLeads.length === 1 ? "" : "s"}
                     </p>
                     {conversion !== null && (
                       <p className="mt-0.5 text-[11px] font-medium text-emerald-600">
@@ -494,15 +516,12 @@ export function PipelineClient() {
                         key={lead.id}
                         layout
                         draggable
-                        onDragStart={() =>
-                          handleDragStart(lead.id, stage.name)
-                        }
+                        onDragStart={() => handleDragStart(lead.id, stage.name)}
                         onDragEnd={handleDragEnd}
                         className="group flex w-full flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition"
                         whileHover={{
                           y: -2,
-                          boxShadow:
-                            "0 10px 18px rgba(15, 23, 42, 0.10)",
+                          boxShadow: "0 10px 18px rgba(15, 23, 42, 0.10)",
                         }}
                         whileTap={{ scale: 0.98 }}
                       >

@@ -13,7 +13,7 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChartBarIcon,
-  CalendarDaysIcon, // ✅ add
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -22,9 +22,7 @@ type NavItem = { href: string; label: string; icon: any };
 const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: ChartBarIcon },
   { href: "/leads", label: "Leads", icon: UsersIcon },
-  { href: "/pipeline", label: "Pipeline", icon: Squares2X2Icon },
-  // Calendar will be injected conditionally right before Settings
-  { href: "/settings", label: "Settings", icon: Cog6ToothIcon },
+  // Settings injected conditionally
   { href: "/crm", label: "Home", icon: HomeIcon },
 ];
 
@@ -34,12 +32,12 @@ type WorkspaceContext = {
   teamName: string | null;
 };
 
-const CALENDAR_ALLOWED_ROLES = new Set(["closer", "manager", "admin"]);
+const PRIVILEGED_ROLES = new Set(["closer", "manager", "admin"]);
 
-function hasCalendarAccess(roles: unknown): boolean {
+function hasPrivilegedAccess(roles: unknown): boolean {
   if (!Array.isArray(roles)) return false;
   return roles.some(
-    (r) => typeof r === "string" && CALENDAR_ALLOWED_ROLES.has(r.toLowerCase())
+    (r) => typeof r === "string" && PRIVILEGED_ROLES.has(r.toLowerCase())
   );
 }
 
@@ -54,7 +52,11 @@ export function AppSidebar() {
     teamName: null,
   });
 
+  // ✅ permissions
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [canSeeCalendar, setCanSeeCalendar] = useState(false);
+  const [canSeePipeline, setCanSeePipeline] = useState(false); // ✅ start false => no flash
+  const [canSeeSettings, setCanSeeSettings] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -69,6 +71,9 @@ export function AppSidebar() {
           if (!cancelled) {
             setCtx({ userId: null, teamId: null, teamName: null });
             setCanSeeCalendar(false);
+            setCanSeePipeline(false);
+            setCanSeeSettings(false);
+            setPermissionsLoaded(true);
           }
           return;
         }
@@ -76,7 +81,6 @@ export function AppSidebar() {
         const user = userRes.user;
         const userId = user.id;
 
-        // ✅ load team_id + role array
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("team_id, role")
@@ -94,9 +98,23 @@ export function AppSidebar() {
           if (typeof metaTeam === "string" && metaTeam.length > 0) teamId = metaTeam;
         }
 
-        // ✅ gate calendar tab
-        const allowed = hasCalendarAccess(profile?.role);
-        if (!cancelled) setCanSeeCalendar(allowed);
+        // normalize roles
+        const roles = Array.isArray(profile?.role) ? (profile?.role as string[]) : [];
+        const normRoles = roles.map((r) => String(r).trim().toLowerCase());
+
+        // privileged: closer/manager/admin
+        const privilegedAllowed = hasPrivilegedAccess(profile?.role);
+
+        // ✅ pipeline: hide ONLY if role array is exactly ["prospector"]
+        const onlyProspector = normRoles.length === 1 && normRoles[0] === "prospector";
+        const pipelineAllowed = !onlyProspector;
+
+        if (!cancelled) {
+          setCanSeeCalendar(privilegedAllowed);
+          setCanSeeSettings(privilegedAllowed);
+          setCanSeePipeline(pipelineAllowed);
+          setPermissionsLoaded(true);
+        }
 
         let teamName: string | null = null;
         if (teamId) {
@@ -116,6 +134,9 @@ export function AppSidebar() {
         if (!cancelled) {
           setCtx({ userId: null, teamId: null, teamName: null });
           setCanSeeCalendar(false);
+          setCanSeePipeline(false);
+          setCanSeeSettings(false);
+          setPermissionsLoaded(true);
         }
       }
     })();
@@ -126,25 +147,59 @@ export function AppSidebar() {
   }, []);
 
   const navItems = useMemo(() => {
-    const items = [...BASE_NAV_ITEMS];
-    if (!canSeeCalendar) return items;
+    let items = [...BASE_NAV_ITEMS];
 
-    const settingsIdx = items.findIndex((i) => i.href === "/settings");
-    const calendarItem: NavItem = {
-      href: "/calendar",
-      label: "Calendar",
-      icon: CalendarDaysIcon,
-    };
+    // ✅ Insert Pipeline after Leads (only if allowed)
+    if (canSeePipeline) {
+      const leadsIdx = items.findIndex((i) => i.href === "/leads");
+      const pipelineItem: NavItem = {
+        href: "/pipeline",
+        label: "Pipeline",
+        icon: Squares2X2Icon,
+      };
 
-    if (settingsIdx === -1) return [...items, calendarItem];
-    return [
-      ...items.slice(0, settingsIdx),
-      calendarItem,
-      ...items.slice(settingsIdx),
-    ];
-  }, [canSeeCalendar]);
+      if (leadsIdx === -1) items = [...items, pipelineItem];
+      else items = [...items.slice(0, leadsIdx + 1), pipelineItem, ...items.slice(leadsIdx + 1)];
+    }
 
-  if (!mounted) {
+    // ✅ Insert Settings before Home (only if allowed)
+    if (canSeeSettings) {
+      const homeIdx = items.findIndex((i) => i.href === "/crm");
+      const settingsItem: NavItem = {
+        href: "/settings",
+        label: "Settings",
+        icon: Cog6ToothIcon,
+      };
+
+      if (homeIdx === -1) items = [...items, settingsItem];
+      else items = [...items.slice(0, homeIdx), settingsItem, ...items.slice(homeIdx)];
+    }
+
+    // ✅ Insert Calendar right before Settings (or before Home if Settings not present)
+    if (canSeeCalendar) {
+      const settingsIdx = items.findIndex((i) => i.href === "/settings");
+      const homeIdx = items.findIndex((i) => i.href === "/crm");
+
+      const calendarItem: NavItem = {
+        href: "/calendar",
+        label: "Calendar",
+        icon: CalendarDaysIcon,
+      };
+
+      if (settingsIdx !== -1) {
+        items = [...items.slice(0, settingsIdx), calendarItem, ...items.slice(settingsIdx)];
+      } else if (homeIdx !== -1) {
+        items = [...items.slice(0, homeIdx), calendarItem, ...items.slice(homeIdx)];
+      } else {
+        items = [...items, calendarItem];
+      }
+    }
+
+    return items;
+  }, [canSeeCalendar, canSeePipeline, canSeeSettings]);
+
+  // ✅ Don’t render nav until we know roles (prevents flashing tabs)
+  if (!mounted || !permissionsLoaded) {
     return (
       <aside className="fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r border-slate-200 bg-white shadow-sm" />
     );
