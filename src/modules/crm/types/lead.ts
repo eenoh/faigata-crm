@@ -2,12 +2,15 @@
 
   export type CustomFieldType = "text" | "number" | "select" | "boolean" | "link";
 
-  export interface LeadFieldDefinition {
-    key: string;          
-    label: string;        
-    type: CustomFieldType;
-    options?: string[];   
-  }
+  export type LeadFieldDefinition = {
+    id: string;
+    team_id: string;
+    key: string;
+    label: string;
+    type: string;
+    options?: any;
+    position?: number;
+  };
 
   export interface Lead {
     id: string;

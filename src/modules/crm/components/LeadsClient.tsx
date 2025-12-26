@@ -1,3 +1,4 @@
+// src/modules/crm/components/LeadsClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,13 +21,64 @@ type ScoreThresholds = {
   high: number;
 };
 
+type LeadContactType =
+  | "email"
+  | "phone"
+  | "instagram"
+  | "facebook"
+  | "reddit"
+  | "twitter_x"
+  | "linkedin"
+  | "tiktok"
+  | "youtube"
+  | "whatsapp"
+  | "telegram"
+  | "discord"
+  | "other"
+  | null;
+
+type LeadSourceCategory =
+  | "inbound"
+  | "outbound"
+  | "referral"
+  | "partner"
+  | "purchased"
+  | null;
+
+type LeadSourceName =
+  | "instagram"
+  | "facebook"
+  | "reddit"
+  | "twitter_x"
+  | "other"
+  | null;
+
 interface LeadRow {
   id: string;
   stage: string;
+
+  // ✅ NEW: real DB column from API
+  lead_name?: string | null;
+
   customValues: Record<string, any>;
+
   score?: number | null;
 
-  // ✅ per-lead RBAC fields
+  niche?: string | null;
+  lead_type?: "individual" | "business" | null;
+  gender?: "male" | "female" | null;
+
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+
+  primary_contact_type?: LeadContactType;
+  primary_contact_value?: string | null;
+
+  source_category?: LeadSourceCategory;
+  source_name?: LeadSourceName;
+
   prospector_id?: string | null;
   setter_id?: string | null;
   closer_id?: string | null;
@@ -40,9 +92,9 @@ function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
   return (
     <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="max-h-[800px] overflow-hidden rounded-xl">
-        <div className="border-b border-slate-200 bg-slate-100 px-3 py-2">
+        <div className="border-b border-slate-200 bg-slate-100 px-4 py-2">
           <div
-            className="grid gap-3"
+            className="grid gap-4"
             style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
           >
             {Array.from({ length: Math.max(0, colCount - 1) }).map((_, i) => (
@@ -57,9 +109,9 @@ function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
 
         <div className="divide-y divide-slate-100">
           {rows.map((_, rIdx) => (
-            <div key={rIdx} className="px-3 py-3">
+            <div key={rIdx} className="px-4 py-3">
               <div
-                className="grid items-center gap-3"
+                className="grid items-center gap-4"
                 style={{
                   gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
                 }}
@@ -96,11 +148,145 @@ function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
           ))}
         </div>
 
-        <div className="border-t border-slate-100 bg-white px-3 py-2">
+        <div className="border-t border-slate-100 bg-white px-4 py-2">
           <div className="h-3 w-40 rounded bg-slate-200/60 animate-pulse" />
         </div>
       </div>
     </div>
+  );
+}
+
+/* -------------------- helpers -------------------- */
+
+function labelizeEnum(v: string | null | undefined) {
+  if (!v) return "—";
+  const s = String(v).trim();
+  if (!s) return "—";
+  return s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function safeValue(v: any) {
+  if (v === null || v === undefined) return "—";
+  const s = String(v).trim();
+  return s.length ? s : "—";
+}
+
+function looksLikeUrl(v: string) {
+  return /^https?:\/\//i.test(v) || /^[a-z0-9.-]+\.[a-z]{2,}([/].*)?$/i.test(v);
+}
+
+function normalizeUrl(v: string) {
+  const raw = v.trim();
+  if (!raw) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
+function contactHref(type: LeadContactType, value: string) {
+  const raw = value.trim();
+  if (!raw) return null;
+
+  if (type === "email") return `mailto:${raw}`;
+  if (type === "phone") return `tel:${raw.replace(/\s+/g, "")}`;
+
+  if (looksLikeUrl(raw)) return normalizeUrl(raw);
+  return null;
+}
+
+// ✅ FIX: prefer real DB column lead_name first, then custom_values fallbacks
+function deriveLeadName(
+  leadNameCol: string | null | undefined,
+  customValues: Record<string, any>,
+  stage: string
+) {
+  const directCol = String(leadNameCol ?? "").trim();
+  if (directCol) return directCol;
+
+  const cv = customValues ?? {};
+  const direct = String(cv.lead_name ?? "").trim();
+  if (direct) return direct;
+
+  const preferredKeys = [
+    "name",
+    "full_name",
+    "first_name",
+    "last_name",
+    "company",
+    "account",
+    "email",
+  ];
+  const entries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v] as const);
+
+  for (const pref of preferredKeys) {
+    const match = entries.find(
+      ([key, value]) =>
+        key.includes(pref) &&
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+    );
+    if (match) return String(match[1]).trim();
+  }
+
+  const anyField = entries.find(
+    ([, v]) => v !== null && v !== undefined && String(v).trim() !== ""
+  );
+  if (anyField) return String(anyField[1]).trim();
+
+  return stage ? `Lead in “${stage}” stage` : "Lead";
+}
+
+/* -------------------- column safety -------------------- */
+
+const RESERVED_SYSTEM_KEYS = new Set<string>([
+  "__score",
+  "__lead_name",
+  "__stage",
+
+  "niche",
+  "lead_type",
+  "gender",
+  "city",
+  "region",
+  "country",
+  "postal_code",
+  "primary_contact_type",
+  "primary_contact_value",
+  "source_category",
+  "source_name",
+]);
+
+function normalizeKey(s: unknown) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+/* -------------------- pill UI -------------------- */
+
+function GrayPill({ children, title }: { children: React.ReactNode; title?: string }) {
+  return (
+    <span
+      title={title}
+      className="inline-flex max-w-[240px] items-center truncate rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-900"
+    >
+      {children}
+    </span>
+  );
+}
+
+function GenderPill({ gender }: { gender: "male" | "female" }) {
+  const isFemale = gender === "female";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+        isFemale ? "bg-[#f2a2d1] text-[#cf037b]" : "bg-[#bfe1f6] text-[#2780b7]"
+      }`}
+    >
+      {labelizeEnum(gender)}
+    </span>
   );
 }
 
@@ -116,13 +302,9 @@ export function LeadsClient() {
   const [thresholds, setThresholds] = useState<ScoreThresholds | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ current user id for per-lead RBAC checks
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [canAddLeads, setCanAddLeads] = useState(false);
   const [canDeleteLeads, setCanDeleteLeads] = useState(false);
-
-  // ✅ needed for lead visibility rule
   const [isManagerOrAdmin, setIsManagerOrAdmin] = useState(false);
 
   const searchParams = useSearchParams();
@@ -133,7 +315,7 @@ export function LeadsClient() {
   const VISIBLE_ROWS = 16;
   const TABLE_BODY_MAX_HEIGHT = HEADER_HEIGHT_PX + ROW_HEIGHT_PX * VISIBLE_ROWS;
 
-  /* ---------- 1) Load teamId + userId + role from Supabase ---------- */
+  /* ---------- 1) Load workspace context ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -180,8 +362,7 @@ export function LeadsClient() {
         const normRoles = roles.map((r) => String(r).trim().toLowerCase());
 
         const isProspector = normRoles.includes("prospector");
-        const managerOrAdmin =
-          normRoles.includes("manager") || normRoles.includes("admin");
+        const managerOrAdmin = normRoles.includes("manager") || normRoles.includes("admin");
 
         if (!cancelled) {
           setTeamId(tId);
@@ -205,7 +386,7 @@ export function LeadsClient() {
     };
   }, []);
 
-  /* ---------- 2) Load leads / fields / thresholds once teamId is known ---------- */
+  /* ---------- 2) Load leads / fields / thresholds ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -225,16 +406,10 @@ export function LeadsClient() {
           getLeadFieldDefinitions(teamId),
           getPipelineStages(teamId),
           (async () => {
-            const res = await fetch(
-              `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`
-            );
+            const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`);
             if (!res.ok) {
               const text = await res.text();
-              console.error(
-                "[Leads] Failed to load leads",
-                res.status,
-                text.slice(0, 200)
-              );
+              console.error("[Leads] Failed to load leads", res.status, text.slice(0, 200));
               throw new Error("Failed to load leads");
             }
             return (await res.json()) as any[];
@@ -259,20 +434,76 @@ export function LeadsClient() {
 
         if (cancelled) return;
 
-        setFields(fieldDefs);
+        const seen = new Set<string>();
+        const safeFieldDefs = (fieldDefs ?? []).filter((f) => {
+          const k = normalizeKey((f as any).key);
+          if (!k) return false;
+          if (RESERVED_SYSTEM_KEYS.has(k)) return false;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+
+        setFields(safeFieldDefs);
         setStages(stageDefs);
 
-        // ✅ IMPORTANT: /api/crm/leads must return prospector_id + setter_id + closer_id
         setLeads(
-          (leadsRes ?? []).map((l) => ({
-            id: l.id,
-            stage: l.stage,
-            customValues: l.custom_values ?? {},
-            score: l.score ?? null,
-            prospector_id: l.prospector_id ?? null,
-            setter_id: l.setter_id ?? null,
-            closer_id: l.closer_id ?? null,
-          }))
+          (leadsRes ?? []).map((l) => {
+            const cv = (l.custom_values ?? {}) as Record<string, any>;
+
+            const pick = <T,>(colVal: T | null | undefined, ...cvKeys: string[]) => {
+              if (
+                colVal !== null &&
+                colVal !== undefined &&
+                (String(colVal) as any).trim?.() !== ""
+              )
+                return colVal;
+              for (const k of cvKeys) {
+                const v = cv?.[k];
+                if (v !== null && v !== undefined && String(v).trim() !== "") return v as T;
+              }
+              return null;
+            };
+
+            return {
+              id: l.id,
+              stage: l.stage,
+
+              // ✅ map real column from API
+              lead_name: l.lead_name ?? null,
+
+              customValues: cv,
+              score: l.score ?? null,
+
+              niche: pick<string>(l.niche ?? null, "niche", "industry"),
+              lead_type: pick<"individual" | "business">(l.lead_type ?? null, "lead_type"),
+              gender: pick<"male" | "female">(l.gender ?? null, "gender"),
+
+              country: pick<string>(l.country ?? null, "country"),
+              region: pick<string>(l.region ?? null, "region", "state", "province"),
+              city: pick<string>(l.city ?? null, "city"),
+              postal_code: pick<string>(l.postal_code ?? null, "postal_code", "zip", "zip_code"),
+
+              primary_contact_type: pick<LeadContactType>(
+                l.primary_contact_type ?? null,
+                "primary_contact_type",
+                "contact_type"
+              ),
+              primary_contact_value: pick<string>(
+                l.primary_contact_value ?? null,
+                "primary_contact_value",
+                "primary_contact",
+                "contact"
+              ),
+
+              source_category: pick<LeadSourceCategory>(l.source_category ?? null, "source_category"),
+              source_name: pick<LeadSourceName>(l.source_name ?? null, "source_name"),
+
+              prospector_id: l.prospector_id ?? null,
+              setter_id: l.setter_id ?? null,
+              closer_id: l.closer_id ?? null,
+            } as LeadRow;
+          })
         );
 
         setThresholds(scoringConfig);
@@ -289,35 +520,60 @@ export function LeadsClient() {
     };
   }, [teamId, workspaceLoaded]);
 
-  /* ---------- table helpers ---------- */
+  /* ---------- columns ---------- */
 
-  const columns = useMemo(
-    () => [
-      { key: "__score", label: "Score", type: null, isScore: true as const },
-      ...fields.map((f) => ({
-        key: f.key,
+  type TableCol =
+    | { kind: "score"; key: "__score"; label: string }
+    | { kind: "core"; key: string; label: string }
+    | { kind: "custom"; key: string; label: string; type: LeadFieldDefinition["type"] }
+    | { kind: "stage"; key: "__stage"; label: string };
+
+  const columns: TableCol[] = useMemo(() => {
+    const core: TableCol[] = [
+      { kind: "score", key: "__score", label: "Score" },
+
+      { kind: "core", key: "__lead_name", label: "Lead Name" },
+      { kind: "core", key: "niche", label: "Niche / Industry" },
+      { kind: "core", key: "lead_type", label: "Lead Type" },
+      { kind: "core", key: "gender", label: "Gender" },
+
+      { kind: "core", key: "city", label: "City" },
+      { kind: "core", key: "region", label: "Region" },
+      { kind: "core", key: "country", label: "Country" },
+      { kind: "core", key: "postal_code", label: "Postal Code" },
+
+      { kind: "core", key: "primary_contact_type", label: "Primary Contact Type" },
+      { kind: "core", key: "primary_contact_value", label: "Primary Contact" },
+      { kind: "core", key: "source_category", label: "Source Category" },
+      { kind: "core", key: "source_name", label: "Source Name" },
+
+      { kind: "stage", key: "__stage", label: "Stage" },
+    ];
+
+    const additionalRaw: TableCol[] = (fields ?? [])
+      .map((f) => ({
+        kind: "custom" as const,
+        key: normalizeKey(f.key),
         label: f.label,
         type: f.type,
-        isStage: false,
-        isScore: false,
-      })),
-      {
-        key: "__stage",
-        label: "Stage",
-        type: null,
-        isStage: true as const,
-        isScore: false,
-      },
-    ],
-    [fields]
-  );
+      }))
+      .filter((c) => c.key && !RESERVED_SYSTEM_KEYS.has(c.key));
 
-  // ✅ NEW: which leads this user is allowed to see
+    const out: TableCol[] = [];
+    const seen = new Set<string>();
+    for (const c of [...core, ...additionalRaw]) {
+      const k = `${c.kind}:${c.key}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(c);
+    }
+    return out;
+  }, [fields]);
+
+  /* ---------- filtering ---------- */
+
   const visibleLeads = useMemo(() => {
-    // managers/admins see everything
     if (isManagerOrAdmin) return leads;
-
-    // everyone else sees only leads where they are involved (prospector/setter/closer)
     if (!currentUserId) return [];
     return leads.filter(
       (l) =>
@@ -327,12 +583,30 @@ export function LeadsClient() {
     );
   }, [leads, currentUserId, isManagerOrAdmin]);
 
-  // ✅ your existing search now runs only on the visible leads
   const filteredLeads = useMemo(() => {
     if (!query) return visibleLeads;
 
     return visibleLeads.filter((lead) => {
-      if (lead.stage?.toLowerCase().includes(query)) return true;
+      const leadName = deriveLeadName(lead.lead_name, lead.customValues ?? {}, lead.stage || "");
+      const coreHaystack = [
+        leadName,
+        lead.stage,
+        lead.niche,
+        lead.lead_type,
+        lead.gender,
+        lead.city,
+        lead.region,
+        lead.country,
+        lead.postal_code,
+        lead.primary_contact_type,
+        lead.primary_contact_value,
+        lead.source_category,
+        lead.source_name,
+      ]
+        .filter((v) => v !== null && v !== undefined)
+        .map((v) => String(v).toLowerCase());
+
+      if (coreHaystack.some((v) => v.includes(query))) return true;
 
       return Object.values(lead.customValues ?? {}).some((v) => {
         if (v === null || v === undefined) return false;
@@ -344,39 +618,25 @@ export function LeadsClient() {
   const totalCount = visibleLeads.length;
   const visibleCount = filteredLeads.length;
 
-  // ✅ ACTION COLUMN VISIBILITY:
-  // Show Log + Edit columns if the user is Setter OR Closer in ANY (visible+filtered) lead
-  // View is always shown
-  // Delete shown if manager/admin
-  const actionColumnVisibility = useMemo(() => {
-    const involvedAsSetterOrCloserInAnyLead =
-      !!currentUserId &&
-      filteredLeads.some(
-        (l) => l.setter_id === currentUserId || l.closer_id === currentUserId
-      );
+  /* ---------- actions: ALWAYS visible on the right ---------- */
 
-    return {
-      showLog: involvedAsSetterOrCloserInAnyLead,
-      showView: true,
-      showEdit: involvedAsSetterOrCloserInAnyLead,
-      showDelete: canDeleteLeads,
-    };
-  }, [currentUserId, filteredLeads, canDeleteLeads]);
+  const showLogAlways = true;
+  const showViewAlways = true;
+  const showEditAlways = true;
+  const showDeleteAlways = true;
 
-  const actionColCount =
-    (actionColumnVisibility.showLog ? 1 : 0) +
-    (actionColumnVisibility.showView ? 1 : 0) +
-    (actionColumnVisibility.showEdit ? 1 : 0) +
-    (actionColumnVisibility.showDelete ? 1 : 0);
+  // widths match the sticky right offsets
+  const ACTION_COL_W = 64;
+  const ACTION_COL_COUNT = 4; // Log, View, Edit, Delete
+  const ACTION_AREA_W = ACTION_COL_W * ACTION_COL_COUNT;
 
-  if (workspaceLoaded && !teamId) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a
-        workspace, or complete onboarding first.
-      </div>
-    );
-  }
+  const actionThClass =
+    "border-b border-slate-200 px-2 py-2 font-semibold text-slate-700 text-center w-16 whitespace-nowrap";
+  const actionTdClass = "border-b border-slate-100 px-2 py-2 align-top text-center w-16";
+
+  // add a clear divider between data and actions
+  const actionDividerThClass = "border-l-2 border-slate-200";
+  const actionDividerTdClass = "border-l-2 border-slate-200";
 
   function getScoreBadgeClasses(score: number | null): string {
     if (score == null) return "bg-slate-100 text-slate-400";
@@ -388,12 +648,23 @@ export function LeadsClient() {
     return "bg-amber-50 text-amber-700";
   }
 
-  // ✅ Action headers were getting cut off because they were too narrow.
-  // Give action columns enough width for "Delete", and keep them compact.
-  const actionThClass =
-    "border-b border-slate-200 px-2 py-2 font-semibold text-slate-700 text-center w-16 whitespace-nowrap";
-  const actionTdClass =
-    "border-b border-slate-100 px-2 py-2 align-top text-center w-16";
+  if (workspaceLoaded && !teamId) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
+      </div>
+    );
+  }
+
+  /* ---------- render helpers for pills ---------- */
+
+  const CORE_PILL_KEYS = new Set([
+    "niche",
+    "lead_type",
+    "primary_contact_type",
+    "source_category",
+    "source_name",
+  ]);
 
   /* ---------- render ---------- */
 
@@ -422,87 +693,99 @@ export function LeadsClient() {
       </div>
 
       {loading ? (
-        <LeadsLoadingState colCount={Math.max(6, columns.length + actionColCount)} />
+        <LeadsLoadingState colCount={Math.max(6, columns.length + 4)} />
       ) : totalCount === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
           <p>No leads yet (or none you can access).</p>
           {canAddLeads && (
             <p className="mt-1">
-              Click <span className="font-semibold">+ Add Lead</span> to create
-              your first one.
+              Click <span className="font-semibold">+ Add Lead</span> to create your first one.
             </p>
           )}
         </div>
       ) : visibleCount === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          <p className="font-semibold text-slate-700">
-            No leads match “{query}”.
-          </p>
-          <p className="mt-1">
-            Try searching for a different name, field value, or stage.
-          </p>
+          <p className="font-semibold text-slate-700">No leads match “{query}”.</p>
+          <p className="mt-1">Try searching for a different name, field value, or stage.</p>
         </div>
       ) : (
         <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
-          {/* ✅ Right padding so headers don't sit underneath the scrollbar */}
           <div
-            className="overflow-y-auto overflow-x-auto rounded-xl pr-4"
+            className="relative overflow-auto rounded-xl"
             style={{ maxHeight: TABLE_BODY_MAX_HEIGHT }}
           >
-            <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-100">
+            <table className="min-w-max w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-20 bg-slate-100">
                 <tr className="text-left">
                   {columns.map((col) => (
                     <th
-                      key={col.key}
-                      className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-700"
+                      key={`${col.kind}:${col.key}`}
+                      className="border-b border-slate-200 px-5 py-2 font-semibold text-slate-700 whitespace-nowrap"
                     >
                       {col.label}
                     </th>
                   ))}
 
-                  {actionColumnVisibility.showLog && (
-                    <th className={actionThClass}>Log</th>
+                  {/* Sticky right action headers */}
+                  {showLogAlways && (
+                    <th
+                      className={`${actionThClass} ${actionDividerThClass} sticky z-30 bg-slate-100`}
+                      style={{ right: ACTION_COL_W * 3 }}
+                    >
+                      Log
+                    </th>
                   )}
-                  {actionColumnVisibility.showView && (
-                    <th className={actionThClass}>View</th>
+                  {showViewAlways && (
+                    <th
+                      className={`${actionThClass} sticky z-30 bg-slate-100`}
+                      style={{ right: ACTION_COL_W * 2 }}
+                    >
+                      View
+                    </th>
                   )}
-                  {actionColumnVisibility.showEdit && (
-                    <th className={actionThClass}>Edit</th>
+                  {showEditAlways && (
+                    <th
+                      className={`${actionThClass} sticky z-30 bg-slate-100`}
+                      style={{ right: ACTION_COL_W * 1 }}
+                    >
+                      Edit
+                    </th>
                   )}
-                  {actionColumnVisibility.showDelete && (
-                    <th className={actionThClass}>Delete</th>
+                  {showDeleteAlways && (
+                    <th className={`${actionThClass} sticky right-0 z-30 bg-slate-100`}>
+                      Delete
+                    </th>
                   )}
                 </tr>
               </thead>
 
               <tbody>
                 {filteredLeads.map((lead) => {
-                  // ✅ NEW RULE:
-                  // If user is Setter OR Closer for THIS lead, they can see BOTH Log + Edit buttons
                   const isSetterOrCloserForLead =
                     !!currentUserId &&
-                    (lead.setter_id === currentUserId ||
-                      lead.closer_id === currentUserId);
+                    (lead.setter_id === currentUserId || lead.closer_id === currentUserId);
 
                   const canLogMessagesForLead = isSetterOrCloserForLead;
                   const canEditLeadForLead = isSetterOrCloserForLead;
 
+                  // ✅ FIX: use lead.lead_name first
+                  const leadName = deriveLeadName(lead.lead_name, lead.customValues ?? {}, lead.stage || "");
+
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50">
                       {columns.map((col) => {
-                        if ((col as any).isScore) {
+                        const cellKey = `${col.kind}:${col.key}`;
+
+                        // Score
+                        if (col.kind === "score") {
                           const score = lead.score ?? null;
                           const classes = getScoreBadgeClasses(score);
 
                           return (
-                            <td
-                              key={col.key}
-                              className="border-b border-slate-100 px-3 py-2 align-top"
-                            >
+                            <td key={cellKey} className="border-b border-slate-100 px-5 py-2.5 align-top">
                               {score != null ? (
                                 <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${classes}`}
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}
                                 >
                                   {score}
                                 </span>
@@ -513,12 +796,10 @@ export function LeadsClient() {
                           );
                         }
 
-                        if ((col as any).isStage) {
+                        // Stage
+                        if (col.kind === "stage") {
                           return (
-                            <td
-                              key={col.key}
-                              className="border-b border-slate-100 px-3 py-2 align-top"
-                            >
+                            <td key={cellKey} className="border-b border-slate-100 px-5 py-2.5 align-top">
                               <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                                 {lead.stage || "—"}
                               </span>
@@ -526,28 +807,131 @@ export function LeadsClient() {
                           );
                         }
 
-                        const value = lead.customValues[col.key];
+                        // Core
+                        if (col.kind === "core") {
+                          if (col.key === "__lead_name") {
+                            return (
+                              <td
+                                key={cellKey}
+                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              >
+                                {safeValue(leadName)}
+                              </td>
+                            );
+                          }
 
+                          if (col.key === "primary_contact_value") {
+                            const raw = String(lead.primary_contact_value ?? "").trim();
+                            const href = raw ? contactHref(lead.primary_contact_type ?? null, raw) : null;
+
+                            return (
+                              <td
+                                key={cellKey}
+                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              >
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target={href.startsWith("mailto:") || href.startsWith("tel:") ? undefined : "_blank"}
+                                    rel={href.startsWith("mailto:") || href.startsWith("tel:") ? undefined : "noopener noreferrer"}
+                                    className="inline-flex max-w-[240px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
+                                  >
+                                    <span className="truncate">{raw}</span>
+                                  </a>
+                                ) : (
+                                  safeValue(raw || null)
+                                )}
+                              </td>
+                            );
+                          }
+
+                          if (col.key === "gender") {
+                            const show = lead.lead_type === "individual" ? lead.gender : null;
+                            return (
+                              <td
+                                key={cellKey}
+                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              >
+                                {show ? (
+                                  <GenderPill gender={show} />
+                                ) : (
+                                  <span className="text-xs text-slate-400">—</span>
+                                )}
+                              </td>
+                            );
+                          }
+
+                          const v = (lead as any)[col.key];
+
+                          // requested core fields get unified gray pill
+                          if (CORE_PILL_KEYS.has(col.key)) {
+                            const label =
+                              col.key === "niche" ? safeValue(v ?? null) : labelizeEnum(v ?? null);
+                            return (
+                              <td
+                                key={cellKey}
+                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              >
+                                {label === "—" ? (
+                                  <span className="text-xs text-slate-400">—</span>
+                                ) : (
+                                  <GrayPill title={String(label)}>{label}</GrayPill>
+                                )}
+                              </td>
+                            );
+                          }
+
+                          // everything else normal
+                          return (
+                            <td
+                              key={cellKey}
+                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                            >
+                              {safeValue(v ?? null)}
+                            </td>
+                          );
+                        }
+
+                        // Custom
+                        const value = lead.customValues?.[col.key];
+
+                        // dropdown custom fields -> gray pill
+                        if (col.kind === "custom" && col.type === "select") {
+                          const label = safeValue(value);
+                          return (
+                            <td
+                              key={cellKey}
+                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                            >
+                              {label === "—" ? (
+                                <span className="text-xs text-slate-400">—</span>
+                              ) : (
+                                <GrayPill title={String(label)}>{String(label)}</GrayPill>
+                              )}
+                            </td>
+                          );
+                        }
+
+                        // link custom fields
                         if (
+                          col.kind === "custom" &&
                           col.type === "link" &&
                           typeof value === "string" &&
                           value.trim() !== ""
                         ) {
                           const raw = value.trim();
-                          const href = /^https?:\/\//i.test(raw)
-                            ? raw
-                            : `https://${raw}`;
+                          const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
                           return (
                             <td
-                              key={col.key}
-                              className="border-b border-slate-100 px-3 py-2 align-top text-slate-800"
+                              key={cellKey}
+                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
                             >
                               <a
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex max-w-[200px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
+                                className="inline-flex max-w-[240px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
                               >
                                 <span className="truncate">{raw}</span>
                               </a>
@@ -557,18 +941,22 @@ export function LeadsClient() {
 
                         return (
                           <td
-                            key={col.key}
-                            className="border-b border-slate-100 px-3 py-2 align-top text-slate-800"
+                            key={cellKey}
+                            className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
                           >
-                            {value !== null && value !== undefined
+                            {value !== null && value !== undefined && String(value).trim() !== ""
                               ? String(value)
                               : "—"}
                           </td>
                         );
                       })}
 
-                      {actionColumnVisibility.showLog && (
-                        <td className={actionTdClass}>
+                      {/* Sticky right action cells */}
+                      {showLogAlways && (
+                        <td
+                          className={`${actionTdClass} ${actionDividerTdClass} sticky bg-white`}
+                          style={{ right: ACTION_COL_W * 3 }}
+                        >
                           {canLogMessagesForLead ? (
                             <Link
                               href={`/leads/${lead.id}/messages`}
@@ -577,12 +965,17 @@ export function LeadsClient() {
                             >
                               <PlusCircleIcon className="h-5 w-5" />
                             </Link>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
                         </td>
                       )}
 
-                      {actionColumnVisibility.showView && (
-                        <td className={actionTdClass}>
+                      {showViewAlways && (
+                        <td
+                          className={`${actionTdClass} sticky bg-white`}
+                          style={{ right: ACTION_COL_W * 2 }}
+                        >
                           <Link
                             href={`/leads/${lead.id}`}
                             className="inline-flex p-1 !text-slate-600 hover:!text-slate-900 transition-colors"
@@ -593,8 +986,11 @@ export function LeadsClient() {
                         </td>
                       )}
 
-                      {actionColumnVisibility.showEdit && (
-                        <td className={actionTdClass}>
+                      {showEditAlways && (
+                        <td
+                          className={`${actionTdClass} sticky bg-white`}
+                          style={{ right: ACTION_COL_W * 1 }}
+                        >
                           {canEditLeadForLead ? (
                             <Link
                               href={`/leads/${lead.id}/edit`}
@@ -603,12 +999,14 @@ export function LeadsClient() {
                             >
                               <PencilSquareIcon className="h-5 w-5" />
                             </Link>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
                         </td>
                       )}
 
-                      {actionColumnVisibility.showDelete && (
-                        <td className={actionTdClass}>
+                      {showDeleteAlways && (
+                        <td className={`${actionTdClass} sticky right-0 bg-white`}>
                           {canDeleteLeads ? (
                             <Link
                               href={`/leads/${lead.id}/delete`}
@@ -617,7 +1015,9 @@ export function LeadsClient() {
                             >
                               <TrashIcon className="h-5 w-5" />
                             </Link>
-                          ) : null}
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
                         </td>
                       )}
                     </tr>
