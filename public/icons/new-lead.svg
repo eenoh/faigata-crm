@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#EEF2FF"></rect>
+
+  <!-- Person head -->
+  <circle cx="30" cy="26" r="6" fill="#4F46E5"></circle>
+
+  <!-- Person body -->
+  <path d="M18 42C18 36.477 22.477 32 28 32H32C37.523 32 42 36.477 42 42V44H18V42Z" fill="#4F46E5"></path>
+
+  <!-- Plus badge -->
+  <circle cx="46" cy="40" r="7" fill="#22C55E"></circle>
+  <path d="M46 36V44M42 40H50" stroke="white" stroke-width="2" stroke-linecap="round"></path>
+</svg>

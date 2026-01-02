@@ -14,6 +14,7 @@ import {
   ChevronLeftIcon,
   ChartBarIcon,
   CalendarDaysIcon,
+  CreditCardIcon, // ✅ Billing icon
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -41,6 +42,35 @@ function hasPrivilegedAccess(roles: unknown): boolean {
   );
 }
 
+function SidebarSkeleton() {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-slate-200 bg-white shadow-sm">
+      {/* Brand row skeleton */}
+      <div className="flex items-center px-3 pt-4 pb-6">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-lg bg-slate-200/70" />
+          <div className="h-5 w-24 rounded bg-slate-200/60" />
+        </div>
+      </div>
+
+      {/* Nav skeleton */}
+      <nav className="flex-1 space-y-2 px-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="h-5 w-5 rounded bg-slate-200/70" />
+            <div className="h-3 w-24 rounded bg-slate-200/50" />
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer skeleton */}
+      <div className="ml-5 border-t border-slate-100 py-3">
+        <div className="h-3 w-40 rounded bg-slate-200/50" />
+      </div>
+    </aside>
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
@@ -57,6 +87,7 @@ export function AppSidebar() {
   const [canSeeCalendar, setCanSeeCalendar] = useState(false);
   const [canSeePipeline, setCanSeePipeline] = useState(false); // ✅ start false => no flash
   const [canSeeSettings, setCanSeeSettings] = useState(false);
+  const [canSeeBilling, setCanSeeBilling] = useState(false); // ✅ new
 
   useEffect(() => setMounted(true), []);
 
@@ -73,6 +104,7 @@ export function AppSidebar() {
             setCanSeeCalendar(false);
             setCanSeePipeline(false);
             setCanSeeSettings(false);
+            setCanSeeBilling(false);
             setPermissionsLoaded(true);
           }
           return;
@@ -112,6 +144,7 @@ export function AppSidebar() {
         if (!cancelled) {
           setCanSeeCalendar(privilegedAllowed);
           setCanSeeSettings(privilegedAllowed);
+          setCanSeeBilling(privilegedAllowed); // ✅ everyone privileged sees Billing
           setCanSeePipeline(pipelineAllowed);
           setPermissionsLoaded(true);
         }
@@ -136,6 +169,7 @@ export function AppSidebar() {
           setCanSeeCalendar(false);
           setCanSeePipeline(false);
           setCanSeeSettings(false);
+          setCanSeeBilling(false);
           setPermissionsLoaded(true);
         }
       }
@@ -195,14 +229,40 @@ export function AppSidebar() {
       }
     }
 
-    return items;
-  }, [canSeeCalendar, canSeePipeline, canSeeSettings]);
+    // ✅ Insert Billing right above Settings (and above Calendar if Calendar exists)
+    if (canSeeBilling) {
+      const calendarIdx = items.findIndex((i) => i.href === "/calendar");
+      const settingsIdx = items.findIndex((i) => i.href === "/settings");
+      const homeIdx = items.findIndex((i) => i.href === "/crm");
 
-  // ✅ Don’t render nav until we know roles (prevents flashing tabs)
+      const billingItem: NavItem = {
+        href: "/billing",
+        label: "Billing",
+        icon: CreditCardIcon,
+      };
+
+      // Prefer: insert before Calendar (so it appears above calendar)
+      if (calendarIdx !== -1) {
+        items = [...items.slice(0, calendarIdx), billingItem, ...items.slice(calendarIdx)];
+      }
+      // else: insert before Settings
+      else if (settingsIdx !== -1) {
+        items = [...items.slice(0, settingsIdx), billingItem, ...items.slice(settingsIdx)];
+      }
+      // else: insert before Home
+      else if (homeIdx !== -1) {
+        items = [...items.slice(0, homeIdx), billingItem, ...items.slice(homeIdx)];
+      } else {
+        items = [...items, billingItem];
+      }
+    }
+
+    return items;
+  }, [canSeeBilling, canSeeCalendar, canSeePipeline, canSeeSettings]);
+
+  // ✅ Loading state for sidebar (prevents flashing tabs)
   if (!mounted || !permissionsLoaded) {
-    return (
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r border-slate-200 bg-white shadow-sm" />
-    );
+    return <SidebarSkeleton />;
   }
 
   return (

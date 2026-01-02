@@ -173,19 +173,6 @@ export default function SettingsPageClient() {
           </Link>
         )}
 
-        {/* Calendar Connections */}
-        <Link
-          href="/settings/integrations"
-          className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-200 hover:shadow-md transition"
-        >
-          <h2 className="text-sm font-semibold text-slate-900">
-            Add Integrations
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Connect your Google Calendar to power booking links and keep meetings in sync.
-          </p>
-        </Link>
-
         {/* Schedule / Meeting Links */}
         <Link
           href="/settings/booking-links"

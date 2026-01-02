@@ -24,6 +24,88 @@ type ScoreThresholds = {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+function LoadingSkeleton() {
+  return (
+    <div className="max-w-5xl space-y-6">
+      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
+        <div className="h-7 w-40 animate-pulse rounded-lg bg-slate-100" />
+        <div className="mt-2 h-4 w-[34rem] max-w-full animate-pulse rounded-lg bg-slate-100" />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)]">
+        {/* LEFT skeleton */}
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+          <div className="h-4 w-48 animate-pulse rounded-lg bg-slate-100" />
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-56 max-w-full animate-pulse rounded-lg bg-slate-200" />
+                    <div className="mt-2 h-3 w-28 animate-pulse rounded-lg bg-slate-200" />
+                  </div>
+                  <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-200" />
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <div className="h-3 w-24 animate-pulse rounded-lg bg-slate-200" />
+                  <div className="space-y-2">
+                    {[0, 1].map((j) => (
+                      <div
+                        key={j}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2"
+                      >
+                        <div className="h-3 w-28 animate-pulse rounded-lg bg-slate-100" />
+                        <div className="h-8 w-24 animate-pulse rounded-lg bg-slate-100" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT skeleton */}
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+          <div className="h-4 w-40 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-3 w-[22rem] max-w-full animate-pulse rounded-lg bg-slate-100" />
+
+          <div className="mt-3 space-y-4">
+            <div className="space-y-2">
+              <div className="h-3 w-32 animate-pulse rounded-lg bg-slate-100" />
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-3 w-48 animate-pulse rounded-lg bg-slate-100" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-3 w-36 animate-pulse rounded-lg bg-slate-100" />
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-3 w-56 animate-pulse rounded-lg bg-slate-100" />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-3">
+            <div className="h-3 w-10 animate-pulse rounded-lg bg-slate-200" />
+            <div className="mt-2 h-3 w-[18rem] max-w-full animate-pulse rounded-lg bg-slate-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <div className="h-10 w-44 animate-pulse rounded-lg bg-slate-200" />
+      </div>
+    </div>
+  );
+}
+
 export function LeadScoringSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
@@ -40,7 +122,11 @@ export function LeadScoringSettingsClient() {
     let cancelled = false;
 
     (async () => {
-      if (workspaceLoading) return;
+      // show skeleton while workspace context is still resolving
+      if (workspaceLoading) {
+        setLoading(true);
+        return;
+      }
 
       if (!teamId) {
         setLoading(false);
@@ -49,6 +135,8 @@ export function LeadScoringSettingsClient() {
       }
 
       try {
+        setLoading(true);
+
         // 1) load field definitions
         const defs = await getLeadFieldDefinitions(teamId);
 
@@ -105,12 +193,20 @@ export function LeadScoringSettingsClient() {
             weight: existing?.weight ?? 0,
           };
 
-          if (f.type === "select" && f.options?.length) {
+          const hasSelectOptions =
+            f.type === "select" &&
+            Array.isArray(f.options) &&
+            f.options.length > 0;
+
+          if (hasSelectOptions) {
             const existingOptions = existing?.optionWeights ?? {};
             const optionWeights: Record<string, number> = {};
-            for (const opt of f.options) {
+
+            // Cast the options to string[] for strict TS setups where options might be any/unknown.
+            for (const opt of f.options as string[]) {
               optionWeights[opt] = existingOptions[opt] ?? 0;
             }
+
             base.optionWeights = optionWeights;
           }
 
@@ -152,11 +248,7 @@ export function LeadScoringSettingsClient() {
     setError(null);
   }
 
-  function updateOptionWeight(
-    fieldKey: string,
-    option: string,
-    weight: number
-  ) {
+  function updateOptionWeight(fieldKey: string, option: string, weight: number) {
     setRules((prev) =>
       prev.map((r) => {
         if (r.fieldKey !== fieldKey) return r;
@@ -174,10 +266,7 @@ export function LeadScoringSettingsClient() {
     setError(null);
   }
 
-  function updateThreshold(
-    key: keyof ScoreThresholds,
-    value: number | null
-  ) {
+  function updateThreshold(key: keyof ScoreThresholds, value: number | null) {
     setThresholds((prev) => ({
       ...prev,
       [key]: value ?? 0,
@@ -240,7 +329,7 @@ export function LeadScoringSettingsClient() {
     }
   }
 
-  if (!teamId) {
+  if (!teamId && !workspaceLoading) {
     return (
       <div className="max-w-3xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
         <p className="font-medium">No team available</p>
@@ -252,12 +341,9 @@ export function LeadScoringSettingsClient() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-3xl rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
-        Loading lead scoring settings…
-      </div>
-    );
+  // NEW: richer, fitting loading state (skeleton) while workspace and config are loading
+  if (loading || workspaceLoading) {
+    return <LoadingSkeleton />;
   }
 
   return (
@@ -303,7 +389,9 @@ export function LeadScoringSettingsClient() {
                 if (!field) return null;
 
                 const isSelect =
-                  field.type === "select" && field.options?.length;
+                  field.type === "select" &&
+                  Array.isArray(field.options) &&
+                  field.options.length > 0;
 
                 return (
                   <div
@@ -348,7 +436,7 @@ export function LeadScoringSettingsClient() {
                           Option weights
                         </p>
                         <div className="space-y-1">
-                          {field.options!.map((opt) => {
+                          {(field.options as string[]).map((opt: string) => {
                             const current = rule.optionWeights?.[opt] ?? 0;
 
                             return (

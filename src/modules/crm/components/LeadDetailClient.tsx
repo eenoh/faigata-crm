@@ -326,10 +326,7 @@ function fmtMessageTimestamp(iso: string, zone: string) {
 function floorIsoToMinute(iso: string): string {
   const dt = DateTime.fromISO(iso, { setZone: true });
   if (!dt.isValid) return iso;
-  return (
-    dt.set({ second: 0, millisecond: 0 }).toUTC().toISO({ suppressMilliseconds: true }) ||
-    iso
-  );
+  return dt.set({ second: 0, millisecond: 0 }).toUTC().toISO({ suppressMilliseconds: true }) || iso;
 }
 
 /* -------------------- small formatting helpers -------------------- */
@@ -393,6 +390,25 @@ function contactHref(type: LeadData["primary_contact_type"], value: string) {
 
   if (looksLikeUrl(raw)) return normalizeUrl(raw);
   return null;
+}
+
+/* -------------------- NEW: lead-created timeline helpers -------------------- */
+
+function isLeadCreatedTimelineMessage(m: LeadMessage) {
+  const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
+  if (!isPipeline) return false;
+
+  const body = String(m.body ?? "").toLowerCase();
+  return body.startsWith("lead_created|") || body.startsWith("lead created|") || body.includes("new lead");
+}
+
+function formatLeadCreatedBody(body: string, leadLabel: string) {
+  const raw = String(body || "");
+  const parts = raw.split("|");
+  const labelFromBody = (parts[1] ?? "").trim();
+  const label = labelFromBody || leadLabel;
+
+  return `New lead added: ${label}`;
 }
 
 export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
@@ -1024,14 +1040,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     setInviteSuccess(null);
 
     try {
-      const res = await fetch(
-        `/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/booking-invite`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookingLinkId }),
-        }
-      );
+      const res = await fetch(`/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/booking-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingLinkId }),
+      });
 
       const json = await res.json().catch(() => ({} as any));
       if (!res.ok) throw new Error(json?.error || `invite_failed_${res.status}`);
@@ -1131,13 +1144,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return `Sent booking link: ${name || "Schedule page"}`;
   }
 
+  // ✅ UPDATED: timeline now injects "Lead created" event with prospector name + new icon
   const timelineMessages: LeadMessage[] = useMemo(() => {
-    if (!messages.length) return [];
+    if (!lead) return [];
 
-    const cleaned = messages.filter((m) => !shouldHideFromTimeline(m));
-    const sorted = [...cleaned].sort(
-      (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
-    );
+    const cleaned = (messages ?? []).filter((m) => !shouldHideFromTimeline(m));
+    const sorted = [...cleaned].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
     const bookedGroups = new Map<string, LeadMessage[]>();
     const passthrough: LeadMessage[] = [];
@@ -1156,9 +1168,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     const chosenBooked: LeadMessage[] = [];
 
     for (const [, group] of bookedGroups) {
-      const candidates = group
-        .slice()
-        .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+      const candidates = group.slice().sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
       const scored = candidates.map((m) => {
         const p = parseBookedCall(m.body || "");
@@ -1177,10 +1187,35 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       chosenBooked.push(scored[0].m);
     }
 
-    return [...passthrough, ...chosenBooked].sort(
+    const finalList = [...passthrough, ...chosenBooked].sort(
       (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
     );
-  }, [messages, viewerTz]);
+
+    const alreadyHasLeadCreated = finalList.some(isLeadCreatedTimelineMessage);
+
+    if (!alreadyHasLeadCreated) {
+      const leadCreatedEvent: LeadMessage = {
+        id: `lead-created:${lead.id}`,
+        direction: "outbound",
+        channel: "pipeline",
+        body: `LEAD_CREATED|${leadLabel}`,
+        sent_at: lead.created_at,
+        sender_profile_id: lead.prospector_id ?? null,
+        sender: creator
+          ? {
+              id: creator.id,
+              first_name: creator.first_name,
+              last_name: creator.last_name,
+              avatar_url: creator.avatar_url,
+            }
+          : null,
+      };
+
+      finalList.push(leadCreatedEvent);
+    }
+
+    return finalList;
+  }, [messages, viewerTz, lead, leadLabel, creator]);
 
   /* ---------- early returns ---------- */
   if (!mounted || !workspaceLoaded || loading) {
@@ -1219,15 +1254,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const region = lead.region?.trim() || "";
   const country = lead.country?.trim() || "";
 
-  // postal first, then city (space between), then region/country (comma-separated)
   const firstPart = [postal, city].filter(Boolean).join(" ").trim();
   const locationLine = [firstPart, region, country].filter(Boolean).join(", ");
 
   return (
     <div className="h-full overflow-y-auto">
-      {/* ... your render stays exactly the same ... */}
-      {/* (I kept your UI unchanged; leadLabel now resolves correctly from lead.lead_name.) */}
-      {/* If you want, I can paste the rest of the render too, but it is identical to your current code. */}
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         {/* LEFT */}
         <div className="space-y-6 pb-6">
@@ -1254,7 +1285,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 <button
                   type="button"
                   onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/edit`)}
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 cursor-pointer w-15"
+                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700 cursor-pointer h-[28px] w-16"
                 >
                   Edit
                 </button>
@@ -1264,7 +1295,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 <button
                   type="button"
                   onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/delete`)}
-                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer w-15"
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer h-[28px] w-16"
                 >
                   Delete
                 </button>
@@ -1346,7 +1377,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   <a
                     href={contactLink}
                     target={contactLink.startsWith("mailto:") || contactLink.startsWith("tel:") ? undefined : "_blank"}
-                    rel={contactLink.startsWith("mailto:") || contactLink.startsWith("tel:") ? undefined : "noopener noreferrer"}
+                    rel={
+                      contactLink.startsWith("mailto:") || contactLink.startsWith("tel:")
+                        ? undefined
+                        : "noopener noreferrer"
+                    }
                     className="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
                   >
                     <span className="truncate">{contactValue || "—"}</span>
@@ -1448,9 +1483,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         </div>
 
         {/* RIGHT: timeline */}
-        {/* (unchanged; uses leadLabel which is now correct) */}
         <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
-          {/* ... unchanged timeline UI ... */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-800">Activity Timeline</h2>
@@ -1503,21 +1536,31 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   const isBookingLinkEvent =
                     isPipeline &&
-                    (bodyLower.includes("booking link") ||
-                      bodyLower.includes("/b/") ||
-                      bodyLower.includes("schedule page"));
+                    (bodyLower.includes("booking link") || bodyLower.includes("/b/") || bodyLower.includes("schedule page"));
 
                   const isBookedCallEvent =
                     isPipeline &&
-                    (bodyLower.includes("booked a call") ||
-                      bodyLower.includes("call booked for") ||
-                      bodyLower.includes("booked_call|"));
+                    (bodyLower.includes("booked a call") || bodyLower.includes("call booked for") || bodyLower.includes("booked_call|"));
+
+                  const isLeadCreatedEvent = isLeadCreatedTimelineMessage(m);
 
                   const first = m.sender?.first_name ?? "";
                   const last = m.sender?.last_name ?? "";
-                  const fullName = `${first} ${last}`.trim() || "Team member";
+                  const fullName = `${first} ${last}`.trim();
 
-                  const authorName = isOutbound ? fullName : leadLabel;
+                  const prospectorName =
+                    fullName || `${creator?.first_name ?? ""} ${creator?.last_name ?? ""}`.trim() || "Prospector";
+
+                  const authorName = isPipeline
+                    ? isLeadCreatedEvent
+                      ? prospectorName
+                      : "Setter"
+                    : isOutbound
+                    ? fullName || "Team member"
+                    : leadLabel;
+
+                  const roleLabel = isPipeline ? (isLeadCreatedEvent ? "Prospector" : "Setter") : isOutbound ? "Setter" : "Lead";
+
                   const avatarUrl = isOutbound ? m.sender?.avatar_url ?? null : null;
                   const initials = isOutbound ? initialsFromName(first, last) : leadInitials;
 
@@ -1530,14 +1573,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={
-                              isBookedCallEvent
+                              isLeadCreatedEvent
+                                ? "/icons/new-lead.svg"
+                                : isBookedCallEvent
                                 ? "/icons/booked-call.svg"
                                 : isBookingLinkEvent
                                 ? "/icons/booking-link.svg"
                                 : "/icons/stage-change.svg"
                             }
                             alt={
-                              isBookedCallEvent
+                              isLeadCreatedEvent
+                                ? "New lead"
+                                : isBookedCallEvent
                                 ? "Call booked"
                                 : isBookingLinkEvent
                                 ? "Booking link sent"
@@ -1547,11 +1594,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           />
                         ) : avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={avatarUrl}
-                            alt={authorName}
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
-                          />
+                          <img src={avatarUrl} alt={authorName} className="h-8 w-8 rounded-full object-cover border border-slate-200" />
                         ) : (
                           <div
                             className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${
@@ -1569,14 +1612,16 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                             <span className="flex items-center gap-1">
                               <span className="font-semibold text-slate-700">{authorName}</span>
                               <span className="text-slate-400">
-                                · {isPipeline ? "Setter" : isOutbound ? "Setter" : "Lead"} · {formatChannel(m.channel)}
+                                · {roleLabel} · {formatChannel(m.channel)}
                               </span>
                             </span>
                             <span>{tsLabel}</span>
                           </div>
 
                           <p className="whitespace-pre-wrap text-[11px] text-slate-800">
-                            {isBookedCallEvent
+                            {isLeadCreatedEvent
+                              ? formatLeadCreatedBody(m.body, leadLabel)
+                              : isBookedCallEvent
                               ? formatBookedCallBody(m.body)
                               : isBookingLinkEvent
                               ? formatBookingLinkTimelineBody(m.body)

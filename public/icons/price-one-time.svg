@@ -1,0 +1,25 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="oneGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10B981"></stop>
+      <stop offset="100%" stop-color="#34D399"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- outer container -->
+  <rect x="0.5" y="0.5" width="31" height="31" rx="16" fill="white" stroke="#E5E7EB"></rect>
+
+  <!-- price tag -->
+  <path d="M10 13h7.5l5.5 5.5-7.5 7.5-5.5-5.5z" fill="url(#oneGrad)"></path>
+
+  <!-- tag hole -->
+  <circle cx="13.2" cy="16.2" r="1.4" fill="white"></circle>
+
+  <!-- single-payment dot -->
+  <circle cx="18.5" cy="21" r="2" fill="white"></circle>
+
+  <!-- dollar symbol -->
+  <text x="18.5" y="20" text-anchor="middle" font-size="10.5" font-weight="700" fill="#065F46" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    $
+  </text>
+</svg>

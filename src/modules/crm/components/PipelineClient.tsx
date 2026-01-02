@@ -1,3 +1,4 @@
+// src/modules/crm/components/PipelineClient.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +31,11 @@ type DragState = {
 
 type CelebratePos = { x: number; y: number } | null;
 
+type ScoreThresholds = {
+  low: number;
+  high: number;
+};
+
 export function PipelineClient() {
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
@@ -41,6 +47,12 @@ export function PipelineClient() {
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [leads, setLeads] = useState<LeadCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ✅ Lead scoring cutoffs (from lead_scoring_configs)
+  const [scoreThresholds, setScoreThresholds] = useState<ScoreThresholds>({
+    low: 40,
+    high: 70,
+  });
 
   // ✅ who is the user + what can they see
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -125,7 +137,7 @@ export function PipelineClient() {
     };
   }, []);
 
-  /* ---------- 2) Load stages + leads once we know teamId ---------- */
+  /* ---------- 2) Load stages + leads + scoring thresholds once we know teamId ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -141,7 +153,7 @@ export function PipelineClient() {
       try {
         setLoading(true);
 
-        const [fieldDefs, stageDefs, leadsRes] = await Promise.all([
+        const [fieldDefs, stageDefs, leadsRes, scoringRes] = await Promise.all([
           getLeadFieldDefinitions(teamId),
           getPipelineStages(teamId),
           (async () => {
@@ -161,12 +173,46 @@ export function PipelineClient() {
 
             return (await res.json()) as any[];
           })(),
+          (async () => {
+            // ✅ load scoring thresholds from config API (lead_scoring_configs)
+            const res = await fetch("/api/crm/lead-scoring-config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ teamId, action: "get" }),
+            });
+
+            if (!res.ok) return null;
+
+            const ct = res.headers.get("content-type") ?? "";
+            if (!ct.includes("application/json")) return null;
+
+            const json = (await res.json()) as {
+              thresholds?: Partial<ScoreThresholds>;
+            };
+
+            const low = Number(json.thresholds?.low);
+            const high = Number(json.thresholds?.high);
+
+            if (!Number.isNaN(low) && !Number.isNaN(high)) {
+              return { low, high } satisfies ScoreThresholds;
+            }
+
+            return null;
+          })(),
         ]);
 
         if (cancelled) return;
 
         setFields(fieldDefs);
         setStages(stageDefs || []);
+
+        // ✅ Apply thresholds (fallback to defaults if missing/bad)
+        setScoreThresholds(
+          scoringRes ?? {
+            low: 40,
+            high: 70,
+          }
+        );
 
         // ✅ map leads including setter_id / closer_id
         const mapped: LeadCard[] = (leadsRes ?? []).map((l: any) => ({
@@ -278,6 +324,29 @@ export function PipelineClient() {
     setDragState({ leadId: null, fromStage: null });
   }
 
+  function getScoreBadgeClasses(score: number | null | undefined) {
+    if (score === null || score === undefined) return null;
+
+    // Normalize thresholds just in case
+    const low = Number(scoreThresholds.low);
+    const high = Number(scoreThresholds.high);
+
+    const safeLow = Number.isNaN(low) ? 40 : low;
+    const safeHigh = Number.isNaN(high) ? 70 : high;
+
+    // Ensure ordering (in case config is flipped)
+    const lo = Math.min(safeLow, safeHigh);
+    const hi = Math.max(safeLow, safeHigh);
+
+    if (score < lo) {
+      return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+    }
+    if (score >= hi) {
+      return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+    }
+    return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+  }
+
   async function logStageChange(
     leadId: string,
     fromStage: string,
@@ -336,7 +405,11 @@ export function PipelineClient() {
     }
   }
 
-  async function handleDrop(targetStage: string, targetX: number, targetY: number) {
+  async function handleDrop(
+    targetStage: string,
+    targetX: number,
+    targetY: number
+  ) {
     if (!dragState.leadId || !teamId) return;
     const leadId = dragState.leadId;
     const fromStage = dragState.fromStage;
@@ -392,8 +465,8 @@ export function PipelineClient() {
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a workspace,
-        or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a
+        workspace, or complete onboarding first.
       </div>
     );
   }
@@ -511,47 +584,65 @@ export function PipelineClient() {
                       </motion.div>
                     )}
 
-                    {stageLeads.map((lead) => (
-                      <motion.button
-                        key={lead.id}
-                        layout
-                        draggable
-                        onDragStart={() => handleDragStart(lead.id, stage.name)}
-                        onDragEnd={handleDragEnd}
-                        className="group flex w-full flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition"
-                        whileHover={{
-                          y: -2,
-                          boxShadow: "0 10px 18px rgba(15, 23, 42, 0.10)",
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="line-clamp-1 text-[13px] font-semibold text-slate-900">
-                            {getLeadTitle(lead)}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {lead.score != null && (
-                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                {lead.score}
-                              </span>
-                            )}
-                            <span
-                              className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide 
-                                        text-slate-500 transition-colors 
-                                        group-hover:text-indigo-600
-                                        font-semibold"
-                            >
-                              {stage.name}
+                    {stageLeads.map((lead) => {
+                      const score =
+                        lead.score === null || lead.score === undefined
+                          ? null
+                          : Number(lead.score);
+
+                      const scoreBadge =
+                        score === null || Number.isNaN(score)
+                          ? null
+                          : getScoreBadgeClasses(score);
+
+                      return (
+                        <motion.button
+                          key={lead.id}
+                          layout
+                          draggable
+                          onDragStart={() => handleDragStart(lead.id, stage.name)}
+                          onDragEnd={handleDragEnd}
+                          className="group flex w-full flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition"
+                          whileHover={{
+                            y: -2,
+                            boxShadow: "0 10px 18px rgba(15, 23, 42, 0.10)",
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="line-clamp-1 text-[13px] font-semibold text-slate-900">
+                              {getLeadTitle(lead)}
                             </span>
+
+                            <div className="flex items-center gap-1">
+                              {scoreBadge && score !== null && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${scoreBadge}`}
+                                  title={`Low < ${scoreThresholds.low} | High ≥ ${scoreThresholds.high}`}
+                                >
+                                  {score}
+                                </span>
+                              )}
+
+                              <span
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide 
+                                           text-slate-500 transition-colors 
+                                           group-hover:text-indigo-600
+                                           font-semibold"
+                              >
+                                {stage.name}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        {getLeadSubtitle(lead) && (
-                          <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">
-                            {getLeadSubtitle(lead)}
-                          </p>
-                        )}
-                      </motion.button>
-                    ))}
+
+                          {getLeadSubtitle(lead) && (
+                            <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">
+                              {getLeadSubtitle(lead)}
+                            </p>
+                          )}
+                        </motion.button>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               </motion.div>

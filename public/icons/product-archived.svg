@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 64 64">
+  <!-- outer chip -->
+  <circle cx="32" cy="32" r="30" fill="#FFFFFF"></circle>
+  <circle cx="32" cy="32" r="30" stroke="#E2E8F0" stroke-width="2"></circle>
+
+  <!-- archive box -->
+  <rect x="18" y="22" width="28" height="22" rx="6" fill="#FEE2E2" stroke="#FB7185" stroke-width="2"></rect>
+
+  <!-- lid -->
+  <path d="M22 22.5c0-2.5 2-4.5 4.5-4.5h11c2.5 0 4.5 2 4.5 4.5" stroke="#FB7185" stroke-width="2" stroke-linecap="round"></path>
+
+  <!-- slot -->
+  <path d="M26 32h12" stroke="#E11D48" stroke-width="2.6" stroke-linecap="round"></path>
+
+  <!-- down arrow (archive) -->
+  <path d="M32 27v7" stroke="#E11D48" stroke-width="2.6" stroke-linecap="round"></path>
+  <path d="M29.5 31.5 32 34l2.5-2.5" stroke="#E11D48" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>

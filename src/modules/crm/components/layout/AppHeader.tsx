@@ -16,11 +16,13 @@ import { supabase } from "@/lib/supabaseClient";
 function getSectionName(pathname: string): string {
   if (pathname.startsWith("/leads")) return "Leads";
   if (pathname.startsWith("/calendar")) return "Calendar";
+  if (pathname.startsWith("/billing")) return "Billing";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/dashboard")) return "Dashboard";
   return "FaigataCRM";
 }
+
 
 type HeaderUser = {
   id: string;
@@ -345,7 +347,7 @@ export function AppHeader() {
     const value = e.target.value;
     setSearch(value);
 
-    if (!pathname.startsWith("/leads") && !pathname.startsWith("/pipeline")) {
+    if (!pathname.startsWith("/leads") && !pathname.startsWith("/pipeline") && !pathname.startsWith("/billing")) {
       return;
     }
 

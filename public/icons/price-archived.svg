@@ -1,0 +1,13 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="1" y="1" width="30" height="30" rx="15" fill="#F1F5F9"></rect>
+
+  <!-- Archive box -->
+  <rect x="9" y="14" width="14" height="9" rx="2" stroke="#64748B" stroke-width="1.5"></rect>
+  <path d="M9 14.5H23" stroke="#64748B" stroke-width="1.5"></path>
+  <path d="M14 18.5H18" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"></path>
+
+  <!-- Price tag -->
+  <path d="M18.5 8H23.5V13L18 18.5L13.5 14L18.5 8Z" fill="#CBD5E1" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"></path>
+  <circle cx="21" cy="10.5" r="1" fill="#475569"></circle>
+</svg>

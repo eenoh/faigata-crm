@@ -9,6 +9,13 @@ type ProviderId = "google" | "outlook";
 type IntegrationStatus = {
   calendar: Record<ProviderId, boolean>;
   email: Record<ProviderId, boolean>;
+  billing: { stripe: boolean };
+};
+
+const EMPTY_STATUS: IntegrationStatus = {
+  calendar: { google: false, outlook: false },
+  email: { google: false, outlook: false },
+  billing: { stripe: false },
 };
 
 const GC_RECONNECT_FLAG_KEY = "faigatacrm.googleCalendarReconnectRequired";
@@ -18,7 +25,7 @@ const calendarProviders = [
     id: "google" as const,
     name: "Google Calendar",
     description: "Used by most SaaS and startup teams.",
-    connectHref: "/api/crm/integrations/calendar/google/connect",
+    connectHref: "/api/integrations/calendar/google/connect",
     badgeBg: "bg-indigo-50",
     badgeText: "text-indigo-700",
     buttonBg: "bg-indigo-600",
@@ -64,6 +71,22 @@ const emailProviders = [
     buttonHoverBg: "hover:bg-sky-800",
     buttonText: "text-white",
     enabled: false,
+  },
+];
+
+const billingProviders = [
+  {
+    id: "stripe" as const,
+    name: "Stripe (Test)",
+    description:
+      "Connect Stripe to create products, send invoices, collect payments, and show payment status.",
+    connectHref: "/api/integrations/stripe/connect",
+    badgeBg: "bg-violet-50",
+    badgeText: "text-violet-700",
+    buttonBg: "bg-violet-600",
+    buttonHoverBg: "hover:bg-violet-700",
+    buttonText: "text-white",
+    enabled: true,
   },
 ];
 
@@ -116,6 +139,18 @@ function EmailProviderIcon({ id }: { id: ProviderId }) {
   );
 }
 
+function StripeProviderIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
+      <rect x="6" y="7" width="20" height="19" rx="6" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="1.4" />
+      <path
+        d="M12 13.2c0-1.6 1.4-2.7 4-2.7 1.2 0 2.4.2 3.5.6v2.5c-1-.5-2.2-.8-3.4-.8-1.1 0-1.7.3-1.7.9 0 1.6 5.6.6 5.6 4.6 0 1.7-1.3 2.8-4.1 2.8-1.4 0-2.8-.3-3.9-.8v-2.6c1.2.6 2.6 1 3.8 1 1.1 0 1.8-.3 1.8-.9 0-1.6-5.6-.7-5.6-4.6z"
+        fill="#7C3AED"
+      />
+    </svg>
+  );
+}
+
 function readReconnectFlag() {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(GC_RECONNECT_FLAG_KEY) === "1";
@@ -127,16 +162,17 @@ function clearReconnectFlag() {
   window.dispatchEvent(new Event("gc-reconnect-cleared"));
 }
 
-export default function CalendarSettingsClient() {
+export default function IntegrationsClient() {
   const searchParams = useSearchParams();
   const connectedParam = searchParams.get("connected");
   const errorParam = searchParams.get("error");
 
-  const [status, setStatus] = useState<IntegrationStatus | null>(null);
+  const [status, setStatus] = useState<IntegrationStatus>(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState<{ kind: "calendar" | "email"; id: ProviderId } | null>(null);
 
-  // NEW: reconnect-required state (drives cookie clearing + forces reconnect UI)
+  const [pendingCalendar, setPendingCalendar] = useState<ProviderId | null>(null);
+  const [pendingStripe, setPendingStripe] = useState(false);
+
   const [googleReconnectNeeded, setGoogleReconnectNeeded] = useState(false);
 
   const fetchStatus = useMemo(() => {
@@ -145,46 +181,61 @@ export default function CalendarSettingsClient() {
       const accessToken = sessionData.session?.access_token;
 
       if (!accessToken) {
-        setStatus({
-          calendar: { google: false, outlook: false },
-          email: { google: false, outlook: false },
-        });
+        setStatus(EMPTY_STATUS);
         return;
       }
 
-      const res = await fetch("/api/crm/integrations/status", {
-        credentials: "include",
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${accessToken}` },
+      // Fetch Google-calendar status (your route returns IntegrationStatus without billing)
+      const [googleRes, stripeRes] = await Promise.allSettled([
+        fetch("/api/integrations/calendar/google/status", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        fetch("/api/integrations/stripe/status", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      ]);
+
+      let calendarEmail: Pick<IntegrationStatus, "calendar" | "email"> = {
+        calendar: { google: false, outlook: false },
+        email: { google: false, outlook: false },
+      };
+
+      if (googleRes.status === "fulfilled" && googleRes.value.ok) {
+        // IMPORTANT: your google status returns {calendar,email} (not billing)
+        const json = (await googleRes.value.json()) as any;
+        calendarEmail = {
+          calendar: json?.calendar ?? calendarEmail.calendar,
+          email: json?.email ?? calendarEmail.email,
+        };
+      }
+
+      let stripeConnected = false;
+      if (stripeRes.status === "fulfilled" && stripeRes.value.ok) {
+        const json = (await stripeRes.value.json()) as any;
+        stripeConnected = !!json?.connected;
+      }
+
+      setStatus({
+        ...calendarEmail,
+        billing: { stripe: stripeConnected },
       });
-
-      if (!res.ok) {
-        setStatus({
-          calendar: { google: false, outlook: false },
-          email: { google: false, outlook: false },
-        });
-        return;
-      }
-
-      const json = (await res.json()) as IntegrationStatus;
-      setStatus(json);
     };
   }, []);
 
-  // NEW: when reconnect is needed, clear the httpOnly cookie server-side
   async function clearGoogleConnectedCookie() {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) return;
 
-    await fetch("/api/crm/integrations/calendar/google/clear-cookie", {
+    await fetch("/api/integrations/calendar/google/clear-cookie", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     }).catch(() => {});
   }
 
   useEffect(() => {
-    // initial flag read
     setGoogleReconnectNeeded(readReconnectFlag());
 
     const onNeed = () => setGoogleReconnectNeeded(true);
@@ -200,7 +251,6 @@ export default function CalendarSettingsClient() {
   }, []);
 
   useEffect(() => {
-    // if reconnect flag is on, clear cookie so user can re-consent cleanly
     if (googleReconnectNeeded) {
       clearGoogleConnectedCookie().catch(() => {});
     }
@@ -208,29 +258,21 @@ export default function CalendarSettingsClient() {
 
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       try {
         setLoading(true);
         await fetchStatus();
       } catch (e) {
-        console.error("[Settings] Failed to load integration status", e);
-        if (!cancelled) {
-          setStatus({
-            calendar: { google: false, outlook: false },
-            email: { google: false, outlook: false },
-          });
-        }
+        console.error("[Integrations] Failed to load status", e);
+        if (!cancelled) setStatus(EMPTY_STATUS);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
-    const onFocus = () => {
-      fetchStatus().catch(() => {});
-    };
-
+    const onFocus = () => fetchStatus().catch(() => {});
     window.addEventListener("focus", onFocus);
+
     return () => {
       cancelled = true;
       window.removeEventListener("focus", onFocus);
@@ -238,14 +280,12 @@ export default function CalendarSettingsClient() {
   }, [fetchStatus]);
 
   useEffect(() => {
-    if (connectedParam === "google") {
-      // ✅ reconnect succeeded: clear flag + refetch status
+    // after oauth callback redirect
+    if (connectedParam === "google" || connectedParam === "stripe") {
       clearReconnectFlag();
       fetchStatus().catch(() => {});
-      return;
     }
-
-    if (!!errorParam) {
+    if (errorParam) {
       fetchStatus().catch(() => {});
     }
   }, [connectedParam, errorParam, fetchStatus]);
@@ -257,8 +297,9 @@ export default function CalendarSettingsClient() {
     return () => sub.subscription.unsubscribe();
   }, [fetchStatus]);
 
-  const isCalendarConnected = (id: ProviderId) => status?.calendar?.[id] ?? false;
-  const isEmailConnected = (id: ProviderId) => status?.email?.[id] ?? false;
+  const isCalendarConnected = (id: ProviderId) => status.calendar[id] ?? false;
+  const isEmailConnected = (id: ProviderId) => status.email[id] ?? false;
+  const isStripeConnected = status.billing.stripe;
 
   async function startConnect(connectHref: string, providerId?: ProviderId) {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -269,7 +310,6 @@ export default function CalendarSettingsClient() {
       return;
     }
 
-    // ✅ If Google needs reconnect: clear the server cookie before starting OAuth again
     if (providerId === "google" && googleReconnectNeeded) {
       await clearGoogleConnectedCookie().catch(() => {});
     }
@@ -283,26 +323,22 @@ export default function CalendarSettingsClient() {
 
     if (!res.ok) {
       const msg = json?.error || `connect_failed_${res.status}`;
-      window.location.href = `/settings/calendar?error=${encodeURIComponent(msg)}`;
+      window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
       return;
     }
 
     const authUrl = json?.authUrl as string | undefined;
     if (!authUrl) {
-      window.location.href = `/settings/calendar?error=${encodeURIComponent("missing_auth_url")}`;
+      window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
       return;
     }
 
     window.location.href = authUrl;
   }
 
-  async function handleCalendarClick(
-    provider: (typeof calendarProviders)[number],
-    connected: boolean
-  ) {
+  async function handleCalendarClick(provider: (typeof calendarProviders)[number], connected: boolean) {
     if (!provider.enabled && !connected) return;
 
-    // ✅ If reconnect is needed, force Google to behave as "not connected" so user can click to reconnect.
     if (provider.id === "google" && googleReconnectNeeded) {
       await startConnect(provider.connectHref, provider.id);
       return;
@@ -314,66 +350,72 @@ export default function CalendarSettingsClient() {
     }
 
     try {
-      setPending({ kind: "calendar", id: provider.id });
+      setPendingCalendar(provider.id);
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return;
 
-      if (sessionError || !accessToken) {
-        console.error("[CalendarSettings] No Supabase session for disconnect", sessionError);
-        return;
-      }
-
-      const res = await fetch(
-        `/api/crm/integrations/calendar/${provider.id}/disconnect`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      const res = await fetch(`/api/integrations/calendar/${provider.id}/disconnect`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        console.error(
-          `Failed to disconnect calendar "${provider.id}" – status ${res.status}, body:`,
-          text
-        );
+        console.error("Disconnect calendar failed:", res.status, text);
         return;
       }
 
-      setStatus((prev) =>
-        prev ? { ...prev, calendar: { ...prev.calendar, [provider.id]: false } } : prev
-      );
       await fetchStatus();
 
       if (provider.id === "google") {
         window.open("https://myaccount.google.com/permissions", "_blank", "noopener,noreferrer");
       }
     } finally {
-      setPending(null);
+      setPendingCalendar(null);
     }
   }
 
-  async function handleEmailClick(
-    provider: (typeof emailProviders)[number],
-    connected: boolean
-  ) {
-    if (!provider.enabled && !connected) return;
+  async function handleStripeClick() {
+    if (!billingProviders[0].enabled) return;
 
-    if (!connected) {
-      await startConnect(provider.connectHref, provider.id);
+    if (!isStripeConnected) {
+      await startConnect(billingProviders[0].connectHref);
       return;
     }
 
-    // disconnect routes not implemented yet
+    try {
+      setPendingStripe(true);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return;
+
+      const res = await fetch("/api/integrations/stripe/disconnect", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.error("Disconnect stripe failed:", res.status, text);
+        return;
+      }
+
+      await fetchStatus();
+    } finally {
+      setPendingStripe(false);
+    }
+  }
+
+  async function handleEmailClick(provider: (typeof emailProviders)[number], connected: boolean) {
+    if (!provider.enabled && !connected) return;
+    if (!connected) await startConnect(provider.connectHref, provider.id);
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6 pt-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Integrations</h1>
         <p className="mt-1 text-sm text-slate-600">
@@ -405,13 +447,10 @@ export default function CalendarSettingsClient() {
 
         <div className="grid gap-4 md:grid-cols-2">
           {calendarProviders.map((p) => {
-            // ✅ Force Google to "not connected" when reconnect flag is set
             const connected =
-              p.id === "google" && googleReconnectNeeded
-                ? false
-                : isCalendarConnected(p.id);
+              p.id === "google" && googleReconnectNeeded ? false : isCalendarConnected(p.id);
 
-            const isPending = pending?.kind === "calendar" && pending.id === p.id;
+            const isPending = pendingCalendar === p.id;
 
             return (
               <div
@@ -447,9 +486,7 @@ export default function CalendarSettingsClient() {
                   <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
 
-                  <div
-                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
-                  >
+                  <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
                     {p.id === "google"
                       ? "Great for Google Workspace teams"
                       : "Great for Microsoft 365 / Outlook users"}
@@ -500,7 +537,6 @@ export default function CalendarSettingsClient() {
         <div className="grid gap-4 md:grid-cols-2">
           {emailProviders.map((p) => {
             const connected = isEmailConnected(p.id);
-            const isPending = pending?.kind === "email" && pending.id === p.id;
 
             return (
               <div
@@ -530,9 +566,7 @@ export default function CalendarSettingsClient() {
                   <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
 
-                  <div
-                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
-                  >
+                  <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
                     {p.id === "google"
                       ? "Requires Gmail / Workspace mail permissions"
                       : "Requires Outlook / Microsoft 365 mail permissions"}
@@ -542,7 +576,7 @@ export default function CalendarSettingsClient() {
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
-                    disabled={loading || isPending || (!p.enabled && !connected)}
+                    disabled={loading || (!p.enabled && !connected)}
                     onClick={() => handleEmailClick(p, connected)}
                     className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
                       connected
@@ -562,6 +596,72 @@ export default function CalendarSettingsClient() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Billing */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Billing Connections</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Connect Stripe to create products, send invoices, and collect payments.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {billingProviders.map((p) => (
+            <div
+              key={p.id}
+              className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+            >
+              <div className="mb-3 flex min-h-[40px] items-center gap-2">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <StripeProviderIcon />
+                </div>
+
+                {isStripeConnected ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Connected
+                  </span>
+                ) : (
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
+                    Billing
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
+                <p className="mt-1 text-xs text-slate-500">{p.description}</p>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={loading || pendingStripe || !p.enabled}
+                  onClick={handleStripeClick}
+                  className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
+                    isStripeConnected
+                      ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
+                  }`}
+                >
+                  {pendingStripe
+                    ? "Working..."
+                    : isStripeConnected
+                    ? "Disconnect Stripe"
+                    : "Connect Stripe (Test)"}
+                </button>
+
+                <p className="text-[11px] leading-snug text-slate-400">
+                  {isStripeConnected
+                    ? "Stripe is connected for this workspace (test mode)."
+                    : "You’ll be redirected to Stripe to authorize access (test mode)."}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

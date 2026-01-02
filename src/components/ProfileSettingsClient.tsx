@@ -1,8 +1,10 @@
 // src/app/(app)/settings/profile/ProfileSettingsClient.tsx
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { PuzzlePieceIcon } from "@heroicons/react/24/outline";
 
 type ProfileState = {
   first_name: string;
@@ -15,7 +17,7 @@ type ProfileState = {
 type OrgState = {
   name: string;
   logo_url: string | null; // path in org-logos bucket
-  primary_color: string;   // hex
+  primary_color: string; // hex
 };
 
 type Status = "idle" | "loading" | "saving" | "saved" | "error";
@@ -47,10 +49,7 @@ export default function ProfileSettingsClient() {
       return;
     }
 
-    if (
-      avatarValue.startsWith("http://") ||
-      avatarValue.startsWith("https://")
-    ) {
+    if (avatarValue.startsWith("http://") || avatarValue.startsWith("https://")) {
       setAvatarSignedUrl(avatarValue);
       return;
     }
@@ -97,8 +96,7 @@ export default function ProfileSettingsClient() {
 
     (async () => {
       try {
-        const { data: userRes, error: userErr } =
-          await supabase.auth.getUser();
+        const { data: userRes, error: userErr } = await supabase.auth.getUser();
         if (userErr || !userRes.user) {
           if (!cancelled) {
             setError("Not signed in.");
@@ -127,9 +125,7 @@ export default function ProfileSettingsClient() {
         }
 
         const rolesArray: string[] = Array.isArray(prof?.role)
-          ? (prof.role as string[]).filter(
-              (r) => typeof r === "string" && r.trim() !== ""
-            )
+          ? (prof.role as string[]).filter((r) => typeof r === "string" && r.trim() !== "")
           : [];
 
         const nextProfile: ProfileState = {
@@ -220,9 +216,7 @@ export default function ProfileSettingsClient() {
 
   // ---------- AVATAR UPLOAD / PROFILE SAVE ----------
 
-  async function handleAvatarChange(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -230,8 +224,7 @@ export default function ProfileSettingsClient() {
       setUploadingAvatar(true);
       setError(null);
 
-      const { data: userRes, error: userErr } =
-        await supabase.auth.getUser();
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) {
         setError("Not signed in.");
         setUploadingAvatar(false);
@@ -279,9 +272,7 @@ export default function ProfileSettingsClient() {
         return;
       }
 
-      setProfile((prev) =>
-        prev ? { ...prev, avatar_url: filePath } : prev
-      );
+      setProfile((prev) => (prev ? { ...prev, avatar_url: filePath } : prev));
       setAvatarSignedUrl(signedUrl);
     } catch (err) {
       console.error("[Profile] avatar upload unexpected error", err);
@@ -299,8 +290,7 @@ export default function ProfileSettingsClient() {
     setError(null);
 
     try {
-      const { data: userRes, error: userErr } =
-        await supabase.auth.getUser();
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) {
         setError("Not signed in.");
         setStatus("error");
@@ -412,9 +402,7 @@ export default function ProfileSettingsClient() {
     }
   }
 
-  async function handleOrgLogoChange(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
+  async function handleOrgLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !isAdmin) return;
 
@@ -490,13 +478,25 @@ export default function ProfileSettingsClient() {
 
   return (
     <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4 space-y-4">
+      {/* Header card + integrations CTA */}
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
-          Profile &amp; organization
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Update your personal account settings and manage your company branding.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Profile &amp; organization</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Update your personal account settings and manage your company branding.
+            </p>
+          </div>
+
+          <Link
+            href="/profile/integrations"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            title="Manage integrations"
+          >
+            <PuzzlePieceIcon className="h-4 w-4" />
+            Integrations
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -514,19 +514,15 @@ export default function ProfileSettingsClient() {
         {/* LEFT: organization (Admin only) */}
         <div className="space-y-3 flex flex-col h-full">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Organization
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-900">Organization</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Update your company name, logo, and primary colour used across
-              Faigata.
+              Update your company name, logo, and primary colour used across Faigata.
             </p>
 
             {!isAdmin && (
               <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                Only <span className="font-semibold">Admins</span> can edit
-                organization settings. Your organization owner can update these
-                details for you.
+                Only <span className="font-semibold">Admins</span> can edit organization settings. Your
+                organization owner can update these details for you.
               </p>
             )}
           </div>
@@ -566,9 +562,7 @@ export default function ProfileSettingsClient() {
                   <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
                     Company logo
                   </span>
-                  <span className="text-[11px] text-slate-400">
-                    PNG or JPG, square works best.
-                  </span>
+                  <span className="text-[11px] text-slate-400">PNG or JPG, square works best.</span>
                   <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                     {uploadingOrgLogo ? "Uploading…" : "Upload logo"}
                     <input
@@ -591,9 +585,7 @@ export default function ProfileSettingsClient() {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={org?.name ?? ""}
                   onChange={(e) =>
-                    setOrg((prev) =>
-                      prev ? { ...prev, name: e.target.value } : prev
-                    )
+                    setOrg((prev) => (prev ? { ...prev, name: e.target.value } : prev))
                   }
                 />
               </div>
@@ -609,33 +601,23 @@ export default function ProfileSettingsClient() {
                     className="h-9 w-9 cursor-pointer rounded-md border border-slate-300 bg-white"
                     value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
                     onChange={(e) =>
-                      setOrg((prev) =>
-                        prev
-                          ? { ...prev, primary_color: e.target.value }
-                          : prev
-                      )
+                      setOrg((prev) => (prev ? { ...prev, primary_color: e.target.value } : prev))
                     }
                   />
                   <input
                     className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
                     onChange={(e) =>
-                      setOrg((prev) =>
-                        prev ? { ...prev, primary_color: e.target.value } : prev
-                      )
+                      setOrg((prev) => (prev ? { ...prev, primary_color: e.target.value } : prev))
                     }
                     placeholder={DEFAULT_PRIMARY_COLOR}
                   />
                 </div>
                 <p className="flex items-center gap-2 text-[11px] text-slate-400">
-                  This colour is used for buttons and highlights in your
-                  workspace.
+                  This colour is used for buttons and highlights in your workspace.
                   <span
                     className="inline-flex h-4 w-10 items-center justify-center rounded-full text-[9px] font-medium text-white"
-                    style={{
-                      backgroundColor:
-                        org?.primary_color || DEFAULT_PRIMARY_COLOR,
-                    }}
+                    style={{ backgroundColor: org?.primary_color || DEFAULT_PRIMARY_COLOR }}
                   >
                     Preview
                   </span>
@@ -679,9 +661,7 @@ export default function ProfileSettingsClient() {
               <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
                 Profile picture
               </span>
-              <span className="text-[11px] text-slate-400">
-                PNG or JPG, up to ~5MB.
-              </span>
+              <span className="text-[11px] text-slate-400">PNG or JPG, up to ~5MB.</span>
               <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                 {uploadingAvatar ? "Uploading…" : "Upload new photo"}
                 <input
@@ -704,9 +684,7 @@ export default function ProfileSettingsClient() {
               <input
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={profile.first_name}
-                onChange={(e) =>
-                  setProfile({ ...profile, first_name: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
               />
             </div>
             <div>
@@ -716,9 +694,7 @@ export default function ProfileSettingsClient() {
               <input
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={profile.last_name}
-                onChange={(e) =>
-                  setProfile({ ...profile, last_name: e.target.value })
-                }
+                onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
               />
             </div>
           </div>
@@ -732,13 +708,10 @@ export default function ProfileSettingsClient() {
               type="email"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={profile.email}
-              onChange={(e) =>
-                setProfile({ ...profile, email: e.target.value })
-              }
+              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              This updates the email tied to your login. You may need to verify
-              the new address.
+              This updates the email tied to your login. You may need to verify the new address.
             </p>
           </div>
 
