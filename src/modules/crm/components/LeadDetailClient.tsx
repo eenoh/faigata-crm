@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { DateTime } from "luxon";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import { supabase } from "@/lib/supabaseClient";
@@ -55,6 +55,10 @@ interface LeadData {
 
   score?: number | null;
   score_updated_at?: string | null;
+
+  // OPTIONAL (if your leads API selects these columns)
+  rejected_count?: number | null;
+  rejected_by?: string[] | null;
 }
 
 /* -------------------- custom field key safety -------------------- */
@@ -146,10 +150,6 @@ type BookingLinkRow = {
   owner_user_id: string | null;
   owner_name: string;
   deleted_at?: string | null;
-};
-
-type LeadDetailClientProps = {
-  leadId?: string;
 };
 
 const RESERVED_CUSTOM_KEYS_NORMALIZED = new Set<string>(["lead_name"].map(normalizeKey));
@@ -430,11 +430,36 @@ function formatLeadCreatedBody(body: string, leadLabel: string) {
   return `New lead added: ${label}`;
 }
 
-/* -------------------- call-outcome timeline helpers (SEPARATE STATES + legacy support) -------------------- */
+/* -------------------- pipeline event helpers -------------------- */
 
 function isPipelineEvent(m: LeadMessage) {
   return (m.channel ?? "").toLowerCase() === "pipeline";
 }
+
+/* -------------------- ✅ lead rejected timeline helpers -------------------- */
+
+function isLeadRejectedEvent(m: LeadMessage) {
+  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("LEAD_REJECTED|");
+}
+
+function parseLeadRejected(body: string) {
+  // LEAD_REJECTED|oldSetterId|newSetterId|count
+  const parts = String(body || "").split("|");
+  const oldSetterId = String(parts[1] ?? "").trim();
+  const newSetterId = String(parts[2] ?? "").trim();
+  const count = Number(parts[3] ?? "0");
+  return { oldSetterId, newSetterId, count: Number.isFinite(count) ? count : 0 };
+}
+
+function formatLeadRejectedBody(body: string, newSetterName?: string | null) {
+  const { count } = parseLeadRejected(body);
+  const suffix = count === 1 ? "(1 rejection)" : `(${count} rejections)`;
+
+  const name = String(newSetterName ?? "").trim();
+  return `Lead rejected ${suffix} · Reassigned to ${name || "another setter"}`;
+}
+
+/* -------------------- call-outcome timeline helpers (SEPARATE STATES + legacy support) -------------------- */
 
 function isCallAttendanceEvent(m: LeadMessage) {
   return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_ATTENDANCE|");
@@ -484,14 +509,6 @@ function formatAttendanceBody(body: string) {
   return `Call status updated: ${statusLabel(prev)} → ${statusLabel(next)}`;
 }
 
-/**
- * Offer-made format supported:
- * - CALL_OFFER_MADE|bookingId|1/0|productId
- * - CALL_OFFER_MADE|bookingId|1/0|productId|productTitle
- *
- * IMPORTANT: your DB stores Stripe product IDs in booking_outcomes.offer_product_id,
- * so productId here may be a Stripe product id (e.g. "prod_...").
- */
 function parseOfferMade(body: string) {
   const parts = String(body || "").split("|");
   const on = String(parts[2] ?? "0").trim() === "1";
@@ -508,15 +525,6 @@ function formatOfferMadeBody(body: string, productTitle: string | null) {
   return `Offer made: ${title}`;
 }
 
-function formatClosedBody(body: string, productTitle: string | null) {
-  const { on } = parseClosedOnCall(body);
-  if (!on) return "Closed on call removed";
-
-  const title = String(productTitle ?? "").trim();
-  return title ? `Closed on call: ${title}` : "Closed on call";
-}
-
-
 function parseClosedOnCall(body: string) {
   // CALL_CLOSED_ON_CALL|bookingId|1/0|productId?
   const parts = String(body || "").split("|");
@@ -525,6 +533,13 @@ function parseClosedOnCall(body: string) {
   return { on, productId };
 }
 
+function formatClosedBody(body: string, productTitle: string | null) {
+  const { on } = parseClosedOnCall(body);
+  if (!on) return "Closed on call removed";
+
+  const title = String(productTitle ?? "").trim();
+  return title ? `Closed on call: ${title}` : "Closed on call";
+}
 
 function iconForLegacyOutcome(body: string) {
   const parts = String(body || "").split("|");
@@ -539,7 +554,6 @@ function iconForLegacyOutcome(body: string) {
 }
 
 function formatLegacyOutcomeBody(body: string) {
-  // CALL_OUTCOME|bookingId|prev|next|offer|closed  -> NEVER show bookingId or raw string
   const parts = String(body || "").split("|");
   const prev = normalizeOutcomeStatus(parts[2] ?? "unknown");
   const next = normalizeOutcomeStatus(parts[3] ?? "unknown");
@@ -553,7 +567,7 @@ function formatLegacyOutcomeBody(body: string) {
   return extras.length ? `${base} · ${extras.join(" · ")}` : base;
 }
 
-/* -------------------- booked call parsing helpers (UNCHANGED) -------------------- */
+/* -------------------- booked call parsing helpers -------------------- */
 
 type BookedCallParse = { kind: "canonical" | "iso" | "wall"; start: DateTime; end: DateTime };
 
@@ -669,11 +683,6 @@ function isStripeProdOrPriceId(id: string) {
   return /^prod_[a-zA-Z0-9]+$/.test(id) || /^price_[a-zA-Z0-9]+$/.test(id);
 }
 
-
-/**
- * Calls /api/stripe/products to resolve Stripe prod_... IDs -> product names.
- * Returns: { [prodId]: "Name" }
- */
 async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
   const uniq: string[] = Array.from(
     new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProdOrPriceId))
@@ -681,7 +690,6 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
   if (uniq.length === 0) return {};
 
   try {
-    // ✅ IMPORTANT: billing endpoints require Authorization
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
     if (!token) return {};
@@ -704,7 +712,7 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
       return {};
     }
 
-    const labels = json?.labels;
+    const labels = (json as any)?.labels;
     if (!labels || typeof labels !== "object") return {};
 
     const out: Record<string, string> = {};
@@ -732,15 +740,172 @@ function logSupabaseError(prefix: string, error: any, extra?: Record<string, any
   });
 }
 
+function InlineAlert({
+  title,
+  message,
+  tone = "warning",
+  onClose,
+}: {
+  title?: string;
+  message: string;
+  tone?: "warning" | "danger" | "info";
+  onClose?: () => void;
+}) {
+  const toneClasses =
+    tone === "danger"
+      ? "border-rose-200 bg-rose-50 text-rose-800"
+      : tone === "info"
+      ? "border-sky-200 bg-sky-50 text-sky-900"
+      : "border-amber-200 bg-amber-50 text-amber-900";
+
+  const icon = tone === "danger" ? "!" : tone === "info" ? "i" : "⚠";
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${toneClasses}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white/60 text-xs font-bold">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            {title && <div className="text-sm font-semibold">{title}</div>}
+            <div className="mt-0.5 text-xs leading-relaxed opacity-90">{message}</div>
+          </div>
+        </div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-2 py-1 text-xs font-semibold opacity-70 hover:opacity-100"
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  open,
+  title,
+  message,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  tone = "warning",
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  tone?: "warning" | "danger" | "info";
+  loading?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+
+  const toneBadge =
+    tone === "danger"
+      ? "bg-rose-50 text-rose-700 ring-rose-200"
+      : tone === "info"
+      ? "bg-sky-50 text-sky-700 ring-sky-200"
+      : "bg-amber-50 text-amber-800 ring-amber-200";
+
+  const confirmBtn =
+    tone === "danger"
+      ? "bg-rose-600 hover:bg-rose-700 text-white"
+      : tone === "info"
+      ? "bg-sky-600 hover:bg-sky-700 text-white"
+      : "bg-amber-600 hover:bg-amber-700 text-white";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onCancel();
+      }}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
+          <span
+            className={[
+              "inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 text-xs font-bold",
+              toneBadge,
+            ].join(" ")}
+          >
+            {tone === "danger" ? "!" : tone === "info" ? "i" : "⚠"}
+          </span>
+
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-xs leading-relaxed text-slate-600">{message}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 bg-slate-50 px-5 py-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {cancelText}
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className={[
+              "rounded-lg px-3 py-2 text-xs font-semibold shadow-sm cursor-pointer",
+              "disabled:opacity-60 disabled:cursor-not-allowed",
+              confirmBtn,
+            ].join(" ")}
+          >
+            {loading ? "Working…" : confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- page component -------------------- */
+
+type LeadDetailClientProps = {
+  /** Optional for old versions that pass page params into the client component */
+  leadId?: string;
+};
 
 export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const router = useRouter();
-  const normalizedLeadId = useMemo(() => safeDecode(String(leadId ?? "")).trim(), [leadId]);
+  const params = useParams<{ id?: string }>();
+
+  // ✅ Works with BOTH:
+  // - old: <LeadDetailClient leadId={params.id} />
+  // - current: route /leads/[id] (useParams)
+  const routeLeadId = params?.id ? String(params.id) : "";
+  const rawLeadId = String(leadId ?? "").trim().length ? String(leadId) : routeLeadId;
+
+  const normalizedLeadId = useMemo(() => safeDecode(String(rawLeadId ?? "")).trim(), [rawLeadId]);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isManagerOrAdmin, setIsManagerOrAdmin] = useState(false);
+  const [isSetter, setIsSetter] = useState(false);
   const [canDeleteLead, setCanDeleteLead] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
 
   const [viewerTz, setViewerTz] = useState<string>("UTC");
 
@@ -813,8 +978,19 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const [hasBookedCalls, setHasBookedCalls] = useState(false);
   const [callsCheckLoading, setCallsCheckLoading] = useState(false);
 
+  // reject state
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState<string | null>(null);
+
   // productId (stripe prod_...) -> productTitle
   const [productLabels, setProductLabels] = useState<Record<string, string>>({});
+
+  // profileId -> "First Last" (used for rejected events + assigned people display)
+  const [profileLabels, setProfileLabels] = useState<Record<string, string>>({});
+
+  // assigned display (setter/closer)
+  const [setterName, setSetterName] = useState<string | null>(null);
+  const [closerName, setCloserName] = useState<string | null>(null);
 
   const activeBookingLinks = useMemo(() => (bookingLinks ?? []).filter((b) => !b.deleted_at), [bookingLinks]);
 
@@ -851,6 +1027,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     if (!currentUserId) return false;
     return String(lead.closer_id ?? "") === String(currentUserId);
   }, [lead, hasBookedCalls, isManagerOrAdmin, currentUserId]);
+
+  const canRejectLead = useMemo(() => {
+    if (!lead) return false;
+    if (!currentUserId) return false;
+
+    const uid = String(currentUserId);
+    const isCurrentSetter = String(lead.setter_id ?? "") === uid;
+    const isCurrentCloser = String(lead.closer_id ?? "") === uid;
+
+    // ✅ setters can reject, but NOT if they are also the closer
+    return isCurrentSetter && isSetter && !isCurrentCloser;
+  }, [lead, currentUserId, isSetter]);
 
   async function resolveAvatarUrl(raw: string | null): Promise<string | null> {
     if (!raw) return null;
@@ -956,6 +1144,174 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return body.includes("calendar event") || body.includes("calendar event:") || body.includes("event:");
   }
 
+  /* -------------------- Booking links loader -------------------- */
+  async function loadBookingLinks(activeTeamId: string): Promise<BookingLinkRow[]> {
+    if (!activeTeamId || !isUuid(activeTeamId)) return [];
+
+    // 1) Load booking links (RLS must allow this for the current user)
+    const { data: links, error: linksErr } = await supabase
+      .from("booking_links")
+      .select("id,name,slug,booking_type,owner_user_id,deleted_at,created_at")
+      .eq("team_id", activeTeamId)
+      .order("created_at", { ascending: false });
+
+    if (linksErr) {
+      console.error("[LeadDetail] booking_links query error:", linksErr);
+      throw new Error(linksErr.message || "Failed to load schedule pages");
+    }
+
+    const ownerIds = Array.from(
+      new Set(
+        (links ?? [])
+          .map((l: any) => String(l.owner_user_id ?? "").trim())
+          .filter(Boolean)
+          .filter(isUuid)
+      )
+    );
+
+    // 2) Load owners (optional; if RLS blocks profiles, we gracefully fallback)
+    let ownerMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+    if (ownerIds.length) {
+      const { data: owners, error: ownersErr } = await supabase
+        .from("profiles")
+        .select("id,first_name,last_name")
+        .in("id", ownerIds);
+
+      if (ownersErr) {
+        console.warn("[LeadDetail] owners lookup blocked/failed:", ownersErr);
+      } else {
+        ownerMap = Object.fromEntries(
+          (owners ?? []).map((p: any) => [
+            String(p.id),
+            { first_name: p.first_name ?? null, last_name: p.last_name ?? null },
+          ])
+        );
+      }
+    }
+
+    // 3) Shape into your UI type
+    const rows: BookingLinkRow[] = (links ?? []).map((row: any) => {
+      const owner = row.owner_user_id ? ownerMap[String(row.owner_user_id)] : null;
+      const owner_name = `${owner?.first_name ?? ""} ${owner?.last_name ?? ""}`.trim();
+
+      return {
+        id: String(row.id),
+        name: String(row.name ?? ""),
+        slug: String(row.slug ?? ""),
+        booking_type: (row.booking_type ?? null) as BookingType | null,
+        owner_user_id: row.owner_user_id ?? null,
+        owner_name: owner_name || "Host",
+        deleted_at: row.deleted_at ?? null,
+      };
+    });
+
+    return rows;
+  }
+
+  /* -------------------- ✅ createBookingInvite -------------------- */
+  async function createBookingInvite(bookingLinkId: string) {
+    if (!teamId) return;
+    if (!leadIdIsUuid) {
+      setInviteError("Lead id must be a UUID to create an invite.");
+      return;
+    }
+
+    setInviteError(null);
+    setInviteSuccess(null);
+    setInviteLoadingId(bookingLinkId);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? null;
+      if (!accessToken) throw new Error("missing_session");
+
+      const res = await fetch("/api/crm/booking-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          teamId,
+          leadId: normalizedLeadId,
+          bookingLinkId,
+        }),
+      });
+
+      const ct = res.headers.get("content-type") ?? "";
+      const json = ct.includes("application/json") ? await res.json().catch(() => ({} as any)) : ({} as any);
+
+      if (!res.ok) {
+        const msg =
+          (json as any)?.error ||
+          (json as any)?.message ||
+          (ct.includes("application/json") ? `Failed to create invite (${res.status})` : await res.text());
+        throw new Error(msg);
+      }
+
+      const inviteUrl: string = String(
+        (json as any)?.url ??
+          (json as any)?.inviteUrl ??
+          (json as any)?.data?.url ??
+          (json as any)?.data?.inviteUrl ??
+          ""
+      ).trim();
+
+      if (!inviteUrl) {
+        throw new Error(
+          "Invite was created but no URL was returned. Update /api/crm/booking-invite to return { url }."
+        );
+      }
+
+      setLastInviteUrl(inviteUrl);
+
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setInviteSuccess("Booking link created and copied to clipboard.");
+      } catch {
+        setInviteSuccess("Booking link created. Copy manually from the latest link box.");
+      }
+    } catch (e: any) {
+      setInviteError(String(e?.message ?? "Failed to create booking invite"));
+    } finally {
+      setInviteLoadingId(null);
+    }
+  }
+
+  /* ---------- Reject action ---------- */
+  async function confirmRejectLead() {
+    if (!teamId || !normalizedLeadId) return;
+    if (!canRejectLead) return;
+
+    setRejecting(true);
+    setRejectError(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? null;
+      if (!accessToken) throw new Error("missing_session");
+
+      const res = await fetch(`/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ teamId }),
+      });
+
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok) throw new Error((json as any)?.error || `reject_failed_${res.status}`);
+
+      router.push("/leads");
+    } catch (e: any) {
+      setRejectError(String(e?.message ?? "Failed to reject lead"));
+    } finally {
+      setRejecting(false);
+      setRejectConfirmOpen(false);
+    }
+  }
+
   /* ---------- 1) Load teamId + role + current user id ---------- */
   useEffect(() => {
     let cancelled = false;
@@ -969,6 +1325,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             setTeamId(null);
             setCurrentUserId(null);
             setIsManagerOrAdmin(false);
+            setIsSetter(false);
             setCanDeleteLead(false);
             setWorkspaceLoaded(true);
           }
@@ -984,25 +1341,28 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           .eq("id", userId)
           .single();
 
-        let tId: string | null = profile?.team_id ?? null;
+        let tId: string | null = (profile as any)?.team_id ?? null;
 
         if (!tId) {
           const metaTeam = (userRes.user.user_metadata as any)?.primary_team_id;
           if (typeof metaTeam === "string" && metaTeam.length > 0) tId = metaTeam;
         }
 
-        const roles = (profile?.role ?? []) as string[];
+        const roles = (((profile as any)?.role ?? []) as string[]) ?? [];
         const normRoles = roles.map((r) => String(r).trim().toLowerCase());
+
         const managerOrAdmin = normRoles.includes("manager") || normRoles.includes("admin");
+        const setter = normRoles.includes("setter");
 
         if (!cancelled) {
           setTeamId(tId);
           setWorkspaceLoaded(true);
           setIsManagerOrAdmin(managerOrAdmin);
+          setIsSetter(setter);
           setCanDeleteLead(managerOrAdmin);
         }
 
-        if (profileError && profileError.code !== "PGRST116") {
+        if (profileError && (profileError as any).code !== "PGRST116") {
           logSupabaseError("[LeadDetail] Failed to load profile", profileError);
         }
       } catch (err) {
@@ -1011,6 +1371,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           setTeamId(null);
           setCurrentUserId(null);
           setIsManagerOrAdmin(false);
+          setIsSetter(false);
           setCanDeleteLead(false);
           setWorkspaceLoaded(true);
         }
@@ -1057,12 +1418,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         if (!leadRes) {
           setLead(null);
           setCreator(null);
+          setSetterName(null);
+          setCloserName(null);
           return;
         }
 
         const normalized = { ...leadRes, custom_values: leadRes.custom_values ?? {} };
         setLead(normalized);
 
+        // prospector (creator)
         setCreator(null);
         if (leadRes.prospector_id) {
           const { data: creatorProfile, error: creatorError } = await supabase
@@ -1072,10 +1436,57 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             .maybeSingle();
 
           if (!cancelled && !creatorError && creatorProfile) {
-            const signedAvatar = await resolveAvatarUrl(creatorProfile.avatar_url);
-            if (!cancelled) setCreator({ ...creatorProfile, avatar_url: signedAvatar });
+            const signedAvatar = await resolveAvatarUrl((creatorProfile as any).avatar_url);
+            if (!cancelled)
+              setCreator({
+                id: (creatorProfile as any).id,
+                first_name: (creatorProfile as any).first_name,
+                last_name: (creatorProfile as any).last_name,
+                avatar_url: signedAvatar,
+              });
           } else if (creatorError) {
             logSupabaseError("[LeadDetail] Failed to load creator profile", creatorError);
+          }
+        }
+
+        // setter + closer display names
+        const idsToLoad = [leadRes.setter_id, leadRes.closer_id]
+          .map((x) => String(x ?? "").trim())
+          .filter(Boolean)
+          .filter(isUuid);
+
+        if (idsToLoad.length) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("id", idsToLoad);
+
+          if (error) {
+            logSupabaseError("[LeadDetail] Failed to load assigned names", error);
+          } else {
+            const map: Record<string, string> = {};
+            for (const p of (data ?? []) as any[]) {
+              const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+              map[p.id] = full || "Team member";
+            }
+
+            // ✅ avoid stale closure issues by computing merged labels once
+            const merged = { ...profileLabels, ...map };
+
+            if (!cancelled && Object.keys(map).length) {
+              setProfileLabels(merged);
+
+              const sId = String(leadRes.setter_id ?? "").trim();
+              const cId = String(leadRes.closer_id ?? "").trim();
+
+              setSetterName(sId ? merged[sId] ?? "Team member" : null);
+              setCloserName(cId ? merged[cId] ?? "Team member" : null);
+            }
+          }
+        } else {
+          if (!cancelled) {
+            setSetterName(null);
+            setCloserName(null);
           }
         }
       } catch (err) {
@@ -1083,6 +1494,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         if (!cancelled) {
           setLead(null);
           setCreator(null);
+          setSetterName(null);
+          setCloserName(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -1092,7 +1505,33 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceLoaded, teamId, hasLeadId, normalizedLeadId]);
+
+  /* ---------- 2.5) Check if lead has calls (used by canSeeCallsButton) ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!workspaceLoaded) return;
+      if (!teamId) return;
+      if (!leadIdIsUuid) return;
+
+      setCallsCheckLoading(true);
+      try {
+        const has = await fetchHasCalls(teamId, normalizedLeadId);
+        if (!cancelled) setHasBookedCalls(has);
+      } catch {
+        if (!cancelled) setHasBookedCalls(false);
+      } finally {
+        if (!cancelled) setCallsCheckLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceLoaded, teamId, leadIdIsUuid, normalizedLeadId]);
 
   /* ---------- 3) Load messages ---------- */
   useEffect(() => {
@@ -1127,7 +1566,35 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     };
   }, [workspaceLoaded, teamId, hasLeadId, normalizedLeadId]);
 
-  /* ---------- 3.1) Build timeline list (newest at top, lead-created at bottom) ---------- */
+  /* ---------- 3.05) Load schedule pages when modal opens ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!isBookingModalOpen) return;
+      if (!teamId) return;
+
+      setInviteError(null);
+      setInviteSuccess(null);
+      setBookingLinksError(null);
+      setBookingLinksLoading(true);
+
+      try {
+        const rows = await loadBookingLinks(teamId);
+        if (!cancelled) setBookingLinks(rows);
+      } catch (e: any) {
+        if (!cancelled) setBookingLinksError(String(e?.message ?? "Failed to load schedule pages"));
+      } finally {
+        if (!cancelled) setBookingLinksLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isBookingModalOpen, teamId]);
+
+  /* ---------- 3.1) Build timeline list ---------- */
   const leadLabel: string = useMemo(() => {
     if (!lead) return "Lead in pipeline";
 
@@ -1209,7 +1676,52 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return finalList;
   }, [messages, lead, leadLabel, creator]);
 
-  /* ---------- 3.2) Product title lookup for offer-made items (Stripe) ---------- */
+  /* ---------- ✅ Load profile names for rejected events (old/new setter ids) ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const ids = (timelineMessages ?? [])
+        .filter(isLeadRejectedEvent)
+        .map((m) => parseLeadRejected(m.body))
+        .flatMap(({ oldSetterId, newSetterId }) => [oldSetterId, newSetterId])
+        .map((x) => String(x || "").trim())
+        .filter(Boolean)
+        .filter(isUuid);
+
+      const uniq = Array.from(new Set(ids));
+      if (uniq.length === 0) return;
+
+      const missing = uniq.filter((id) => !profileLabels[id]);
+      if (missing.length === 0) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", missing);
+
+      if (error) {
+        console.error("[LeadDetail] failed to load setter names", error);
+        return;
+      }
+
+      const map: Record<string, string> = {};
+      for (const p of (data ?? []) as any[]) {
+        const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+        if (p.id) map[p.id] = full || "Team member";
+      }
+
+      if (!cancelled && Object.keys(map).length) {
+        setProfileLabels((prev) => ({ ...prev, ...map }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [timelineMessages, profileLabels]);
+
+  /* ---------- Product title lookup for offer-made items (Stripe) ---------- */
   useEffect(() => {
     let cancelled = false;
 
@@ -1242,205 +1754,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       cancelled = true;
     };
   }, [timelineMessages, productLabels]);
-
-  /* ---------- 3.5) Determine if lead booked calls (Calls button) ---------- */
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      if (!workspaceLoaded) return;
-
-      const tId = teamId;
-      if (!tId) return;
-      if (!hasLeadId) return;
-      if (!lead) return;
-
-      const allowed = isManagerOrAdmin || (currentUserId && String(lead.closer_id ?? "") === String(currentUserId));
-
-      if (!allowed) {
-        if (!cancelled) setHasBookedCalls(false);
-        return;
-      }
-
-      try {
-        setCallsCheckLoading(true);
-        const yes = await fetchHasCalls(tId, normalizedLeadId);
-        if (!cancelled) setHasBookedCalls(yes);
-      } finally {
-        if (!cancelled) setCallsCheckLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceLoaded, teamId, hasLeadId, normalizedLeadId, lead, lead?.closer_id, isManagerOrAdmin, currentUserId]);
-
-  /* ---------- 4) Load booking links ---------- */
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      if (!workspaceLoaded) return;
-
-      const tId = teamId;
-
-      if (!tId) return;
-      if (!canManageLeadActions) return;
-
-      try {
-        setBookingLinksLoading(true);
-        setBookingLinksError(null);
-
-        const { data, error } = await supabase
-          .from("booking_links")
-          .select("id, name, slug, booking_type, owner_user_id, deleted_at")
-          .eq("team_id", tId)
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          logSupabaseError("[LeadDetail] booking_links load error", error);
-          if (!cancelled) setBookingLinksError("Failed to load booking links.");
-          return;
-        }
-
-        const rows = (data ?? []) as {
-          id: string;
-          name: string;
-          slug: string;
-          booking_type: BookingType | null;
-          owner_user_id: string | null;
-          deleted_at: string | null;
-        }[];
-
-        const ownerIds = Array.from(new Set(rows.map((r) => r.owner_user_id).filter(Boolean) as string[]));
-
-        const ownerMap = new Map<string, string>();
-        if (ownerIds.length) {
-          const { data: owners, error: ownerErr } = await supabase
-            .from("profiles")
-            .select("id, first_name, last_name")
-            .in("id", ownerIds);
-
-          if (ownerErr) {
-            logSupabaseError("[LeadDetail] owners load error", ownerErr);
-          } else {
-            (owners ?? []).forEach((p: any) => {
-              const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
-              ownerMap.set(p.id, full || "Host");
-            });
-          }
-        }
-
-        const hydrated: BookingLinkRow[] = rows.map((r) => ({
-          ...r,
-          owner_name: r.owner_user_id ? ownerMap.get(r.owner_user_id) ?? "Host" : "Host",
-        }));
-
-        if (!cancelled) setBookingLinks(hydrated);
-      } catch (e) {
-        console.error("[LeadDetail] booking_links load unexpected:", e);
-        if (!cancelled) setBookingLinksError("Failed to load booking links.");
-      } finally {
-        if (!cancelled) setBookingLinksLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceLoaded, teamId, canManageLeadActions]);
-
-  async function createBookingInvite(bookingLinkId: string) {
-    if (!canManageLeadActions) return;
-
-    if (!leadIdIsUuid) {
-      setInviteError("Invalid lead id (expected UUID).");
-      return;
-    }
-    if (!isUuid(bookingLinkId)) {
-      setInviteError("Invalid booking link id.");
-      return;
-    }
-
-    const selected = bookingLinks.find((b) => b.id === bookingLinkId);
-    if (selected?.deleted_at) {
-      setInviteError("That schedule page was deleted and can’t be used.");
-      return;
-    }
-
-    setInviteLoadingId(bookingLinkId);
-    setInviteError(null);
-    setInviteSuccess(null);
-
-    try {
-      const res = await fetch(`/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/booking-invite`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingLinkId }),
-      });
-
-      const json = await res.json().catch(() => ({} as any));
-      if (!res.ok) throw new Error(json?.error || `invite_failed_${res.status}`);
-
-      const relativeUrl = String(json?.url || "");
-      if (!relativeUrl) throw new Error("invite_missing_url");
-
-      const fullUrl = `${window.location.origin}${relativeUrl}`;
-      setLastInviteUrl(fullUrl);
-
-      try {
-        await navigator.clipboard.writeText(fullUrl);
-        setInviteSuccess("Booking link copied to clipboard.");
-      } catch {
-        setInviteSuccess("Booking link created (copy manually below).");
-      }
-
-      const tId = teamId;
-
-      if (tId) {
-        setMessagesLoading(true);
-        try {
-          const loaded = await fetchMessages(tId, normalizedLeadId);
-          setMessages(loaded);
-        } finally {
-          setMessagesLoading(false);
-        }
-
-        const allowed = isManagerOrAdmin || (currentUserId && String(lead?.closer_id ?? "") === String(currentUserId));
-        if (allowed) {
-          setCallsCheckLoading(true);
-          try {
-            const yes = await fetchHasCalls(tId, normalizedLeadId);
-            setHasBookedCalls(yes);
-          } finally {
-            setCallsCheckLoading(false);
-          }
-        } else {
-          setHasBookedCalls(false);
-        }
-      }
-    } catch (e: any) {
-      setInviteError(String(e?.message ?? "Failed to create booking link"));
-    } finally {
-      setInviteLoadingId(null);
-    }
-  }
-
-  useEffect(() => {
-    if (!isBookingModalOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsBookingModalOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isBookingModalOpen]);
-
-  useEffect(() => {
-    if (!isBookingModalOpen) return;
-    setInviteError(null);
-    setInviteSuccess(null);
-  }, [isBookingModalOpen]);
 
   /* ---------- early returns ---------- */
   if (!mounted || !workspaceLoaded || loading) {
@@ -1491,9 +1804,20 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">{leadLabel}</h1>
               <p className="text-sm text-slate-500">Created on {createdLabel}</p>
+              {rejectError && (
+                <div className="mt-3">
+                  <InlineAlert
+                    tone="warning"
+                    title="Couldn’t reject lead"
+                    message={rejectError}
+                    onClose={() => setRejectError(null)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
+              {/* ✅ restored Calls button */}
               {canSeeCallsButton && (
                 <button
                   type="button"
@@ -1524,6 +1848,24 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 </button>
               )}
 
+              {canRejectLead && (
+                <button
+                  type="button"
+                  disabled={rejecting}
+                  onClick={() => setRejectConfirmOpen(true)}
+                  className={[
+                    "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px]",
+                    "border border-amber-200 bg-amber-50 text-amber-900",
+                    "hover:bg-amber-100 hover:border-amber-300",
+                    "shadow-sm",
+                    "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer",
+                  ].join(" ")}
+                  title="Reject this lead and reassign to another setter"
+                >
+                  {rejecting ? "Rejecting…" : "Reject"}
+                </button>
+              )}
+
               {canManageLeadActions && (
                 <button
                   type="button"
@@ -1545,6 +1887,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               )}
             </div>
           </div>
+
+          <ConfirmModal
+            open={rejectConfirmOpen}
+            tone="warning"
+            title="Reject Lead?"
+            message="This lead will be reassigned to another team member and logged in the timeline."
+            confirmText="Reject Lead"
+            cancelText="Cancel"
+            loading={rejecting}
+            onCancel={() => setRejectConfirmOpen(false)}
+            onConfirm={confirmRejectLead}
+          />
 
           {/* Score */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
@@ -1574,6 +1928,33 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
               {lead.stage || "—"}
             </span>
+          </div>
+
+          {/* Assigned (closer only if not null) */}
+          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">Assigned</h2>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Prospector</p>
+                <p className="text-sm text-slate-800">
+                  {creator ? `${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "Team member" : "—"}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Setter</p>
+                <p className="text-sm text-slate-800">{lead.setter_id ? safeValue(setterName ?? "Team member") : "—"}</p>
+              </div>
+
+              {/* ✅ REQUIRED: closer only renders when closer_id is NOT null */}
+              {lead.closer_id ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Closer</p>
+                  <p className="text-sm text-slate-800">{safeValue(closerName ?? "Team member")}</p>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {/* Core details */}
@@ -1634,6 +2015,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 )}
               </div>
 
+              {/* ✅ restored Source fields */}
               <div className="space-y-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Source Category</p>
                 <div className="flex flex-wrap gap-2">
@@ -1662,7 +2044,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             </div>
           </div>
 
-          {/* Custom fields */}
+          {/* ✅ restored Custom fields */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold text-slate-800">Additional Fields</h2>
 
@@ -1702,7 +2084,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             )}
           </div>
 
-          {/* Notes */}
+          {/* ✅ restored Notes */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
             <div className="mb-3">
               <h2 className="text-sm font-semibold text-slate-800">Notes</h2>
@@ -1747,26 +2129,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {messagesLoading ? (
-              <div className="space-y-3 animate-pulse">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className="flex gap-2">
-                    <div className="h-8 w-8 rounded-full bg-slate-100" />
-                    <div className="flex-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="space-y-2">
-                          <div className="h-3 w-44 rounded bg-slate-100" />
-                          <div className="h-3 w-32 rounded bg-slate-100" />
-                        </div>
-                        <div className="h-3 w-24 rounded bg-slate-100" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-3 w-full rounded bg-slate-100" />
-                        <div className="h-3 w-2/3 rounded bg-slate-100" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-slate-500">Loading…</p>
             ) : timelineMessages.length === 0 ? (
               <p className="text-xs text-slate-500">No messages yet.</p>
             ) : (
@@ -1785,6 +2148,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   const isBookedCallEvent = isPipeline && isBookedCallMessage(m);
 
                   const isLeadCreatedEvent = isLeadCreatedTimelineMessage(m);
+                  const isRejectedEvent = isLeadRejectedEvent(m);
 
                   const isAttendance = isCallAttendanceEvent(m);
                   const isOfferMade = isCallOfferMadeEvent(m);
@@ -1796,10 +2160,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   const last = m.sender?.last_name ?? "";
                   const fullName = `${first} ${last}`.trim();
 
-                  const prospectorName =
-                    fullName || `${creator?.first_name ?? ""} ${creator?.last_name ?? ""}`.trim() || "Team member";
+                  const prospectorName = fullName || "Team member";
 
-                  // ✅ NO "Setter" label; show actual user (sender). Inbound = lead name.
                   const authorName = isInbound ? leadLabel : isLeadCreatedEvent ? prospectorName : fullName || "Team member";
                   const roleLabel = isInbound ? "Lead" : "Team";
 
@@ -1808,10 +2170,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   const tsLabel = fmtMessageTimestamp(m.sent_at, viewerTz || "UTC");
 
-                  // ✅ icon selection
                   let pipelineIcon = "/icons/stage-change.svg";
-
                   if (isLeadCreatedEvent) pipelineIcon = "/icons/new-lead.svg";
+                  else if (isRejectedEvent) pipelineIcon = "/icons/lead-rejected.svg";
                   else if (isAttendance) {
                     const parts = String(m.body || "").split("|");
                     const next = parts[3] ?? "unknown";
@@ -1827,6 +2188,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   const pipelineAlt = isLeadCreatedEvent
                     ? "New lead"
+                    : isRejectedEvent
+                    ? "Lead rejected"
                     : isAttendance
                     ? "Call status"
                     : isOfferMade
@@ -1841,13 +2204,14 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     ? "Booking link sent"
                     : "Pipeline activity";
 
-                  // Product title for offer/closed-made (productId is Stripe prod_...)
                   const offerParsed = isOfferMade ? parseOfferMade(m.body) : null;
                   const offerTitle = offerParsed?.productId ? productLabels[offerParsed.productId] ?? null : null;
 
                   const closedParsed = isClosed ? parseClosedOnCall(m.body) : null;
                   const closedTitle = closedParsed?.productId ? productLabels[closedParsed.productId] ?? null : null;
 
+                  const rejectedParsed = isRejectedEvent ? parseLeadRejected(m.body) : null;
+                  const newSetterName = rejectedParsed?.newSetterId ? profileLabels[rejectedParsed.newSetterId] ?? null : null;
 
                   return (
                     <div key={m.id} className="flex gap-2">
@@ -1888,6 +2252,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           <p className="whitespace-pre-wrap text-[11px] text-slate-800">
                             {isLeadCreatedEvent
                               ? formatLeadCreatedBody(m.body, leadLabel)
+                              : isRejectedEvent
+                              ? formatLeadRejectedBody(m.body, newSetterName)
                               : isAttendance
                               ? formatAttendanceBody(m.body)
                               : isOfferMade

@@ -5,11 +5,6 @@ export const metadata: Metadata = {
   title: "Lead Details",
 };
 
-export default async function LeadDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params; // ✅ important in Next 16
-  return <LeadDetailClient leadId={id} />;
+export default async function LeadDetailPage() {
+  return <LeadDetailClient />;
 }
