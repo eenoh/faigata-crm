@@ -1,0 +1,11 @@
+<!-- public/icons/call-cancelled.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <circle cx="16" cy="16" r="15" fill="#F1F5F9" stroke="#CBD5E1"></circle>
+
+  <!-- Calendar (same style/color as the others) -->
+  <path d="M10.2 12.2h11.6c1 0 1.8.8 1.8 1.8v9.1c0 1-.8 1.8-1.8 1.8H10.2c-1 0-1.8-.8-1.8-1.8V14c0-1 .8-1.8 1.8-1.8z" stroke="#4F46E5" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+  <path d="M12.1 9.9v3.1M19.9 9.9v3.1M8.4 16.0h15.2" stroke="#4F46E5" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  <!-- Smaller cancel X INSIDE the calendar -->
+  <path d="M13.4 18.2l5.2 5.2M18.6 18.2l-5.2 5.2" stroke="#F43F5E" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>

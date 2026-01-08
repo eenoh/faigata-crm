@@ -1,6 +1,6 @@
 // src/app/(app)/billing/invoices/[invoiceId]/page.tsx
 import type { Metadata } from "next";
-import InvoiceDetailClient from "@/modules/billing/components/InvoiceDetailClient";
+import InvoiceDetailClient from "../../../../../modules/billing/components/InvoiceDetailClient";
 
 export const metadata: Metadata = {
   title: "Invoice",

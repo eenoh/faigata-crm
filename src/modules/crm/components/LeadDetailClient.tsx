@@ -11,7 +11,6 @@ interface LeadData {
   id: string;
   stage: string;
 
-  // ✅ real column
   lead_name?: string | null;
 
   niche: string | null;
@@ -202,6 +201,33 @@ async function fetchScoreConfig(teamId: string): Promise<ScoreThresholds | null>
   return { low, high };
 }
 
+/* -------------------- has-calls helper -------------------- */
+
+async function fetchHasCalls(teamId: string, leadId: string): Promise<boolean> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token ?? null;
+
+    const res = await fetch(
+      `/api/crm/leads/${encodeURIComponent(leadId)}/calls?teamId=${encodeURIComponent(teamId)}`,
+      {
+        method: "GET",
+        cache: "no-store",
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      }
+    );
+
+    const ct = res.headers.get("content-type") ?? "";
+    if (!res.ok || !ct.includes("application/json")) return false;
+
+    const json = await res.json().catch(() => null);
+    const calls = (json as any)?.calls;
+    return Array.isArray(calls) && calls.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /* -------------------- loading UI (page skeleton) -------------------- */
 
 function SkeletonLine({ w = "w-full" }: { w?: string }) {
@@ -323,12 +349,6 @@ function fmtMessageTimestamp(iso: string, zone: string) {
   return dt.toLocaleString(DateTime.DATETIME_SHORT);
 }
 
-function floorIsoToMinute(iso: string): string {
-  const dt = DateTime.fromISO(iso, { setZone: true });
-  if (!dt.isValid) return iso;
-  return dt.set({ second: 0, millisecond: 0 }).toUTC().toISO({ suppressMilliseconds: true }) || iso;
-}
-
 /* -------------------- small formatting helpers -------------------- */
 
 function labelizeEnum(v: string | null | undefined) {
@@ -392,7 +412,7 @@ function contactHref(type: LeadData["primary_contact_type"], value: string) {
   return null;
 }
 
-/* -------------------- NEW: lead-created timeline helpers -------------------- */
+/* -------------------- lead-created timeline helpers -------------------- */
 
 function isLeadCreatedTimelineMessage(m: LeadMessage) {
   const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
@@ -407,9 +427,312 @@ function formatLeadCreatedBody(body: string, leadLabel: string) {
   const parts = raw.split("|");
   const labelFromBody = (parts[1] ?? "").trim();
   const label = labelFromBody || leadLabel;
-
   return `New lead added: ${label}`;
 }
+
+/* -------------------- call-outcome timeline helpers (SEPARATE STATES + legacy support) -------------------- */
+
+function isPipelineEvent(m: LeadMessage) {
+  return (m.channel ?? "").toLowerCase() === "pipeline";
+}
+
+function isCallAttendanceEvent(m: LeadMessage) {
+  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_ATTENDANCE|");
+}
+function isCallOfferMadeEvent(m: LeadMessage) {
+  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_OFFER_MADE|");
+}
+function isCallClosedEvent(m: LeadMessage) {
+  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_CLOSED_ON_CALL|");
+}
+
+/**
+ * Legacy combined format that you still have in DB:
+ * CALL_OUTCOME|<bookingId>|<prevStatus>|<nextStatus>|<offerMade0/1>|<closed0/1>
+ */
+function isLegacyCallOutcomeEvent(m: LeadMessage) {
+  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_OUTCOME|");
+}
+
+function normalizeOutcomeStatus(v: string) {
+  const s = String(v ?? "").trim().toLowerCase();
+  const allowed = new Set(["unknown", "attended", "no_show", "cancelled", "rescheduled"]);
+  return allowed.has(s) ? s : "unknown";
+}
+
+function statusLabel(s: string) {
+  const v = normalizeOutcomeStatus(s);
+  if (v === "no_show") return "No-show";
+  if (v === "unknown") return "Unknown";
+  return v.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function iconForAttendance(nextStatus: string) {
+  const s = normalizeOutcomeStatus(nextStatus);
+  if (s === "attended") return "/icons/call-attended.svg";
+  if (s === "no_show") return "/icons/call-no-show.svg";
+  if (s === "cancelled") return "/icons/call-cancelled.svg";
+  if (s === "rescheduled") return "/icons/call-rescheduled.svg";
+  return "/icons/booked-call.svg";
+}
+
+function formatAttendanceBody(body: string) {
+  // CALL_ATTENDANCE|bookingId|prev|next
+  const parts = String(body || "").split("|");
+  const prev = normalizeOutcomeStatus(parts[2] ?? "unknown");
+  const next = normalizeOutcomeStatus(parts[3] ?? "unknown");
+  return `Call status updated: ${statusLabel(prev)} → ${statusLabel(next)}`;
+}
+
+/**
+ * Offer-made format supported:
+ * - CALL_OFFER_MADE|bookingId|1/0|productId
+ * - CALL_OFFER_MADE|bookingId|1/0|productId|productTitle
+ *
+ * IMPORTANT: your DB stores Stripe product IDs in booking_outcomes.offer_product_id,
+ * so productId here may be a Stripe product id (e.g. "prod_...").
+ */
+function parseOfferMade(body: string) {
+  const parts = String(body || "").split("|");
+  const on = String(parts[2] ?? "0").trim() === "1";
+  const productId = String(parts[3] ?? "").trim();
+  const productTitleInline = String(parts[4] ?? "").trim(); // optional
+  return { on, productId, productTitleInline };
+}
+
+function formatOfferMadeBody(body: string, productTitle: string | null) {
+  const { on, productTitleInline } = parseOfferMade(body);
+  if (!on) return "Offer removed";
+
+  const title = productTitleInline || productTitle || "Product";
+  return `Offer made: ${title}`;
+}
+
+function formatClosedBody(body: string, productTitle: string | null) {
+  const { on } = parseClosedOnCall(body);
+  if (!on) return "Closed on call removed";
+
+  const title = String(productTitle ?? "").trim();
+  return title ? `Closed on call: ${title}` : "Closed on call";
+}
+
+
+function parseClosedOnCall(body: string) {
+  // CALL_CLOSED_ON_CALL|bookingId|1/0|productId?
+  const parts = String(body || "").split("|");
+  const on = String(parts[2] ?? "0").trim() === "1";
+  const productId = String(parts[3] ?? "").trim(); // optional
+  return { on, productId };
+}
+
+
+function iconForLegacyOutcome(body: string) {
+  const parts = String(body || "").split("|");
+  const next = parts[3] ?? "unknown";
+  const offer = String(parts[4] ?? "0").trim() === "1";
+  const closed = String(parts[5] ?? "0").trim() === "1";
+
+  if (closed) return "/icons/call-closed.svg";
+  if (offer) return "/icons/call-offer-made.svg";
+
+  return iconForAttendance(next);
+}
+
+function formatLegacyOutcomeBody(body: string) {
+  // CALL_OUTCOME|bookingId|prev|next|offer|closed  -> NEVER show bookingId or raw string
+  const parts = String(body || "").split("|");
+  const prev = normalizeOutcomeStatus(parts[2] ?? "unknown");
+  const next = normalizeOutcomeStatus(parts[3] ?? "unknown");
+  const offer = String(parts[4] ?? "0").trim() === "1";
+  const closed = String(parts[5] ?? "0").trim() === "1";
+
+  const base = `Call status updated: ${statusLabel(prev)} → ${statusLabel(next)}`;
+  const extras: string[] = [];
+  if (offer) extras.push("Offer made");
+  if (closed) extras.push("Closed on call");
+  return extras.length ? `${base} · ${extras.join(" · ")}` : base;
+}
+
+/* -------------------- booked call parsing helpers (UNCHANGED) -------------------- */
+
+type BookedCallParse = { kind: "canonical" | "iso" | "wall"; start: DateTime; end: DateTime };
+
+function extractBookedCallRange(body: string): {
+  kind: "instant" | "wall";
+  startRaw: string;
+  endRaw: string;
+  tz: string | null;
+  source: "canonical" | "iso" | "wall";
+} | null {
+  const s = body || "";
+
+  const canonical = s.match(/BOOKED_CALL\|([^|]+)\|([^|]+)(?:\|([^|]+))?/i);
+  if (canonical) {
+    return {
+      kind: "instant",
+      startRaw: canonical[1].trim(),
+      endRaw: canonical[2].trim(),
+      tz: canonical[3] ? canonical[3].trim() : null,
+      source: "canonical",
+    };
+  }
+
+  const iso = s.match(
+    /(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))\s*(?:→|—|–|-)\s*(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))(?:\s*\(([^)]+)\))?/i
+  );
+  if (iso) {
+    return {
+      kind: "instant",
+      startRaw: iso[1],
+      endRaw: iso[2],
+      tz: iso[3] ? String(iso[3]).trim() : null,
+      source: "iso",
+    };
+  }
+
+  const wall = s.match(
+    /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*(?:→|—|–|-)\s*(\d{2}:\d{2})(?:\s*\(([^)]+)\))?/i
+  );
+  if (wall) {
+    const date = wall[1];
+    const startTime = wall[2];
+    const endTime = wall[3];
+    return {
+      kind: "wall",
+      startRaw: `${date} ${startTime}`,
+      endRaw: `${date} ${endTime}`,
+      tz: wall[4] ? String(wall[4]).trim() : null,
+      source: "wall",
+    };
+  }
+
+  return null;
+}
+
+function parseBookedCall(body: string): BookedCallParse | null {
+  const parsed = extractBookedCallRange(body);
+  if (!parsed) return null;
+
+  const sourceZone = parsed.tz || "UTC";
+
+  if (parsed.kind === "instant") {
+    const hasOffsetStart = /[zZ]|[+-]\d{2}:\d{2}$/.test(parsed.startRaw);
+    const hasOffsetEnd = /[zZ]|[+-]\d{2}:\d{2}$/.test(parsed.endRaw);
+
+    const s =
+      parsed.tz && !hasOffsetStart
+        ? DateTime.fromISO(parsed.startRaw, { zone: sourceZone })
+        : DateTime.fromISO(parsed.startRaw, { setZone: true });
+
+    const e =
+      parsed.tz && !hasOffsetEnd
+        ? DateTime.fromISO(parsed.endRaw, { zone: sourceZone })
+        : DateTime.fromISO(parsed.endRaw, { setZone: true });
+
+    if (!s.isValid || !e.isValid) return null;
+
+    return { kind: parsed.source === "canonical" ? "canonical" : "iso", start: s, end: e };
+  }
+
+  const s = DateTime.fromFormat(parsed.startRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
+  const e = DateTime.fromFormat(parsed.endRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
+  if (!s.isValid || !e.isValid) return null;
+
+  return { kind: "wall", start: s, end: e };
+}
+
+function isBookedCallMessage(m: LeadMessage) {
+  const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
+  if (!isPipeline) return false;
+  const body = (m.body ?? "").toLowerCase();
+  return body.includes("booked a call") || body.includes("call booked for") || body.includes("booked_call|");
+}
+
+function formatBookedCallBody(body: string, viewerTz: string) {
+  const parsed = parseBookedCall(body);
+  if (!parsed) return body;
+
+  const targetZone = viewerTz || "UTC";
+  const startLocal = parsed.start.setZone(targetZone);
+  const endLocal = parsed.end.setZone(targetZone);
+
+  const dateLabel = startLocal.toLocaleString({ weekday: "short", month: "short", day: "numeric" });
+  const startTime = startLocal.toLocaleString(DateTime.TIME_SIMPLE);
+  const endTime = endLocal.toLocaleString(DateTime.TIME_SIMPLE);
+
+  return `Call booked for ${dateLabel} · ${startTime} – ${endTime}`;
+}
+
+/* -------------------- stripe product title lookup (for offer-made events) -------------------- */
+
+function isStripeProdOrPriceId(id: string) {
+  return /^prod_[a-zA-Z0-9]+$/.test(id) || /^price_[a-zA-Z0-9]+$/.test(id);
+}
+
+
+/**
+ * Calls /api/stripe/products to resolve Stripe prod_... IDs -> product names.
+ * Returns: { [prodId]: "Name" }
+ */
+async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
+  const uniq: string[] = Array.from(
+    new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProdOrPriceId))
+  );
+  if (uniq.length === 0) return {};
+
+  try {
+    // ✅ IMPORTANT: billing endpoints require Authorization
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return {};
+
+    const res = await fetch("/api/billing/products/labels", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ids: uniq }),
+      cache: "no-store",
+    });
+
+    const ct = res.headers.get("content-type") ?? "";
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok || !ct.includes("application/json")) {
+      console.error("[LeadDetail] /api/billing/products/labels failed", res.status, ct, json);
+      return {};
+    }
+
+    const labels = json?.labels;
+    if (!labels || typeof labels !== "object") return {};
+
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(labels)) {
+      const name = String(v ?? "").trim();
+      if (name) out[String(k)] = name;
+    }
+    return out;
+  } catch (e) {
+    console.error("[LeadDetail] fetchStripeProductLabels error", e);
+    return {};
+  }
+}
+
+/* -------------------- misc logging helper -------------------- */
+
+function logSupabaseError(prefix: string, error: any, extra?: Record<string, any>) {
+  if (!error) return;
+  console.error(prefix, {
+    code: error?.code,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+    ...extra,
+  });
+}
+
+/* -------------------- page component -------------------- */
 
 export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const router = useRouter();
@@ -487,15 +810,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
-  const activeBookingLinks = useMemo(
-    () => (bookingLinks ?? []).filter((b) => !b.deleted_at),
-    [bookingLinks]
-  );
+  const [hasBookedCalls, setHasBookedCalls] = useState(false);
+  const [callsCheckLoading, setCallsCheckLoading] = useState(false);
 
-  const normalizedCustom = useMemo(
-    () => buildNormalizedCustomMap(lead?.custom_values ?? {}),
-    [lead?.custom_values]
-  );
+  // productId (stripe prod_...) -> productTitle
+  const [productLabels, setProductLabels] = useState<Record<string, string>>({});
+
+  const activeBookingLinks = useMemo(() => (bookingLinks ?? []).filter((b) => !b.deleted_at), [bookingLinks]);
+
+  const normalizedCustom = useMemo(() => buildNormalizedCustomMap(lead?.custom_values ?? {}), [lead?.custom_values]);
 
   type RenderFieldDef = LeadFieldDefinition & { storageKey: string };
 
@@ -521,6 +844,14 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return lead.setter_id === currentUserId || lead.closer_id === currentUserId;
   }, [lead, currentUserId, isManagerOrAdmin]);
 
+  const canSeeCallsButton = useMemo(() => {
+    if (!lead) return false;
+    if (!hasBookedCalls) return false;
+    if (isManagerOrAdmin) return true;
+    if (!currentUserId) return false;
+    return String(lead.closer_id ?? "") === String(currentUserId);
+  }, [lead, hasBookedCalls, isManagerOrAdmin, currentUserId]);
+
   async function resolveAvatarUrl(raw: string | null): Promise<string | null> {
     if (!raw) return null;
     if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
@@ -535,141 +866,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     if (f) return f;
     if (l) return l;
     return "U";
-  }
-
-  /* ---------- BOOKED CALL parsing helpers (unchanged) ---------- */
-
-  type BookedCallParse = { kind: "canonical" | "iso" | "wall"; start: DateTime; end: DateTime };
-
-  function extractBookedCallRange(body: string): {
-    kind: "instant" | "wall";
-    startRaw: string;
-    endRaw: string;
-    tz: string | null;
-    source: "canonical" | "iso" | "wall";
-  } | null {
-    const s = body || "";
-
-    const canonical = s.match(/BOOKED_CALL\|([^|]+)\|([^|]+)(?:\|([^|]+))?/i);
-    if (canonical) {
-      return {
-        kind: "instant",
-        startRaw: canonical[1].trim(),
-        endRaw: canonical[2].trim(),
-        tz: canonical[3] ? canonical[3].trim() : null,
-        source: "canonical",
-      };
-    }
-
-    const iso = s.match(
-      /(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))\s*(?:→|—|–|-)\s*(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))(?:\s*\(([^)]+)\))?/i
-    );
-    if (iso) {
-      return {
-        kind: "instant",
-        startRaw: iso[1],
-        endRaw: iso[2],
-        tz: iso[3] ? String(iso[3]).trim() : null,
-        source: "iso",
-      };
-    }
-
-    const wall = s.match(
-      /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*(?:→|—|–|-)\s*(\d{2}:\d{2})(?:\s*\(([^)]+)\))?/i
-    );
-    if (wall) {
-      const date = wall[1];
-      const startTime = wall[2];
-      const endTime = wall[3];
-      return {
-        kind: "wall",
-        startRaw: `${date} ${startTime}`,
-        endRaw: `${date} ${endTime}`,
-        tz: wall[4] ? String(wall[4]).trim() : null,
-        source: "wall",
-      };
-    }
-
-    return null;
-  }
-
-  function parseBookedCall(body: string): BookedCallParse | null {
-    const parsed = extractBookedCallRange(body);
-    if (!parsed) return null;
-
-    const sourceZone = parsed.tz || "UTC";
-
-    if (parsed.kind === "instant") {
-      const hasOffsetStart = /[zZ]|[+-]\d{2}:\d{2}$/.test(parsed.startRaw);
-      const hasOffsetEnd = /[zZ]|[+-]\d{2}:\d{2}$/.test(parsed.endRaw);
-
-      const s =
-        parsed.tz && !hasOffsetStart
-          ? DateTime.fromISO(parsed.startRaw, { zone: sourceZone })
-          : DateTime.fromISO(parsed.startRaw, { setZone: true });
-
-      const e =
-        parsed.tz && !hasOffsetEnd
-          ? DateTime.fromISO(parsed.endRaw, { zone: sourceZone })
-          : DateTime.fromISO(parsed.endRaw, { setZone: true });
-
-      if (!s.isValid || !e.isValid) return null;
-
-      return { kind: parsed.source === "canonical" ? "canonical" : "iso", start: s, end: e };
-    }
-
-    const s = DateTime.fromFormat(parsed.startRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
-    const e = DateTime.fromFormat(parsed.endRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
-    if (!s.isValid || !e.isValid) return null;
-
-    return { kind: "wall", start: s, end: e };
-  }
-
-  function bookedCallQualityScore(kind: BookedCallParse["kind"]): number {
-    if (kind === "canonical") return 3;
-    if (kind === "iso") return 2;
-    return 1;
-  }
-
-  function bookedCallGroupKey(m: LeadMessage): string | null {
-    const body = m.body || "";
-
-    const canonical = body.match(/BOOKED_CALL\|([^|]+)\|([^|]+)(?:\|([^|]+))?/i);
-    if (canonical) {
-      const s = canonical[1].trim();
-      const e = canonical[2].trim();
-      const tz = (canonical[3] || "").trim();
-      return `BOOKED_CALL|${s}|${e}|${tz}`;
-    }
-
-    const parsed = parseBookedCall(body);
-    if (parsed && parsed.kind === "iso") {
-      const sUTC = parsed.start.toUTC().toISO({ suppressMilliseconds: true });
-      const eUTC = parsed.end.toUTC().toISO({ suppressMilliseconds: true });
-      return `UTC|${sUTC}|${eUTC}`;
-    }
-
-    if (parsed && parsed.kind === "wall") {
-      const bucket = floorIsoToMinute(m.sent_at);
-      return `WALL_BATCH|${bucket}`;
-    }
-
-    return null;
-  }
-
-  function formatBookedCallBody(body: string) {
-    const parsed = parseBookedCall(body);
-    if (!parsed) return body;
-
-    const targetZone = viewerTz || "UTC";
-    const startLocal = parsed.start.setZone(targetZone);
-    const endLocal = parsed.end.setZone(targetZone);
-
-    const dateLabel = startLocal.toLocaleString({ weekday: "short", month: "short", day: "numeric" });
-    const startTime = startLocal.toLocaleString(DateTime.TIME_SIMPLE);
-    const endTime = endLocal.toLocaleString(DateTime.TIME_SIMPLE);
-
-    return `Call booked for ${dateLabel} · ${startTime} – ${endTime}`;
   }
 
   function initialsFromSingleString(label: string) {
@@ -757,23 +953,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
     if (!isPipeline) return false;
     const body = (m.body ?? "").toLowerCase();
-    return body.includes("call booked for") && body.includes("calendar event");
-  }
-
-  function isBookedCallMessage(m: LeadMessage) {
-    const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
-    if (!isPipeline) return false;
-    const body = (m.body ?? "").toLowerCase();
-    return body.includes("booked a call") || body.includes("call booked for") || body.includes("booked_call|");
-  }
-
-  function isVerboseCalendarVersion(m: LeadMessage) {
-    const body = (m.body ?? "").toLowerCase();
     return body.includes("calendar event") || body.includes("calendar event:") || body.includes("event:");
-  }
-
-  function prefersThisBookedCallMessage(m: LeadMessage) {
-    return isBookedCallMessage(m) && !isVerboseCalendarVersion(m);
   }
 
   /* ---------- 1) Load teamId + role + current user id ---------- */
@@ -796,7 +976,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         }
 
         const userId = userRes.user.id;
-
         if (!cancelled) setCurrentUserId(userId);
 
         const { data: profile, error: profileError } = await supabase
@@ -824,7 +1003,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         }
 
         if (profileError && profileError.code !== "PGRST116") {
-          console.error("[LeadDetail] Failed to load profile", profileError);
+          logSupabaseError("[LeadDetail] Failed to load profile", profileError);
         }
       } catch (err) {
         console.error("[LeadDetail] Failed to load workspace context", err);
@@ -850,7 +1029,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     (async () => {
       if (!workspaceLoaded) return;
 
-      if (!teamId) {
+      const tId = teamId;
+      if (!tId) {
         if (!cancelled) setLoading(false);
         return;
       }
@@ -864,9 +1044,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
       try {
         const [defs, leadRes, configRes] = await Promise.all([
-          getLeadFieldDefinitions(teamId),
-          fetchLead(teamId, normalizedLeadId),
-          fetchScoreConfig(teamId),
+          getLeadFieldDefinitions(tId),
+          fetchLead(tId, normalizedLeadId),
+          fetchScoreConfig(tId),
         ]);
 
         if (cancelled) return;
@@ -895,7 +1075,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             const signedAvatar = await resolveAvatarUrl(creatorProfile.avatar_url);
             if (!cancelled) setCreator({ ...creatorProfile, avatar_url: signedAvatar });
           } else if (creatorError) {
-            console.error("[LeadDetail] Failed to load creator profile", creatorError);
+            logSupabaseError("[LeadDetail] Failed to load creator profile", creatorError);
           }
         }
       } catch (err) {
@@ -921,7 +1101,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     (async () => {
       if (!workspaceLoaded) return;
 
-      if (!teamId) {
+      const tId = teamId;
+
+      if (!tId) {
         if (!cancelled) setMessagesLoading(false);
         return;
       }
@@ -931,7 +1113,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       }
 
       try {
-        const loaded = await fetchMessages(teamId, normalizedLeadId);
+        const loaded = await fetchMessages(tId, normalizedLeadId);
         if (!cancelled) setMessages(loaded);
       } catch (err) {
         console.error("[LeadDetail] Failed to load messages", err);
@@ -945,13 +1127,165 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     };
   }, [workspaceLoaded, teamId, hasLeadId, normalizedLeadId]);
 
-  /* ---------- 4) Load booking links (unchanged) ---------- */
+  /* ---------- 3.1) Build timeline list (newest at top, lead-created at bottom) ---------- */
+  const leadLabel: string = useMemo(() => {
+    if (!lead) return "Lead in pipeline";
+
+    const directCol = String(lead.lead_name ?? "").trim();
+    if (directCol) return directCol;
+
+    const cv = lead.custom_values ?? {};
+    const legacy = String((cv as any).lead_name ?? "").trim();
+    if (legacy) return legacy;
+
+    const preferredKeys = ["name", "full_name", "first_name", "last_name", "company", "account", "email"];
+    const lowerEntries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v] as const);
+
+    for (const pref of preferredKeys) {
+      const match = lowerEntries.find(
+        ([key, value]) => key.includes(pref) && value != null && String(value).trim() !== ""
+      );
+      if (match) return String(match[1]).trim();
+    }
+
+    const anyField = lowerEntries.find(([, value]) => value != null && String(value).trim() !== "");
+    if (anyField) return String(anyField[1]).trim();
+
+    const stageLabel = lead.stage || "Pipeline";
+    return `Lead in “${stageLabel}” stage`;
+  }, [lead]);
+
+  const leadInitials = useMemo(() => initialsFromSingleString(leadLabel), [leadLabel]);
+
+  const bookingNameBySlug = useMemo(() => {
+    const m = new Map<string, string>();
+    (bookingLinks ?? []).forEach((b) => {
+      const slug = String(b.slug || "").trim();
+      if (slug) m.set(slug, String(b.name || "").trim() || slug);
+    });
+    return m;
+  }, [bookingLinks]);
+
+  function extractBookingSlugFromBody(body: string): string | null {
+    const s = String(body || "");
+    const m = s.match(/\/b\/([a-z0-9_-]+)/i);
+    return m?.[1] ? String(m[1]).trim() : null;
+  }
+
+  function formatBookingLinkTimelineBody(messageBody: string): string {
+    const slug = extractBookingSlugFromBody(messageBody);
+    const name = slug ? bookingNameBySlug.get(slug) : null;
+    return `Sent booking link: ${name || "Schedule page"}`;
+  }
+
+  const timelineMessages: LeadMessage[] = useMemo(() => {
+    if (!lead) return [];
+
+    const cleaned = (messages ?? []).filter((m) => !shouldHideFromTimeline(m));
+
+    const alreadyHasLeadCreated = cleaned.some(isLeadCreatedTimelineMessage);
+    const finalList = [...cleaned];
+
+    if (!alreadyHasLeadCreated) {
+      finalList.push({
+        id: `lead-created:${lead.id}`,
+        direction: "outbound",
+        channel: "pipeline",
+        body: `LEAD_CREATED|${leadLabel}`,
+        sent_at: lead.created_at,
+        sender_profile_id: lead.prospector_id ?? null,
+        sender: creator
+          ? {
+              id: creator.id,
+              first_name: creator.first_name,
+              last_name: creator.last_name,
+              avatar_url: creator.avatar_url,
+            }
+          : null,
+      });
+    }
+
+    finalList.sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+    return finalList;
+  }, [messages, lead, leadLabel, creator]);
+
+  /* ---------- 3.2) Product title lookup for offer-made items (Stripe) ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const offerIds = timelineMessages
+        .filter(isCallOfferMadeEvent)
+        .map((m) => parseOfferMade(m.body))
+        .filter((p) => p.on && p.productId && !p.productTitleInline)
+        .map((p) => p.productId);
+
+      const closedIds = timelineMessages
+        .filter(isCallClosedEvent)
+        .map((m) => parseClosedOnCall(m.body))
+        .filter((p) => p.on && p.productId)
+        .map((p) => p.productId);
+
+      const uniq = Array.from(new Set([...offerIds, ...closedIds].filter(isStripeProdOrPriceId)));
+      if (uniq.length === 0) return;
+
+      const missing = uniq.filter((id) => !productLabels[id]);
+      if (missing.length === 0) return;
+
+      const map = await fetchStripeProductLabels(missing);
+      if (!cancelled && map && Object.keys(map).length) {
+        setProductLabels((prev) => ({ ...prev, ...map }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [timelineMessages, productLabels]);
+
+  /* ---------- 3.5) Determine if lead booked calls (Calls button) ---------- */
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       if (!workspaceLoaded) return;
-      if (!teamId) return;
+
+      const tId = teamId;
+      if (!tId) return;
+      if (!hasLeadId) return;
+      if (!lead) return;
+
+      const allowed = isManagerOrAdmin || (currentUserId && String(lead.closer_id ?? "") === String(currentUserId));
+
+      if (!allowed) {
+        if (!cancelled) setHasBookedCalls(false);
+        return;
+      }
+
+      try {
+        setCallsCheckLoading(true);
+        const yes = await fetchHasCalls(tId, normalizedLeadId);
+        if (!cancelled) setHasBookedCalls(yes);
+      } finally {
+        if (!cancelled) setCallsCheckLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceLoaded, teamId, hasLeadId, normalizedLeadId, lead, lead?.closer_id, isManagerOrAdmin, currentUserId]);
+
+  /* ---------- 4) Load booking links ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!workspaceLoaded) return;
+
+      const tId = teamId;
+
+      if (!tId) return;
       if (!canManageLeadActions) return;
 
       try {
@@ -961,11 +1295,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         const { data, error } = await supabase
           .from("booking_links")
           .select("id, name, slug, booking_type, owner_user_id, deleted_at")
-          .eq("team_id", teamId)
+          .eq("team_id", tId)
           .order("created_at", { ascending: false });
 
         if (error) {
-          console.error("[LeadDetail] booking_links load error:", error);
+          logSupabaseError("[LeadDetail] booking_links load error", error);
           if (!cancelled) setBookingLinksError("Failed to load booking links.");
           return;
         }
@@ -989,7 +1323,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             .in("id", ownerIds);
 
           if (ownerErr) {
-            console.error("[LeadDetail] owners load error:", ownerErr);
+            logSupabaseError("[LeadDetail] owners load error", ownerErr);
           } else {
             (owners ?? []).forEach((p: any) => {
               const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
@@ -1062,13 +1396,28 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         setInviteSuccess("Booking link created (copy manually below).");
       }
 
-      if (teamId) {
+      const tId = teamId;
+
+      if (tId) {
         setMessagesLoading(true);
         try {
-          const loaded = await fetchMessages(teamId, normalizedLeadId);
+          const loaded = await fetchMessages(tId, normalizedLeadId);
           setMessages(loaded);
         } finally {
           setMessagesLoading(false);
+        }
+
+        const allowed = isManagerOrAdmin || (currentUserId && String(lead?.closer_id ?? "") === String(currentUserId));
+        if (allowed) {
+          setCallsCheckLoading(true);
+          try {
+            const yes = await fetchHasCalls(tId, normalizedLeadId);
+            setHasBookedCalls(yes);
+          } finally {
+            setCallsCheckLoading(false);
+          }
+        } else {
+          setHasBookedCalls(false);
         }
       }
     } catch (e: any) {
@@ -1092,130 +1441,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     setInviteError(null);
     setInviteSuccess(null);
   }, [isBookingModalOpen]);
-
-  // ✅ FIX: prefer real column lead.lead_name first
-  const leadLabel: string = useMemo(() => {
-    if (!lead) return "Lead in pipeline";
-
-    const directCol = String(lead.lead_name ?? "").trim();
-    if (directCol) return directCol;
-
-    const cv = lead.custom_values ?? {};
-    const legacy = String(cv.lead_name ?? "").trim();
-    if (legacy) return legacy;
-
-    const preferredKeys = ["name", "full_name", "first_name", "last_name", "company", "account", "email"];
-    const lowerEntries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v] as const);
-
-    for (const pref of preferredKeys) {
-      const match = lowerEntries.find(
-        ([key, value]) => key.includes(pref) && value != null && String(value).trim() !== ""
-      );
-      if (match) return String(match[1]).trim();
-    }
-
-    const anyField = lowerEntries.find(([, value]) => value != null && String(value).trim() !== "");
-    if (anyField) return String(anyField[1]).trim();
-
-    const stageLabel = lead.stage || "Pipeline";
-    return `Lead in “${stageLabel}” stage`;
-  }, [lead]);
-
-  const leadInitials = useMemo(() => initialsFromSingleString(leadLabel), [leadLabel]);
-
-  const bookingNameBySlug = useMemo(() => {
-    const m = new Map<string, string>();
-    (bookingLinks ?? []).forEach((b) => {
-      const slug = String(b.slug || "").trim();
-      if (slug) m.set(slug, String(b.name || "").trim() || slug);
-    });
-    return m;
-  }, [bookingLinks]);
-
-  function extractBookingSlugFromBody(body: string): string | null {
-    const s = String(body || "");
-    const m = s.match(/\/b\/([a-z0-9_-]+)/i);
-    return m?.[1] ? String(m[1]).trim() : null;
-  }
-
-  function formatBookingLinkTimelineBody(messageBody: string): string {
-    const slug = extractBookingSlugFromBody(messageBody);
-    const name = slug ? bookingNameBySlug.get(slug) : null;
-    return `Sent booking link: ${name || "Schedule page"}`;
-  }
-
-  // ✅ UPDATED: timeline now injects "Lead created" event with prospector name + new icon
-  const timelineMessages: LeadMessage[] = useMemo(() => {
-    if (!lead) return [];
-
-    const cleaned = (messages ?? []).filter((m) => !shouldHideFromTimeline(m));
-    const sorted = [...cleaned].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
-
-    const bookedGroups = new Map<string, LeadMessage[]>();
-    const passthrough: LeadMessage[] = [];
-
-    for (const m of sorted) {
-      if (!isBookedCallMessage(m)) {
-        passthrough.push(m);
-        continue;
-      }
-      const key = bookedCallGroupKey(m) ?? `fallback:${m.id}`;
-      const list = bookedGroups.get(key) ?? [];
-      list.push(m);
-      bookedGroups.set(key, list);
-    }
-
-    const chosenBooked: LeadMessage[] = [];
-
-    for (const [, group] of bookedGroups) {
-      const candidates = group.slice().sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
-
-      const scored = candidates.map((m) => {
-        const p = parseBookedCall(m.body || "");
-        const quality = p ? bookedCallQualityScore(p.kind) : 0;
-        const preferred = prefersThisBookedCallMessage(m) ? 1 : 0;
-        const sent = new Date(m.sent_at).getTime();
-        return { m, preferred, quality, sent };
-      });
-
-      scored.sort((x, y) => {
-        if (y.preferred !== x.preferred) return y.preferred - x.preferred;
-        if (y.quality !== x.quality) return y.quality - x.quality;
-        return y.sent - x.sent;
-      });
-
-      chosenBooked.push(scored[0].m);
-    }
-
-    const finalList = [...passthrough, ...chosenBooked].sort(
-      (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
-    );
-
-    const alreadyHasLeadCreated = finalList.some(isLeadCreatedTimelineMessage);
-
-    if (!alreadyHasLeadCreated) {
-      const leadCreatedEvent: LeadMessage = {
-        id: `lead-created:${lead.id}`,
-        direction: "outbound",
-        channel: "pipeline",
-        body: `LEAD_CREATED|${leadLabel}`,
-        sent_at: lead.created_at,
-        sender_profile_id: lead.prospector_id ?? null,
-        sender: creator
-          ? {
-              id: creator.id,
-              first_name: creator.first_name,
-              last_name: creator.last_name,
-              avatar_url: creator.avatar_url,
-            }
-          : null,
-      };
-
-      finalList.push(leadCreatedEvent);
-    }
-
-    return finalList;
-  }, [messages, viewerTz, lead, leadLabel, creator]);
 
   /* ---------- early returns ---------- */
   if (!mounted || !workspaceLoaded || loading) {
@@ -1269,6 +1494,24 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             </div>
 
             <div className="flex gap-2">
+              {canSeeCallsButton && (
+                <button
+                  type="button"
+                  disabled={!normalizedLeadId || callsCheckLoading}
+                  onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/calls`)}
+                  className={[
+                    "rounded-lg px-3 py-1.5 text-xs font-semibold",
+                    "border border-emerald-300",
+                    "bg-emerald-50 text-emerald-700",
+                    "hover:bg-emerald-100 hover:border-emerald-400",
+                    "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer h-[28px] w-16",
+                  ].join(" ")}
+                  title="View and track outcomes for all booked calls"
+                >
+                  {callsCheckLoading ? "Calls…" : "Calls"}
+                </button>
+              )}
+
               {canManageLeadActions && (
                 <button
                   type="button"
@@ -1487,7 +1730,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-800">Activity Timeline</h2>
-              <p className="text-xs text-slate-500">Lead creation, stage changes, and messages in one view.</p>
+              <p className="text-xs text-slate-500">Newest activity at the top.</p>
             </div>
 
             {canManageLeadActions && (
@@ -1530,7 +1773,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               <div className="space-y-3 text-xs">
                 {timelineMessages.map((m) => {
                   const isOutbound = m.direction === "outbound";
-                  const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
+                  const isInbound = m.direction === "inbound";
+                  const isPipeline = isPipelineEvent(m);
 
                   const bodyLower = (m.body ?? "").toLowerCase();
 
@@ -1538,63 +1782,88 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     isPipeline &&
                     (bodyLower.includes("booking link") || bodyLower.includes("/b/") || bodyLower.includes("schedule page"));
 
-                  const isBookedCallEvent =
-                    isPipeline &&
-                    (bodyLower.includes("booked a call") || bodyLower.includes("call booked for") || bodyLower.includes("booked_call|"));
+                  const isBookedCallEvent = isPipeline && isBookedCallMessage(m);
 
                   const isLeadCreatedEvent = isLeadCreatedTimelineMessage(m);
+
+                  const isAttendance = isCallAttendanceEvent(m);
+                  const isOfferMade = isCallOfferMadeEvent(m);
+                  const isClosed = isCallClosedEvent(m);
+
+                  const isLegacyOutcome = isLegacyCallOutcomeEvent(m);
 
                   const first = m.sender?.first_name ?? "";
                   const last = m.sender?.last_name ?? "";
                   const fullName = `${first} ${last}`.trim();
 
                   const prospectorName =
-                    fullName || `${creator?.first_name ?? ""} ${creator?.last_name ?? ""}`.trim() || "Prospector";
+                    fullName || `${creator?.first_name ?? ""} ${creator?.last_name ?? ""}`.trim() || "Team member";
 
-                  const authorName = isPipeline
-                    ? isLeadCreatedEvent
-                      ? prospectorName
-                      : "Setter"
-                    : isOutbound
-                    ? fullName || "Team member"
-                    : leadLabel;
-
-                  const roleLabel = isPipeline ? (isLeadCreatedEvent ? "Prospector" : "Setter") : isOutbound ? "Setter" : "Lead";
+                  // ✅ NO "Setter" label; show actual user (sender). Inbound = lead name.
+                  const authorName = isInbound ? leadLabel : isLeadCreatedEvent ? prospectorName : fullName || "Team member";
+                  const roleLabel = isInbound ? "Lead" : "Team";
 
                   const avatarUrl = isOutbound ? m.sender?.avatar_url ?? null : null;
                   const initials = isOutbound ? initialsFromName(first, last) : leadInitials;
 
                   const tsLabel = fmtMessageTimestamp(m.sent_at, viewerTz || "UTC");
 
+                  // ✅ icon selection
+                  let pipelineIcon = "/icons/stage-change.svg";
+
+                  if (isLeadCreatedEvent) pipelineIcon = "/icons/new-lead.svg";
+                  else if (isAttendance) {
+                    const parts = String(m.body || "").split("|");
+                    const next = parts[3] ?? "unknown";
+                    pipelineIcon = iconForAttendance(next);
+                  } else if (isOfferMade) {
+                    pipelineIcon = "/icons/call-offer-made.svg";
+                  } else if (isClosed) {
+                    pipelineIcon = "/icons/call-closed.svg";
+                  } else if (isLegacyOutcome) {
+                    pipelineIcon = iconForLegacyOutcome(m.body);
+                  } else if (isBookedCallEvent) pipelineIcon = "/icons/booked-call.svg";
+                  else if (isBookingLinkEvent) pipelineIcon = "/icons/booking-link.svg";
+
+                  const pipelineAlt = isLeadCreatedEvent
+                    ? "New lead"
+                    : isAttendance
+                    ? "Call status"
+                    : isOfferMade
+                    ? "Offer made"
+                    : isClosed
+                    ? "Closed on call"
+                    : isLegacyOutcome
+                    ? "Call outcome update"
+                    : isBookedCallEvent
+                    ? "Call booked"
+                    : isBookingLinkEvent
+                    ? "Booking link sent"
+                    : "Pipeline activity";
+
+                  // Product title for offer/closed-made (productId is Stripe prod_...)
+                  const offerParsed = isOfferMade ? parseOfferMade(m.body) : null;
+                  const offerTitle = offerParsed?.productId ? productLabels[offerParsed.productId] ?? null : null;
+
+                  const closedParsed = isClosed ? parseClosedOnCall(m.body) : null;
+                  const closedTitle = closedParsed?.productId ? productLabels[closedParsed.productId] ?? null : null;
+
+
                   return (
                     <div key={m.id} className="flex gap-2">
                       <div className="flex h-8 w-8 items-center justify-center">
                         {isPipeline ? (
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={
-                              isLeadCreatedEvent
-                                ? "/icons/new-lead.svg"
-                                : isBookedCallEvent
-                                ? "/icons/booked-call.svg"
-                                : isBookingLinkEvent
-                                ? "/icons/booking-link.svg"
-                                : "/icons/stage-change.svg"
-                            }
-                            alt={
-                              isLeadCreatedEvent
-                                ? "New lead"
-                                : isBookedCallEvent
-                                ? "Call booked"
-                                : isBookingLinkEvent
-                                ? "Booking link sent"
-                                : "Pipeline activity"
-                            }
+                            src={pipelineIcon}
+                            alt={pipelineAlt}
                             className="h-8 w-8 rounded-full object-cover border border-slate-200"
                           />
                         ) : avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={avatarUrl} alt={authorName} className="h-8 w-8 rounded-full object-cover border border-slate-200" />
+                          <img
+                            src={avatarUrl}
+                            alt={authorName}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          />
                         ) : (
                           <div
                             className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${
@@ -1611,9 +1880,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                             <span className="flex items-center gap-1">
                               <span className="font-semibold text-slate-700">{authorName}</span>
-                              <span className="text-slate-400">
-                                · {roleLabel} · {formatChannel(m.channel)}
-                              </span>
+                              <span className="text-slate-400">· {roleLabel} · {formatChannel(m.channel)}</span>
                             </span>
                             <span>{tsLabel}</span>
                           </div>
@@ -1621,8 +1888,16 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           <p className="whitespace-pre-wrap text-[11px] text-slate-800">
                             {isLeadCreatedEvent
                               ? formatLeadCreatedBody(m.body, leadLabel)
+                              : isAttendance
+                              ? formatAttendanceBody(m.body)
+                              : isOfferMade
+                              ? formatOfferMadeBody(m.body, offerTitle)
+                              : isClosed
+                              ? formatClosedBody(m.body, closedTitle)
+                              : isLegacyOutcome
+                              ? formatLegacyOutcomeBody(m.body)
                               : isBookedCallEvent
-                              ? formatBookedCallBody(m.body)
+                              ? formatBookedCallBody(m.body, viewerTz || "UTC")
                               : isBookingLinkEvent
                               ? formatBookingLinkTimelineBody(m.body)
                               : m.body}
@@ -1638,7 +1913,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         </div>
       </div>
 
-      {/* Booking modal (unchanged) */}
+      {/* Booking modal */}
       {isBookingModalOpen && canManageLeadActions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="absolute inset-0" onClick={() => setIsBookingModalOpen(false)} />
@@ -1723,7 +1998,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     <table className="w-full border-collapse text-sm">
                       <thead className="sticky top-0 z-10 bg-slate-100">
                         <tr className="text-left">
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Schedule page</th>
+                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                            Schedule page
+                          </th>
                           <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Type</th>
                           <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Host</th>
                           <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Action</th>

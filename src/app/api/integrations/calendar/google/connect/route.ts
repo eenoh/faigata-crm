@@ -1,6 +1,7 @@
-// src/app/api/crm/integrations/calendar/google/connect/route.ts
+// src/app/api/integrations/calendar/google/connect/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 
@@ -19,21 +20,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "server_misconfigured" }, { status: 500 });
   }
 
-  // ✅ require bearer token here (same as your disconnect route)
-  const authHeader =
-    req.headers.get("authorization") ?? req.headers.get("Authorization");
-
+  // require bearer token
+  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
   const accessJwt =
-    authHeader && authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
+    authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
 
   if (!accessJwt) {
     return NextResponse.json({ error: "missing_auth" }, { status: 401 });
   }
 
-  const { data: userData, error: userError } =
-    await supabaseAdmin.auth.getUser(accessJwt);
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessJwt);
 
   if (userError || !userData?.user) {
     return NextResponse.json({ error: "invalid_auth" }, { status: 401 });
@@ -46,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: redirectUri, // ✅ critical
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
@@ -57,9 +53,9 @@ export async function POST(req: NextRequest) {
 
   const authUrl = `${GOOGLE_AUTH_BASE}?${params.toString()}`;
 
-  // ✅ Return JSON (same-origin), and set cookies for callback
   const res = NextResponse.json({ authUrl });
 
+  // short lived cookies for callback
   res.cookies.set("gc_oauth_state", state, {
     path: "/",
     httpOnly: true,

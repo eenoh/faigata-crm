@@ -17,16 +17,6 @@ async function authedFetch(input: RequestInfo, init?: RequestInit) {
   });
 }
 
-/**
- * NOTE:
- * This component expects /api/billing/products/[productId] to return Stripe-first shapes:
- * {
- *   product: { id, name, description, active, created, ... },
- *   prices:  [{ id, active, created, currency, unit_amount, recurring? ... }],
- *   activity: [{ id, type, payload, actor_user_id, created_at, stripe_price_id, stripe_product_id? ... }]
- * }
- */
-
 // Stripe-first shapes
 type StripeProduct = {
   id: string;
@@ -56,7 +46,6 @@ type Activity = {
 };
 
 const CURRENCIES = [
-  // reasonably complete ISO 4217 set (Stripe supports many; not all may be enabled for every account)
   "aed","afn","all","amd","ang","aoa","ars","aud","awg","azn",
   "bam","bbd","bdt","bgn","bhd","bif","bmd","bnd","bob","brl","bsd","btn","bwp","byn","bzd",
   "cad","cdf","chf","clp","cny","cop","crc","cve","czk",
@@ -127,10 +116,7 @@ function LoadingState() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         <div className="space-y-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm"
-            >
+            <div key={i} className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
               <div className="h-4 w-28 rounded bg-slate-200/60 animate-pulse" />
               <div className="mt-3 h-4 w-64 rounded bg-slate-200/60 animate-pulse" />
               <div className="mt-2 h-4 w-48 rounded bg-slate-200/60 animate-pulse" />
@@ -179,10 +165,10 @@ function LoadingState() {
 function activityIcon(a: Activity) {
   const t = String(a.type || "").toLowerCase();
 
+  // ✅ new product icon
   if (t === "product_created") return "/icons/new-product.svg";
-  if (t === "product_updated") return "/icons/product-updated.svg";
 
-  // ✅ NEW: product archived icon
+  if (t === "product_updated") return "/icons/product-updated.svg";
   if (t === "product_archived") return "/icons/product-archived.svg";
 
   if (t === "price_created") {
@@ -195,27 +181,24 @@ function activityIcon(a: Activity) {
   return "/icons/stage-change.svg";
 }
 
-function activityTitle(a: Activity) {
+function activityLabel(a: Activity) {
   const t = String(a.type || "").toLowerCase();
-
-  if (t === "product_created") return "Product created";
+  if (t === "product_created") return "New product";
   if (t === "product_updated") return "Product updated";
   if (t === "product_archived") return "Product archived";
-
-  if (t === "price_created") {
-    return a.payload?.recurring?.interval ? "Recurring price created" : "One-time price created";
-  }
-
+  if (t === "price_created") return a.payload?.recurring?.interval ? "Recurring price created" : "One-time price created";
   if (t === "price_archived") return "Price archived";
-
   return prettyEvent(a.type);
 }
 
-function activitySubtext(a: Activity, productName: string) {
+function activityText(a: Activity, productName: string) {
   const t = String(a.type || "").toLowerCase();
 
+  // ✅ EXACT requested wording
   if (t === "product_created") {
-    return `New product added: ${productName || "Product"}`;
+    const nameFromPayload = String(a.payload?.name ?? "").trim();
+    const name = nameFromPayload || productName || "Product";
+    return `New product: ${name}`;
   }
 
   if (t === "product_updated") {
@@ -225,7 +208,6 @@ function activitySubtext(a: Activity, productName: string) {
   }
 
   if (t === "product_archived") {
-    // ✅ fixes your duplicated text issue
     return "Set to inactive in Stripe (existing invoices are unaffected).";
   }
 
@@ -246,48 +228,6 @@ function activitySubtext(a: Activity, productName: string) {
 
   if (t === "price_archived") {
     return `Archived Stripe price: ${a.stripe_price_id ?? ""}`.trim();
-  }
-
-  if (t === "catalog_synced") {
-    const p = a.payload?.products;
-    const pr = a.payload?.prices;
-    const parts = [
-      typeof p === "number" ? `${p} products` : null,
-      typeof pr === "number" ? `${pr} prices` : null,
-    ].filter(Boolean);
-    return parts.length ? `Synced catalog · ${parts.join(" · ")}` : "Synced catalog";
-  }
-
-  return activityMessage(a, productName);
-}
-
-function activityMessage(a: Activity, productName: string) {
-  const t = String(a.type || "").toLowerCase();
-
-  if (t === "product_created") {
-    return `New Product: ${productName || "New product"}`;
-  }
-
-  if (t === "product_updated") {
-    // keep it short like your lead timeline vibe
-    const name = a.payload?.name ? `Name → ${String(a.payload.name)}` : null;
-    const desc = a.payload?.description !== undefined ? "Updated description" : null;
-    return [name, desc].filter(Boolean).join(" · ") || "Updated product";
-  }
-
-  if (t === "price_created") {
-    const cur = String(a.payload?.currency ?? "").toUpperCase();
-    const amt = typeof a.payload?.unit_amount === "number" ? a.payload.unit_amount : null;
-    const recurring = a.payload?.recurring?.interval
-      ? `${a.payload.recurring.interval_count ?? 1}× ${a.payload.recurring.interval}`
-      : null;
-
-    const amountLabel = amt != null && cur ? fmtMoney(cur.toLowerCase(), amt) : "Created new price";
-    return recurring ? `${amountLabel} · Recurring (${recurring})` : `${amountLabel} · One-time`;
-  }
-
-  if (t === "price_archived") {
-    return `Archived price: ${a.stripe_price_id ?? ""}`.trim();
   }
 
   if (t === "catalog_synced") {
@@ -489,7 +429,6 @@ export default function ProductDetailClient({ productId }: { productId: string }
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Sync */}
               <button
                 type="button"
                 onClick={syncAll}
@@ -502,7 +441,6 @@ export default function ProductDetailClient({ productId }: { productId: string }
                 </span>
               </button>
 
-              {/* Edit */}
               <Link
                 href={`/billing/products/${encodeURIComponent(productId)}/edit`}
                 className="inline-flex h-[28px] w-16 items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700 cursor-pointer"
@@ -510,12 +448,9 @@ export default function ProductDetailClient({ productId }: { productId: string }
                 Edit
               </Link>
 
-              {/* Archive */}
               <button
                 type="button"
-                onClick={() =>
-                  router.push(`/billing/products/${encodeURIComponent(productId)}/delete`)
-                }
+                onClick={() => router.push(`/billing/products/${encodeURIComponent(productId)}/delete`)}
                 className="inline-flex h-[28px] w-16 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100 cursor-pointer"
               >
                 Archive
@@ -547,12 +482,8 @@ export default function ProductDetailClient({ productId }: { productId: string }
                 <div className="text-sm text-slate-800">{product.name ?? "—"}</div>
               </div>
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Description
-                </div>
-                <div className="text-sm text-slate-800 whitespace-pre-wrap">
-                  {product.description ?? "—"}
-                </div>
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Description</div>
+                <div className="text-sm text-slate-800 whitespace-pre-wrap">{product.description ?? "—"}</div>
               </div>
             </div>
           </div>
@@ -596,9 +527,7 @@ export default function ProductDetailClient({ productId }: { productId: string }
                       const recurringLabel = pr.recurring?.interval
                         ? `${pr.recurring.interval_count ?? 1}× ${pr.recurring.interval}`
                         : "—";
-                      const typeLabel = pr.recurring?.interval
-                        ? `Recurring (${recurringLabel})`
-                        : "One-time";
+                      const typeLabel = pr.recurring?.interval ? `Recurring (${recurringLabel})` : "One-time";
 
                       return (
                         <tr key={pr.id} className="hover:bg-slate-50/50">
@@ -653,8 +582,8 @@ export default function ProductDetailClient({ productId }: { productId: string }
               <div className="space-y-3 text-xs">
                 {activity.map((a) => {
                   const iconSrc = activityIcon(a);
-                  const title = activityTitle(a);
-                  const sub = activitySubtext(a, product.name ?? displayName);
+                  const label = activityLabel(a);
+                  const text = activityText(a, product.name ?? displayName);
 
                   return (
                     <div key={a.id} className="flex gap-2">
@@ -662,7 +591,7 @@ export default function ProductDetailClient({ productId }: { productId: string }
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={iconSrc}
-                          alt={prettyEvent(a.type)}
+                          alt={label}
                           className="h-8 w-8 rounded-full object-cover border border-slate-200"
                         />
                       </div>
@@ -670,13 +599,13 @@ export default function ProductDetailClient({ productId }: { productId: string }
                       <div className="flex-1">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                           <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                            <span className="font-semibold text-slate-700">{prettyEvent(a.type)}</span>
+                            <span className="font-semibold text-slate-700">{label}</span>
                             <span>{fmtIso(a.created_at)}</span>
                           </div>
 
                           <div className="whitespace-pre-wrap text-[11px] text-slate-800">
-                            {sub}
-                          </div>   
+                            {text}
+                          </div>
                         </div>
                       </div>
                     </div>

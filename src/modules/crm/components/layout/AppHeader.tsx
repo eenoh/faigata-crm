@@ -23,7 +23,6 @@ function getSectionName(pathname: string): string {
   return "FaigataCRM";
 }
 
-
 type HeaderUser = {
   id: string;
   firstName: string | null;
@@ -171,13 +170,39 @@ function getHighestRole(rawRoles: unknown): string | null {
 }
 
 /** -------------------------------------------
- * NEW: Google Calendar reconnect banner (header)
+ * Google Calendar reconnect banner (header)
  * ------------------------------------------ */
 const GC_RECONNECT_FLAG_KEY = "faigatacrm.googleCalendarReconnectRequired";
 
 function readGcReconnectFlag(): boolean {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(GC_RECONNECT_FLAG_KEY) === "1";
+}
+
+function clearGcReconnectFlag() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(GC_RECONNECT_FLAG_KEY);
+  window.dispatchEvent(new Event("gc-reconnect-cleared"));
+}
+
+async function fetchGoogleCalendarConnected(): Promise<boolean> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) return false;
+
+    const res = await fetch("/api/integrations/calendar/google/status", {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) return false;
+
+    const json = (await res.json().catch(() => ({}))) as any;
+    return !!json?.calendar?.google;
+  } catch {
+    return false;
+  }
 }
 
 export function AppHeader() {
@@ -198,7 +223,7 @@ export function AppHeader() {
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // NEW: gc reconnect banner state
+  // gc reconnect banner state
   const [gcReconnectNeeded, setGcReconnectNeeded] = useState(false);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
@@ -210,9 +235,25 @@ export function AppHeader() {
     setSearch(searchParams.get("q") ?? "");
   }, [searchParams]);
 
-  // NEW: listen for reconnect-required / cleared events + initial read
+  // ✅ Reconnect banner: init from local flag, then verify real status and clear stale flag
   useEffect(() => {
-    setGcReconnectNeeded(readGcReconnectFlag());
+    let cancelled = false;
+
+    (async () => {
+      // fast local hint first
+      setGcReconnectNeeded(readGcReconnectFlag());
+
+      // verify actual connection from DB/status route
+      const connected = await fetchGoogleCalendarConnected();
+      if (cancelled) return;
+
+      if (connected) {
+        setGcReconnectNeeded(false);
+        clearGcReconnectFlag();
+      } else {
+        setGcReconnectNeeded(true);
+      }
+    })();
 
     const onNeed = () => setGcReconnectNeeded(true);
     const onCleared = () => setGcReconnectNeeded(false);
@@ -221,6 +262,7 @@ export function AppHeader() {
     window.addEventListener("gc-reconnect-cleared", onCleared as EventListener);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("gc-reconnect-required", onNeed as EventListener);
       window.removeEventListener("gc-reconnect-cleared", onCleared as EventListener);
     };
@@ -347,14 +389,19 @@ export function AppHeader() {
     const value = e.target.value;
     setSearch(value);
 
-    if (!pathname.startsWith("/leads") && !pathname.startsWith("/pipeline") && !pathname.startsWith("/billing")) {
+    if (
+      !pathname.startsWith("/leads") &&
+      !pathname.startsWith("/pipeline") &&
+      !pathname.startsWith("/billing")
+    ) {
       return;
     }
 
     const params = new URLSearchParams(searchParams.toString());
 
-    if (value.trim()) {
-      params.set("q", value.trim());
+    // ✅ allow spaces while typing; only treat as empty if it's ALL whitespace
+    if (value.trim().length > 0) {
+      params.set("q", value); // <-- no trim here
     } else {
       params.delete("q");
     }
@@ -409,6 +456,43 @@ export function AppHeader() {
       console.error("[Header] signOut error", err);
     } finally {
       router.replace("/login");
+    }
+  }
+
+  // ✅ Header reconnect button: actually starts OAuth again
+  async function handleGoogleReconnect() {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        router.push("/login");
+        return;
+      }
+
+      const res = await fetch("/api/integrations/calendar/google/connect", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      const json = (await res.json().catch(() => null)) as any;
+
+      if (!res.ok) {
+        const msg = json?.error || `connect_failed_${res.status}`;
+        router.push(`/profile/integrations?error=${encodeURIComponent(msg)}`);
+        return;
+      }
+
+      const authUrl = json?.authUrl as string | undefined;
+      if (!authUrl) {
+        router.push(`/profile/integrations?error=${encodeURIComponent("missing_auth_url")}`);
+        return;
+      }
+
+      window.location.href = authUrl;
+    } catch (e) {
+      console.error("[Header] Google reconnect failed", e);
+      router.push(`/profile/integrations?error=${encodeURIComponent("google_reconnect_failed")}`);
     }
   }
 
@@ -652,11 +736,11 @@ export function AppHeader() {
           />
         </div>
 
-        {/* NEW: Google Calendar reconnect banner "at the clock" */}
+        {/* Google Calendar reconnect banner */}
         {gcReconnectNeeded && (
           <button
             type="button"
-            onClick={() => router.push("/settings/calendar")}
+            onClick={handleGoogleReconnect}
             className="hidden sm:inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
             title="Reconnect Google Calendar to keep booking links working"
           >
@@ -799,7 +883,7 @@ export function AppHeader() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition"
+                  className="w-full rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition cursor-pointer"
                 >
                   Log out
                 </button>

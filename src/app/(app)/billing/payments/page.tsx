@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import PaymentsClient from "@/modules/billing/components/PaymentsClient";
+import PaymentsClient from "../../../../modules/billing/components/PaymentsClient";
 
 export const metadata: Metadata = {
   title: "Payments",

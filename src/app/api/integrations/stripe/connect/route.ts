@@ -20,12 +20,12 @@ async function getOrgIdForUser(userId: string): Promise<string | null> {
   const sb = supabaseAdmin();
   const { data, error } = await sb
     .from("profiles")
-    .select("team_id")
+    .select("company_id")
     .eq("id", userId)
     .single();
 
   if (error) return null;
-  return (data?.team_id as string | null) ?? null;
+  return (data?.company_id as string | null) ?? null;
 }
 
 export async function POST(req: Request) {

@@ -115,7 +115,9 @@ async function createGoogleCalendarEvent(args: {
 
   const meetLink =
     String(json?.hangoutLink || "") ||
-    String(json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || "");
+    String(
+      json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || ""
+    );
 
   return {
     eventId: String(json.id || ""),
@@ -155,8 +157,15 @@ async function getAccessTokenForUser(admin: ReturnType<typeof supabaseAdmin>, us
 }
 
 /** resolve host name for subject */
-async function getHostDisplayName(admin: ReturnType<typeof supabaseAdmin>, userId: string): Promise<string | null> {
-  const { data, error } = await admin.from("profiles").select("first_name, last_name").eq("id", userId).maybeSingle();
+async function getHostDisplayName(
+  admin: ReturnType<typeof supabaseAdmin>,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("first_name, last_name")
+    .eq("id", userId)
+    .maybeSingle();
 
   if (error) {
     console.error("[crm-book] getHostDisplayName error:", error);
@@ -189,7 +198,7 @@ async function fetchFreeBusyForWindow(args: {
 
   const fbJson: any = await fbRes.json().catch(() => ({} as any));
   if (!fbRes.ok) {
-    const code = Number(fbJson?.error?.code ?? 0);
+    const code = Number(fbJson?.error?.convert ?? fbJson?.error?.code ?? 0);
     const message = String(fbJson?.error?.message ?? "google_freebusy_failed");
 
     if (code === 401 || code === 403 || message.toLowerCase().includes("invalid credentials")) {
@@ -321,7 +330,6 @@ export async function POST(req: Request, ctx: Params) {
     const baseTitleRaw = String(link.name || "Scheduled Call").trim();
     const baseTitle = baseTitleRaw.length ? baseTitleRaw : "Scheduled Call";
 
-    // (This affects the subject line in invites; Gmail's "unknown sender" banner is not controllable.)
     const description = `Invitee: ${firstName} (${email})`;
 
     const bufferBefore = Number((link as any).buffer_before_minutes ?? 0);
@@ -490,12 +498,34 @@ export async function POST(req: Request, ctx: Params) {
         lead_id: invite.lead_id,
         created_at: new Date().toISOString(),
       })
-      .select("id")
+      .select("id, team_id, lead_id, owner_user_id")
       .single();
 
     if (bookingErr || !booking?.id) {
       console.error("[crm-book] booking insert error:", bookingErr);
       return NextResponse.json({ error: "booking_create_failed" }, { status: 500 });
+    }
+
+    // ✅ NEW: create default outcome row (non-fatal if table not present)
+    try {
+      if (booking.owner_user_id) {
+        await admin.from("booking_outcomes").upsert(
+          {
+            booking_id: booking.id,
+            team_id: booking.team_id,
+            lead_id: booking.lead_id,
+            closer_user_id: booking.owner_user_id, // MUST equal bookings.owner_user_id
+            attended_status: "unknown",
+            offer_made: false,
+            closed_on_call: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "booking_id" }
+        );
+      }
+    } catch (e) {
+      console.error("[crm-book] booking_outcomes upsert failed (non-fatal):", e);
     }
 
     await admin.from("booking_link_invites").update({ used_at: new Date().toISOString() }).eq("id", invite.id);
@@ -512,7 +542,6 @@ export async function POST(req: Request, ctx: Params) {
         .eq("team_id", invite.team_id);
 
       if (leadUpdateErr) {
-        // non-fatal, but log it so you can spot permission/schema issues
         console.error("[crm-book] failed updating leads.closer_id", leadUpdateErr);
       }
     }

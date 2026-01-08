@@ -1,27 +1,11 @@
-// src/app/api/crm/integrations/calendar/google/callback/route.ts
+// src/app/api/integrations/calendar/google/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
 
-/**
- * We will accept either:
- *  1) Cookie-based state + userId (your current flow)
- *  2) A signed "state" parameter that contains userId (fallback, fixes missing_auth)
- *
- * To use (2), your /connect route must generate `state` like:
- *   base64url(JSON.stringify({ uid, nonce, ts, sig }))
- * where sig = HMAC_SHA256(STATE_SECRET, `${uid}.${nonce}.${ts}`)
- */
-function requireEnv(name: string) {
-  const v = process.env[name];
-  if (!v) throw new Error(`missing_env_${name}`);
-  return v;
-}
-
 function base64urlDecode(input: string) {
-  // base64url -> base64
   const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
   const pad = b64.length % 4 ? "=".repeat(4 - (b64.length % 4)) : "";
   return Buffer.from(b64 + pad, "base64").toString("utf8");
@@ -35,18 +19,12 @@ function timingSafeEqual(a: string, b: string) {
 }
 
 function signState(uid: string, nonce: string, ts: number, secret: string) {
-  return crypto
-    .createHmac("sha256", secret)
-    .update(`${uid}.${nonce}.${ts}`)
-    .digest("hex");
+  return crypto.createHmac("sha256", secret).update(`${uid}.${nonce}.${ts}`).digest("hex");
 }
 
-function parseSignedState(
-  returnedState: string | null
-): { uid: string; nonce: string; ts: number } | null {
+function parseSignedState(returnedState: string | null): { uid: string; nonce: string; ts: number } | null {
   if (!returnedState) return null;
 
-  // state is base64url(JSON)
   let raw: any = null;
   try {
     raw = JSON.parse(base64urlDecode(returnedState));
@@ -57,18 +35,14 @@ function parseSignedState(
   const uid = typeof raw?.uid === "string" ? raw.uid.trim() : "";
   const nonce = typeof raw?.nonce === "string" ? raw.nonce.trim() : "";
   const ts = Number(raw?.ts);
-
   const sig = typeof raw?.sig === "string" ? raw.sig.trim() : "";
+
   if (!uid || !nonce || !Number.isFinite(ts) || !sig) return null;
 
-  const secret =
-    process.env.GOOGLE_OAUTH_STATE_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY || // fallback if you don't add a new env var
-    "";
-
+  const secret = process.env.GOOGLE_OAUTH_STATE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   if (!secret) return null;
 
-  // Expire state after 15 minutes (prevents replay)
+  // Expire signed state after 15 minutes
   const maxAgeMs = 15 * 60 * 1000;
   if (Date.now() - ts > maxAgeMs) return null;
 
@@ -89,18 +63,11 @@ export async function GET(req: NextRequest) {
     const returnedState = url.searchParams.get("state");
 
     if (error) {
-      return NextResponse.redirect(
-        new URL(
-          `/settings/integrations?error=${encodeURIComponent(error)}`,
-          origin
-        )
-      );
+      return NextResponse.redirect(new URL(`/profile/integrations?error=${encodeURIComponent(error)}`, origin));
     }
 
     if (!code) {
-      return NextResponse.redirect(
-        new URL("/settings/integrations?error=missing_code", origin)
-      );
+      return NextResponse.redirect(new URL("/profile/integrations?error=missing_code", origin));
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -108,37 +75,25 @@ export async function GET(req: NextRequest) {
     const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
-      return NextResponse.redirect(
-        new URL("/settings/integrations?error=server_misconfigured", origin)
-      );
+      return NextResponse.redirect(new URL("/profile/integrations?error=server_misconfigured", origin));
     }
 
-    // -----------------------------
-    // 1) Try cookie-based auth info
-    // -----------------------------
+    // 1) cookie-based flow
     const cookieState = req.cookies.get("gc_oauth_state")?.value || null;
     const cookieUserId = req.cookies.get("gc_oauth_user_id")?.value || null;
 
     let resolvedUserId: string | null = null;
 
     if (cookieState && cookieUserId) {
-      // Validate state (CSRF protection)
       if (!returnedState || returnedState !== cookieState) {
-        return NextResponse.redirect(
-          new URL("/settings/integrations?error=invalid_state", origin)
-        );
+        return NextResponse.redirect(new URL("/profile/integrations?error=invalid_state", origin));
       }
       resolvedUserId = cookieUserId;
     } else {
-      // -----------------------------------------------
-      // 2) Fallback: use signed state that contains uid
-      // -----------------------------------------------
+      // 2) signed state fallback
       const parsed = parseSignedState(returnedState);
       if (!parsed?.uid) {
-        // Keep the same error name so your UI works
-        return NextResponse.redirect(
-          new URL("/settings/integrations?error=missing_auth", origin)
-        );
+        return NextResponse.redirect(new URL("/profile/integrations?error=missing_auth", origin));
       }
       resolvedUserId = parsed.uid;
     }
@@ -162,9 +117,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       console.error("[google-callback] token exchange failed:", tokenJson);
-      return NextResponse.redirect(
-        new URL("/settings/integrations?error=token_exchange_failed", origin)
-      );
+      return NextResponse.redirect(new URL("/profile/integrations?error=token_exchange_failed", origin));
     }
 
     const accessToken = tokenJson.access_token as string | undefined;
@@ -174,9 +127,7 @@ export async function GET(req: NextRequest) {
     const expiresIn = tokenJson.expires_in as number | undefined;
 
     const expiryDate =
-      typeof expiresIn === "number"
-        ? new Date(Date.now() + expiresIn * 1000).toISOString()
-        : null;
+      typeof expiresIn === "number" ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
 
     const payload: any = {
       user_id: resolvedUserId,
@@ -187,35 +138,30 @@ export async function GET(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    // Important: refresh_token may not be returned every time
     if (refreshToken) payload.refresh_token = refreshToken;
 
-    const { error: upsertErr } = await supabaseAdmin
-      .from("user_google_calendar_tokens")
-      .upsert(payload, { onConflict: "user_id" });
+    const { error: upsertErr } = await supabaseAdmin.from("user_google_calendar_tokens").upsert(payload, {
+      onConflict: "user_id",
+    });
 
     if (upsertErr) {
       console.error("[google-callback] Failed to upsert tokens:", upsertErr);
-      return NextResponse.redirect(
-        new URL("/settings/integrations?error=db_upsert_failed", origin)
-      );
+      return NextResponse.redirect(new URL("/profile/integrations?error=db_upsert_failed", origin));
     }
 
-    // success redirect
-    const response = NextResponse.redirect(
-      new URL("/settings/integrations?connected=google", origin)
-    );
+    // success redirect → Profile Integrations page
+    const response = NextResponse.redirect(new URL("/profile/integrations?connected=google", origin));
 
-    // UI hint cookie
+    // UI hint cookie lasts 3 months (90 days)
     response.cookies.set("calendar_google_connected", "1", {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 90,
     });
 
-    // Clear short-lived connect cookies (if they existed)
+    // Clear short-lived connect cookies
     response.cookies.set("gc_oauth_state", "", { path: "/", maxAge: 0 });
     response.cookies.set("gc_oauth_user_id", "", { path: "/", maxAge: 0 });
 
@@ -223,12 +169,7 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     console.error("[google-callback] Unhandled error:", err);
     return NextResponse.redirect(
-      new URL(
-        `/settings/integrations?error=${encodeURIComponent(
-          err?.message || "callback_internal_error"
-        )}`,
-        origin
-      )
+      new URL(`/profile/integrations?error=${encodeURIComponent(err?.message || "callback_internal_error")}`, origin)
     );
   }
 }

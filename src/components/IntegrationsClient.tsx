@@ -37,7 +37,7 @@ const calendarProviders = [
     id: "outlook" as const,
     name: "Outlook / Microsoft 365 Calendar",
     description: "Common in corporate and enterprise environments.",
-    connectHref: "/api/crm/integrations/calendar/outlook/connect",
+    connectHref: "/api/integrations/calendar/outlook/connect",
     badgeBg: "bg-sky-50",
     badgeText: "text-sky-700",
     buttonBg: "bg-sky-600",
@@ -52,7 +52,7 @@ const emailProviders = [
     id: "google" as const,
     name: "Gmail / Google Workspace",
     description: "Send and log emails directly from FaigataCRM.",
-    connectHref: "/api/crm/integrations/email/google/connect",
+    connectHref: "/api/integrations/email/google/connect",
     badgeBg: "bg-emerald-50",
     badgeText: "text-emerald-700",
     buttonBg: "bg-emerald-600",
@@ -64,7 +64,7 @@ const emailProviders = [
     id: "outlook" as const,
     name: "Outlook / Microsoft 365 Mail",
     description: "Use your Outlook inbox inside FaigataCRM.",
-    connectHref: "/api/crm/integrations/email/outlook/connect",
+    connectHref: "/api/integrations/email/outlook/connect",
     badgeBg: "bg-slate-50",
     badgeText: "text-slate-700",
     buttonBg: "bg-sky-700",
@@ -104,7 +104,14 @@ function CalendarProviderIcon({ id }: { id: ProviderId }) {
         <rect x="14" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
         <rect x="19" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
         <path d="M19 9.5L22.5 9.5" stroke="#10B981" strokeWidth="1.6" strokeLinecap="round" />
-        <path d="M21.5 8L23 9.5L21.5 11" fill="none" stroke="#10B981" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M21.5 8L23 9.5L21.5 11"
+          fill="none"
+          stroke="#10B981"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
@@ -175,6 +182,37 @@ export default function IntegrationsClient() {
 
   const [googleReconnectNeeded, setGoogleReconnectNeeded] = useState(false);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  const fetchRoles = useMemo(() => {
+    return async () => {
+      try {
+        setRolesLoading(true);
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes.user;
+
+        if (!user?.id) {
+          setIsAdmin(false);
+          return;
+        }
+
+        const { data, error } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+
+        if (error) {
+          console.error("[Integrations] Failed to load roles", error);
+          setIsAdmin(false);
+          return;
+        }
+
+        const roles = (data?.role ?? []) as string[];
+        setIsAdmin(roles.some((r) => String(r).toLowerCase() === "admin"));
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+  }, []);
+
   const fetchStatus = useMemo(() => {
     return async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -185,7 +223,6 @@ export default function IntegrationsClient() {
         return;
       }
 
-      // Fetch Google-calendar status (your route returns IntegrationStatus without billing)
       const [googleRes, stripeRes] = await Promise.allSettled([
         fetch("/api/integrations/calendar/google/status", {
           cache: "no-store",
@@ -203,7 +240,6 @@ export default function IntegrationsClient() {
       };
 
       if (googleRes.status === "fulfilled" && googleRes.value.ok) {
-        // IMPORTANT: your google status returns {calendar,email} (not billing)
         const json = (await googleRes.value.json()) as any;
         calendarEmail = {
           calendar: json?.calendar ?? calendarEmail.calendar,
@@ -251,51 +287,56 @@ export default function IntegrationsClient() {
   }, []);
 
   useEffect(() => {
-    if (googleReconnectNeeded) {
-      clearGoogleConnectedCookie().catch(() => {});
-    }
+    if (googleReconnectNeeded) clearGoogleConnectedCookie().catch(() => {});
   }, [googleReconnectNeeded]);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         setLoading(true);
-        await fetchStatus();
+        await Promise.all([fetchStatus(), fetchRoles()]);
       } catch (e) {
-        console.error("[Integrations] Failed to load status", e);
+        console.error("[Integrations] Failed to load status/roles", e);
         if (!cancelled) setStatus(EMPTY_STATUS);
+        if (!cancelled) setIsAdmin(false);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
-    const onFocus = () => fetchStatus().catch(() => {});
+    const onFocus = () => {
+      fetchStatus().catch(() => {});
+      fetchRoles().catch(() => {});
+    };
     window.addEventListener("focus", onFocus);
 
     return () => {
       cancelled = true;
       window.removeEventListener("focus", onFocus);
     };
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchRoles]);
 
   useEffect(() => {
-    // after oauth callback redirect
     if (connectedParam === "google" || connectedParam === "stripe") {
       clearReconnectFlag();
       fetchStatus().catch(() => {});
+      fetchRoles().catch(() => {});
     }
     if (errorParam) {
       fetchStatus().catch(() => {});
+      fetchRoles().catch(() => {});
     }
-  }, [connectedParam, errorParam, fetchStatus]);
+  }, [connectedParam, errorParam, fetchStatus, fetchRoles]);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       fetchStatus().catch(() => {});
+      fetchRoles().catch(() => {});
     });
     return () => sub.subscription.unsubscribe();
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchRoles]);
 
   const isCalendarConnected = (id: ProviderId) => status.calendar[id] ?? false;
   const isEmailConnected = (id: ProviderId) => status.email[id] ?? false;
@@ -322,12 +363,12 @@ export default function IntegrationsClient() {
     const json = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const msg = json?.error || `connect_failed_${res.status}`;
+      const msg = (json as any)?.error || `connect_failed_${res.status}`;
       window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
       return;
     }
 
-    const authUrl = json?.authUrl as string | undefined;
+    const authUrl = (json as any)?.authUrl as string | undefined;
     if (!authUrl) {
       window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
       return;
@@ -418,21 +459,17 @@ export default function IntegrationsClient() {
     <div className="max-w-3xl space-y-6 pt-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Integrations</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Connect your calendar and inbox to power bookings and communication.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">Connect your calendar and inbox to power bookings and communication.</p>
 
         {googleReconnectNeeded && (
           <p className="mt-2 text-xs font-semibold text-amber-700">
-            Your Google Calendar needs to be reconnected so booking links can check availability.
-            Click “Reconnect Google Calendar”.
+            Your Google Calendar needs to be reconnected so booking links can check availability. Click “Reconnect Google
+            Calendar”.
           </p>
         )}
 
         {!!errorParam && (
-          <p className="mt-2 text-xs font-semibold text-rose-600">
-            Connection failed: {errorParam}
-          </p>
+          <p className="mt-2 text-xs font-semibold text-rose-600">Connection failed: {errorParam}</p>
         )}
       </div>
 
@@ -447,9 +484,7 @@ export default function IntegrationsClient() {
 
         <div className="grid gap-4 md:grid-cols-2">
           {calendarProviders.map((p) => {
-            const connected =
-              p.id === "google" && googleReconnectNeeded ? false : isCalendarConnected(p.id);
-
+            const connected = p.id === "google" && googleReconnectNeeded ? false : isCalendarConnected(p.id);
             const isPending = pendingCalendar === p.id;
 
             return (
@@ -485,11 +520,8 @@ export default function IntegrationsClient() {
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
-
                   <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
-                    {p.id === "google"
-                      ? "Great for Google Workspace teams"
-                      : "Great for Microsoft 365 / Outlook users"}
+                    {p.id === "google" ? "Great for Google Workspace teams" : "Great for Microsoft 365 / Outlook users"}
                   </div>
                 </div>
 
@@ -529,9 +561,7 @@ export default function IntegrationsClient() {
       <section className="space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Email Connections</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Connect your inbox to send emails from FaigataCRM and log conversations to leads.
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Connect your inbox to send emails from FaigataCRM and log conversations to leads.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -565,7 +595,6 @@ export default function IntegrationsClient() {
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
-
                   <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
                     {p.id === "google"
                       ? "Requires Gmail / Workspace mail permissions"
@@ -599,71 +628,67 @@ export default function IntegrationsClient() {
         </div>
       </section>
 
-      {/* Billing */}
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">Billing Connections</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Connect Stripe to create products, send invoices, and collect payments.
-          </p>
-        </div>
+      {/* Billing (ADMIN ONLY) */}
+      {isAdmin && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Billing Connections</h2>
+            <p className="mt-1 text-xs text-slate-500">Connect Stripe to create products, send invoices, and collect payments.</p>
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {billingProviders.map((p) => (
-            <div
-              key={p.id}
-              className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-            >
-              <div className="mb-3 flex min-h-[40px] items-center gap-2">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                  <StripeProviderIcon />
+          <div className="grid gap-4 md:grid-cols-2">
+            {billingProviders.map((p) => (
+              <div
+                key={p.id}
+                className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+              >
+                <div className="mb-3 flex min-h-[40px] items-center gap-2">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                    <StripeProviderIcon />
+                  </div>
+
+                  {isStripeConnected ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Connected
+                    </span>
+                  ) : (
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
+                      Billing
+                    </span>
+                  )}
                 </div>
 
-                {isStripeConnected ? (
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                    <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Connected
-                  </span>
-                ) : (
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
-                    Billing
-                  </span>
-                )}
-              </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{p.description}</p>
+                </div>
 
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
-                <p className="mt-1 text-xs text-slate-500">{p.description}</p>
-              </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    disabled={loading || rolesLoading || pendingStripe || !p.enabled}
+                    onClick={handleStripeClick}
+                    className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
+                      isStripeConnected
+                        ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                        : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
+                    }`}
+                  >
+                    {pendingStripe ? "Working..." : isStripeConnected ? "Disconnect Stripe" : "Connect Stripe (Test)"}
+                  </button>
 
-              <div className="mt-4 flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={loading || pendingStripe || !p.enabled}
-                  onClick={handleStripeClick}
-                  className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
-                    isStripeConnected
-                      ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                      : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
-                  }`}
-                >
-                  {pendingStripe
-                    ? "Working..."
-                    : isStripeConnected
-                    ? "Disconnect Stripe"
-                    : "Connect Stripe (Test)"}
-                </button>
-
-                <p className="text-[11px] leading-snug text-slate-400">
-                  {isStripeConnected
-                    ? "Stripe is connected for this workspace (test mode)."
-                    : "You’ll be redirected to Stripe to authorize access (test mode)."}
-                </p>
+                  <p className="text-[11px] leading-snug text-slate-400">
+                    {isStripeConnected
+                      ? "Stripe is connected for this workspace (test mode)."
+                      : "You’ll be redirected to Stripe to authorize access (test mode)."}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

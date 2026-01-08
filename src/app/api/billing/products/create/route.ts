@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { stripeClient } from "@/app/api/utils/stripeClient";
+import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 
 export const runtime = "nodejs";
 
@@ -59,18 +60,12 @@ export async function POST(req: Request) {
   const description =
     body.description === null ? null : String(body.description ?? "").trim() || null;
 
-  // price required
   const currency = normalizeCurrency(body.price?.currency);
   const unit_amount = normalizeUnitAmount(body.price?.unit_amount);
 
-  if (!currency) {
-    return NextResponse.json({ error: "missing_currency" }, { status: 400 });
-  }
-  if (unit_amount == null) {
-    return NextResponse.json({ error: "invalid_unit_amount"  }, { status: 400 });
-  }
+  if (!currency) return NextResponse.json({ error: "missing_currency" }, { status: 400 });
+  if (unit_amount == null) return NextResponse.json({ error: "invalid_unit_amount" }, { status: 400 });
 
-  // validate recurring (optional)
   const recurringRaw = body.price?.recurring;
   let recurring: Stripe.PriceCreateParams.Recurring | undefined = undefined;
 
@@ -79,10 +74,7 @@ export async function POST(req: Request) {
     const allowed = ["day", "week", "month", "year"] as const;
 
     if (!allowed.includes(interval as any)) {
-      return NextResponse.json(
-        { error: "invalid_interval", allowed },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "invalid_interval", allowed }, { status: 400 });
     }
 
     const countRaw = Number(recurringRaw.interval_count ?? 1);
@@ -93,7 +85,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    // ✅ IMPORTANT: use test vs live depending on ctx.livemode
     const stripe = stripeClient(ctx.livemode);
 
     // 1) Create product
@@ -117,11 +108,45 @@ export async function POST(req: Request) {
       { stripeAccount: ctx.stripeAccountId }
     );
 
+    // 3) Persist + activity log (so UI shows “New product …”)
+    const sb = adminClient();
+
+    // Upsert product snapshot for your org table (optional but useful)
+    await sb.from("organization_stripe_products").upsert(
+      {
+        org_id: ctx.orgId,
+        livemode: ctx.livemode,
+        stripe_product_id: product.id,
+        stripe_name: product.name ?? null,
+        stripe_description: product.description ?? null,
+        stripe_active: !!product.active,
+        stripe_created: typeof product.created === "number" ? product.created : null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "org_id,livemode,stripe_product_id" }
+    );
+
+    // Activity event (used by ProductDetailClient timeline)
+    await sb.from("organization_stripe_catalog_activity").insert({
+      org_id: ctx.orgId,
+      livemode: ctx.livemode,
+      stripe_product_id: product.id,
+      stripe_price_id: price.id,
+      actor_user_id: ctx.userId ?? null,
+      type: "product_created",
+      payload: {
+        name: product.name ?? null,
+        description: product.description ?? null,
+      },
+      created_at: new Date().toISOString(),
+    });
+
     return NextResponse.json({
       ok: true,
       stripe_product_id: product.id,
       stripe_price_id: price.id,
       livemode: ctx.livemode,
+      product, // ✅ return Stripe Product so clients can use name immediately if needed
     });
   } catch (e: any) {
     return NextResponse.json(
