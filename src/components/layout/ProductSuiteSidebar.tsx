@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabaseClient";
 const navItems = [
   {
     href: "/crm",
-    label: "FaigataCRM",
+    label: "Lumo",
     iconSrc: "/icons/icon-crm.svg",
   },
 ];

@@ -92,6 +92,37 @@ function splitSystemAndCustom(input: any) {
   return { system, custom };
 }
 
+/**
+ * DB requires leads.primary_contact_type NOT NULL in your schema.
+ * This helper ensures we never insert null even if the UI forgets it.
+ */
+function inferPrimaryContactType(
+  primary_contact_type: any,
+  primary_contact_value: any,
+  source_name: any
+): string | null {
+  const pct = normalizeNullish(primary_contact_type);
+  if (typeof pct === "string" && pct.trim() !== "") return pct;
+
+  const sn = normalizeNullish(source_name);
+  if (sn === "instagram" || sn === "facebook" || sn === "reddit" || sn === "twitter_x") return sn;
+
+  const vRaw = normalizeNullish(primary_contact_value);
+  const v = typeof vRaw === "string" ? vRaw.trim().toLowerCase() : "";
+
+  if (v.includes("instagram.com") || v.startsWith("@")) return "instagram";
+  if (v.includes("facebook.com")) return "facebook";
+  if (v.includes("reddit.com")) return "reddit";
+  if (v.includes("twitter.com") || v.includes("x.com")) return "twitter_x";
+  if (v.startsWith("http://") || v.startsWith("https://")) return "other";
+  if (v.includes("@") && v.includes(".")) return "email";
+  if (v.replace(/[^\d+]/g, "").length >= 7) return "phone";
+
+  if (v.length > 0) return "other";
+
+  return null;
+}
+
 /* -------------------- types -------------------- */
 
 type NewLeadBody = {
@@ -121,17 +152,14 @@ export async function POST(req: Request) {
   const rawSystemFields: Record<string, any> = body.systemFields ?? {};
 
   // if someone accidentally put system keys into customValues, strip them
-  const { system: sysFromCustom, custom: safeCustomValues } =
-    splitSystemAndCustom(rawCustomValues);
+  const { system: sysFromCustom, custom: safeCustomValues } = splitSystemAndCustom(rawCustomValues);
 
   // explicit systemFields wins
   const system = { ...sysFromCustom, ...rawSystemFields };
 
   const prospectorId: string | null = body.prospectorId ?? null;
   const notes: string | null =
-    typeof body.notes === "string" && body.notes.trim() !== ""
-      ? body.notes.trim()
-      : null;
+    typeof body.notes === "string" && body.notes.trim() !== "" ? body.notes.trim() : null;
 
   if (!teamId) {
     return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
@@ -140,15 +168,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing stage" }, { status: 400 });
   }
 
+  // ✅ enforce NOT NULL primary_contact_type (with inference fallback)
+  const primaryContactType = inferPrimaryContactType(
+    (system as any).primary_contact_type,
+    (system as any).primary_contact_value,
+    (system as any).source_name
+  );
+
+  // If still missing, fail fast with 400 (better than a 500 constraint error)
+  if (!primaryContactType) {
+    return NextResponse.json(
+      { error: "Missing primary_contact_type (required). Please select a Primary Contact Type." },
+      { status: 400 }
+    );
+  }
+
   // Decide setter_id based on prospector + team roles
   let setterId: string | null = null;
   try {
     setterId = await assignSetterId(teamId, prospectorId);
   } catch (err) {
-    console.error(
-      "[LeadsAPI] assignSetterId failed – continuing without setter",
-      err
-    );
+    console.error("[LeadsAPI] assignSetterId failed – continuing without setter", err);
     setterId = null;
   }
 
@@ -157,26 +197,27 @@ export async function POST(req: Request) {
     stage,
 
     // ✅ lead_name stored in real column
-    lead_name: normalizeNullish(system.lead_name),
+    lead_name: normalizeNullish((system as any).lead_name),
 
     // only truly custom values go here
     custom_values: safeCustomValues,
 
     // core/system fields stored in real columns
-    niche: normalizeNullish(system.niche),
-    lead_type: normalizeNullish(system.lead_type),
-    gender: normalizeNullish(system.gender),
+    niche: normalizeNullish((system as any).niche),
+    lead_type: normalizeNullish((system as any).lead_type),
+    gender: normalizeNullish((system as any).gender),
 
-    country: normalizeNullish(system.country),
-    region: normalizeNullish(system.region),
-    city: normalizeNullish(system.city),
-    postal_code: normalizeNullish(system.postal_code),
+    country: normalizeNullish((system as any).country),
+    region: normalizeNullish((system as any).region),
+    city: normalizeNullish((system as any).city),
+    postal_code: normalizeNullish((system as any).postal_code),
 
-    primary_contact_type: normalizeNullish(system.primary_contact_type),
-    primary_contact_value: normalizeNullish(system.primary_contact_value),
+    // ✅ never null (DB constraint)
+    primary_contact_type: primaryContactType,
+    primary_contact_value: normalizeNullish((system as any).primary_contact_value),
 
-    source_category: normalizeNullish(system.source_category),
-    source_name: normalizeNullish(system.source_name),
+    source_category: normalizeNullish((system as any).source_category),
+    source_name: normalizeNullish((system as any).source_name),
 
     // RBAC + notes
     prospector_id: prospectorId,
@@ -184,11 +225,7 @@ export async function POST(req: Request) {
     notes,
   };
 
-  const { data, error } = await supabaseAdmin
-    .from("leads")
-    .insert(insertPayload)
-    .select(LEAD_SELECT_COLUMNS)
-    .single();
+  const { data, error } = await supabaseAdmin.from("leads").insert(insertPayload).select(LEAD_SELECT_COLUMNS).single();
 
   if (error || !data) {
     console.error("[LeadsAPI] Error creating lead", error);
@@ -199,6 +236,62 @@ export async function POST(req: Request) {
   }
 
   const createdLeadId = hasLeadId(data) ? data.id : null;
+
+  /**
+   * ✅ log lead creation event in lead_messages (non-fatal)
+   * - event_type: "lead_created"
+   * - event_data: jsonb NOT NULL in your schema -> ALWAYS provide an object
+   */
+  try {
+    if (createdLeadId) {
+      const nowISO = new Date().toISOString();
+
+      const event_type = "lead_created";
+      const event_data: Record<string, any> = {
+        lead_id: createdLeadId,
+        team_id: teamId,
+
+        stage: (data as any).stage ?? stage ?? null,
+        prospector_id: (data as any).prospector_id ?? prospectorId ?? null,
+        setter_id: (data as any).setter_id ?? setterId ?? null,
+        closer_id: (data as any).closer_id ?? null,
+
+        // useful snapshot fields
+        lead_name: (data as any).lead_name ?? null,
+        primary_contact_type: (data as any).primary_contact_type ?? null,
+        primary_contact_value: (data as any).primary_contact_value ?? null,
+        source_category: (data as any).source_category ?? null,
+        source_name: (data as any).source_name ?? null,
+        niche: (data as any).niche ?? null,
+        lead_type: (data as any).lead_type ?? null,
+        gender: (data as any).gender ?? null,
+      };
+
+      const { error: msgErr } = await supabaseAdmin.from("lead_messages").insert({
+        team_id: teamId,
+        lead_id: createdLeadId,
+
+        // required by your table
+        direction: "internal",
+        channel: "crm",
+        body: `Lead created${(data as any).lead_name ? `: ${(data as any).lead_name}` : ""}.`,
+        sender_profile_id: prospectorId, // nullable
+        user_id: prospectorId, // nullable
+
+        sent_at: nowISO,
+        created_at: nowISO,
+
+        event_type,
+        event_data, // jsonb NOT NULL
+      });
+
+      if (msgErr) {
+        console.error("[LeadsAPI] lead_messages insert error (non-fatal):", msgErr);
+      }
+    }
+  } catch (e) {
+    console.error("[LeadsAPI] lead_messages insert failed (non-fatal):", e);
+  }
 
   // compute base + activity score right after creation
   if (createdLeadId) {
@@ -233,19 +326,11 @@ export async function GET(req: Request) {
   const id = getLeadIdFromRequest(req);
 
   if (id) {
-    const { data, error } = await supabaseAdmin
-      .from("leads")
-      .select(LEAD_SELECT_COLUMNS)
-      .eq("team_id", teamId)
-      .eq("id", id)
-      .single();
+    const { data, error } = await supabaseAdmin.from("leads").select(LEAD_SELECT_COLUMNS).eq("team_id", teamId).eq("id", id).single();
 
     if (error) {
       console.error("[LeadsAPI] Error fetching single lead", error);
-      return NextResponse.json(
-        { error: error.message ?? "Failed to fetch lead", details: error },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message ?? "Failed to fetch lead", details: error }, { status: 500 });
     }
 
     return NextResponse.json(data);
@@ -259,10 +344,7 @@ export async function GET(req: Request) {
 
   if (error) {
     console.error("[LeadsAPI] Error fetching leads", error);
-    return NextResponse.json(
-      { error: error.message ?? "Failed to fetch leads", details: error },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message ?? "Failed to fetch leads", details: error }, { status: 500 });
   }
 
   return NextResponse.json(data ?? []);
@@ -293,14 +375,12 @@ export async function PATCH(req: Request) {
 
   // customValues: strip system keys, but still apply them to real columns
   if (updates.customValues !== undefined) {
-    const { system: sysFromCustom, custom: safeCustomValues } =
-      splitSystemAndCustom(updates.customValues);
+    const { system: sysFromCustom, custom: safeCustomValues } = splitSystemAndCustom(updates.customValues);
 
     payload.custom_values = safeCustomValues;
 
     // apply system keys if present in customValues
-    if ("lead_name" in sysFromCustom)
-      payload.lead_name = normalizeNullish(sysFromCustom.lead_name);
+    if ("lead_name" in sysFromCustom) payload.lead_name = normalizeNullish(sysFromCustom.lead_name);
 
     if ("niche" in sysFromCustom) payload.niche = normalizeNullish(sysFromCustom.niche);
     if ("lead_type" in sysFromCustom) payload.lead_type = normalizeNullish(sysFromCustom.lead_type);
@@ -309,18 +389,19 @@ export async function PATCH(req: Request) {
     if ("country" in sysFromCustom) payload.country = normalizeNullish(sysFromCustom.country);
     if ("region" in sysFromCustom) payload.region = normalizeNullish(sysFromCustom.region);
     if ("city" in sysFromCustom) payload.city = normalizeNullish(sysFromCustom.city);
-    if ("postal_code" in sysFromCustom)
-      payload.postal_code = normalizeNullish(sysFromCustom.postal_code);
+    if ("postal_code" in sysFromCustom) payload.postal_code = normalizeNullish(sysFromCustom.postal_code);
 
-    if ("primary_contact_type" in sysFromCustom)
-      payload.primary_contact_type = normalizeNullish(sysFromCustom.primary_contact_type);
-    if ("primary_contact_value" in sysFromCustom)
+    // ✅ Only update contact_type if provided. (Avoid overwriting with null.)
+    if ("primary_contact_type" in sysFromCustom) {
+      const pct = inferPrimaryContactType(sysFromCustom.primary_contact_type, sysFromCustom.primary_contact_value, sysFromCustom.source_name);
+      if (pct) payload.primary_contact_type = pct;
+    }
+    if ("primary_contact_value" in sysFromCustom) {
       payload.primary_contact_value = normalizeNullish(sysFromCustom.primary_contact_value);
+    }
 
-    if ("source_category" in sysFromCustom)
-      payload.source_category = normalizeNullish(sysFromCustom.source_category);
-    if ("source_name" in sysFromCustom)
-      payload.source_name = normalizeNullish(sysFromCustom.source_name);
+    if ("source_category" in sysFromCustom) payload.source_category = normalizeNullish(sysFromCustom.source_category);
+    if ("source_name" in sysFromCustom) payload.source_name = normalizeNullish(sysFromCustom.source_name);
 
     shouldRecomputeScore = true;
   }
@@ -340,7 +421,11 @@ export async function PATCH(req: Request) {
     if ("city" in sf) payload.city = normalizeNullish(sf.city);
     if ("postal_code" in sf) payload.postal_code = normalizeNullish(sf.postal_code);
 
-    if ("primary_contact_type" in sf) payload.primary_contact_type = normalizeNullish(sf.primary_contact_type);
+    // ✅ Only update contact_type if provided. (Avoid overwriting with null.)
+    if ("primary_contact_type" in sf || "primary_contact_value" in sf || "source_name" in sf) {
+      const pct = inferPrimaryContactType(sf.primary_contact_type, sf.primary_contact_value, sf.source_name);
+      if (pct) payload.primary_contact_type = pct;
+    }
     if ("primary_contact_value" in sf) payload.primary_contact_value = normalizeNullish(sf.primary_contact_value);
 
     if ("source_category" in sf) payload.source_category = normalizeNullish(sf.source_category);
@@ -349,20 +434,11 @@ export async function PATCH(req: Request) {
     shouldRecomputeScore = true;
   }
 
-  if (updates.prospectorId !== undefined) {
-    payload.prospector_id = updates.prospectorId;
-  }
-  if (updates.setterId !== undefined) {
-    payload.setter_id = updates.setterId;
-  }
-  if (updates.closerId !== undefined) {
-    payload.closer_id = updates.closerId;
-  }
+  if (updates.prospectorId !== undefined) payload.prospector_id = updates.prospectorId;
+  if (updates.setterId !== undefined) payload.setter_id = updates.setterId;
+  if (updates.closerId !== undefined) payload.closer_id = updates.closerId;
   if (updates.notes !== undefined) {
-    payload.notes =
-      typeof updates.notes === "string" && updates.notes.trim() !== ""
-        ? updates.notes.trim()
-        : null;
+    payload.notes = typeof updates.notes === "string" && updates.notes.trim() !== "" ? updates.notes.trim() : null;
   }
 
   payload.updated_at = new Date().toISOString();
@@ -418,18 +494,11 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Missing teamId or id" }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin
-    .from("leads")
-    .delete()
-    .eq("team_id", teamId)
-    .eq("id", id);
+  const { error } = await supabaseAdmin.from("leads").delete().eq("team_id", teamId).eq("id", id);
 
   if (error) {
     console.error("[LeadsAPI] Error deleting lead", error);
-    return NextResponse.json(
-      { error: error.message ?? "Failed to delete lead", details: error },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message ?? "Failed to delete lead", details: error }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -447,10 +516,7 @@ export async function DELETE(req: Request) {
  *      (based on leads created this month).
  * 3) Otherwise → no setter assigned (null).
  */
-async function assignSetterId(
-  teamId: string,
-  prospectorId: string | null
-): Promise<string | null> {
+async function assignSetterId(teamId: string, prospectorId: string | null): Promise<string | null> {
   if (!prospectorId) return null;
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -460,39 +526,45 @@ async function assignSetterId(
     .single();
 
   if (profileError || !profile) {
-    console.error(
-      "[LeadsAPI] Failed to load profile for setter assignment",
-      profileError
-    );
+    console.error("[LeadsAPI] Failed to load profile for setter assignment", profileError);
     return null;
   }
 
-  const roles: string[] = Array.isArray((profile as any).role)
-    ? (profile as any).role
-    : [];
-  const isProspector = roles.includes("Prospector");
-  const isSetter = roles.includes("Setter");
+  // ✅ normalize roles (case-insensitive)
+  const rawRoles: string[] = Array.isArray((profile as any).role) ? (profile as any).role : [];
+  const normRoles = rawRoles.map((r) => String(r).trim().toLowerCase());
 
+  const isProspector = normRoles.includes("prospector");
+  const isSetter = normRoles.includes("setter");
+
+  // Rule 1: Prospector + Setter -> assign to self
   if (isProspector && isSetter) return prospectorId;
+
+  // Rule 3: if not Prospector -> no setter
   if (!isProspector) return null;
 
-  const { data: setterProfiles, error: settersError } = await supabaseAdmin
+  // ✅ load all team profiles, filter setters in code (avoids case-sensitive array contains)
+  const { data: teamProfiles, error: teamProfilesError } = await supabaseAdmin
     .from("profiles")
     .select("id, role")
-    .eq("team_id", teamId)
-    .contains("role", ["Setter"]);
+    .eq("team_id", teamId);
 
-  if (settersError) {
-    console.error("[LeadsAPI] Failed to load setters", settersError);
+  if (teamProfilesError) {
+    console.error("[LeadsAPI] Failed to load team profiles", teamProfilesError);
     return null;
   }
 
-  const setterIds = (setterProfiles ?? [])
-    .map((p: any) => p.id as string | null)
+  const setterIds = (teamProfiles ?? [])
+    .map((p: any) => {
+      const roles: string[] = Array.isArray(p.role) ? p.role : [];
+      const norm = roles.map((r) => String(r).trim().toLowerCase());
+      return norm.includes("setter") ? (p.id as string | null) : null;
+    })
     .filter((id): id is string => Boolean(id));
 
   if (setterIds.length === 0) return null;
 
+  // Balance using leads created this month
   const now = new Date();
   const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
@@ -504,10 +576,7 @@ async function assignSetterId(
     .gte("created_at", firstOfMonth.toISOString());
 
   if (leadsError) {
-    console.error(
-      "[LeadsAPI] Failed to load leads for setter balancing",
-      leadsError
-    );
+    console.error("[LeadsAPI] Failed to load leads for setter balancing", leadsError);
     return setterIds[0] ?? null;
   }
 

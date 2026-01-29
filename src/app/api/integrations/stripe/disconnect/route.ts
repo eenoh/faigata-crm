@@ -1,5 +1,7 @@
+// src/app/api/integrations/stripe/disconnect/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { ensureOrgIdForUser } from "../_org";
 
 export const runtime = "nodejs";
 
@@ -11,32 +13,16 @@ function supabaseAdmin() {
   );
 }
 
-async function getOrgIdForUser(userId: string) {
-  const sb = supabaseAdmin();
-  const { data, error } = await sb
-    .from("profiles")
-    .select("team_id")
-    .eq("id", userId)
-    .single();
-
-  if (error) return null;
-  return (data?.team_id as string | null) ?? null;
-}
-
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? "";
   const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
   if (!jwt) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const sb = supabaseAdmin();
   const { data: userData } = await sb.auth.getUser(jwt);
+  if (!userData?.user) return NextResponse.json({ error: "invalid_session" }, { status: 401 });
 
-  if (!userData?.user) {
-    return NextResponse.json({ error: "invalid_session" }, { status: 401 });
-  }
-
-  const orgId = await getOrgIdForUser(userData.user.id);
+  const orgId = await ensureOrgIdForUser(sb as any, userData.user.id);
   if (!orgId) return NextResponse.json({ error: "missing_org" }, { status: 400 });
 
   const { error } = await sb

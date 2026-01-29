@@ -719,7 +719,7 @@ export function AppHeader() {
     >
       <div className="flex flex-col">
         <span className="text-[11px] uppercase tracking-wide text-slate-400">
-          FaigataCRM
+          Lumo
         </span>
         <span className="text-sm font-semibold text-slate-900">{section}</span>
       </div>

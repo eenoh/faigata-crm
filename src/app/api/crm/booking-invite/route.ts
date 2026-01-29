@@ -225,18 +225,47 @@ export async function POST(req: NextRequest) {
     const path = `/b/${encodeURIComponent(slug)}?t=${encodeURIComponent(inviteRow.token)}`;
     const url = base ? `${base}${path}` : path;
 
-    // Optional: timeline message (non-fatal)
+    // ✅ Timeline message (non-fatal) WITH event_type + event_data (jsonb NOT NULL)
     try {
-      await admin.from("lead_messages").insert({
+      const nowISO = new Date().toISOString();
+
+      const event_type = "booking_invite_created";
+      const event_data = {
         team_id: teamId,
         lead_id: leadId,
+        booking_link_id: bookingLinkId,
+        booking_link_slug: slug,
+        invite_id: inviteRow.id,
+        token: inviteRow.token,
+        url,
+        expires_at: expiresAt,
+        created_by: userId,
+      };
+
+      const { error: msgErr } = await admin.from("lead_messages").insert({
+        team_id: teamId,
+        lead_id: leadId,
+
         direction: "outbound",
         channel: "pipeline",
+
+        // keep this human-readable for your existing UI matching
         body: `Sent booking link: ${url}`,
+
         sender_profile_id: userId,
-        sent_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        // only include user_id if your table actually has it; remove if not
+        user_id: userId,
+
+        sent_at: nowISO,
+        created_at: nowISO,
+
+        event_type,
+        event_data,
       });
+
+      if (msgErr) {
+        console.error("[booking-invite] lead_messages insert error (non-fatal):", msgErr);
+      }
     } catch (e) {
       console.error("[booking-invite] lead_messages insert failed (non-fatal):", e);
     }

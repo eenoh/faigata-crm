@@ -18,8 +18,10 @@ export function LoginPageClient() {
     e.preventDefault();
     setLoading(true);
 
+    const normalizedEmail = email.trim();
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -61,7 +63,6 @@ export function LoginPageClient() {
       console.error("after-login error", err);
       window.location.href = "/crm";
     } finally {
-      // If you navigate away, this won't matter, but it's correct for edge cases.
       setLoading(false);
     }
   }

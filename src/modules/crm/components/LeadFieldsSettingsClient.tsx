@@ -82,6 +82,19 @@ function nextFieldKey(existing: LeadFieldDefinition[]) {
   return `field_${max + 1}`;
 }
 
+function makeTempId() {
+  // Doesn’t change UI; only used to satisfy required typing for new rows before save.
+  try {
+    // modern browsers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const uuid = (globalThis as any)?.crypto?.randomUUID?.();
+    if (uuid) return `tmp_${uuid}`;
+  } catch {
+    // ignore
+  }
+  return `tmp_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+}
+
 export function LeadFieldsSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
@@ -175,7 +188,7 @@ export function LeadFieldsSettingsClient() {
           return k && !RESERVED_SYSTEM_KEYS.has(k);
         });
 
-        if (!cancelled) setFields(safe);
+        if (!cancelled) setFields(safe as LeadFieldDefinition[]);
       } catch (err) {
         console.error("Failed to load lead fields", err);
         if (!cancelled) setFields([]);
@@ -192,17 +205,24 @@ export function LeadFieldsSettingsClient() {
   }, [teamId, workspaceLoading]);
 
   function addField() {
+    // team_id is required by LeadFieldDefinition typing
+    if (!teamId) return;
+
     setFields((prev) => {
       const key = nextFieldKey(prev);
-      return [
-        ...prev,
-        {
-          key,
-          label: "New field",
-          type: "text",
-        },
-      ];
+      const next: LeadFieldDefinition = {
+        // ✅ satisfy required fields for typing
+        id: makeTempId(),
+        team_id: teamId,
+
+        key,
+        label: "New field",
+        type: "text",
+      } as LeadFieldDefinition;
+
+      return [...prev, next];
     });
+
     setSaveState("idle");
     setErrorMessage(null);
   }
@@ -241,6 +261,7 @@ export function LeadFieldsSettingsClient() {
 
           return {
             ...f,
+            team_id: f.team_id ?? teamId, // keep safe if a temp row existed
             key,
             label: String(f.label ?? "").trim() || "Untitled",
           };
@@ -257,7 +278,6 @@ export function LeadFieldsSettingsClient() {
         if (!k) continue;
 
         if (RESERVED_SYSTEM_KEYS.has(k)) {
-          // hard fail so you don't accidentally save a broken config
           throw new Error(`Field key "${k}" conflicts with a system field. Please regenerate it.`);
         }
 
@@ -309,10 +329,7 @@ export function LeadFieldsSettingsClient() {
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
-              >
+              <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
                 <div className="flex items-center justify-between">
                   <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
                   <div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" />
@@ -339,10 +356,6 @@ export function LeadFieldsSettingsClient() {
             capture more context—like budget, timeline, deal size, or anything specific to your
             workflow.
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Keys are now generated as <span className="font-semibold">field_1, field_2, …</span> and
-            never change (labels can change anytime).
-          </p>
         </div>
       </div>
 
@@ -364,10 +377,7 @@ export function LeadFieldsSettingsClient() {
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {REQUIRED_SYSTEM_FIELDS.map((f) => (
-            <div
-              key={f.label}
-              className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-            >
+            <div key={f.label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-medium text-slate-900">{f.label}</div>
                 <span
@@ -408,9 +418,7 @@ export function LeadFieldsSettingsClient() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Custom fields</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Add optional fields your team wants to track.
-            </p>
+            <p className="mt-1 text-sm text-slate-600">Add optional fields your team wants to track.</p>
           </div>
         </div>
 
@@ -419,8 +427,7 @@ export function LeadFieldsSettingsClient() {
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
               <p className="font-medium text-slate-700">No custom fields yet.</p>
               <p className="mt-1">
-                Add fields like{" "}
-                <span className="font-semibold">Budget, Timeline, Lead Score</span>, etc.
+                Add fields like <span className="font-semibold">Budget, Timeline, Lead Score</span>, etc.
               </p>
             </div>
           )}
@@ -441,11 +448,9 @@ export function LeadFieldsSettingsClient() {
                     />
 
                     <select
-                      className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                       value={field.type}
-                      onChange={(e) =>
-                        updateField(index, { type: e.target.value as CustomFieldType })
-                      }
+                      onChange={(e) => updateField(index, { type: e.target.value as CustomFieldType })}
                     >
                       {fieldTypes.map((t) => (
                         <option key={t} value={t}>
@@ -465,15 +470,10 @@ export function LeadFieldsSettingsClient() {
                     <button
                       type="button"
                       onClick={() => removeField(index)}
-                      className="text-[11px] text-slate-400 hover:text-rose-600 hover:underline mt-1"
+                      className="text-[11px] text-slate-400 hover:text-rose-600 cursor-pointer"
                     >
                       Remove
                     </button>
-                  </div>
-
-                  {/* show key read-only */}
-                  <div className="text-[11px] text-slate-500">
-                    Key: <span className="font-mono text-slate-700">{field.key}</span>
                   </div>
                 </div>
               </div>
@@ -489,7 +489,7 @@ export function LeadFieldsSettingsClient() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={
                       selectInputs[field.key ?? String(index)] ??
-                      (field.options ?? []).join(", ")
+                      (Array.isArray((field as any).options) ? ((field as any).options as string[]).join(", ") : "")
                     }
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -502,14 +502,14 @@ export function LeadFieldsSettingsClient() {
                         .map((s) => s.trim())
                         .filter(Boolean);
 
-                      updateField(index, { options: parsed });
+                      updateField(index, { options: parsed } as Partial<LeadFieldDefinition>);
                     }}
                     placeholder="e.g. Small, Medium, Enterprise"
                   />
 
-                  {field.options && field.options.length > 0 && (
+                  {Array.isArray((field as any).options) && ((field as any).options as string[]).length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {field.options.map((opt) => (
+                      {((field as any).options as string[]).map((opt: string) => (
                         <span
                           key={opt}
                           className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
@@ -545,9 +545,7 @@ export function LeadFieldsSettingsClient() {
           {saveState === "saving" ? "Saving…" : "Save Changes"}
         </button>
 
-        {saveState === "idle" && (
-          <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>
-        )}
+        {saveState === "idle" && <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>}
       </div>
     </div>
   );

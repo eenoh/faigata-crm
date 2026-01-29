@@ -7,21 +7,69 @@ import { getAuthedBillingContext } from "@/app/api/utils/authedBilling";
 
 export const runtime = "nodejs";
 
-export async function POST(
-  req: NextRequest,
-  ctx: { params: Promise<{ productId: string }> }
-) {
+type Role = "admin" | "manager" | "closer" | "member";
+
+function normalizeRoleOne(v: unknown): Role {
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "admin") return "admin";
+  if (s === "manager") return "manager";
+  if (s === "closer") return "closer";
+  if (s === "member") return "member";
+  return "member";
+}
+
+/**
+ * Accepts role values like:
+ * - "Admin"
+ * - "manager"
+ * - ["member", "Admin"]
+ * - null/undefined
+ */
+function normalizeRole(v: unknown): Role {
+  const set = new Set<Role>();
+
+  if (Array.isArray(v)) {
+    for (const x of v) set.add(normalizeRoleOne(x));
+  } else if (v != null) {
+    set.add(normalizeRoleOne(v));
+  }
+
+  // default
+  if (set.size === 0) return "member";
+
+  // pick highest
+  if (set.has("admin")) return "admin";
+  if (set.has("manager")) return "manager";
+  if (set.has("closer")) return "closer";
+  return "member";
+}
+
+export async function POST(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
   // ✅ Next.js: params is a Promise
   const { productId } = await ctx.params;
   const pid = String(productId ?? "").trim();
 
-  if (!pid) {
+  if (!pid || pid === "undefined") {
     return NextResponse.json({ error: "missing_product_id" }, { status: 400 });
   }
 
   const billingCtx = await getAuthedBillingContext(req);
   if (!billingCtx) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // ✅ NOT case sensitive role check (supports "Admin", ["member","Admin"], etc.)
+  const role = normalizeRole((billingCtx as any).role);
+  const allowed: Role[] = ["admin", "manager", "closer"];
+  if (!allowed.includes(role)) {
+    return NextResponse.json(
+      {
+        error: "forbidden",
+        message: "You do not have permission to archive products.",
+        role,
+      },
+      { status: 403 }
+    );
   }
 
   const sb = adminClient();
@@ -36,10 +84,7 @@ export async function POST(
     .maybeSingle();
 
   if (prodLookupErr) {
-    return NextResponse.json(
-      { error: "db_error", details: prodLookupErr },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "db_error", details: prodLookupErr }, { status: 500 });
   }
 
   if (!productRow) {
@@ -47,7 +92,6 @@ export async function POST(
   }
 
   try {
-    // ✅ stripeClient requires livemode
     const stripe = stripeClient(billingCtx.livemode);
 
     // ✅ Archive in Stripe (connected account)
@@ -70,10 +114,7 @@ export async function POST(
       .eq("stripe_product_id", pid);
 
     if (updErr) {
-      return NextResponse.json(
-        { error: "db_update_failed", details: updErr },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "db_update_failed", details: updErr }, { status: 500 });
     }
 
     // ✅ Activity log (best-effort; don’t fail request if this insert fails)

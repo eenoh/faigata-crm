@@ -92,10 +92,21 @@ export function OnboardingPageClient() {
 
   async function handleFinish() {
     try {
+      // 1) Get session first (more reliable than getUser alone)
+      const { data: sessionRes } = await supabase.auth.getSession();
+
+      // 2) If there's no session, try refresh once (helps after redirects)
+      if (!sessionRes.session) {
+        await supabase.auth.refreshSession();
+      }
+
+      // 3) Now read user
       const { data, error } = await supabase.auth.getUser();
 
       if (error || !data.user) {
         alert("You need to be logged in to finish onboarding.");
+        // Optional: redirect to login
+        window.location.href = "/login";
         return;
       }
 
@@ -103,7 +114,7 @@ export function OnboardingPageClient() {
       const firstName = meta.first_name ?? "";
       const lastName = meta.last_name ?? "";
 
-      const res = await fetch("/api/onboarding", {
+      const res = await fetch("/api/crm/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,8 +158,6 @@ export function OnboardingPageClient() {
   }
 
 
-
-
   // Helpers
   function updateInvite(index: number, patch: Partial<InviteRow>) {
     setInvites((prev) => {
@@ -181,7 +190,7 @@ export function OnboardingPageClient() {
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
-              Welcome to FaigataCRM
+              Welcome to Lumo
             </h1>
             <p className="text-sm text-slate-500">
               Step {stepIndex + 1} of {steps.length} · {steps[stepIndex]}
@@ -273,7 +282,7 @@ export function OnboardingPageClient() {
             type="button"
             onClick={back}
             disabled={stepIndex === 0}
-            className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-40"
+            className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-40 cursor-pointer"
           >
             ← Back
           </button>
@@ -282,7 +291,7 @@ export function OnboardingPageClient() {
             <button
               type="button"
               onClick={next}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition cursor-pointer"
             >
               Continue →
             </button>
@@ -290,7 +299,7 @@ export function OnboardingPageClient() {
             <button
               type="button"
               onClick={handleFinish}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition cursor-pointer"
             >
               Go to dashboard 🎉
             </button>
@@ -343,7 +352,7 @@ function StepTeamSetup(props: {
             Timezone
           </label>
           <select
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             value={props.timezone}
             onChange={(e) => props.setTimezone(e.target.value)}
           >
@@ -382,7 +391,7 @@ function StepInvites(props: {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Invite the people who will use FaigataCRM with you. You can always add
+        Invite the people who will use Lumo with you. You can always add
         more later.
       </p>
 
@@ -400,14 +409,14 @@ function StepInvites(props: {
               onChange={(e) => updateInvite(index, { email: e.target.value })}
             />
             <select
-              className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               value={row.role}
               onChange={(e) =>
                 updateInvite(index, { role: e.target.value as Role })
               }
             >
               {ROLES.map((r) => (
-                <option key={r}>{r}</option>
+                <option className="cursor-pointer" key={r}>{r}</option>
               ))}
             </select>
           </div>
@@ -417,7 +426,7 @@ function StepInvites(props: {
       <button
         type="button"
         onClick={addRow}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline"
+        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
       >
         + Add another teammate
       </button>
@@ -495,7 +504,7 @@ function StepCustomFields(props: {
                 placeholder="Field label (e.g. Industry)"
               />
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer cursor-pointer"
                 value={field.type}
                 onChange={(e) =>
                   updateField(index, {
@@ -513,7 +522,7 @@ function StepCustomFields(props: {
               <button
                 type="button"
                 onClick={() => removeField(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start"
+                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
               >
                 Remove
               </button>
@@ -536,7 +545,7 @@ function StepCustomFields(props: {
       <button
         type="button"
         onClick={addField}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline"
+        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
       >
         + Add another field
       </button>
@@ -632,7 +641,7 @@ function StepPipeline(props: {
             <button
               type="button"
               onClick={() => removeStage(index)}
-              className="text-xs text-slate-500 hover:text-red-500"
+              className="text-xs text-slate-500 hover:text-red-500 cursor-pointer"
               disabled={stages.length <= 2}
             >
               Remove
@@ -644,7 +653,7 @@ function StepPipeline(props: {
       <button
         type="button"
         onClick={addStage}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline"
+        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
       >
         + Add stage
       </button>
@@ -709,7 +718,7 @@ function StepConversionMetrics(props: {
               />
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.fromStage}
                 onChange={(e) =>
                   updateMetric(index, { fromStage: e.target.value })
@@ -723,7 +732,7 @@ function StepConversionMetrics(props: {
               </select>
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.toStage}
                 onChange={(e) =>
                   updateMetric(index, { toStage: e.target.value })
@@ -739,7 +748,7 @@ function StepConversionMetrics(props: {
               <button
                 type="button"
                 onClick={() => removeMetric(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start"
+                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
               >
                 Remove
               </button>
@@ -751,7 +760,7 @@ function StepConversionMetrics(props: {
       <button
         type="button"
         onClick={addMetric}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline"
+        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
       >
         + Add conversion metric
       </button>
@@ -797,7 +806,7 @@ function StepFinish(props: {
       </div>
 
       <div className="bg-indigo-50 rounded-2xl p-4 text-sm text-slate-700 space-y-2">
-        <p className="font-medium mb-1">Next up in FaigataCRM</p>
+        <p className="font-medium mb-1">Next up in Lumo</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
           <li>Track setters’ outreach and replies in real time</li>
           <li>Auto-assign high potential leads to your best performers</li>

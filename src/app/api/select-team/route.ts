@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // OPTION A: store teamId in a cookie
+    // store teamId in a cookie
     const res = NextResponse.json({ ok: true });
     res.cookies.set("current_team_id", teamId, {
       httpOnly: true,

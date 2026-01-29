@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import DeleteSchedulePageClient from "./DeleteSchedulePageClient";
+import DeleteSchedulePageClient from "../../../../../../modules/crm/components/DeleteSchedulePageClient";
 
 export const metadata: Metadata = {
   title: "Delete Schedule Page",

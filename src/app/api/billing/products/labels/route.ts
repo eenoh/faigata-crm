@@ -18,13 +18,58 @@ function isStripeAccountId(v: unknown) {
   return /^acct_[a-zA-Z0-9]+$/.test(String(v ?? "").trim());
 }
 
+/**
+ * ✅ Option A: Always return string[]
+ * Handles: "Admin", " admin ", ["admin","manager"], null, nested arrays, etc.
+ */
+function normRoles(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    // recursively flatten
+    const out: string[] = [];
+    for (const item of v) out.push(...normRoles(item));
+    return out;
+  }
+
+  const s = String(v ?? "").trim().toLowerCase();
+  return s ? [s] : [];
+}
+
 export async function POST(req: NextRequest) {
   const billingCtx = await getAuthedBillingContext(req);
-  if (!billingCtx) return jsonError("unauthorized", 401);
 
-  const stripeAccountId = String(billingCtx.stripeAccountId ?? "").trim();
+  // ✅ If ctx is null, that's true unauth (token/session/team mapping failed)
+  if (!billingCtx) {
+    return jsonError("unauthorized", 401, {
+      hint:
+        "getAuthedBillingContext returned null. Check Authorization: Bearer token, and that ctx resolver can find team/org + stripe account mapping.",
+    });
+  }
+
+  // ✅ Role checks should be 403, and case-insensitive
+  // billingCtx.role may be string | string[] | null depending on your resolver
+  const roles = normRoles((billingCtx as any).role);
+
+  const allowed = new Set(["admin", "manager", "closer"]);
+  const hasAllowedRole = roles.some((r) => allowed.has(r));
+
+  if (!hasAllowedRole) {
+    return jsonError("forbidden", 403, {
+      message: "You do not have permission to resolve Stripe product labels.",
+      details: {
+        roleRaw: (billingCtx as any).role ?? null,
+        rolesNormalized: roles,
+        teamId: (billingCtx as any).teamId ?? null,
+        organizationId: (billingCtx as any).organizationId ?? null,
+        livemode: (billingCtx as any).livemode ?? null,
+      },
+    });
+  }
+
+  const stripeAccountId = String((billingCtx as any).stripeAccountId ?? "").trim();
   if (!stripeAccountId) return jsonError("missing_stripe_account_id", 400);
-  if (!isStripeAccountId(stripeAccountId)) return jsonError("invalid_stripe_account_id", 400, { stripeAccountId });
+  if (!isStripeAccountId(stripeAccountId)) {
+    return jsonError("invalid_stripe_account_id", 400, { stripeAccountId });
+  }
 
   let body: unknown;
   try {
@@ -45,7 +90,7 @@ export async function POST(req: NextRequest) {
   if (ids.length === 0) return NextResponse.json({ ok: true, labels: {} });
 
   try {
-    const stripe = stripeClient(billingCtx.livemode);
+    const stripe = stripeClient((billingCtx as any).livemode);
 
     const labels: Record<string, string> = {};
 

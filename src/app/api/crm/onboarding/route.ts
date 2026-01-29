@@ -1,4 +1,4 @@
-// src/app/api/onboarding/route.ts
+// src/app/api/crm/onboarding/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { randomUUID } from "crypto";
@@ -22,14 +22,13 @@ export async function POST(req: Request) {
       lastName,
       companyName,
       teamName,
-      timezone,
+      timezone, // not used in DB here (ok)
       invites,
       fields,
       pipelineStages,
       conversionMetrics,
-      importFileName,
+      importFileName, // not used in DB here (ok)
     } = body;
-
 
     if (!userId) {
       return NextResponse.json(
@@ -37,6 +36,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const adminRole = ROLE_DB_MAP.Admin; // "admin"
 
     /* 1) Create organization */
     const { data: organization, error: orgError } = await supabaseAdmin
@@ -69,52 +70,67 @@ export async function POST(req: Request) {
     }
     const teamId = team.id as string;
 
-    /* 3) Upsert profile: link user → org + team, store name, mark as admin */
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: userId,              // important: match auth.users.id
-          first_name: firstName ?? null,
-          last_name: lastName ?? null,
-          company_id: organizationId,
-          team_id: teamId,
-          role: "Admin",           // your human-readable role
-        },
-        { onConflict: "id" }       // use existing row if it already exists
-      );
+    /* 3) Upsert profile: link user → org + team */
+    // role is an ARRAY (based on previous "malformed array literal" error)
+    const { error: profileError } = await supabaseAdmin.from("profiles").upsert(
+      {
+        id: userId,
+        first_name: firstName ?? null,
+        last_name: lastName ?? null,
+        company_id: organizationId,
+        team_id: teamId,
+        role: [adminRole], // ✅ array
+      },
+      { onConflict: "id" } // profiles.id should be PK/unique
+    );
 
     if (profileError) {
       console.error("[onboarding] profiles.upsert", profileError);
       throw profileError;
     }
 
+    /* 4) Ensure user exists in team_members */
+    // IMPORTANT: your DB currently has NO unique constraint on (team_id, user_id),
+    // so we CANNOT use upsert(onConflict: "team_id,user_id").
+    const { data: existingMember, error: memberSelectError } =
+      await supabaseAdmin
+        .from("team_members")
+        .select("team_id,user_id")
+        .eq("team_id", teamId)
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    /* 4) Add the user as a team_member (enum role) */
-    const { error: memberError } = await supabaseAdmin
-      .from("team_members")
-      .insert({
-        team_id: teamId,
-        user_id: userId,
-        role: "admin", // MUST match team_role enum value
-      });
+    if (memberSelectError) {
+      console.error("[onboarding] team_members.select", memberSelectError);
+      throw memberSelectError;
+    }
 
-    if (memberError) {
-      console.error("[onboarding] team_members.insert", memberError);
-      throw memberError;
+    if (!existingMember) {
+      const { error: memberInsertError } = await supabaseAdmin
+        .from("team_members")
+        .insert({
+          team_id: teamId,
+          user_id: userId,
+          role: [adminRole], // ✅ array (matches your other code)
+        });
+
+      if (memberInsertError) {
+        console.error("[onboarding] team_members.insert", memberInsertError);
+        throw memberInsertError;
+      }
     }
 
     /* 5) Create team_invites from the onboarding invites UI */
     if (Array.isArray(invites)) {
       const validInvites = invites.filter(
-        (i: any) => i.email && i.email.trim() !== ""
+        (i: any) => i?.email && String(i.email).trim() !== ""
       );
 
       if (validInvites.length > 0) {
         const inviteRows = validInvites.map((i: any) => ({
           team_id: teamId,
-          email: i.email,
-          role: ROLE_DB_MAP[i.role] ?? "setter", // enum value
+          email: String(i.email).trim(),
+          role: ROLE_DB_MAP[i.role] ?? "setter",
           invited_by: userId,
           token: randomUUID(),
         }));
@@ -135,22 +151,21 @@ export async function POST(req: Request) {
       const fieldRows = fields.map((f: any, index: number) => {
         let optionsArray: string[] = [];
 
-        if (typeof f.options === "string" && f.options.trim() !== "") {
+        if (typeof f?.options === "string" && f.options.trim() !== "") {
           optionsArray = f.options
             .split(",")
             .map((s: string) => s.trim())
             .filter(Boolean);
         }
 
-        const dbType =
-          f.type === "url" ? "text" : f.type; // map "url" → "text" to match enum
+        const dbType = f.type === "url" ? "text" : f.type;
 
         return {
           team_id: teamId,
           key: f.key,
           label: f.label,
           type: dbType,
-          options: optionsArray, // <-- ALWAYS array, never null
+          options: optionsArray,
           position: index,
         };
       });
@@ -169,13 +184,11 @@ export async function POST(req: Request) {
     let stageIdByName: Record<string, string> = {};
 
     if (Array.isArray(pipelineStages) && pipelineStages.length > 0) {
-      const stageRows = pipelineStages.map(
-        (name: string, index: number) => ({
-          team_id: teamId,
-          name,
-          position: index,
-        })
-      );
+      const stageRows = pipelineStages.map((name: string, index: number) => ({
+        team_id: teamId,
+        name,
+        position: index,
+      }));
 
       const { data: insertedStages, error: stagesError } = await supabaseAdmin
         .from("pipeline_stages")
@@ -193,14 +206,12 @@ export async function POST(req: Request) {
       }
     }
 
-    /* 8) Insert conversion metrics (only if we can resolve both stages) */
+    /* 8) Insert conversion metrics */
     if (Array.isArray(conversionMetrics) && conversionMetrics.length > 0) {
       const metricRows = conversionMetrics
         .map((m: any, index: number) => {
           const fromId = stageIdByName[m.fromStage];
           const toId = stageIdByName[m.toStage];
-
-          // If stage names don't match, skip this metric instead of crashing
           if (!fromId || !toId) return null;
 
           return {
@@ -225,7 +236,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Success: return ids so the client can redirect to the correct workspace
     return NextResponse.json(
       {
         ok: true,

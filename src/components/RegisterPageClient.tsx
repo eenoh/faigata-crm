@@ -6,6 +6,10 @@ import { useState, type FormEvent, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function RegisterPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,7 +26,7 @@ export function RegisterPageClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // If user is already signed in and already has a team -> go straight to dashboard
+  // If user is already signed in and already has a team -> go straight to CRM
   useEffect(() => {
     let cancelled = false;
 
@@ -45,7 +49,7 @@ export function RegisterPageClient() {
       setInitializing(false);
 
       if (profile?.team_id) {
-        router.replace("/product-suite");
+        router.replace("/crm");
       }
     })();
 
@@ -54,12 +58,46 @@ export function RegisterPageClient() {
     };
   }, [router]);
 
+  /**
+   * Make sure a browser session exists + is persisted before redirecting.
+   * Returns true only if a session is actually available.
+   */
+  async function ensureSessionReady(normalizedEmail: string, pwd: string) {
+    // 1) If session already exists, great.
+    const { data: existing } = await supabase.auth.getSession();
+    if (existing.session) return true;
+
+    // 2) Try to sign in (works when email confirmation is OFF).
+    const { data: signInData, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: pwd,
+      });
+
+    if (signInError || !signInData.session) {
+      return false;
+    }
+
+    // 3) Give Supabase a moment to persist session to storage/cookies.
+    // (This prevents "not logged in" immediately after navigation.)
+    for (let i = 0; i < 5; i++) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) return true;
+      await sleep(150);
+    }
+
+    return false;
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1) Create user
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -69,24 +107,45 @@ export function RegisterPageClient() {
       },
     });
 
-    setLoading(false);
-
     if (error || !data.user) {
+      setLoading(false);
       console.error(error);
       alert(error?.message || "Registration failed");
       return;
     }
 
+    // 2) Guarantee session before redirecting to onboarding
+    // - If Supabase allows immediate session, this will succeed
+    // - If email confirmation is ON, it may be impossible until user confirms
+    const sessionOk =
+      Boolean(data.session) || (await ensureSessionReady(normalizedEmail, password));
+
+    if (!sessionOk) {
+      setLoading(false);
+
+      // If you WANT immediate onboarding, you must disable email confirmations in Supabase for dev.
+      alert(
+        "Your account was created, but Supabase did not create a login session. " +
+          "This usually happens when email confirmation is enabled. " +
+          "Please confirm your email (or disable confirmation for local testing), then log in."
+      );
+
+      window.location.href = "/login";
+      return;
+    }
+
+    setLoading(false);
+
     const hasInviteContext = Boolean(inviteId || teamIdParam || companyIdParam);
 
-    // No invite / team / company in URL → standard onboarding flow
+    // 3) No invite/team/company → standard onboarding flow
     if (!hasInviteContext) {
-      // here the onboarding flow will create the first team & attach profile/team/company
       window.location.href = "/onboarding";
       return;
     }
 
-    // Invite / team / company present → complete registration on backend
+    // 4) Invite/team/company present → complete registration on backend, then go to CRM
+    // (Invited users usually shouldn't run workspace-creation onboarding.)
     try {
       const res = await fetch("/api/auth/complete-registration", {
         method: "POST",
@@ -96,33 +155,30 @@ export function RegisterPageClient() {
           teamId: teamIdParam,
           inviteId,
           companyId: companyIdParam ?? null,
-          firstName,        // <-- send names to API
-          lastName,         // <--
+          firstName,
+          lastName,
         }),
       });
 
       if (!res.ok) {
         console.error("complete-registration failed", await res.text());
-        // fall back to the product hub; it will show the teams the user is in
-        window.location.href = "/product-suite";
+        window.location.href = "/crm";
         return;
       }
 
-      const payload = (await res.json()) as { redirectTo: string };
+      const payload = (await res.json()) as { redirectTo?: string };
 
-      if (payload.redirectTo?.startsWith("/dashboard")) {
-        window.location.href = "/product-suite";
-      } else if (payload.redirectTo) {
+      // If backend wants to send them somewhere specific, respect it.
+      if (payload.redirectTo) {
         window.location.href = payload.redirectTo;
       } else {
-        window.location.href = "/product-suite";
+        window.location.href = "/crm";
       }
     } catch (err) {
       console.error("complete-registration error", err);
-      window.location.href = "/product-suite";
+      window.location.href = "/crm";
     }
   }
-
 
   if (initializing) {
     return (
@@ -140,11 +196,7 @@ export function RegisterPageClient() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white shadow-md">
-            <img
-              src="/icons/icon-faigata.svg"
-              alt="Faigata"
-              className="w-10 h-10"
-            />
+            <img src="/icons/icon-faigata.svg" alt="Faigata" className="w-10 h-10" />
           </div>
 
           <h1 className="text-3xl font-semibold text-slate-900 mt-4 tracking-tight">
@@ -194,7 +246,7 @@ export function RegisterPageClient() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
+            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
             {loading ? "Creating your account..." : "Continue"}
           </button>
@@ -261,7 +313,7 @@ function FloatingInput({
         <button
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute inset-y-0 right-3 flex items-center"
+          className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
         >
           <img
             src={showPassword ? "/icons/eye-off.svg" : "/icons/eye.svg"}

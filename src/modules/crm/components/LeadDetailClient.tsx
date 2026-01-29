@@ -166,6 +166,7 @@ function safeDecode(v: string) {
   }
 }
 
+
 async function fetchLead(teamId: string, leadId: string): Promise<LeadData | null> {
   const res = await fetch(
     `/api/crm/leads?teamId=${encodeURIComponent(teamId)}&id=${encodeURIComponent(leadId)}`,
@@ -1036,7 +1037,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     const isCurrentSetter = String(lead.setter_id ?? "") === uid;
     const isCurrentCloser = String(lead.closer_id ?? "") === uid;
 
-    // ✅ setters can reject, but NOT if they are also the closer
+    // setters can reject, but NOT if they are also the closer
     return isCurrentSetter && isSetter && !isCurrentCloser;
   }, [lead, currentUserId, isSetter]);
 
@@ -1055,6 +1056,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     if (l) return l;
     return "U";
   }
+
+  function goToBookingLinksSettings() {
+    setIsBookingModalOpen(false); // close modal first (better UX)
+    router.push("/settings/booking-links");
+  }
+
 
   function initialsFromSingleString(label: string) {
     const parts = label.trim().split(/\s+/);
@@ -2354,9 +2361,39 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               {bookingLinksLoading ? (
                 <p className="text-sm text-slate-500">Loading schedule pages…</p>
               ) : activeBookingLinks.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-                  <p className="font-semibold text-slate-700">No schedule pages available.</p>
-                  <p className="mt-1">Create one in Settings → Schedule Pages first.</p>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6">
+                  <div className="flex items-start gap-3">
+                    <img
+                      src="/icons/schedule-page.svg"
+                      alt="Schedule page"
+                      className="h-8 w-8"
+                    />
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">No schedule pages yet</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                        Create a schedule page first so you can generate a booking link for this lead.
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={goToBookingLinksSettings}
+                          className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 cursor-pointer"
+                        >
+                          Create schedule page
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsBookingModalOpen(false)}
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+                        >
+                          Not now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -2,13 +2,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(url, key, { auth: { persistSession: false } });
+  if (!url || !key) throw new Error("missing_supabase_env");
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 type Body = {
@@ -20,162 +24,182 @@ type Body = {
   notes: string;
 };
 
+// ⚠️ Keep aligned with Postgres enum booking_attendance
+// If your enum does NOT include "unknown", remove it here + in UI.
+const ATTENDANCE_VALUES = new Set(["unknown", "attended", "no_show", "cancelled", "rescheduled"]);
+
 function normStatus(v: unknown) {
   const s = String(v ?? "").trim().toLowerCase();
-  const allowed = new Set(["unknown", "attended", "no_show", "cancelled", "rescheduled"]);
-  return allowed.has(s) ? s : "unknown";
+  return ATTENDANCE_VALUES.has(s) ? s : "unknown";
 }
 
 function bool(v: any) {
   return !!v;
 }
 
-async function authedUserId(req: NextRequest) {
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : null;
-  if (!token) return null;
+function bearer(req: NextRequest) {
+  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim() || null;
+}
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const client = createClient(url, anon, { auth: { persistSession: false } });
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
 
-  const { data } = await client.auth.getUser(token);
-  return data.user?.id ?? null;
+function pgErr(e: any) {
+  return {
+    message: e?.message ?? null,
+    code: e?.code ?? null,
+    details: e?.details ?? null,
+    hint: e?.hint ?? null,
+  };
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ bookingId: string }> }) {
-  const { bookingId } = await ctx.params;
-  const bid = String(bookingId ?? "").trim();
-  if (!bid) return NextResponse.json({ error: "missing_booking_id" }, { status: 400 });
+  try {
+    const sb = admin();
 
-  const userId = await authedUserId(req);
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { bookingId } = await ctx.params;
+    const bid = String(bookingId ?? "").trim();
+    if (!bid || !isUuid(bid)) {
+      return NextResponse.json({ error: "invalid_booking_id" }, { status: 400 });
+    }
 
-  const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) return NextResponse.json({ error: "invalid_json_body" }, { status: 400 });
+    const token = bearer(req);
+    if (!token) return NextResponse.json({ error: "missing_token" }, { status: 401 });
 
-  const teamId = String(body.teamId ?? "").trim();
-  if (!teamId) return NextResponse.json({ error: "missing_teamId" }, { status: 400 });
+    // Validate user using service role (no anon needed)
+    const { data: userRes, error: userErr } = await sb.auth.getUser(token);
+    const userId = userRes?.user?.id ?? null;
+    if (userErr || !userId) {
+      return NextResponse.json({ error: "invalid_session", pg: pgErr(userErr) }, { status: 401 });
+    }
 
-  const nextAttended = normStatus(body.attended_status);
-  const nextOffer = bool(body.offer_made);
-  const nextClosed = nextAttended === "attended" ? bool(body.closed_on_call) : false;
+    const body = (await req.json().catch(() => null)) as Body | null;
+    if (!body) return NextResponse.json({ error: "invalid_json_body" }, { status: 400 });
 
-  const nextOfferProductId = nextOffer ? String(body.offer_product_id ?? "").trim() : "";
-  if (nextOffer && !nextOfferProductId) {
-    return NextResponse.json({ error: "missing_offer_product_id" }, { status: 400 });
-  }
+    const teamId = String(body.teamId ?? "").trim();
+    if (!teamId || !isUuid(teamId)) {
+      return NextResponse.json({ error: "invalid_team_id" }, { status: 400 });
+    }
 
-  const notes = String(body.notes ?? "");
+    const nextAttended = normStatus(body.attended_status);
+    const nextOffer = bool(body.offer_made);
 
-  const sb = admin();
+    // IMPORTANT: closed_on_call only allowed when attended
+    const nextClosed = nextAttended === "attended" ? bool(body.closed_on_call) : false;
 
-  // Load booking to get lead_id
-  const { data: booking, error: bookingErr } = await sb
-    .from("bookings")
-    .select("id, lead_id, team_id")
-    .eq("id", bid)
-    .maybeSingle();
+    // ✅ HARD GUARD for your DB CHECK:
+    // CHECK ((offer_made = false) OR (offer_product_id IS NOT NULL))
+    // We enforce non-empty (stricter than NOT NULL, avoids blank strings slipping through).
+    let offerProductId = String(body.offer_product_id ?? "").trim();
+    if (!nextOffer) offerProductId = "";
+    if (nextOffer && !offerProductId) {
+      return NextResponse.json(
+        {
+          error: "missing_offer_product_id",
+          message: "Offer made requires selecting a product.",
+        },
+        { status: 400 }
+      );
+    }
 
-  if (bookingErr || !booking) {
-    return NextResponse.json({ error: "booking_not_found" }, { status: 404 });
-  }
-  if (String(booking.team_id) !== teamId) {
-    return NextResponse.json({ error: "team_mismatch" }, { status: 403 });
-  }
+    const notes = String(body.notes ?? "");
 
-  const leadId = String(booking.lead_id ?? "").trim();
-  if (!leadId) return NextResponse.json({ error: "missing_lead_id" }, { status: 500 });
+    // Load booking and verify team match
+    const { data: booking, error: bookingErr } = await sb
+      .from("bookings")
+      .select("id, lead_id, team_id")
+      .eq("id", bid)
+      .maybeSingle();
 
-  // Load previous outcome (if any) to detect changes
-  const { data: prevRow } = await sb
-    .from("booking_outcomes")
-    .select("attended_status, offer_made, offer_product_id, closed_on_call, notes, updated_at")
-    .eq("booking_id", bid)
-    .eq("team_id", teamId)
-    .maybeSingle();
+    if (bookingErr || !booking) {
+      return NextResponse.json({ error: "booking_not_found", pg: pgErr(bookingErr) }, { status: 404 });
+    }
 
-  const prevAttended = normStatus(prevRow?.attended_status);
-  const prevOffer = bool(prevRow?.offer_made);
-  const prevClosed = bool(prevRow?.closed_on_call);
-  const prevOfferProductId = String((prevRow as any)?.offer_product_id ?? "").trim();
+    if (String(booking.team_id).toLowerCase() !== teamId.toLowerCase()) {
+      return NextResponse.json({ error: "team_mismatch" }, { status: 403 });
+    }
 
-  // Upsert booking_outcomes
-  const nowIso = new Date().toISOString();
+    const leadId = String(booking.lead_id ?? "").trim();
+    if (!leadId) return NextResponse.json({ error: "missing_lead_id" }, { status: 500 });
 
-  const { error: upsertErr } = await sb.from("booking_outcomes").upsert(
-    {
+    // Look up existing outcome (so we can UPDATE vs INSERT safely)
+    const { data: prevRow, error: prevErr } = await sb
+      .from("booking_outcomes")
+      .select("id")
+      .eq("booking_id", bid)
+      .eq("team_id", teamId)
+      .maybeSingle();
+
+    if (prevErr) {
+      return NextResponse.json({ error: "outcome_lookup_failed", pg: pgErr(prevErr) }, { status: 500 });
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // ✅ On UPDATE: do NOT touch FK/identity columns.
+    const updatePayload = {
+      attended_status: nextAttended,
+      offer_made: nextOffer,
+      offer_product_id: nextOffer ? offerProductId : null,
+      closed_on_call: nextClosed,
+      notes,
+      updated_at: nowIso,
+    };
+
+    if (prevRow?.id) {
+      const { error: updErr } = await sb
+        .from("booking_outcomes")
+        .update(updatePayload)
+        .eq("id", String(prevRow.id));
+
+      if (updErr) {
+        return NextResponse.json(
+          {
+            error: "outcome_update_failed",
+            message: "Postgres rejected UPDATE on booking_outcomes.",
+            attempted: updatePayload,
+            pg: pgErr(updErr),
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ ok: true, mode: "updated" });
+    }
+
+    // ✅ On INSERT: include all required columns (id/created_at) even if DB has no defaults
+    const insertPayload = {
+      id: randomUUID(),
       booking_id: bid,
       team_id: teamId,
       lead_id: leadId,
       closer_user_id: userId,
+      created_at: nowIso,
+      ...updatePayload,
+    };
 
-      attended_status: nextAttended,
-      offer_made: nextOffer,
-      offer_product_id: nextOffer ? nextOfferProductId : null,
-      closed_on_call: nextClosed,
-      notes,
+    const { error: insErr } = await sb.from("booking_outcomes").insert(insertPayload);
 
-      updated_at: nowIso,
-    },
-    { onConflict: "booking_id" }
-  );
+    if (insErr) {
+      return NextResponse.json(
+        {
+          error: "outcome_insert_failed",
+          message: "Postgres rejected INSERT into booking_outcomes.",
+          attempted: insertPayload,
+          pg: pgErr(insErr),
+        },
+        { status: 500 }
+      );
+    }
 
-  if (upsertErr) {
-    return NextResponse.json({ error: "outcome_upsert_failed", details: upsertErr }, { status: 500 });
+    return NextResponse.json({ ok: true, mode: "inserted" });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: "outcome_unhandled_failed", message: String(e?.message ?? e) },
+      { status: 500 }
+    );
   }
-
-  // Write separate timeline events
-  const timelineInserts: any[] = [];
-
-  // 1) attendance changed
-  if (prevAttended !== nextAttended) {
-    timelineInserts.push({
-      team_id: teamId,
-      lead_id: leadId,
-      direction: "outbound",
-      channel: "pipeline",
-      sender_profile_id: userId,
-      body: `CALL_ATTENDANCE|${bid}|${prevAttended}|${nextAttended}`,
-      sent_at: nowIso,
-    });
-  }
-
-  // 2) offer made toggled or product changed
-  const offerChanged = prevOffer !== nextOffer;
-  const offerProductChanged = prevOfferProductId !== nextOfferProductId;
-
-  if (offerChanged || (nextOffer && offerProductChanged)) {
-    // include product id in body (and you can display name on UI by looking it up optionally)
-    timelineInserts.push({
-      team_id: teamId,
-      lead_id: leadId,
-      direction: "outbound",
-      channel: "pipeline",
-      sender_profile_id: userId,
-      body: `CALL_OFFER_MADE|${bid}|${nextOffer ? "1" : "0"}|${nextOffer ? nextOfferProductId : ""}`,
-      sent_at: nowIso,
-    });
-  }
-
-  // 3) closed on call toggled
-  if (prevClosed !== nextClosed) {
-    const productIdForClose = nextClosed ? nextOfferProductId : "";
-    timelineInserts.push({
-      team_id: teamId,
-      lead_id: leadId,
-      direction: "outbound",
-      channel: "pipeline",
-      sender_profile_id: userId,
-      body: `CALL_CLOSED_ON_CALL|${bid}|${nextClosed ? "1" : "0"}|${productIdForClose}`,
-      sent_at: nowIso,
-    });
-  }
-
-  // Insert timeline messages best-effort
-  if (timelineInserts.length) {
-    await sb.from("lead_messages").insert(timelineInserts);
-  }
-
-  return NextResponse.json({ ok: true });
 }

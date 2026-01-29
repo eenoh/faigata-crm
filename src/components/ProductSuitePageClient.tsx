@@ -212,7 +212,7 @@ export default function ProductSuitePageClient() {
       {/* header area for the card */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900 mt-5">FaigataCRM</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 mt-5">Lumo</h2>
           <p className="text-sm text-slate-500">
             {totalCount === 0
               ? "You don’t have any CRM teams yet."
@@ -224,7 +224,7 @@ export default function ProductSuitePageClient() {
           <button
             type="button"
             onClick={handleAddTeam}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 cursor-pointer"
           >
             + Add Team
           </button>

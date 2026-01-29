@@ -1,71 +1,78 @@
 // src/modules/crm/data/pipelineStages.ts
+import { supabase } from "@/lib/supabaseClient";
 
 export interface PipelineStageDef {
   name: string;
   position: number;
 }
 
-/**
- * Load pipeline stages for a team.
- * Uses the /api/crm/pipeline-stages endpoint with action: "get".
- */
-export async function getPipelineStages(
-  teamId: string | null
-): Promise<PipelineStageDef[]> {
-  if (!teamId) return [];
+type SavePayload = {
+  stages: PipelineStageDef[];
+};
 
-  const res = await fetch("/api/crm/pipeline-stages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify({ teamId, action: "get" }),
-  });
+async function authedFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
+  const token = sessionRes.session?.access_token ?? null;
 
-  if (!res.ok) {
-    console.error("Failed to fetch pipeline stages", await res.text());
-    throw new Error("Failed to fetch pipeline stages");
+  if (sessionErr || !token) {
+    throw new Error("Unauthorized: missing session token");
   }
 
-  const stages = (await res.json()) as PipelineStageDef[] | null;
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
 
-  if (!stages) return [];
+  // Only set JSON on non-GET
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (!headers.has("Content-Type") && method !== "GET") {
+    headers.set("Content-Type", "application/json");
+  }
 
-  // Make sure they are ordered by position ascending
-  return [...stages].sort((a, b) => a.position - b.position);
+  return fetch(input, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
 }
 
-/**
- * Save pipeline stages for a team.
- * Expects your API route /api/crm/pipeline-stages to handle action: "save".
- * We normalize `position` to the current array order on save.
- */
-export async function savePipelineStages(
-  teamId: string,
-  stages: PipelineStageDef[]
-): Promise<void> {
-  if (!teamId) {
-    throw new Error("Missing teamId when saving pipeline stages");
+export async function getPipelineStages(teamId?: string | null): Promise<PipelineStageDef[]> {
+  const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
+  const res = await authedFetch(`/api/crm/pipeline-stages${qs}`, { method: "GET" });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error("Failed to fetch pipeline stages", text);
+    throw new Error(text || "Failed to fetch pipeline stages");
   }
 
-  // Normalize positions to match the current order in the array
-  const normalizedStages = stages.map((stage, index) => ({
-    name: stage.name,
-    position: index,
-  }));
+  const json = (await res.json()) as any;
 
-  const res = await fetch("/api/crm/pipeline-stages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify({
-      teamId,
-      action: "save",
-      stages: normalizedStages,
-    }),
+  // Accept { ok, stages } OR raw array
+  const stagesRaw = Array.isArray(json) ? json : json?.stages;
+  const stages = (Array.isArray(stagesRaw) ? stagesRaw : []) as PipelineStageDef[];
+
+  return [...stages].sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
+}
+
+export async function savePipelineStages(
+  stages: PipelineStageDef[],
+  teamId?: string | null
+): Promise<void> {
+  const normalizedStages: PipelineStageDef[] = (stages ?? [])
+    .map((s, idx) => ({
+      name: String(s?.name ?? "").trim(),
+      position: idx,
+    }))
+    .filter((s) => s.name.length > 0);
+
+  const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
+  const res = await authedFetch(`/api/crm/pipeline-stages${qs}`, {
+    method: "PUT",
+    body: JSON.stringify({ stages: normalizedStages } satisfies SavePayload),
   });
 
   if (!res.ok) {
-    console.error("Failed to save pipeline stages", await res.text());
-    throw new Error("Failed to save pipeline stages");
+    const text = await res.text().catch(() => "");
+    console.error("Failed to save pipeline stages", text);
+    throw new Error(text || "Failed to save pipeline stages");
   }
 }

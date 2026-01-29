@@ -1,6 +1,7 @@
 // src/app/api/integrations/stripe/connect/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { ensureOrgIdForUser } from "../_org";
 
 export const runtime = "nodejs";
 
@@ -9,23 +10,6 @@ function supabaseAdmin() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   if (!url || !serviceKey) throw new Error("Missing Supabase env");
   return createClient(url, serviceKey, { auth: { persistSession: false } });
-}
-
-/**
- * IMPORTANT:
- * Billing uses profiles.team_id as orgId.
- * Stripe connect MUST store the mapping under the same orgId.
- */
-async function getOrgIdForUser(userId: string): Promise<string | null> {
-  const sb = supabaseAdmin();
-  const { data, error } = await sb
-    .from("profiles")
-    .select("company_id")
-    .eq("id", userId)
-    .single();
-
-  if (error) return null;
-  return (data?.company_id as string | null) ?? null;
 }
 
 export async function POST(req: Request) {
@@ -40,7 +24,9 @@ export async function POST(req: Request) {
   }
 
   const userId = userData.user.id;
-  const orgId = await getOrgIdForUser(userId);
+
+  // ✅ always resolve an organizations.id
+  const orgId = await ensureOrgIdForUser(sb as any, userId);
   if (!orgId) return NextResponse.json({ error: "missing_org" }, { status: 400 });
 
   const clientId = process.env.STRIPE_CLIENT_ID_TEST;

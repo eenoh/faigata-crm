@@ -23,12 +23,18 @@ import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 type LeadCard = {
   id: string;
   stage: string;
+
+  lead_name?: string | null;
+  primary_contact_value?: string | null;
+  niche?: string | null;
+
   customValues: Record<string, any>;
   score?: number | null;
 
   setter_id?: string | null;
   closer_id?: string | null;
 };
+
 
 type DragState = {
   leadId: string | null;
@@ -295,6 +301,12 @@ export function PipelineClient() {
         const mapped: LeadCard[] = (leadsRes ?? []).map((l: any) => ({
           id: l.id,
           stage: l.stage,
+
+          // ✅ include these
+          lead_name: l.lead_name ?? null,
+          primary_contact_value: l.primary_contact_value ?? null,
+          niche: l.niche ?? null,
+
           customValues: l.custom_values ?? {},
           score: l.score ?? null,
           setter_id: l.setter_id ?? null,
@@ -336,23 +348,84 @@ export function PipelineClient() {
     return map;
   }, [leads, stages]);
 
+  function isMeaningfulValue(v: any): boolean {
+  if (v === null || v === undefined) return false;
+
+  // strings
+  if (typeof v === "string") return v.trim() !== "" && v.trim() !== "0";
+
+  // numbers
+  if (typeof v === "number") return !Number.isNaN(v) && v !== 0;
+
+  // booleans (false is usually not a good title)
+  if (typeof v === "boolean") return v === true;
+
+  // everything else
+  const s = String(v).trim();
+  return s !== "" && s !== "0";
+}
+
+function asDisplay(v: any): string {
+  if (v === null || v === undefined) return "";
+  return typeof v === "string" ? v.trim() : String(v);
+}
+
+function findNameLikeCustomValue(custom: Record<string, any>) {
+  const preferredKeys = ["lead_name", "name", "full_name", "company", "business", "brand", "client", "account"];
+
+  // 1) direct preferred keys
+  for (const k of preferredKeys) {
+    if (k in custom && isMeaningfulValue(custom[k])) return asDisplay(custom[k]);
+  }
+
+  // 2) any key containing "name"
+  for (const [k, v] of Object.entries(custom)) {
+    if (k.toLowerCase().includes("name") && isMeaningfulValue(v)) return asDisplay(v);
+  }
+
+  return "";
+}
+
+
   function getLeadTitle(lead: LeadCard) {
+    // ✅ best: real DB column
+    if (isMeaningfulValue(lead.lead_name)) return asDisplay(lead.lead_name);
+
+    // ✅ next: name-like custom fields
+    const nameLike = findNameLikeCustomValue(lead.customValues);
+    if (nameLike) return nameLike;
+
+    // ✅ then: primary configured field (but only if meaningful, so "0" won't be shown)
     if (primaryField) {
       const v = lead.customValues[primaryField.key];
-      if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
+      if (isMeaningfulValue(v)) return asDisplay(v);
     }
 
-    const nameLike = Object.entries(lead.customValues).find(([key]) => key.toLowerCase().includes("name"));
-    if (nameLike && nameLike[1]) return String(nameLike[1]);
+    // ✅ then: contact value (often useful)
+    if (isMeaningfulValue(lead.primary_contact_value)) return asDisplay(lead.primary_contact_value);
 
+    // ✅ fallback
     return `Lead ${lead.id.slice(0, 6)}…`;
   }
 
   function getLeadSubtitle(lead: LeadCard) {
-    if (fields.length < 2) return "";
-    const secondaryField = fields[1];
-    const v = lead.customValues[secondaryField.key];
-    return v ? String(v) : "";
+    // Prefer 2nd configured field if meaningful
+    if (fields.length >= 2) {
+      const secondaryField = fields[1];
+      const v = lead.customValues[secondaryField.key];
+      if (isMeaningfulValue(v)) return asDisplay(v);
+    }
+
+    // Otherwise try niche or another “useful” system field
+    if (isMeaningfulValue(lead.niche)) return asDisplay(lead.niche);
+
+    // Or any other meaningful custom value that isn't the title
+    for (const [k, v] of Object.entries(lead.customValues)) {
+      if (k.toLowerCase().includes("name")) continue;
+      if (isMeaningfulValue(v)) return asDisplay(v);
+    }
+
+    return "";
   }
 
   function matchesSearch(lead: LeadCard, q: string): boolean {

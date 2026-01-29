@@ -9,7 +9,7 @@ import { PuzzlePieceIcon } from "@heroicons/react/24/outline";
 type ProfileState = {
   first_name: string;
   last_name: string;
-  roles: string[]; // ARRAY of roles from profiles.role
+  roles: string[]; // ARRAY of roles from profiles.role (display/original)
   avatar_url: string | null; // path or legacy URL
   email: string;
 };
@@ -23,6 +23,21 @@ type OrgState = {
 type Status = "idle" | "loading" | "saving" | "saved" | "error";
 
 const DEFAULT_PRIMARY_COLOR = "#4f46e5";
+
+function normalizeRole(v: unknown): string | null {
+  const s = String(v ?? "").trim().toLowerCase();
+  return s ? s : null;
+}
+
+function normalizeRoles(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v
+      .map(normalizeRole)
+      .filter((x): x is string => Boolean(x));
+  }
+  const one = normalizeRole(v);
+  return one ? [one] : [];
+}
 
 export default function ProfileSettingsClient() {
   const [profile, setProfile] = useState<ProfileState | null>(null);
@@ -124,9 +139,15 @@ export default function ProfileSettingsClient() {
           return;
         }
 
+        // Display roles: keep original strings (no UI change)
         const rolesArray: string[] = Array.isArray(prof?.role)
-          ? (prof.role as string[]).filter((r) => typeof r === "string" && r.trim() !== "")
+          ? (prof.role as unknown[])
+              .map((r) => String(r ?? "").trim())
+              .filter((r) => r !== "")
           : [];
+
+        // Auth roles: normalized, case-insensitive checks
+        const rolesNorm = normalizeRoles(prof?.role);
 
         const nextProfile: ProfileState = {
           first_name: prof?.first_name ?? "",
@@ -149,7 +170,7 @@ export default function ProfileSettingsClient() {
         setOrgId(companyId);
 
         // ---- load organization only for Admins, organization-wide ----
-        const isAdmin = rolesArray.includes("Admin");
+        const isAdmin = rolesNorm.includes("admin");
         if (isAdmin && companyId) {
           setOrgStatus("loading");
           const { data: orgRow, error: orgErr } = await supabase
@@ -212,7 +233,8 @@ export default function ProfileSettingsClient() {
     return "U";
   })();
 
-  const isAdmin = profile?.roles.includes("Admin") ?? false;
+  // ✅ Case-insensitive admin check (roles stored as array; any casing)
+  const isAdmin = normalizeRoles(profile?.roles ?? []).includes("admin");
 
   // ---------- AVATAR UPLOAD / PROFILE SAVE ----------
 
@@ -482,7 +504,7 @@ export default function ProfileSettingsClient() {
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Profile &amp; organization</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Profile &amp; Organization</h1>
             <p className="mt-1 text-sm text-slate-600">
               Update your personal account settings and manage your company branding.
             </p>

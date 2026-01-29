@@ -3,10 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import {
-  getPipelineStages,
-  type PipelineStageDef,
-} from "@/modules/crm/data/pipelineStages";
+import { getPipelineStages, type PipelineStageDef } from "@/modules/crm/data/pipelineStages";
 import {
   getConversionMetricDefinitions,
   saveConversionMetricDefinitions,
@@ -15,11 +12,20 @@ import {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+/**
+ * UI needs to edit + persist target_rate (integer) on conversation_metrics.
+ * We keep UI minimal by adding a small numeric input per metric.
+ */
+type ConversionMetricDefinitionWithTarget = ConversionMetricDefinition & {
+  /** stored as conversation_metrics.target_rate (int) */
+  targetRate: number | null;
+};
+
 export function ConversionMetricDefinitionsSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
 
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
-  const [defs, setDefs] = useState<ConversionMetricDefinition[]>([]);
+  const [defs, setDefs] = useState<ConversionMetricDefinitionWithTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,11 +50,21 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
         if (cancelled) return;
 
-        const sortedStages = [...(stageDefs ?? [])].sort(
-          (a, b) => a.position - b.position
-        );
+        const sortedStages = [...(stageDefs ?? [])].sort((a, b) => a.position - b.position);
         setStages(sortedStages);
-        setDefs(existingDefs ?? []);
+
+        // Ensure targetRate always exists in local state (UI + validation)
+        const normalized: ConversionMetricDefinitionWithTarget[] = (existingDefs ?? []).map((d: any) => ({
+          ...(d as ConversionMetricDefinition),
+          targetRate:
+            typeof d?.targetRate === "number"
+              ? (Number.isFinite(d.targetRate) ? (d.targetRate | 0) : null)
+              : typeof d?.target_rate === "number"
+              ? (Number.isFinite(d.target_rate) ? (d.target_rate | 0) : null)
+              : null,
+        }));
+
+        setDefs(normalized);
         setErrorMessage(null);
       } catch (err) {
         console.error("[ConversionMetricDefs] Failed to load", err);
@@ -79,16 +95,14 @@ export function ConversionMetricDefinitionsSettingsClient() {
         fromStage: first,
         toStage: second,
         position: prev.length,
+        targetRate: null, // new: default empty
       },
     ]);
     setSaveState("idle");
     setErrorMessage(null);
   }
 
-  function updateDefinition(
-    index: number,
-    patch: Partial<ConversionMetricDefinition>
-  ) {
+  function updateDefinition(index: number, patch: Partial<ConversionMetricDefinitionWithTarget>) {
     setDefs((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], ...patch };
@@ -100,9 +114,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   function removeDefinition(index: number) {
     setDefs((prev) =>
-      prev
-        .filter((_, i) => i !== index)
-        .map((d, i) => ({ ...d, position: i }))
+      prev.filter((_, i) => i !== index).map((d, i) => ({ ...d, position: i }))
     );
     setSaveState("idle");
     setErrorMessage(null);
@@ -110,9 +122,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   async function handleSave() {
     if (!teamId) {
-      setErrorMessage(
-        "Missing team. This page must be opened from within your workspace."
-      );
+      setErrorMessage("Missing team. This page must be opened from within your workspace.");
       return;
     }
 
@@ -121,11 +131,24 @@ export function ConversionMetricDefinitionsSettingsClient() {
       return;
     }
 
-    const trimmed = defs.map((d, index) => ({
-      ...d,
-      label: (d.label ?? "").trim(),
-      position: index,
-    }));
+    const trimmed: ConversionMetricDefinitionWithTarget[] = defs.map((d, index) => {
+      const raw = d.targetRate;
+
+      // Store as integer or null (conversation_metrics.target_rate is int)
+      const normalizedTarget =
+        raw == null || raw === ("" as any)
+          ? null
+          : Number.isFinite(Number(raw))
+          ? (Math.round(Number(raw)) | 0)
+          : null;
+
+      return {
+        ...d,
+        label: (d.label ?? "").trim(),
+        position: index,
+        targetRate: normalizedTarget,
+      };
+    });
 
     const invalid = trimmed.some(
       (d) =>
@@ -141,19 +164,30 @@ export function ConversionMetricDefinitionsSettingsClient() {
       return;
     }
 
+    // Optional guard: keep it reasonable if you're treating it like a percent.
+    // If you want ANY integer allowed, delete this block.
+    const invalidTarget = trimmed.some(
+      (d) => d.targetRate != null && (d.targetRate < 0 || d.targetRate > 100)
+    );
+    if (invalidTarget) {
+      setErrorMessage("Target rate must be between 0 and 100.");
+      return;
+    }
+
     setSaveState("saving");
     setErrorMessage(null);
 
     try {
-      await saveConversionMetricDefinitions(teamId, trimmed);
+      // Pass targetRate through. Your data layer should map it to conversation_metrics.target_rate.
+      // Using `as any` keeps this file compiling even if the shared type hasn't been extended yet.
+      await saveConversionMetricDefinitions(teamId, trimmed as any);
+
       setDefs(trimmed);
       setSaveState("saved");
     } catch (err) {
       console.error("[ConversionMetricDefs] Error while saving", err);
       setSaveState("error");
-      setErrorMessage(
-        "Saving your conversion metrics failed. Please try again."
-      );
+      setErrorMessage("Saving your conversion metrics failed. Please try again.");
     }
   }
 
@@ -162,8 +196,8 @@ export function ConversionMetricDefinitionsSettingsClient() {
       <div className="max-w-xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
         <p className="font-medium">No team available</p>
         <p className="mt-1">
-          We couldn’t determine your team. Please open this page from your
-          workspace or contact support.
+          We couldn’t determine your team. Please open this page from your workspace or contact
+          support.
         </p>
       </div>
     );
@@ -182,12 +216,10 @@ export function ConversionMetricDefinitionsSettingsClient() {
       {/* Header card */}
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
-            Conversion Metrics
-          </h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Conversion Metrics</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Define the conversion metrics you want to track. Each metric compares
-            how many leads move from one stage of the pipeline to another.
+            Define the conversion metrics you want to track. Each metric compares how many leads move
+            from one stage of the pipeline to another.
           </p>
         </div>
       </div>
@@ -212,15 +244,11 @@ export function ConversionMetricDefinitionsSettingsClient() {
       <div className="space-y-3">
         {defs.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            <p className="font-medium text-slate-700">
-              No conversion metrics yet.
-            </p>
+            <p className="font-medium text-slate-700">No conversion metrics yet.</p>
             <p className="mt-1">
               Add metrics like{" "}
-              <span className="font-semibold">
-                Reply rate, Booking rate, Show-up rate
-              </span>{" "}
-              to match your process.
+              <span className="font-semibold">Reply rate, Booking rate, Show-up rate</span> to match
+              your process.
             </p>
           </div>
         )}
@@ -234,18 +262,14 @@ export function ConversionMetricDefinitionsSettingsClient() {
               <input
                 className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={metric.label}
-                onChange={(e) =>
-                  updateDefinition(index, { label: e.target.value })
-                }
+                onChange={(e) => updateDefinition(index, { label: e.target.value })}
                 placeholder="Metric name (e.g. Reply rate, Booking rate)"
               />
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.fromStage}
-                onChange={(e) =>
-                  updateDefinition(index, { fromStage: e.target.value })
-                }
+                onChange={(e) => updateDefinition(index, { fromStage: e.target.value })}
               >
                 {stages.map((s) => (
                   <option key={s.name} value={s.name}>
@@ -255,11 +279,9 @@ export function ConversionMetricDefinitionsSettingsClient() {
               </select>
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.toStage}
-                onChange={(e) =>
-                  updateDefinition(index, { toStage: e.target.value })
-                }
+                onChange={(e) => updateDefinition(index, { toStage: e.target.value })}
               >
                 {stages.map((s) => (
                   <option key={s.name} value={s.name}>
@@ -268,10 +290,32 @@ export function ConversionMetricDefinitionsSettingsClient() {
                 ))}
               </select>
 
+              {/* NEW: Target rate */}
+              <div className="w-full md:w-32">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={metric.targetRate ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateDefinition(index, {
+                      targetRate: v === "" ? null : (Math.round(Number(v)) | 0),
+                    });
+                  }}
+                  placeholder="Target %"
+                  aria-label="Target rate"
+                  title="Target rate (0–100)"
+                />
+                <p className="mt-1 text-[10px] text-slate-400">Target %</p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => removeDefinition(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start"
+                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
               >
                 Remove
               </button>
@@ -285,7 +329,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
         <button
           type="button"
           onClick={addDefinition}
-          className="text-sm text-indigo-600 font-medium mt-1 hover:underline"
+          className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
         >
           + Add Conversion Metric
         </button>
@@ -294,15 +338,13 @@ export function ConversionMetricDefinitionsSettingsClient() {
           type="button"
           onClick={handleSave}
           disabled={saveState === "saving"}
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
           {saveState === "saving" ? "Saving…" : "Save Metrics"}
         </button>
 
         {saveState === "idle" && defs.length > 0 && (
-          <span className="text-xs text-slate-400">
-            Don’t forget to save your changes.
-          </span>
+          <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>
         )}
       </div>
     </div>

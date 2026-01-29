@@ -837,7 +837,7 @@ export function LeadMessagesClient() {
         <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap gap-2">
             <select
-              className="w-32 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+              className="w-32 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs cursor-pointer"
               value={direction}
               onChange={(e) => setDirection(e.target.value as "inbound" | "outbound")}
             >
@@ -845,7 +845,7 @@ export function LeadMessagesClient() {
               <option value="inbound">Inbound</option>
             </select>
 
-            <select className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs" value={channel} onChange={(e) => setChannel(e.target.value)}>
+            <select className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs cursor-pointer" value={channel} onChange={(e) => setChannel(e.target.value)}>
               <option value="dm">DM</option>
               <option value="sms">SMS</option>
               <option value="other">OTHER</option>
@@ -863,9 +863,9 @@ export function LeadMessagesClient() {
             <button
               type="submit"
               disabled={saving || !body.trim()}
-              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             >
-              {saving ? "Saving…" : "Log message"}
+              {saving ? "Saving…" : "Log Message"}
             </button>
           </div>
         </form>

@@ -1,7 +1,15 @@
+// src/app/api/crm/team-roles/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+if (!SUPABASE_URL) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
+if (!SUPABASE_ANON_KEY) throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 const AVAILABLE_ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
@@ -10,109 +18,187 @@ function uniq<T>(arr: T[]) {
   return Array.from(new Set(arr));
 }
 
-function normalizeRoles(raw: unknown): TeamRole[] {
-  if (Array.isArray(raw)) {
-    return uniq(
-      raw
-        .map((r) => String(r))
-        .filter((r): r is TeamRole => AVAILABLE_ROLES.includes(r as TeamRole))
-    );
-  }
-  if (typeof raw === "string" && AVAILABLE_ROLES.includes(raw as TeamRole)) {
-    return [raw as TeamRole];
-  }
-  return [];
+const ROLE_CANONICAL: Record<string, TeamRole> = {
+  prospector: "Prospector",
+  setter: "Setter",
+  closer: "Closer",
+  manager: "Manager",
+  admin: "Admin",
+
+  Prospector: "Prospector",
+  Setter: "Setter",
+  Closer: "Closer",
+  Manager: "Manager",
+  Admin: "Admin",
+};
+
+const ROLE_DB_VALUE: Record<TeamRole, string> = {
+  Prospector: "prospector",
+  Setter: "setter",
+  Closer: "closer",
+  Manager: "manager",
+  Admin: "admin",
+};
+
+function toTeamRole(v: unknown): TeamRole | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return ROLE_CANONICAL[s] ?? ROLE_CANONICAL[s.toLowerCase()] ?? null;
 }
 
-function normalizeTeamId(raw: unknown): string | null {
+function normalizeRoles(raw: unknown): TeamRole[] {
+  if (Array.isArray(raw)) return uniq(raw.map(toTeamRole).filter((r): r is TeamRole => Boolean(r)));
+  const single = toTeamRole(raw);
+  return single ? [single] : [];
+}
+
+function normalizeId(raw: unknown): string | null {
   if (typeof raw === "string" && raw.trim()) return raw.trim();
   return null;
 }
 
-async function requireUser(req: NextRequest) {
-  const authHeader = req.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return null;
-
-  const jwt = authHeader.slice("Bearer ".length);
-  const { data, error } = await supabaseAdmin.auth.getUser(jwt);
-  if (error || !data?.user) return null;
-  return data.user;
+function getBearer(req: NextRequest) {
+  const auth = req.headers.get("authorization") ?? "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim() ?? null;
 }
 
 function getTeamIdFromRequest(req: NextRequest, bodyTeamId?: unknown) {
   const fromQuery = req.nextUrl.searchParams.get("teamId");
-  if (fromQuery && typeof fromQuery === "string" && fromQuery.length > 0) return fromQuery;
+  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
 
-  const fromBody = normalizeTeamId(bodyTeamId);
+  const fromBody = normalizeId(bodyTeamId);
   if (fromBody) return fromBody;
 
   const fromCookie = req.cookies.get("current_team_id")?.value;
-  if (fromCookie && typeof fromCookie === "string" && fromCookie.length > 0) return fromCookie;
+  if (typeof fromCookie === "string" && fromCookie.trim()) return fromCookie.trim();
 
   return null;
 }
 
-async function getCallerProfile(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select("id, team_id, role")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  return {
-    id: String((data as any).id),
-    team_id: (data as any).team_id as string | null,
-    role: normalizeRoles((data as any).role),
-  };
+/**
+ * IMPORTANT:
+ * Use a request-scoped Supabase client authenticated as the CALLER (JWT),
+ * so RLS/triggers see the real user and allow Admin grants correctly.
+ */
+function supabaseForJwt(jwt: string) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    },
+  });
 }
 
 /**
- * GET /api/crm/team-roles
- * - teamId from query/body/cookie
- * - members from profiles where team_id = teamId
+ * Membership + role resolution using the caller JWT client (RLS-aware)
+ * - membership if team_members row exists OR profiles.team_id matches (legacy)
+ * - roles = union(profiles.role, team_members.role)
+ */
+async function getMembershipAndRoles(sb: ReturnType<typeof supabaseForJwt>, userId: string, teamId: string) {
+  const [{ data: profile, error: profErr }, { data: member, error: memErr }] = await Promise.all([
+    sb.from("profiles").select("id, team_id, role, first_name, last_name").eq("id", userId).maybeSingle(),
+    sb.from("team_members").select("team_id, user_id, role").eq("team_id", teamId).eq("user_id", userId).maybeSingle(),
+  ]);
+
+  if (profErr) throw profErr;
+  if (memErr) throw memErr;
+
+  const profileTeamId = (profile as any)?.team_id ?? null;
+  const inTeam = Boolean(member) || (profileTeamId !== null && String(profileTeamId) === teamId);
+
+  const roles = uniq([
+    ...normalizeRoles((profile as any)?.role),
+    ...normalizeRoles((member as any)?.role),
+  ]);
+
+  return { inTeam, roles, profile: profile ?? null, member: member ?? null };
+}
+
+/**
+ * GET /api/crm/team-roles?teamId=...
+ * Returns: { ok, callerRoles, members }
  */
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireUser(req);
-    if (!user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    const jwt = getBearer(req);
+    if (!jwt) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+
+    const sb = supabaseForJwt(jwt);
+
+    // Validate token -> user
+    const { data: ures, error: uerr } = await sb.auth.getUser();
+    if (uerr || !ures.user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
     const teamId = getTeamIdFromRequest(req);
     if (!teamId) return NextResponse.json({ ok: false, error: "Missing teamId" }, { status: 400 });
 
-    const caller = await getCallerProfile(user.id);
-    if (!caller) return NextResponse.json({ ok: false, error: "Profile not found." }, { status: 403 });
+    const caller = await getMembershipAndRoles(sb, ures.user.id, teamId);
+    if (!caller.inTeam) return NextResponse.json({ ok: false, error: "Forbidden", callerRoles: caller.roles }, { status: 403 });
 
-    // must be same team
-    if ((caller.team_id ?? null) !== teamId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    const isAdmin = caller.roles.includes("Admin");
+    const isManager = caller.roles.includes("Manager") || isAdmin;
+    if (!isManager) {
+      return NextResponse.json({ ok: false, error: "Forbidden", callerRoles: caller.roles }, { status: 403 });
     }
 
-    // permission: Manager or Admin (from profiles.role array)
-    const isAdmin = caller.role.includes("Admin");
-    const isManager = caller.role.includes("Manager") || isAdmin;
-    if (!isManager) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    // Primary membership source
+    const { data: memberRows, error: membersErr } = await sb
+      .from("team_members")
+      .select("user_id, role")
+      .eq("team_id", teamId);
 
-    // Load members from profiles for this team
-    const { data: profiles, error: profErr } = await supabaseAdmin
+    if (membersErr) {
+      console.error("[team-roles][GET] team_members error", membersErr);
+      return NextResponse.json({ ok: false, error: "Failed to load members.", details: membersErr }, { status: 500 });
+    }
+
+    const memberUserIds = uniq((memberRows ?? []).map((m: any) => String(m.user_id)));
+
+    // Legacy fallback
+    const { data: legacyProfiles, error: legacyErr } = await sb
+      .from("profiles")
+      .select("id")
+      .eq("team_id", teamId);
+
+    if (legacyErr) {
+      console.error("[team-roles][GET] legacy profiles error", legacyErr);
+      return NextResponse.json({ ok: false, error: "Failed to load members.", details: legacyErr }, { status: 500 });
+    }
+
+    const legacyUserIds = uniq((legacyProfiles ?? []).map((p: any) => String(p.id)));
+    const userIds = uniq([...memberUserIds, ...legacyUserIds]);
+
+    if (userIds.length === 0) {
+      return NextResponse.json({ ok: true, callerRoles: caller.roles, members: [] }, { status: 200 });
+    }
+
+    const { data: profiles, error: profErr } = await sb
       .from("profiles")
       .select("id, first_name, last_name, role")
-      .eq("team_id", teamId);
+      .in("id", userIds);
 
     if (profErr) {
       console.error("[team-roles][GET] profiles error", profErr);
-      return NextResponse.json({ ok: false, error: "Failed to load members." }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "Failed to load members.", details: profErr }, { status: 500 });
     }
 
-    const membersBase = (profiles ?? []).map((p: any) => ({
-      user_id: String(p.id),
-      first_name: p.first_name ?? null,
-      last_name: p.last_name ?? null,
-      roles: normalizeRoles(p.role),
-    }));
+    const memberRoleByUserId = new Map<string, TeamRole[]>();
+    for (const m of memberRows ?? []) {
+      const uid = String((m as any).user_id);
+      memberRoleByUserId.set(uid, normalizeRoles((m as any).role));
+    }
 
-    // Best-effort email via auth admin
+    const membersBase = (profiles ?? []).map((p: any) => {
+      const uid = String(p.id);
+      const roles = uniq([...normalizeRoles(p.role), ...(memberRoleByUserId.get(uid) ?? [])]);
+      return { user_id: uid, first_name: p.first_name ?? null, last_name: p.last_name ?? null, roles };
+    });
+
+    // Email lookup (best-effort). If service role missing, just return null emails.
     const withEmail = await Promise.all(
       membersBase.map(async (m) => {
         try {
@@ -124,84 +210,100 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ ok: true, members: withEmail });
-  } catch (err) {
+    return NextResponse.json({ ok: true, callerRoles: caller.roles, members: withEmail }, { status: 200 });
+  } catch (err: any) {
     console.error("[team-roles][GET] unexpected error", err);
-    return NextResponse.json({ ok: false, error: "Unexpected error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Unexpected error", details: err?.message ?? String(err) },
+      { status: 500 }
+    );
   }
 }
 
 /**
  * PATCH /api/crm/team-roles
- * body: { teamId?, userId, roles: TeamRole[] }
- * - Updates ONLY profiles.role (text[]) and keeps team_id
+ * body: { teamId, userId, roles }
+ *
+ * Uses the CALLER JWT client so triggers/RLS get real claims.
+ * Persists lowercase roles into BOTH:
+ * - profiles.role
+ * - team_members.role
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await requireUser(req);
-    if (!user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    const jwt = getBearer(req);
+    if (!jwt) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
-    const body = (await req.json()) as { teamId?: string; userId?: string; roles?: TeamRole[] };
+    const sb = supabaseForJwt(jwt);
+
+    const { data: ures, error: uerr } = await sb.auth.getUser();
+    if (uerr || !ures.user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+
+    const body = (await req.json()) as { teamId?: string; userId?: string; roles?: unknown };
 
     const teamId = getTeamIdFromRequest(req, body.teamId);
-    const targetUserId = normalizeTeamId(body.userId);
-
+    const targetUserId = normalizeId(body.userId);
     if (!teamId || !targetUserId) {
       return NextResponse.json({ ok: false, error: "Missing teamId/userId" }, { status: 400 });
     }
 
-    const roles = normalizeRoles(body.roles);
-    if (roles.length === 0) {
+    const desiredRoles = normalizeRoles(body.roles);
+    if (desiredRoles.length === 0) {
       return NextResponse.json({ ok: false, error: "At least one role is required." }, { status: 400 });
     }
 
-    const caller = await getCallerProfile(user.id);
-    if (!caller) return NextResponse.json({ ok: false, error: "Profile not found." }, { status: 403 });
+    const caller = await getMembershipAndRoles(sb, ures.user.id, teamId);
+    if (!caller.inTeam) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-    // must be same team
-    if ((caller.team_id ?? null) !== teamId) {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
-
-    const isAdmin = caller.role.includes("Admin");
-    const isManager = caller.role.includes("Manager") || isAdmin;
+    const isAdmin = caller.roles.includes("Admin");
+    const isManager = caller.roles.includes("Manager") || isAdmin;
     if (!isManager) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
     // Managers cannot grant Admin
-    const safeRoles = uniq(isAdmin ? roles : roles.filter((r) => r !== "Admin"));
+    const safeRoles = uniq(isAdmin ? desiredRoles : desiredRoles.filter((r) => r !== "Admin"));
     if (safeRoles.length === 0) {
       return NextResponse.json({ ok: false, error: "Managers cannot grant Admin." }, { status: 400 });
     }
 
-    // Ensure target user is in this team (profiles.team_id must match)
-    const { data: targetProfile, error: targetErr } = await supabaseAdmin
-      .from("profiles")
-      .select("id, team_id")
-      .eq("id", targetUserId)
-      .maybeSingle();
-
-    if (targetErr || !targetProfile) {
-      return NextResponse.json({ ok: false, error: "Target profile not found." }, { status: 404 });
-    }
-
-    if ((targetProfile as any).team_id !== teamId) {
+    const target = await getMembershipAndRoles(sb, targetUserId, teamId);
+    if (!target.inTeam) {
       return NextResponse.json({ ok: false, error: "Target user is not in this team." }, { status: 400 });
     }
 
-    // Update profiles.role as ARRAY (text[])
-    const { error: updErr } = await supabaseAdmin
-      .from("profiles")
-      .update({ role: safeRoles })
-      .eq("id", targetUserId);
+    const safeDbRoles = safeRoles.map((r) => ROLE_DB_VALUE[r]);
 
-    if (updErr) {
-      console.error("[team-roles][PATCH] profiles update error", updErr);
-      return NextResponse.json({ ok: false, error: "Failed to update profile roles." }, { status: 500 });
+    // Update profiles.role (lowercase)
+    const { error: updProfileErr } = await sb.from("profiles").update({ role: safeDbRoles }).eq("id", targetUserId);
+    if (updProfileErr) {
+      console.error("[team-roles][PATCH] profiles update error", updProfileErr);
+      return NextResponse.json(
+        { ok: false, error: "Failed to update profile roles.", details: updProfileErr },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ ok: true, roles: safeRoles });
-  } catch (err) {
+    // Update team_members.role (lowercase)
+    // Note: this assumes there is exactly one row per (team_id,user_id). If not, enforce it in DB.
+    const { error: updMemberErr } = await sb
+      .from("team_members")
+      .update({ role: safeDbRoles })
+      .eq("team_id", teamId)
+      .eq("user_id", targetUserId);
+
+    if (updMemberErr) {
+      console.error("[team-roles][PATCH] team_members update error", updMemberErr);
+      return NextResponse.json(
+        { ok: false, error: "Failed to update team member roles.", details: updMemberErr },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, roles: safeRoles }, { status: 200 });
+  } catch (err: any) {
     console.error("[team-roles][PATCH] unexpected error", err);
-    return NextResponse.json({ ok: false, error: "Unexpected error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Unexpected error", details: err?.message ?? String(err) },
+      { status: 500 }
+    );
   }
 }

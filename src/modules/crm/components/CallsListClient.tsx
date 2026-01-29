@@ -26,42 +26,6 @@ function isStripeProductId(id: string) {
   return /^prod_[a-zA-Z0-9]+$/.test(id);
 }
 
-/**
- * Resolve Stripe product ids -> names via your authed billing endpoint.
- * Returns: { [prodId]: "Name" }
- */
-async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
-  const uniq = Array.from(new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProductId)));
-  if (uniq.length === 0) return {};
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) return {};
-
-  const res = await fetch("/api/billing/products/labels", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ ids: uniq }),
-    cache: "no-store",
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) return {};
-
-  const labels = json?.labels;
-  if (!labels || typeof labels !== "object") return {};
-
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(labels)) {
-    const name = String(v ?? "").trim();
-    if (name) out[String(k)] = name;
-  }
-  return out;
-}
-
 function readBrowserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
@@ -204,7 +168,6 @@ function CallsLoadingState() {
 /* -------------------- Product badge + loading state -------------------- */
 
 function ProductBadgeLoading() {
-  // Subtle pill skeleton that matches the final badge size (prevents layout shift).
   return (
     <span
       aria-label="Loading product"
@@ -216,6 +179,8 @@ function ProductBadgeLoading() {
   );
 }
 
+/* -------------------- Main -------------------- */
+
 export default function CallsListClient({ leadId }: { leadId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -223,6 +188,9 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
   const [loading, setLoading] = useState(true);
   const [calls, setCalls] = useState<BookingRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
+  // needed to auth billing labels endpoint (fixes 401 in common setups)
+  const [teamId, setTeamId] = useState<string | null>(null);
 
   const viewerTz = useMemo(() => readBrowserTimeZone(), []);
   const normalizedLeadId = useMemo(() => decodeURIComponent(String(leadId ?? "")).trim(), [leadId]);
@@ -234,6 +202,51 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
   // ✅ read the header search query (?q=...) for filtering rows on this page
   const qRaw = searchParams.get("q") ?? "";
   const q = qRaw.toLowerCase();
+
+  /**
+   * Resolve Stripe product ids -> names via your authed billing endpoint.
+   * Returns: { [prodId]: "Name" }
+   *
+   * IMPORTANT:
+   * Many setups require passing team/org context. We include `x-team-id`.
+   * If your getAuthedBillingContext expects a different header, change it below.
+   */
+  async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
+    const uniq = Array.from(new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProductId)));
+    if (uniq.length === 0) return {};
+    if (!teamId) return {};
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return {};
+
+    const res = await fetch("/api/billing/products/labels", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-team-id": teamId, // ✅ key fix for 401 (if your ctx resolver needs it)
+      },
+      body: JSON.stringify({ ids: uniq }),
+      cache: "no-store",
+    });
+
+    const json = await res.json().catch(() => null);
+    if (!res.ok) {
+      // silent fail: we just won't show labels
+      return {};
+    }
+
+    const labels = json?.labels;
+    if (!labels || typeof labels !== "object") return {};
+
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(labels)) {
+      const name = String(v ?? "").trim();
+      if (name) out[String(k)] = name;
+    }
+    return out;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -260,12 +273,12 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
         }
 
         const { data: profile } = await supabase.from("profiles").select("team_id").eq("id", user.id).maybeSingle();
-
-        const teamId = String(profile?.team_id ?? "").trim();
-        if (!teamId) {
+        const tId = String(profile?.team_id ?? "").trim();
+        if (!tId) {
           setErr("No team found for your user.");
           return;
         }
+        if (!cancelled) setTeamId(tId);
 
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
@@ -275,7 +288,7 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
         }
 
         const res = await fetch(
-          `/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/calls?teamId=${encodeURIComponent(teamId)}`,
+          `/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/calls?teamId=${encodeURIComponent(tId)}`,
           { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
         );
 
@@ -339,7 +352,6 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
       const productLabel =
         r.offerMade && r.offerProductId ? String(productLabels[r.offerProductId] ?? "").toLowerCase() : "";
 
-      // what we allow searching against
       const haystack = [
         r.dateLabel,
         r.timeLabel,
@@ -362,6 +374,8 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
     let cancelled = false;
 
     (async () => {
+      if (!teamId) return;
+
       const ids = (rows ?? [])
         .filter((r) => r.offerMade && r.offerProductId)
         .map((r) => r.offerProductId as string)
@@ -387,12 +401,11 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [rows, productLabels]);
+  }, [rows, productLabels, teamId]); // teamId added
 
   if (loading) return <CallsLoadingState />;
   if (err) return <p className="text-sm text-rose-600">{err}</p>;
 
-  // show different empty state if calls exist but search yields no matches
   const isFiltering = q.trim().length > 0;
   const showRows = filteredRows;
 
@@ -408,7 +421,7 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                 "Booked calls for this lead."
               ) : (
                 <>
-                  Showing {showRows.length} of{" "} {rows.length} calls for this lead.
+                  Showing {showRows.length} of {rows.length} calls for this lead.
                 </>
               )}
             </p>
@@ -475,10 +488,6 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                 {showRows.map((r) => {
                   const shouldShowProduct = r.offerMade && !!r.offerProductId;
                   const label = shouldShowProduct ? productLabels[r.offerProductId as string] : null;
-
-                  knows: {
-                    /* keep same UI */
-                  }
 
                   return (
                     <tr key={r.id} className="hover:bg-slate-50/70">

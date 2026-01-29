@@ -231,24 +231,40 @@ export default function CreateSchedulePageClient() {
     (async () => {
       try {
         setLoadingClosers(true);
+
         const { data, error } = await supabase
           .from("profiles")
           .select("id, first_name, last_name, role")
-          .eq("team_id", teamId)
-          .contains("role", ["Closer"]);
+          .eq("team_id", teamId);
 
         if (error || cancelled) return;
 
-        const closerUsers: CloserUser[] = (data ?? []).map((p: any) => ({
-          user_id: p.id,
-          first_name: p.first_name ?? "",
-          last_name: p.last_name ?? "",
-        }));
+        const hasCloserRole = (role: any) => {
+          // role can be: array, string, null
+          if (Array.isArray(role)) {
+            return role.some((r) => String(r ?? "").trim().toLowerCase() === "closer");
+          }
+          if (typeof role === "string") {
+            return String(role).trim().toLowerCase() === "closer";
+          }
+          return false;
+        };
+
+        // ✅ only ONE closerUsers declaration
+        const closerUsers: CloserUser[] = (data ?? [])
+          .filter((p: any) => hasCloserRole(p.role))
+          .map((p: any) => ({
+            user_id: p.id,
+            first_name: p.first_name ?? "",
+            last_name: p.last_name ?? "",
+          }));
 
         setClosers(closerUsers);
 
         const defaultPrimary =
-          closerUsers.find((c) => c.user_id === userId)?.user_id ?? closerUsers[0]?.user_id ?? null;
+          closerUsers.find((c) => c.user_id === userId)?.user_id ??
+          closerUsers[0]?.user_id ??
+          null;
 
         setSelectedCloserId(defaultPrimary);
         setPrimaryCloserId(defaultPrimary);
@@ -272,6 +288,7 @@ export default function CreateSchedulePageClient() {
       cancelled = true;
     };
   }, [teamId, userId]);
+
 
   // Ensure primary closer stays included for group
   useEffect(() => {
@@ -840,7 +857,7 @@ export default function CreateSchedulePageClient() {
                       type="time"
                       value={workStart}
                       onChange={(e) => setWorkStart(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                     />
                   </div>
 
@@ -850,13 +867,13 @@ export default function CreateSchedulePageClient() {
                       type="time"
                       value={workEnd}
                       onChange={(e) => setWorkEnd(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500">Days</label>
+                  <label className="block text-[11px] font-medium text-slate-500 cursor-pointer">Days</label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {WEEKDAYS.map((d) => {
                       const active = workDays.includes(d.id);
@@ -868,8 +885,8 @@ export default function CreateSchedulePageClient() {
                             setWorkDays((prev) => (prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]));
                           }}
                           className={[
-                            "rounded-lg border px-3 py-1.5 text-[11px] font-semibold",
-                            active ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                            "rounded-lg border px-3 py-1.5 text-[11px] font-semibold cursor-pointer",
+                            active ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 cursor-pointer",
                           ].join(" ")}
                         >
                           {d.label}

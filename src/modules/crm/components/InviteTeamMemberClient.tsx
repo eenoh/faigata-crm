@@ -1,3 +1,4 @@
+// src/modules/crm/components/InviteTeamMemberClient.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,9 +9,40 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 const AVAILABLE_ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
 
+const ROLE_CANONICAL: Record<string, TeamRole> = {
+  prospector: "Prospector",
+  setter: "Setter",
+  closer: "Closer",
+  manager: "Manager",
+  admin: "Admin",
+
+  Prospector: "Prospector",
+  Setter: "Setter",
+  Closer: "Closer",
+  Manager: "Manager",
+  Admin: "Admin",
+};
+
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
+
+function toTeamRole(v: unknown): TeamRole | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return ROLE_CANONICAL[s] ?? ROLE_CANONICAL[s.toLowerCase()] ?? null;
+}
+
+function normalizeRoles(raw: unknown): TeamRole[] {
+  if (Array.isArray(raw)) return uniq(raw.map(toTeamRole).filter((r): r is TeamRole => Boolean(r)));
+  const single = toTeamRole(raw);
+  return single ? [single] : [];
+}
+
 export function InviteTeamMemberClient() {
   const router = useRouter();
-  const { loading: workspaceLoading } = useWorkspace(); // teamId not needed on client
+  const { loading: workspaceLoading } = useWorkspace(); // teamId not needed on client for the invite itself
 
   const [currentRoles, setCurrentRoles] = useState<TeamRole[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -18,8 +50,10 @@ export function InviteTeamMemberClient() {
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState<TeamRole[]>(["Setter"]);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,27 +62,44 @@ export function InviteTeamMemberClient() {
     let cancelled = false;
 
     (async () => {
-      const { data: userRes } = await supabase.auth.getUser();
-      if (!userRes.user) {
-        router.replace("/login");
-        return;
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        if (!userRes.user) {
+          router.replace("/login");
+          return;
+        }
+
+        const { data, error: profErr } = await supabase
+          .from("profiles")
+          .select("role, company_id")
+          .eq("id", userRes.user.id)
+          .single();
+
+        if (cancelled) return;
+
+        if (profErr) {
+          console.error("[InviteTeamMember] Failed to load profile roles", profErr);
+          setCurrentRoles([]);
+          setCompanyId(null);
+          setError("Failed to load permissions. Please refresh.");
+          setLoading(false);
+          return;
+        }
+
+        // ✅ normalize roles regardless of casing/type in DB
+        setCurrentRoles(normalizeRoles(data?.role));
+
+        if (data?.company_id) setCompanyId(String(data.company_id));
+        setLoading(false);
+      } catch (e) {
+        console.error("[InviteTeamMember] Unexpected load error", e);
+        if (!cancelled) {
+          setCurrentRoles([]);
+          setCompanyId(null);
+          setError("Failed to load permissions. Please refresh.");
+          setLoading(false);
+        }
       }
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("role, company_id")
-        .eq("id", userRes.user.id)
-        .single();
-
-      if (!cancelled && !error && data) {
-        // profiles.role is text[] in your schema
-        const dbRoles = Array.isArray(data.role) ? (data.role as TeamRole[]) : [];
-        setCurrentRoles(dbRoles);
-
-        if (data.company_id) setCompanyId(data.company_id as string);
-      }
-
-      if (!cancelled) setLoading(false);
     })();
 
     return () => {
@@ -129,7 +180,6 @@ export function InviteTeamMemberClient() {
       setEmail("");
       setRoles(["Setter"]);
       setSuccess("Invite sent!");
-      // json.acceptUrl is returned if you want to display/log it
       console.log("Invite accept URL:", json.acceptUrl);
     } catch (err) {
       console.error("[team-invites] error", err);

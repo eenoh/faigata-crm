@@ -7,6 +7,8 @@ type DefinitionPayload = {
   fromStage: string;
   toStage: string;
   position: number;
+  /** UI sends this; stored as conversion_metrics.target_rate (int4) */
+  targetRate?: number | null;
 };
 
 type PostBody = {
@@ -32,15 +34,13 @@ async function loadStages(teamId: string) {
 async function loadConversionMetrics(teamId: string) {
   const { data, error } = await supabaseAdmin
     .from("conversion_metrics")
-    .select("*")
+    // be explicit so we reliably have target_rate available
+    .select("id, team_id, label, from_stage_id, to_stage_id, position, target_rate")
     .eq("team_id", teamId)
     .order("position", { ascending: true });
 
   if (error) {
-    console.error(
-      "[ConversionMetricsAPI] loadConversionMetrics error",
-      error
-    );
+    console.error("[ConversionMetricsAPI] loadConversionMetrics error", error);
     throw new Error(error.message || "Failed to load conversion metrics");
   }
 
@@ -58,10 +58,7 @@ export async function POST(req: Request) {
   const action = body.action;
 
   if (!teamId || !action) {
-    return NextResponse.json(
-      { error: "Missing teamId or action" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing teamId or action" }, { status: 400 });
   }
 
   /* ---------- GET: list definitions ---------- */
@@ -78,12 +75,15 @@ export async function POST(req: Request) {
       }
 
       const result = (metrics as any[]).map((m, index) => ({
-        label: m.label ?? `${stageIdToName.get(m.from_stage_id) ?? ""} → ${
-          stageIdToName.get(m.to_stage_id) ?? ""
-        }`,
+        label:
+          m.label ??
+          `${stageIdToName.get(m.from_stage_id) ?? ""} → ${stageIdToName.get(m.to_stage_id) ?? ""}`,
         fromStage: stageIdToName.get(m.from_stage_id) ?? "(deleted)",
         toStage: stageIdToName.get(m.to_stage_id) ?? "(deleted)",
         position: typeof m.position === "number" ? m.position : index,
+
+        // ✅ return camelCase for the client
+        targetRate: typeof m.target_rate === "number" ? (m.target_rate | 0) : null,
       }));
 
       return NextResponse.json(result);
@@ -104,10 +104,7 @@ export async function POST(req: Request) {
     const defs = body.definitions ?? [];
 
     if (!Array.isArray(defs)) {
-      return NextResponse.json(
-        { error: "definitions must be an array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "definitions must be an array" }, { status: 400 });
     }
 
     try {
@@ -132,12 +129,25 @@ export async function POST(req: Request) {
             return null;
           }
 
+          const raw = (d as any).targetRate;
+
+          // normalize to int or null (DB column is int4)
+          const normalizedTarget =
+            raw == null
+              ? null
+              : Number.isFinite(Number(raw))
+              ? (Math.round(Number(raw)) | 0)
+              : null;
+
           return {
             team_id: teamId,
-            label: d.label.trim() || `${d.fromStage} → ${d.toStage}`,
+            label: (d.label ?? "").trim() || `${d.fromStage} → ${d.toStage}`,
             from_stage_id: fromId,
             to_stage_id: toId,
             position: index,
+
+            // ✅ persist to DB column
+            target_rate: normalizedTarget,
           };
         })
         .filter(Boolean) as any[];
@@ -148,10 +158,7 @@ export async function POST(req: Request) {
         .eq("team_id", teamId);
 
       if (deleteError) {
-        console.error(
-          "[ConversionMetricsAPI] Failed to clear old definitions",
-          deleteError
-        );
+        console.error("[ConversionMetricsAPI] Failed to clear old definitions", deleteError);
         return NextResponse.json(
           {
             error: "Failed to save conversion metric definitions (delete)",
@@ -161,15 +168,15 @@ export async function POST(req: Request) {
         );
       }
 
-      const { error: insertError } = await supabaseAdmin
-        .from("conversion_metrics")
-        .insert(rows);
+      // If all rows were filtered out due to missing stages, avoid inserting []
+      if (rows.length === 0) {
+        return NextResponse.json({ ok: true });
+      }
+
+      const { error: insertError } = await supabaseAdmin.from("conversion_metrics").insert(rows);
 
       if (insertError) {
-        console.error(
-          "[ConversionMetricsAPI] Failed to insert definitions",
-          insertError
-        );
+        console.error("[ConversionMetricsAPI] Failed to insert definitions", insertError);
         return NextResponse.json(
           {
             error: "Failed to save conversion metric definitions (insert)",

@@ -91,24 +91,26 @@ export default function SettingsPageClient() {
     );
   }
 
-  const roles = profile.role ?? [];
+const roles = (profile.role ?? []).map((r) => String(r).trim().toLowerCase());
 
-  const primaryRole =
-    roles.includes("Admin")
-      ? "Admin"
-      : roles.includes("Manager")
-      ? "Manager"
-      : roles[0] ?? "Member";
+const primaryRole =
+  roles.includes("admin")
+    ? "Admin"
+    : roles.includes("manager")
+    ? "Manager"
+    : roles[0]
+    ? roles[0][0].toUpperCase() + roles[0].slice(1)
+    : "Member";
 
-  const isManagerOrAdmin =
-    roles.includes("Manager") || roles.includes("Admin");
+const isManagerOrAdmin = roles.includes("manager") || roles.includes("admin");
+
 
   return (
     <div className="max-w-3xl space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Configure how FaigataCRM works for your team and manage your account.
+          Configure how Lumo works for your team.
         </p>
       </div>
 

@@ -1,6 +1,7 @@
+// src/modules/crm/components/ManageTeamRolesClient.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -21,54 +22,76 @@ function uniq<T>(arr: T[]) {
   return Array.from(new Set(arr));
 }
 
+const ROLE_CANONICAL: Record<string, TeamRole> = {
+  prospector: "Prospector",
+  setter: "Setter",
+  closer: "Closer",
+  manager: "Manager",
+  admin: "Admin",
+
+  Prospector: "Prospector",
+  Setter: "Setter",
+  Closer: "Closer",
+  Manager: "Manager",
+  Admin: "Admin",
+};
+
+function toTeamRole(v: unknown): TeamRole | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return ROLE_CANONICAL[s] ?? ROLE_CANONICAL[s.toLowerCase()] ?? null;
+}
+
+function normalizeRoles(raw: unknown): TeamRole[] {
+  if (Array.isArray(raw)) return uniq(raw.map(toTeamRole).filter((r): r is TeamRole => Boolean(r)));
+  const single = toTeamRole(raw);
+  return single ? [single] : [];
+}
+
+function normalizeMemberRow(raw: any): MemberRow {
+  return {
+    user_id: String(raw?.user_id ?? ""),
+    email: raw?.email ?? null,
+    first_name: raw?.first_name ?? null,
+    last_name: raw?.last_name ?? null,
+    roles: normalizeRoles(raw?.roles),
+  };
+}
+
 export function ManageTeamRolesClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
   const router = useRouter();
 
-  const [currentUserRoles, setCurrentUserRoles] = useState<TeamRole[]>([]);
+  const [callerRoles, setCallerRoles] = useState<TeamRole[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // initial / full page loading
+  const [refreshing, setRefreshing] = useState(false); // soft refresh (no skeleton)
 
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
 
-  const isAdmin = useMemo(() => currentUserRoles.includes("Admin"), [currentUserRoles]);
-  const isManager = useMemo(() => currentUserRoles.includes("Manager") || isAdmin, [currentUserRoles, isAdmin]);
+  const isAdmin = useMemo(() => callerRoles.includes("Admin"), [callerRoles]);
+  const isManager = useMemo(() => callerRoles.includes("Manager") || isAdmin, [callerRoles, isAdmin]);
   const pageLoading = workspaceLoading || loading;
 
-  useEffect(() => {
-    if (workspaceLoading || !teamId) return;
+  const fetchMembers = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!teamId) return;
 
-    let cancelled = false;
+      const silent = Boolean(opts?.silent);
 
-    (async () => {
+      if (silent) setRefreshing(true);
+      else setLoading(true);
+
+      setLoadError(null);
+
       try {
-        setLoading(true);
-        setLoadError(null);
-
         const { data: userRes } = await supabase.auth.getUser();
         if (!userRes.user) {
           router.replace("/login");
           return;
-        }
-
-        // Caller roles from profiles.role (array)
-        const { data: myProfile, error: myProfErr } = await supabase
-          .from("profiles")
-          .select("role, team_id")
-          .eq("id", userRes.user.id)
-          .maybeSingle();
-
-        if (!cancelled) {
-          const roles = Array.isArray(myProfile?.role) ? (myProfile!.role as TeamRole[]) : [];
-          setCurrentUserRoles(roles);
-
-          // extra safety: if their profile team doesn't match workspace team
-          if (myProfile?.team_id && myProfile.team_id !== teamId) {
-            setLoadError("Workspace/team mismatch. Please re-select your team.");
-          }
         }
 
         const { data: sessionRes } = await supabase.auth.getSession();
@@ -78,7 +101,6 @@ export function ManageTeamRolesClient() {
           return;
         }
 
-        // teamId is taken server-side (cookie/workspace fallback), but send it too for safety
         const res = await fetch(`/api/crm/team-roles?teamId=${encodeURIComponent(teamId)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -91,69 +113,83 @@ export function ManageTeamRolesClient() {
           json = null;
         }
 
-        if (cancelled) return;
-
         if (!res.ok || !json?.ok) {
-          setMembers([]);
+          // Keep existing members on silent refresh; only clear on initial load
+          if (!silent) setMembers([]);
+          setCallerRoles(normalizeRoles(json?.callerRoles));
           setLoadError(json?.error ?? `Failed to load members (HTTP ${res.status}).`);
           return;
         }
 
-        setMembers((json.members as MemberRow[]) ?? []);
+        setCallerRoles(normalizeRoles(json.callerRoles));
+        const normalizedMembers = Array.isArray(json.members) ? (json.members as any[]).map(normalizeMemberRow) : [];
+        setMembers(normalizedMembers);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (silent) setRefreshing(false);
+        else setLoading(false);
+      }
+    },
+    [router, teamId]
+  );
+
+  useEffect(() => {
+    if (workspaceLoading || !teamId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        if (cancelled) return;
+        await fetchMembers({ silent: false }); // initial load => full skeleton
+      } catch {
+        if (!cancelled) setLoadError("Failed to load members.");
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [router, teamId, workspaceLoading]);
+  }, [fetchMembers, teamId, workspaceLoading]);
 
   if (pageLoading) {
-  return (
-    <div className="max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
-        <div className="mt-2 h-4 w-96 animate-pulse rounded bg-slate-100" />
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Team members
+    return (
+      <div className="max-w-6xl space-y-6">
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-4 w-96 animate-pulse rounded bg-slate-100" />
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-4">
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                <div className="h-3 w-56 animate-pulse rounded bg-slate-100" />
-              </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Team members
+          </div>
 
-              <div className="flex gap-3">
-                {AVAILABLE_ROLES.map((r) => (
-                  <div
-                    key={r}
-                    className="h-4 w-4 animate-pulse rounded bg-slate-200"
-                  />
-                ))}
-              </div>
+          <div className="divide-y divide-slate-100">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-4">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                  <div className="h-3 w-56 animate-pulse rounded bg-slate-100" />
+                </div>
 
-              <div className="h-8 w-8 animate-pulse rounded bg-slate-200" />
-            </div>
-          ))}
+                <div className="flex gap-3">
+                  {AVAILABLE_ROLES.map((r) => (
+                    <div key={r} className="h-4 w-4 animate-pulse rounded bg-slate-200" />
+                  ))}
+                </div>
+
+                <div className="h-8 w-8 animate-pulse rounded bg-slate-200" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   if (!teamId) return <p className="text-sm text-rose-500">Could not determine your workspace team.</p>;
-
-  if (!loading && !isManager) {
-    return <p className="text-sm text-rose-500">You don&apos;t have permission to manage roles.</p>;
-  }
+  if (loadError) return <p className="text-sm text-rose-500">{loadError}</p>;
+  if (!isManager) return <p className="text-sm text-rose-500">You don&apos;t have permission to manage roles.</p>;
 
   function setSaving(userId: string, v: boolean) {
     setSavingMap((prev) => ({ ...prev, [userId]: v }));
@@ -168,14 +204,15 @@ export function ManageTeamRolesClient() {
     if (!prev) return;
 
     const nextRoles = uniq(isAdmin ? nextRolesRaw : nextRolesRaw.filter((r) => r !== "Admin"));
-
     if (nextRoles.length === 0) {
       setToast("At least one role is required.");
-      setTimeout(() => setToast(null), 1500);
+      window.setTimeout(() => setToast(null), 1500);
       return;
     }
 
     const prevRoles = prev.roles;
+
+    // optimistic update
     updateLocalRoles(userId, nextRoles);
 
     setSaving(userId, true);
@@ -195,11 +232,7 @@ export function ManageTeamRolesClient() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          teamId,
-          userId,
-          roles: nextRoles,
-        }),
+        body: JSON.stringify({ teamId, userId, roles: nextRoles }),
       });
 
       const text = await res.text();
@@ -213,12 +246,22 @@ export function ManageTeamRolesClient() {
       if (!res.ok || !json?.ok) {
         updateLocalRoles(userId, prevRoles);
         setToast(json?.error ?? `Failed to save (HTTP ${res.status}).`);
-        setTimeout(() => setToast(null), 2000);
+        if (json?.details) console.error("[team-roles][PATCH] details:", json.details);
+        window.setTimeout(() => setToast(null), 2500);
         return;
       }
 
+      // Apply server-canonical roles (source of truth)
+      const savedRoles = normalizeRoles(json.roles);
+      updateLocalRoles(userId, savedRoles);
+
+      if (json?.callerRoles) setCallerRoles(normalizeRoles(json.callerRoles));
+
       setToast("Saved ✅");
-      setTimeout(() => setToast(null), 1200);
+      window.setTimeout(() => setToast(null), 1200);
+
+      // Optional: silent refresh if you ever want to re-pull everything without full skeleton:
+      // await fetchMembers({ silent: true });
     } finally {
       setSaving(userId, false);
     }
@@ -240,7 +283,6 @@ export function ManageTeamRolesClient() {
           Toggle roles to update immediately. Managers can&apos;t grant Admin; only Admins can.
         </p>
         {toast && <p className="mt-2 text-xs font-medium text-slate-700">{toast}</p>}
-        {loadError && <p className="mt-2 text-xs font-medium text-rose-600">{loadError}</p>}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -248,90 +290,88 @@ export function ManageTeamRolesClient() {
           Team members
         </div>
 
-        {loading ? (
-          <p className="px-4 py-3 text-xs text-slate-500">Loading members…</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-600">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-600">
+              <tr>
+                <th className="px-4 py-2 text-left font-semibold">Member</th>
+                {AVAILABLE_ROLES.map((r) => (
+                  <th key={r} className="px-3 py-2 text-center font-semibold">
+                    {r}
+                  </th>
+                ))}
+                <th className="px-4 py-2 text-right font-semibold">Action</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+              {refreshing && (
                 <tr>
-                  <th className="px-4 py-2 text-left font-semibold">Member</th>
-                  {AVAILABLE_ROLES.map((r) => (
-                    <th key={r} className="px-3 py-2 text-center font-semibold">
-                      {r}
-                    </th>
-                  ))}
-                  <th className="px-4 py-2 text-right font-semibold">Action</th>
+                  <td className="px-4 py-3 text-xs text-slate-500" colSpan={AVAILABLE_ROLES.length + 2}>
+                    Loading members…
+                  </td>
                 </tr>
-              </thead>
+              )}
 
-              <tbody className="divide-y divide-slate-100">
-                {members.map((m) => {
-                  const name =
-                    `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() ||
-                    m.email ||
-                    "User";
+              {members.map((m) => {
+                const name = `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() || m.email || "User";
+                const saving = Boolean(savingMap[m.user_id]);
 
-                  const saving = Boolean(savingMap[m.user_id]);
+                return (
+                  <tr key={m.user_id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-900">{name}</p>
+                      {m.email && <p className="text-xs text-slate-500">{m.email}</p>}
+                    </td>
 
-                  return (
-                    <tr key={m.user_id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-900">{name}</p>
-                        {m.email && <p className="text-xs text-slate-500">{m.email}</p>}
-                      </td>
+                    {AVAILABLE_ROLES.map((role) => {
+                      const disabled = (role === "Admin" && !isAdmin) || saving;
+                      return (
+                        <td key={role} className="px-3 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            className={`h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                              disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+                            }`}
+                            disabled={disabled}
+                            checked={m.roles.includes(role)}
+                            onChange={(e) => onToggle(m.user_id, role, e.target.checked)}
+                            title={
+                              role === "Admin" && !isAdmin
+                                ? "Only Admins can grant Admin."
+                                : saving
+                                ? "Saving…"
+                                : ""
+                            }
+                          />
+                        </td>
+                      );
+                    })}
 
-                      {AVAILABLE_ROLES.map((role) => {
-                        const disabled = (role === "Admin" && !isAdmin) || saving;
-                        return (
-                          <td key={role} className="px-3 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              className={`h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
-                                disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-                              }`}
-                              disabled={disabled}
-                              checked={m.roles.includes(role)}
-                              onChange={(e) => onToggle(m.user_id, role, e.target.checked)}
-                              title={
-                                role === "Admin" && !isAdmin
-                                  ? "Only Admins can grant Admin."
-                                  : saving
-                                  ? "Saving…"
-                                  : ""
-                              }
-                            />
-                          </td>
-                        );
-                      })}
-
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(`/settings/team/members/${m.user_id}/delete`)
-                          }
-                          title="Remove team member"
-                          className="inline-flex items-center justify-center rounded-lg p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {members.length === 0 && (
-                  <tr>
-                    <td className="px-4 py-6 text-sm text-slate-500" colSpan={AVAILABLE_ROLES.length + 2}>
-                      No members found for this team.
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/settings/team/members/${m.user_id}/delete`)}
+                        title="Remove team member"
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                );
+              })}
+
+              {!refreshing && members.length === 0 && (
+                <tr>
+                  <td className="px-4 py-6 text-sm text-slate-500" colSpan={AVAILABLE_ROLES.length + 2}>
+                    No members found for this team.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -115,9 +115,7 @@ async function createGoogleCalendarEvent(args: {
 
   const meetLink =
     String(json?.hangoutLink || "") ||
-    String(
-      json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || ""
-    );
+    String(json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || "");
 
   return {
     eventId: String(json.id || ""),
@@ -157,15 +155,8 @@ async function getAccessTokenForUser(admin: ReturnType<typeof supabaseAdmin>, us
 }
 
 /** resolve host name for subject */
-async function getHostDisplayName(
-  admin: ReturnType<typeof supabaseAdmin>,
-  userId: string
-): Promise<string | null> {
-  const { data, error } = await admin
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", userId)
-    .maybeSingle();
+async function getHostDisplayName(admin: ReturnType<typeof supabaseAdmin>, userId: string): Promise<string | null> {
+  const { data, error } = await admin.from("profiles").select("first_name, last_name").eq("id", userId).maybeSingle();
 
   if (error) {
     console.error("[crm-book] getHostDisplayName error:", error);
@@ -176,12 +167,7 @@ async function getHostDisplayName(
   return full || null;
 }
 
-async function fetchFreeBusyForWindow(args: {
-  accessToken: string;
-  timezone: string;
-  timeMinISO: string;
-  timeMaxISO: string;
-}) {
+async function fetchFreeBusyForWindow(args: { accessToken: string; timezone: string; timeMinISO: string; timeMaxISO: string }) {
   const fbRes = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: {
@@ -291,10 +277,7 @@ export async function POST(req: Request, ctx: Params) {
     let hostPool: string[] = [];
 
     if (bookingType === "group" || bookingType === "round_robin") {
-      const { data: hostRows, error: hostErr } = await admin
-        .from("booking_link_hosts")
-        .select("user_id")
-        .eq("booking_link_id", link.id);
+      const { data: hostRows, error: hostErr } = await admin.from("booking_link_hosts").select("user_id").eq("booking_link_id", link.id);
 
       if (hostErr) {
         console.error("[crm-book] booking_link_hosts error:", hostErr);
@@ -316,8 +299,7 @@ export async function POST(req: Request, ctx: Params) {
       const allowed = new Set<string>(hostPool);
       if (ownerId) allowed.add(ownerId);
 
-      const requestedFiltered =
-        requestedHostIds.length > 0 ? requestedHostIds.filter((id) => allowed.has(id)) : hostPool.slice();
+      const requestedFiltered = requestedHostIds.length > 0 ? requestedHostIds.filter((id) => allowed.has(id)) : hostPool.slice();
 
       groupParticipantIds = Array.from(new Set(requestedFiltered));
       if (ownerId && !groupParticipantIds.includes(ownerId)) groupParticipantIds.unshift(ownerId);
@@ -514,7 +496,7 @@ export async function POST(req: Request, ctx: Params) {
             booking_id: booking.id,
             team_id: booking.team_id,
             lead_id: booking.lead_id,
-            closer_user_id: booking.owner_user_id, // MUST equal bookings.owner_user_id
+            closer_user_id: booking.owner_user_id,
             attended_status: "unknown",
             offer_made: false,
             closed_on_call: false,
@@ -548,6 +530,28 @@ export async function POST(req: Request, ctx: Params) {
 
     const when = `${startDate.toISOString()} → ${endDate.toISOString()} (${timezone})`;
 
+    // ✅ NEW: include event_type + event_data (keeps existing fields intact)
+    const event_type = "call_booked";
+
+    const event_data: Record<string, any> = {
+      booking_id: booking.id,
+      booking_link_id: invite.booking_link_id,
+      team_id: invite.team_id,
+      lead_id: invite.lead_id,
+      host_user_id: ownerForBooking,
+      booking_type: bookingType,
+      start_at: startDate.toISOString(),
+      end_at: endDate.toISOString(),
+      timezone,
+      calendar_event_id: organizerEventId,
+      calendar_event_link: organizerEventLink,
+      meeting_link: organizerMeetLink,
+    };
+
+    if (bookingType === "group") {
+      event_data.group_participants = groupParticipantIds;
+    }
+
     await admin.from("lead_messages").insert({
       team_id: invite.team_id,
       lead_id: invite.lead_id,
@@ -561,6 +565,10 @@ export async function POST(req: Request, ctx: Params) {
       sender_profile_id: ownerForBooking,
       sent_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
+
+      // ✅ added:
+      event_type,
+      event_data,
     });
 
     return NextResponse.json({

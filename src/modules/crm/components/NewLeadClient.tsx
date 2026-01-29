@@ -118,6 +118,14 @@ function normalizeBlankToNull(v: string) {
   return s.length ? s : null;
 }
 
+/**
+ * DB enforces NOT NULL on leads.primary_contact_type.
+ * Keep UI flexible, but always send a safe string when missing.
+ */
+function coercePrimaryContactType(ct: "" | LeadContactType): LeadContactType {
+  return (ct && ct.trim() ? ct : "other") as LeadContactType;
+}
+
 function normalizeLeadType(raw: string): "" | "individual" | "business" {
   const v = raw.trim().toLowerCase();
   if (!v) return "";
@@ -334,11 +342,7 @@ export function NewLeadClient() {
         const user = userRes.user;
         const userId = user.id;
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("team_id")
-          .eq("id", userId)
-          .single();
+        const { data: profile, error: profileError } = await supabase.from("profiles").select("team_id").eq("id", userId).single();
 
         if (profileError && profileError.code !== "PGRST116") {
           console.error("[NewLead] Failed to load profile", profileError);
@@ -458,7 +462,8 @@ export function NewLeadClient() {
             country: normalizeBlankToNull(systemFields.country),
             postal_code: normalizeBlankToNull(systemFields.postal_code),
 
-            primary_contact_type: systemFields.primary_contact_type || null,
+            // ✅ always send non-null contact type to satisfy DB constraint
+            primary_contact_type: coercePrimaryContactType(systemFields.primary_contact_type),
             primary_contact_value: normalizeBlankToNull(systemFields.primary_contact_value),
 
             source_category: systemFields.source_category || null,
@@ -685,6 +690,9 @@ export function NewLeadClient() {
         if (suggestion) rowSystem.source_name = suggestion;
       }
 
+      // ✅ DB requires NOT NULL on primary_contact_type
+      rowSystem.primary_contact_type = coercePrimaryContactType(rowSystem.primary_contact_type ?? "");
+
       try {
         const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`, {
           method: "POST",
@@ -788,7 +796,7 @@ export function NewLeadClient() {
                 <div className="space-y-1">
                   <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Lead Type</label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.lead_type}
                     onChange={(e) => setSystemFields((p) => ({ ...p, lead_type: e.target.value as any }))}
                     disabled={!canSubmit}
@@ -802,7 +810,7 @@ export function NewLeadClient() {
                 <div className="space-y-1">
                   <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Gender</label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.gender}
                     onChange={(e) => setSystemFields((p) => ({ ...p, gender: e.target.value as any }))}
                     disabled={!canSubmit}
@@ -856,7 +864,7 @@ export function NewLeadClient() {
                 <div className="space-y-1">
                   <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Primary Contact Type</label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.primary_contact_type}
                     onChange={(e) => {
                       const ct = e.target.value as "" | LeadContactType;
@@ -898,7 +906,7 @@ export function NewLeadClient() {
                 <div className="space-y-1">
                   <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Source Category</label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.source_category}
                     onChange={(e) => setSystemFields((p) => ({ ...p, source_category: e.target.value as any }))}
                     disabled={!canSubmit}
@@ -915,7 +923,7 @@ export function NewLeadClient() {
                 <div className="space-y-1">
                   <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Source Name</label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.source_name}
                     onChange={(e) => setSystemFields((p) => ({ ...p, source_name: e.target.value as any }))}
                     disabled={!canSubmit}
@@ -978,12 +986,13 @@ export function NewLeadClient() {
 
                         {field.type === "select" && (
                           <select
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                              canSubmit ? "cursor-pointer" : "cursor-not-allowed"
+                            }`}
                             onChange={(e) => handleCustomChange(field.key, e.target.value || null)}
                             disabled={!canSubmit}
                           >
                             <option value="">Select…</option>
-                            {/* ✅ fix implicit any */}
                             {(field.options ?? []).map((opt: string) => (
                               <option key={opt} value={opt}>
                                 {opt}
