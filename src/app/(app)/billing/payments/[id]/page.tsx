@@ -1,3 +1,4 @@
+// src/app/(app)/billing/payments/[id]/page.tsx
 import type { Metadata } from "next";
 import PaymentDetailClient from "@/modules/billing/components/PaymentDetailClient";
 
@@ -6,6 +7,13 @@ export const metadata: Metadata = {
   description: "Inspect a payment and trigger refunds.",
 };
 
-export default function PaymentDetailPage({ params }: { params: { id: string } }) {
-  return <PaymentDetailClient paymentIntentId={params.id} />;
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function PaymentDetailPage({ params }: PageProps) {
+  const resolved = await Promise.resolve(params);
+  const paymentIntentId = decodeURIComponent(String(resolved?.id ?? "")).trim();
+
+  return <PaymentDetailClient paymentIntentId={paymentIntentId} />;
 }

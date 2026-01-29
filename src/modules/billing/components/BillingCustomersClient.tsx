@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import {
   UserCircleIcon,
@@ -65,9 +64,8 @@ function EmptyState({
   );
 }
 
-export default function BillingCustomersClient() {
-  const searchParams = useSearchParams();
-  const q = searchParams.get("q")?.trim() ?? "";
+export default function BillingCustomersClient({ q = "" }: { q?: string }) {
+  const qNormalized = (typeof q === "string" ? q : "").trim();
 
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +115,7 @@ export default function BillingCustomersClient() {
 
     try {
       const res = await authedFetch(
-        `/api/billing/customers${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+        `/api/billing/customers${qNormalized ? `?q=${encodeURIComponent(qNormalized)}` : ""}`,
         { cache: "no-store" }
       );
 
@@ -156,10 +154,11 @@ export default function BillingCustomersClient() {
     }
   }
 
+  // ✅ Reload when q changes
   useEffect(() => {
     loadCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [qNormalized]);
 
   useEffect(() => {
     if (!linkingCustomer) return;
@@ -202,7 +201,6 @@ export default function BillingCustomersClient() {
   function applyLeadPrefill(leadId: string) {
     const lead = leads.find((l) => l.id === leadId);
 
-    // If we can't resolve the lead, clear prefills
     if (!lead) {
       setCreateName("");
       setCreateEmail("");
@@ -210,21 +208,17 @@ export default function BillingCustomersClient() {
       return;
     }
 
-    // Always prefill name from lead label (or empty)
     setCreateName((lead.label ?? "").trim());
 
-    // Always recompute primary contact prefills
     const t = (lead.primary_contact_type ?? "").toLowerCase().trim();
     const v = (lead.primary_contact_value ?? "").trim();
 
-    // If lead has no usable value, clear both
     if (!v) {
       setCreateEmail("");
       setCreatePhone("");
       return;
     }
 
-    // Only set the matching field; clear the other every time
     if (t === "email") {
       setCreateEmail(v);
       setCreatePhone("");
@@ -237,7 +231,6 @@ export default function BillingCustomersClient() {
       return;
     }
 
-    // Unknown type -> clear both (per your requirement)
     setCreateEmail("");
     setCreatePhone("");
   }
@@ -339,16 +332,15 @@ export default function BillingCustomersClient() {
               email, phone, or ID.
             </p>
 
-            {q ? (
+            {qNormalized ? (
               <p className="mt-2 text-xs text-slate-500">
-                Filter: <span className="font-semibold text-slate-700">“{q}”</span>
+                Filter: <span className="font-semibold text-slate-700">“{qNormalized}”</span>
               </p>
             ) : (
               <p className="mt-2 text-xs text-slate-500">No filter applied.</p>
             )}
           </div>
 
-          {/* ✅ Refresh LEFT, New customer RIGHT */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -371,9 +363,7 @@ export default function BillingCustomersClient() {
           </div>
         </div>
 
-        {!!err && (
-          <p className="mt-3 text-xs font-semibold text-rose-600">Error: {err}</p>
-        )}
+        {!!err && <p className="mt-3 text-xs font-semibold text-rose-600">Error: {err}</p>}
       </div>
 
       {/* Table */}
@@ -383,7 +373,7 @@ export default function BillingCustomersClient() {
           <p className="mt-0.5 text-xs text-slate-500">
             {loading
               ? "Loading…"
-              : q
+              : qNormalized
               ? `Showing ${visibleCount} customer(s) matching your filter`
               : `${totalCount} customer(s) shown`}
           </p>
@@ -403,7 +393,7 @@ export default function BillingCustomersClient() {
           </div>
         ) : visibleCount === 0 ? (
           <div className="p-5">
-            <EmptyState variant="no_match" query={q} />
+            <EmptyState variant="no_match" query={qNormalized} />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -460,7 +450,6 @@ export default function BillingCustomersClient() {
                       <td className="px-5 py-4">
                         {c.linkedLeadId ? (
                           <div className="space-y-1">
-                            {/* ✅ Show lead name only (no id) */}
                             <p className="text-xs font-semibold text-slate-900">
                               {c.linkedLeadLabel ?? "Linked lead"}
                             </p>
@@ -515,9 +504,7 @@ export default function BillingCustomersClient() {
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div>
                 <p className="text-xs font-semibold text-slate-500">Create Stripe customer</p>
-                <h3 className="mt-1 text-base font-semibold text-slate-900">
-                  New customer
-                </h3>
+                <h3 className="mt-1 text-base font-semibold text-slate-900">New customer</h3>
                 <p className="mt-1 text-xs text-slate-500">
                   Create a customer in the connected Stripe account and link it to a lead.
                 </p>
@@ -534,9 +521,7 @@ export default function BillingCustomersClient() {
 
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700">
-                  Find a Lead
-                </label>
+                <label className="text-xs font-semibold text-slate-700">Find a Lead</label>
                 <input
                   value={createLeadQuery}
                   onChange={(e) => setCreateLeadQuery(e.target.value)}
@@ -669,9 +654,7 @@ export default function BillingCustomersClient() {
 
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700">
-                  Search leads (optional)
-                </label>
+                <label className="text-xs font-semibold text-slate-700">Search leads (optional)</label>
                 <input
                   value={leadQuery}
                   onChange={(e) => setLeadQuery(e.target.value)}
@@ -703,9 +686,7 @@ export default function BillingCustomersClient() {
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-900">{l.label}</p>
-                          <p className="truncate text-[11px] text-slate-500">
-                            Stage: {l.stage}
-                          </p>
+                          <p className="truncate text-[11px] text-slate-500">Stage: {l.stage}</p>
                         </div>
 
                         {selectedLeadId === l.id && (

@@ -18,13 +18,15 @@ function getBearer(req: Request) {
 }
 
 function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v
+  );
 }
 
-// ✅ ctx.params can be object OR Promise depending on Next version
-type RouteContext =
-  | { params: { id: string } }
-  | { params: Promise<{ id: string }> };
+// ✅ IMPORTANT: Next's generated types in your build expect params to be a Promise.
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
 
 export async function GET(req: Request, ctx: RouteContext) {
   const jwt = getBearer(req);
@@ -37,8 +39,8 @@ export async function GET(req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "invalid_session" }, { status: 401 });
   }
 
-  // ✅ robust unwrap
-  const { id } = await Promise.resolve((ctx as any).params);
+  // ✅ unwrap params (Promise-based)
+  const { id } = await ctx.params;
   const leadId = String(id ?? "").trim();
 
   // ✅ prevent "undefined" and bad UUIDs from ever hitting Supabase

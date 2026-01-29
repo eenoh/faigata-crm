@@ -7,15 +7,15 @@ export const metadata: Metadata = {
   description: "View and manage a Stripe invoice.",
 };
 
-// ✅ In some Next versions/configs params can be async (Promise-like).
-export default async function InvoiceDetailPage({
-  params,
-}: {
-  params: Promise<{ invoiceId: string }> | { invoiceId: string };
-}) {
-  // ✅ Works whether params is a Promise or a plain object.
+// ✅ Next typegen expects params to be Promise-like in this setup.
+//    Promise.resolve(...) still works if Next passes a plain object at runtime.
+type PageProps = {
+  params: Promise<{ invoiceId: string }>;
+};
+
+export default async function InvoiceDetailPage({ params }: PageProps) {
   const resolved = await Promise.resolve(params);
-  const invoiceId = resolved?.invoiceId ?? "";
+  const invoiceId = decodeURIComponent(String(resolved?.invoiceId ?? "")).trim();
 
   return <InvoiceDetailClient invoiceId={invoiceId} />;
 }

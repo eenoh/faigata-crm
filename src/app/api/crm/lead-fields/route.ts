@@ -9,8 +9,8 @@ type DbLeadField = {
   key: string;
   label: string;
   type: "text" | "number" | "select" | "boolean" | "link";
-  options: string[];
-  position: number;
+  options: string[] | null;
+  position: number | null;
 };
 
 type Body =
@@ -31,10 +31,7 @@ export async function POST(req: Request) {
   const teamId = body?.teamId;
 
   if (!teamId) {
-    return NextResponse.json(
-      { error: "Missing teamId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
   }
 
   // ----- SAVE mode: body.fields present -----
@@ -50,50 +47,41 @@ export async function POST(req: Request) {
 
       if (delErr) {
         console.error("[lead-fields] delete error", delErr);
-        return NextResponse.json(
-          { error: "Failed to save lead fields" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
       }
 
       // 2) insert new
-      const rows = fields.map((f, index) => ({
-        team_id: teamId,
-        key: f.key,
-        label: f.label,
-        type: f.type,
-        options:
-          f.type === "select" && Array.isArray(f.options)
-            ? f.options.filter(Boolean)
-            : [],
-        position: index,
-      }));
+      const rows = fields
+        .map((f, index) => ({
+          team_id: teamId,
+          key: String(f.key ?? "").trim(),
+          label: String(f.label ?? "").trim(),
+          type: f.type,
+          options:
+            f.type === "select" && Array.isArray(f.options)
+              ? f.options.map((x) => String(x ?? "").trim()).filter(Boolean)
+              : [],
+          position: index,
+        }))
+        .filter((r) => r.key.length > 0 && r.label.length > 0);
 
       if (rows.length > 0) {
-        const { error: insErr } = await supabaseAdmin
-          .from("lead_fields")
-          .insert(rows);
+        const { error: insErr } = await supabaseAdmin.from("lead_fields").insert(rows);
 
         if (insErr) {
           console.error("[lead-fields] insert error", insErr);
-          return NextResponse.json(
-            { error: "Failed to save lead fields" },
-            { status: 500 }
-          );
+          return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
         }
       }
 
       return NextResponse.json({ ok: true, count: rows.length });
     } catch (err) {
       console.error("[lead-fields] save error", err);
-      return NextResponse.json(
-        { error: "Failed to save lead fields" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
     }
   }
 
-  // ----- LOAD mode: just return definitions -----
+  // ----- LOAD mode: return definitions -----
   try {
     const { data, error } = await supabaseAdmin
       .from("lead_fields")
@@ -103,27 +91,25 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("[lead-fields] fetch error", error);
-      return NextResponse.json(
-        { error: "Failed to fetch lead fields" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to fetch lead fields" }, { status: 500 });
     }
 
     const rows = (data ?? []) as DbLeadField[];
 
+    // ✅ Return full LeadFieldDefinition objects (matches your type)
     const fields: LeadFieldDefinition[] = rows.map((f) => ({
+      id: f.id,
+      team_id: f.team_id,
       key: f.key,
       label: f.label,
       type: f.type,
-      options: f.options && f.options.length > 0 ? f.options : undefined,
+      options: f.type === "select" ? (f.options ?? []) : [],
+      position: typeof f.position === "number" ? f.position : undefined,
     }));
 
     return NextResponse.json(fields);
   } catch (err) {
     console.error("[lead-fields] fetch error", err);
-    return NextResponse.json(
-      { error: "Failed to fetch lead fields" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch lead fields" }, { status: 500 });
   }
 }

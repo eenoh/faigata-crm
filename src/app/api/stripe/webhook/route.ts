@@ -7,17 +7,28 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) return NextResponse.json({ error: "missing_webhook_secret" }, { status: 500 });
+  if (!secret) {
+    return NextResponse.json({ error: "missing_webhook_secret" }, { status: 500 });
+  }
 
-  const stripe = stripeClient();
   const sig = req.headers.get("stripe-signature");
-  if (!sig) return NextResponse.json({ error: "missing_signature" }, { status: 400 });
+  if (!sig) {
+    return NextResponse.json({ error: "missing_signature" }, { status: 400 });
+  }
 
   const raw = Buffer.from(await req.arrayBuffer());
 
+  // We can't know livemode until we parse the event,
+  // so first construct a Stripe instance with a key from env (test key is fine),
+  // then re-init once we know event.livemode if your stripeClient uses different keys.
+  //
+  // However: Stripe's constructEvent does NOT require a live/test key match,
+  // it just needs a Stripe instance.
+  const stripeForWebhook = stripeClient(false);
+
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(raw, sig, secret);
+    event = stripeForWebhook.webhooks.constructEvent(raw, sig, secret);
   } catch {
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
@@ -38,7 +49,12 @@ export async function POST(req: Request) {
   if (!orgAcct?.org_id) return NextResponse.json({ ok: true });
 
   const orgId = orgAcct.org_id as string;
-  const livemode = !!orgAcct.livemode;
+
+  // ✅ Source of truth for event livemode:
+  // Prefer event.livemode (Stripe sends this), fallback to DB row.
+  const livemode = typeof (event as any).livemode === "boolean"
+    ? !!(event as any).livemode
+    : !!orgAcct.livemode;
 
   const obj: any = event.data.object;
 
@@ -71,7 +87,8 @@ export async function POST(req: Request) {
 
   if (event.type.startsWith("price.")) {
     const pr = obj as Stripe.Price;
-    const productId = typeof pr.product === "string" ? pr.product : pr.product?.id ?? null;
+    const productId =
+      typeof pr.product === "string" ? pr.product : (pr.product as any)?.id ?? null;
 
     await sb.from("organization_stripe_prices").upsert(
       {

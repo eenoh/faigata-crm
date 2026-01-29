@@ -3,14 +3,11 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
-export async function GET(
-  req: Request,
-  {
-    params,
-  }: {
-    params: Promise<{ invoiceId: string }> | { invoiceId: string };
-  }
-) {
+type RouteContext = {
+  params: Promise<{ invoiceId: string }>;
+};
+
+export async function GET(req: Request, ctx: RouteContext) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -19,12 +16,12 @@ export async function GET(
     );
   }
 
-  const { stripeAccountId } = auth.ctx;
-  const stripe = getStripe("test");
+  const { stripeAccountId, livemode } = auth.ctx;
+  const stripe = getStripe(livemode ? "live" : "test");
 
-  // ✅ Unwrap params
-  const resolved = await Promise.resolve(params);
-  const rawInvoiceId = String(resolved?.invoiceId ?? "").trim();
+  // ✅ Next expects params Promise in this build
+  const { invoiceId: raw } = await ctx.params;
+  const rawInvoiceId = String(raw ?? "").trim();
 
   if (!rawInvoiceId || rawInvoiceId === "undefined" || rawInvoiceId === "null") {
     return NextResponse.json(
@@ -63,7 +60,7 @@ export async function GET(
         amount: l.amount ?? null,
         currency: l.currency ?? inv.currency ?? null,
         price_id: price?.id ?? null,
-        product_name: product?.name ?? null,
+        product_name: (product as any)?.name ?? null,
       };
     });
 
@@ -86,6 +83,9 @@ export async function GET(
       lines,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "stripe_error" }, { status: 400 });
+    return NextResponse.json(
+      { error: e?.message ?? "stripe_error" },
+      { status: 400 }
+    );
   }
 }

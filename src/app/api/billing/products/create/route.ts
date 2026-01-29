@@ -1,4 +1,4 @@
-// src/app/api/billing/products/[productId]/route.ts
+// src/app/api/billing/products/create/route.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type Stripe from "stripe";
@@ -8,7 +8,8 @@ import { stripeClient } from "@/app/api/utils/stripeClient";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: Promise<{ productId: string }> };
+// ✅ For NON-dynamic routes, Next expects params: Promise<{}>
+type RouteContext = { params: Promise<{}> };
 
 type Role = "admin" | "manager" | "closer" | "member";
 
@@ -40,7 +41,10 @@ function supabaseAdmin() {
 // Helpers
 // -----------------------------
 function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") ||
+    req.headers.get("Authorization") ||
+    "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
@@ -147,8 +151,10 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
   const livemode = parseLivemode(req);
 
   const url = new URL(req.url);
-  const teamIdFromQuery = String(url.searchParams.get("teamId") ?? "").trim() || null;
-  const teamIdFromHeader = String(req.headers.get("x-team-id") ?? "").trim() || null;
+  const teamIdFromQuery =
+    String(url.searchParams.get("teamId") ?? "").trim() || null;
+  const teamIdFromHeader =
+    String(req.headers.get("x-team-id") ?? "").trim() || null;
   const teamIdHint = teamIdFromQuery || teamIdFromHeader;
 
   // profiles
@@ -198,7 +204,7 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
   if (!teamId) teamId = profilesTeamId;
   if (!teamId) return null;
 
-  // roles (case-insensitive) -> highest
+  // roles -> highest
   const role = mergeHighestRole(teamMembersRoleRaw, profilesRoleRaw);
 
   // teamId -> orgId
@@ -229,7 +235,18 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
 // -----------------------------
 // Route
 // -----------------------------
-export async function GET(req: NextRequest, ctx: Ctx) {
+
+export async function GET(_req: NextRequest, _ctx: RouteContext) {
+  return NextResponse.json(
+    {
+      error: "method_not_supported",
+      message: "Use POST /api/billing/products/create to create a product.",
+    },
+    { status: 405 }
+  );
+}
+
+export async function POST(req: NextRequest, _ctx: RouteContext) {
   const billingCtx = await resolveBillingCtx(req);
   if (!billingCtx) {
     return NextResponse.json(
@@ -243,35 +260,68 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     );
   }
 
-  // ✅ Case-insensitive role logic already handled in resolver
   const allowed: Role[] = ["admin", "manager", "closer"];
   if (!allowed.includes(billingCtx.role)) {
     return NextResponse.json(
-      { error: "forbidden", message: "You do not have permission to view billing products." },
+      { error: "forbidden", message: "You do not have permission to create billing products." },
       { status: 403 }
     );
   }
 
-  const { productId } = await ctx.params;
-  const pid = String(productId ?? "").trim();
-
-  if (!pid || pid === "undefined") {
-    return NextResponse.json({ error: "missing_product_id" }, { status: 400 });
+  const body = (await req.json().catch(() => null)) as any;
+  const name = String(body?.name ?? "").trim();
+  if (!name) {
+    return NextResponse.json({ error: "missing_name" }, { status: 400 });
   }
+
+  const description =
+    body?.description != null ? String(body.description) : undefined;
+  const active = typeof body?.active === "boolean" ? body.active : true;
+
+  const pricePayload = body?.price ?? null;
+  const wantsPrice = pricePayload && typeof pricePayload === "object";
 
   try {
     const stripe = stripeClient(billingCtx.livemode);
 
-    const product = await stripe.products.retrieve(
-      pid,
+    const product = await stripe.products.create(
+      { name, description, active },
       { stripeAccount: billingCtx.stripeAccountId } as any
     );
 
-    if (!product || (product as any).deleted) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    let createdPrice: Stripe.Price | null = null;
+
+    if (wantsPrice) {
+      const unit_amount = Number(pricePayload?.unit_amount);
+      const currency = String(pricePayload?.currency ?? "usd").toLowerCase();
+
+      if (!Number.isFinite(unit_amount) || unit_amount <= 0) {
+        return NextResponse.json(
+          { error: "invalid_price_unit_amount" },
+          { status: 400 }
+        );
+      }
+
+      const recurring = pricePayload?.recurring ?? null;
+
+      createdPrice = await stripe.prices.create(
+        {
+          product: product.id,
+          unit_amount: Math.round(unit_amount),
+          currency,
+          ...(recurring && typeof recurring === "object"
+            ? {
+                recurring: {
+                  interval: String(recurring.interval ?? "month") as any,
+                },
+              }
+            : {}),
+        },
+        { stripeAccount: billingCtx.stripeAccountId } as any
+      );
     }
 
-    // Fetch all prices then filter by this product
+    // Return list of prices for the created product
     const allPrices = await listAll<Stripe.Price>(
       (params, opts) => stripe.prices.list(params, opts) as any,
       { stripeAccount: billingCtx.stripeAccountId }
@@ -283,7 +333,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           typeof pr.product === "string"
             ? pr.product
             : (pr.product as any)?.id ?? null;
-        return prPid === pid;
+        return prPid === product.id;
       })
       .sort(
         (a, b) =>
@@ -291,21 +341,39 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           (typeof a.created === "number" ? a.created : 0)
       );
 
-    // Activity timeline from DB (optional)
-    const sb = supabaseAdmin();
-    const { data: activity } = await sb
-      .from("organization_stripe_catalog_activity")
-      .select("id, type, payload, actor_user_id, created_at, stripe_product_id, stripe_price_id")
-      .eq("org_id", billingCtx.orgId)
-      .eq("livemode", billingCtx.livemode)
-      .eq("stripe_product_id", pid)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    // ✅ Optional: record activity (NO .catch on builder)
+    try {
+      const sb = supabaseAdmin();
+      const { error: activityErr } = await sb
+        .from("organization_stripe_catalog_activity")
+        .insert({
+          org_id: billingCtx.orgId,
+          livemode: billingCtx.livemode,
+          type: "product_created",
+          stripe_product_id: product.id,
+          stripe_price_id: createdPrice?.id ?? null,
+          actor_user_id: billingCtx.userId,
+          payload: {
+            name,
+            description,
+            active,
+            createdPrice: createdPrice?.id ?? null,
+          },
+        } as any);
+
+      // swallow errors intentionally (non-critical)
+      if (activityErr) {
+        // optionally log:
+        // console.warn("[billing/products/create] activity insert failed", activityErr);
+      }
+    } catch {
+      // swallow errors intentionally (non-critical)
+    }
 
     return NextResponse.json({
       product,
       prices,
-      activity: activity ?? [],
+      activity: [],
       source: "stripe",
       livemode: billingCtx.livemode,
       stripeAccountId: billingCtx.stripeAccountId,
@@ -313,17 +381,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       orgId: billingCtx.orgId,
     });
   } catch (e: any) {
-    const msg = String(e?.message ?? e);
-
-    if (
-      msg.toLowerCase().includes("no such product") ||
-      msg.toLowerCase().includes("resource_missing")
-    ) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
-    }
-
     return NextResponse.json(
-      { error: "stripe_detail_failed", message: msg },
+      { error: "stripe_create_failed", message: String(e?.message ?? e) },
       { status: 500 }
     );
   }

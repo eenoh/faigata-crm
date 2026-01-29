@@ -35,10 +35,6 @@ function supabaseAdmin() {
   });
 }
 
-async function unwrapParams<T>(p: T | Promise<T>): Promise<T> {
-  return p && typeof (p as any).then === "function" ? await (p as any) : (p as any);
-}
-
 function isHttpUrl(s?: string | null) {
   return !!s && (s.startsWith("http://") || s.startsWith("https://"));
 }
@@ -81,10 +77,11 @@ async function resolveOrgLogoUrl(admin: ReturnType<typeof supabaseAdmin>, raw: s
 export default async function BookingSlugPage({
   params,
 }: {
-  params: { slug: string } | Promise<{ slug: string }>;
+  // ✅ Next.js 16 expects Promise-based params
+  params: Promise<{ slug: string }>;
 }) {
-  const p = await unwrapParams(params);
-  const slug = String(p?.slug ?? "").trim();
+  const { slug: slugParam } = await params;
+  const slug = String(slugParam ?? "").trim();
   if (!slug) return notFound();
 
   const admin = supabaseAdmin();

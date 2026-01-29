@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
+type RouteContext = {
+  params: Promise<{ invoiceId: string }>;
+};
+
 function safeDecode(v: string) {
   try {
     return decodeURIComponent(v);
@@ -15,14 +19,7 @@ function isValidStripeInvoiceId(id: string) {
   return /^in_[A-Za-z0-9]+$/.test(id);
 }
 
-export async function POST(
-  req: Request,
-  {
-    params,
-  }: {
-    params: Promise<{ invoiceId: string }> | { invoiceId: string };
-  }
-) {
+export async function POST(req: Request, ctx: RouteContext) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -36,11 +33,11 @@ export async function POST(
   // ✅ Use correct Stripe environment
   const stripe = getStripe(livemode ? "live" : "test");
 
-  // ✅ Unwrap params (Next can pass Promise-like params)
-  const resolved = await Promise.resolve(params);
-  const raw = String((resolved as any)?.invoiceId ?? "").trim();
-  const decoded = safeDecode(raw).trim();
+  // ✅ Next's type system expects params to be a Promise → await it
+  const { invoiceId: raw } = await ctx.params;
 
+  const rawStr = String(raw ?? "").trim();
+  const decoded = safeDecode(rawStr).trim();
   const lower = decoded.toLowerCase();
 
   // ✅ Strong guard against undefined/null/weird values

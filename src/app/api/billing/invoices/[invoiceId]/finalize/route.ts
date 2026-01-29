@@ -3,14 +3,11 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
-export async function POST(
-  req: Request,
-  {
-    params,
-  }: {
-    params: Promise<{ invoiceId: string }> | { invoiceId: string };
-  }
-) {
+type RouteContext = {
+  params: Promise<{ invoiceId: string }>;
+};
+
+export async function POST(req: Request, ctx: RouteContext) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -19,19 +16,16 @@ export async function POST(
     );
   }
 
-  const stripe = getStripe("test");
-  const { stripeAccountId } = auth.ctx;
+  const { stripeAccountId, livemode } = auth.ctx;
+  const stripe = getStripe(livemode ? "live" : "test");
 
-  // ✅ Unwrap params (Next can pass Promise-like params)
-  const resolved = await Promise.resolve(params);
-  const rawInvoiceId = String(resolved?.invoiceId ?? "").trim();
+  // ✅ Next expects params as Promise in this build; unwrap directly
+  const { invoiceId: raw } = await ctx.params;
+  const rawInvoiceId = String(raw ?? "").trim();
 
   if (!rawInvoiceId || rawInvoiceId === "undefined" || rawInvoiceId === "null") {
     return NextResponse.json(
-      {
-        error: "missing_invoiceId",
-        hint: "Route param invoiceId was empty/undefined.",
-      },
+      { error: "missing_invoiceId", hint: "Route param invoiceId was empty/undefined." },
       { status: 400 }
     );
   }
@@ -46,10 +40,7 @@ export async function POST(
     );
 
     return NextResponse.json({
-      invoice: {
-        id: inv.id,
-        status: inv.status ?? null,
-      },
+      invoice: { id: inv.id, status: inv.status ?? null },
     });
   } catch (e: any) {
     return NextResponse.json(

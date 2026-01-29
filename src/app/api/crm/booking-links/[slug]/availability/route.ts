@@ -1,3 +1,4 @@
+// src/app/api/crm/booking-links/[slug]/availability/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -5,6 +6,10 @@ export const runtime = "nodejs";
 
 type Slot = { start: string; end: string };
 type AvailabilityMode = "business_hours" | "twenty_four_seven";
+
+type RouteContext = {
+  params: Promise<{ slug?: string }>;
+};
 
 function overlap(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
@@ -53,10 +58,6 @@ function makeUtcFromLocal(
   const guessUtc = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
   const offset = tzOffsetMinutes(timeZone, guessUtc);
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss) - offset * 60_000);
-}
-
-async function unwrapParams<T>(p: T | Promise<T>): Promise<T> {
-  return p && typeof (p as any).then === "function" ? await (p as any) : (p as any);
 }
 
 /* -------------------- availability helpers -------------------- */
@@ -185,8 +186,6 @@ async function refreshAccessToken(refreshToken: string) {
 
   const json: any = await r.json().catch(() => ({}));
   if (!r.ok) {
-    // These errors are usually "invalid_grant" (revoked) or "invalid_client" (wrong env).
-    // Treat them as reconnect-required, not a 500.
     console.error("[availability] refresh failed", json);
     const code = String(json?.error || "unknown");
     const desc = String(json?.error_description || "");
@@ -203,17 +202,16 @@ async function refreshAccessToken(refreshToken: string) {
 
 /* -------------------- route -------------------- */
 
-export async function GET(
-  req: NextRequest,
-  ctx: { params: { slug?: string } | Promise<{ slug?: string }> }
-) {
+export async function GET(req: NextRequest, ctx: RouteContext) {
   const isDev = process.env.NODE_ENV !== "production";
 
   try {
     const url = new URL(req.url);
-    const p = await unwrapParams(ctx.params);
 
-    let slug = p?.slug;
+    // ✅ Next expects ctx.params to be a Promise → await it
+    const { slug: slugFromParams } = await ctx.params;
+
+    let slug = slugFromParams;
     if (!slug) {
       const parts = url.pathname.split("/").filter(Boolean);
       const idx = parts.indexOf("booking-links");
@@ -389,7 +387,6 @@ export async function GET(
         })
         .eq("user_id", userId);
 
-      // keep in-memory map fresh for subsequent calls
       byUser.set(userId, { ...(row ?? {}), access_token: accessToken, expiry_date: newExpiryDate });
 
       return accessToken!;
@@ -423,7 +420,6 @@ export async function GET(
       let accessToken = await getAccessTokenForUser(userId);
       let fbRes = await callFreeBusy(accessToken);
 
-      // If Google rejects token early, refresh + retry once
       if (fbRes.status === 401 || fbRes.status === 403) {
         const refreshed = await refreshAccessToken(String(row.refresh_token));
         accessToken = refreshed.access_token;
@@ -447,7 +443,6 @@ export async function GET(
       if (!fbRes.ok) {
         console.error("[availability] freeBusy failed for user", userId, fbJson);
 
-        // Auth-related FreeBusy errors should also prompt reconnect
         if (fbRes.status === 401 || fbRes.status === 403) {
           const msg = String(fbJson?.error?.message || fbRes.status);
           throw new GoogleReconnectRequiredError("google_reconnect_required", {
@@ -465,7 +460,6 @@ export async function GET(
         .filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e));
     }
 
-    // For group/round_robin: if ANY host needs reconnect, fail gracefully with 400
     let busyPerHost: Array<Array<[number, number]>> = [];
     try {
       busyPerHost = await Promise.all(hostIds.map((uid) => fetchBusyRanges(uid)));
@@ -500,7 +494,6 @@ export async function GET(
       const blockedEnd = end + bufferAfter * 60_000;
 
       if (bookingType === "group") {
-        // must be free for ALL hosts
         const conflictsAnyHost = busyPerHost.some((ranges) =>
           ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be))
         );
@@ -508,7 +501,6 @@ export async function GET(
           slots.push({ start: new Date(start).toISOString(), end: new Date(end).toISOString() });
         }
       } else if (bookingType === "round_robin") {
-        // must be free for AT LEAST ONE host
         const anyHostFree = busyPerHost.some((ranges) => {
           const conflict = ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be));
           return !conflict;
@@ -517,7 +509,6 @@ export async function GET(
           slots.push({ start: new Date(start).toISOString(), end: new Date(end).toISOString() });
         }
       } else {
-        // one_on_one
         const ranges = busyPerHost[0] ?? [];
         const conflict = ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be));
         if (!conflict) {

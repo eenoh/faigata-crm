@@ -1,4 +1,3 @@
-// src/modules/crm/components/PipelineStagesSettingsClient.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -27,9 +26,7 @@ export function PipelineStagesSettingsClient() {
 
       if (!teamId) {
         setLoading(false);
-        setErrorMessage(
-          "No team found. Open this page from a workspace."
-        );
+        setErrorMessage("No team found. Open this page from a workspace.");
         return;
       }
 
@@ -60,7 +57,7 @@ export function PipelineStagesSettingsClient() {
       ...prev,
       {
         name: `New Stage ${prev.length + 1}`,
-        position: prev.length, // new stage goes to the end
+        position: prev.length,
       },
     ]);
     setSaveState("idle");
@@ -80,7 +77,6 @@ export function PipelineStagesSettingsClient() {
   function removeStage(index: number) {
     setStages((prev) => {
       const filtered = prev.filter((_, i) => i !== index);
-      // Re-normalize positions after removal
       return filtered.map((s, i) => ({ ...s, position: i }));
     });
     setSaveState("idle");
@@ -98,7 +94,6 @@ export function PipelineStagesSettingsClient() {
       copy[index] = copy[newIndex];
       copy[newIndex] = tmp;
 
-      // Re-normalize positions based on new order
       return copy.map((s, i) => ({ ...s, position: i }));
     });
     setSaveState("idle");
@@ -107,9 +102,7 @@ export function PipelineStagesSettingsClient() {
 
   async function handleSave() {
     if (!teamId) {
-      setErrorMessage(
-        "Missing team. This page must be opened from within your workspace."
-      );
+      setErrorMessage("Missing team. This page must be opened from within your workspace.");
       return;
     }
 
@@ -121,16 +114,14 @@ export function PipelineStagesSettingsClient() {
     const trimmed: PipelineStageDef[] = stages.map((s, index) => ({
       ...s,
       name: (s.name ?? "").trim(),
-      position: index, // ensure positions follow current order
+      position: index,
     }));
 
-    const invalid = trimmed.some((s) => !s.name);
-    if (invalid) {
+    if (trimmed.some((s) => !s.name)) {
       setErrorMessage("Every stage needs a name.");
       return;
     }
 
-    // Optional: enforce unique names
     const nameSet = new Set<string>();
     for (const s of trimmed) {
       const lower = s.name.toLowerCase();
@@ -145,15 +136,15 @@ export function PipelineStagesSettingsClient() {
     setErrorMessage(null);
 
     try {
-      await savePipelineStages(teamId, trimmed);
+      // ✅ FIX: correct argument order
+      await savePipelineStages(trimmed, teamId);
+
       setStages(trimmed);
       setSaveState("saved");
     } catch (err) {
       console.error("[PipelineStages] Error while saving stages", err);
       setSaveState("error");
-      setErrorMessage(
-        "Saving your pipeline stages failed. Please try again."
-      );
+      setErrorMessage("Saving your pipeline stages failed. Please try again.");
     }
   }
 
@@ -162,8 +153,7 @@ export function PipelineStagesSettingsClient() {
       <div className="max-w-xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
         <p className="font-medium">No team available</p>
         <p className="mt-1">
-          We couldn’t determine your team. Please open this page from your
-          workspace or contact support.
+          We couldn’t determine your team. Please open this page from your workspace or contact support.
         </p>
       </div>
     );
@@ -179,20 +169,16 @@ export function PipelineStagesSettingsClient() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Header card */}
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
-            Pipeline Stages
-          </h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Pipeline Stages</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Define the stages of your sales pipeline and their order. These
-            stages are used in the lead pipeline and scoring automations.
+            Define the stages of your sales pipeline and their order. These stages are used in the lead pipeline and
+            scoring automations.
           </p>
         </div>
       </div>
 
-      {/* Errors / status */}
       {(errorMessage || saveState === "saved") && (
         <div className="space-y-2">
           {errorMessage && (
@@ -208,19 +194,13 @@ export function PipelineStagesSettingsClient() {
         </div>
       )}
 
-      {/* Stages list */}
       <div className="space-y-3">
         {stages.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            <p className="font-medium text-slate-700">
-              No pipeline stages yet.
-            </p>
+            <p className="font-medium text-slate-700">No pipeline stages yet.</p>
             <p className="mt-1">
-              Add stages like{" "}
-              <span className="font-semibold">
-                New, Contacted, Qualified, Proposal, Won
-              </span>{" "}
-              to match your process.
+              Add stages like <span className="font-semibold">New, Contacted, Qualified, Proposal, Won</span> to match
+              your process.
             </p>
           </div>
         )}
@@ -231,9 +211,7 @@ export function PipelineStagesSettingsClient() {
             className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
           >
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Stage name
-              </label>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Stage name</label>
               <input
                 className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={stage.name}
@@ -273,7 +251,6 @@ export function PipelineStagesSettingsClient() {
         ))}
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="button"
@@ -293,9 +270,7 @@ export function PipelineStagesSettingsClient() {
         </button>
 
         {saveState === "idle" && stages.length > 0 && (
-          <span className="text-xs text-slate-400">
-            Don’t forget to save your changes.
-          </span>
+          <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>
         )}
       </div>
     </div>

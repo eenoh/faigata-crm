@@ -5,11 +5,8 @@ import { randomInt } from "crypto";
 
 export const runtime = "nodejs";
 
-type Params = { params: { slug: string } | Promise<{ slug: string }> };
-
-async function unwrapParams<T>(p: T | Promise<T>): Promise<T> {
-  return p && typeof (p as any).then === "function" ? await (p as any) : (p as any);
-}
+// ✅ Next.js expects params to be a Promise in route handlers
+type RouteContext = { params: Promise<{ slug: string }> };
 
 function supabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -115,7 +112,9 @@ async function createGoogleCalendarEvent(args: {
 
   const meetLink =
     String(json?.hangoutLink || "") ||
-    String(json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || "");
+    String(
+      json?.conferenceData?.entryPoints?.find((e: any) => e?.entryPointType === "video")?.uri || ""
+    );
 
   return {
     eventId: String(json.id || ""),
@@ -155,8 +154,15 @@ async function getAccessTokenForUser(admin: ReturnType<typeof supabaseAdmin>, us
 }
 
 /** resolve host name for subject */
-async function getHostDisplayName(admin: ReturnType<typeof supabaseAdmin>, userId: string): Promise<string | null> {
-  const { data, error } = await admin.from("profiles").select("first_name, last_name").eq("id", userId).maybeSingle();
+async function getHostDisplayName(
+  admin: ReturnType<typeof supabaseAdmin>,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("first_name, last_name")
+    .eq("id", userId)
+    .maybeSingle();
 
   if (error) {
     console.error("[crm-book] getHostDisplayName error:", error);
@@ -167,7 +173,12 @@ async function getHostDisplayName(admin: ReturnType<typeof supabaseAdmin>, userI
   return full || null;
 }
 
-async function fetchFreeBusyForWindow(args: { accessToken: string; timezone: string; timeMinISO: string; timeMaxISO: string }) {
+async function fetchFreeBusyForWindow(args: {
+  accessToken: string;
+  timezone: string;
+  timeMinISO: string;
+  timeMaxISO: string;
+}) {
   const fbRes = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: {
@@ -201,10 +212,11 @@ async function fetchFreeBusyForWindow(args: { accessToken: string; timezone: str
 
 /** ---- Route ---- */
 
-export async function POST(req: Request, ctx: Params) {
+export async function POST(req: Request, ctx: RouteContext) {
   try {
-    const p = await unwrapParams(ctx.params);
-    const slug = String((p as any)?.slug ?? "").trim();
+    // ✅ Next.js route params are Promise-based
+    const { slug: slugParam } = await ctx.params;
+    const slug = String(slugParam ?? "").trim();
     if (!slug) return NextResponse.json({ error: "missing_slug" }, { status: 400 });
 
     const body = await req.json().catch(() => ({} as any));
@@ -239,7 +251,9 @@ export async function POST(req: Request, ctx: Params) {
 
     const { data: link, error: linkErr } = await admin
       .from("booking_links")
-      .select("id, team_id, slug, name, owner_user_id, booking_type, buffer_before_minutes, buffer_after_minutes")
+      .select(
+        "id, team_id, slug, name, owner_user_id, booking_type, buffer_before_minutes, buffer_after_minutes"
+      )
       .eq("slug", slug)
       .maybeSingle();
 
@@ -249,7 +263,10 @@ export async function POST(req: Request, ctx: Params) {
     }
     if (!link) return NextResponse.json({ error: "booking_link_not_found" }, { status: 404 });
 
-    const bookingType = String(link.booking_type || "one_on_one") as "one_on_one" | "group" | "round_robin";
+    const bookingType = String(link.booking_type || "one_on_one") as
+      | "one_on_one"
+      | "group"
+      | "round_robin";
 
     const { data: invite, error: invErr } = await admin
       .from("booking_link_invites")
@@ -277,14 +294,19 @@ export async function POST(req: Request, ctx: Params) {
     let hostPool: string[] = [];
 
     if (bookingType === "group" || bookingType === "round_robin") {
-      const { data: hostRows, error: hostErr } = await admin.from("booking_link_hosts").select("user_id").eq("booking_link_id", link.id);
+      const { data: hostRows, error: hostErr } = await admin
+        .from("booking_link_hosts")
+        .select("user_id")
+        .eq("booking_link_id", link.id);
 
       if (hostErr) {
         console.error("[crm-book] booking_link_hosts error:", hostErr);
         return NextResponse.json({ error: "hosts_query_failed" }, { status: 500 });
       }
 
-      hostPool = Array.from(new Set((hostRows ?? []).map((r: any) => String(r.user_id)).filter(Boolean)));
+      hostPool = Array.from(
+        new Set((hostRows ?? []).map((r: any) => String(r.user_id)).filter(Boolean))
+      );
       if (!hostPool.length && link.owner_user_id) hostPool = [String(link.owner_user_id)];
     } else {
       hostPool = link.owner_user_id ? [String(link.owner_user_id)] : [];
@@ -299,7 +321,8 @@ export async function POST(req: Request, ctx: Params) {
       const allowed = new Set<string>(hostPool);
       if (ownerId) allowed.add(ownerId);
 
-      const requestedFiltered = requestedHostIds.length > 0 ? requestedHostIds.filter((id) => allowed.has(id)) : hostPool.slice();
+      const requestedFiltered =
+        requestedHostIds.length > 0 ? requestedHostIds.filter((id) => allowed.has(id)) : hostPool.slice();
 
       groupParticipantIds = Array.from(new Set(requestedFiltered));
       if (ownerId && !groupParticipantIds.includes(ownerId)) groupParticipantIds.unshift(ownerId);
@@ -405,7 +428,12 @@ export async function POST(req: Request, ctx: Params) {
 
         const results = await Promise.allSettled(
           others.map(async (uid) => {
-            await createEventOnUserCalendar(uid, { invitee: true, sendUpdates: "none", summary, description });
+            await createEventOnUserCalendar(uid, {
+              invitee: true,
+              sendUpdates: "none",
+              summary,
+              description,
+            });
           })
         );
 
@@ -488,7 +516,7 @@ export async function POST(req: Request, ctx: Params) {
       return NextResponse.json({ error: "booking_create_failed" }, { status: 500 });
     }
 
-    // ✅ NEW: create default outcome row (non-fatal if table not present)
+    // create default outcome row (non-fatal)
     try {
       if (booking.owner_user_id) {
         await admin.from("booking_outcomes").upsert(
@@ -512,7 +540,7 @@ export async function POST(req: Request, ctx: Params) {
 
     await admin.from("booking_link_invites").update({ used_at: new Date().toISOString() }).eq("id", invite.id);
 
-    // ✅ IMPORTANT: update lead.closer_id to the host/closer for this meeting
+    // update lead.closer_id to the host/closer
     if (ownerForBooking) {
       const { error: leadUpdateErr } = await admin
         .from("leads")
@@ -530,9 +558,7 @@ export async function POST(req: Request, ctx: Params) {
 
     const when = `${startDate.toISOString()} → ${endDate.toISOString()} (${timezone})`;
 
-    // ✅ NEW: include event_type + event_data (keeps existing fields intact)
     const event_type = "call_booked";
-
     const event_data: Record<string, any> = {
       booking_id: booking.id,
       booking_link_id: invite.booking_link_id,
@@ -565,8 +591,6 @@ export async function POST(req: Request, ctx: Params) {
       sender_profile_id: ownerForBooking,
       sent_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
-
-      // ✅ added:
       event_type,
       event_data,
     });
