@@ -1,6 +1,6 @@
 // src/modules/crm/scoring/scoreLead.ts
 
-import type { LeadScoringConfig, ScoreThresholds, ScoringRule } from "./types";
+import type { LeadScoringConfig, ScoreThresholds } from "./types";
 
 export type ScoreLevel = "low" | "medium" | "high";
 
@@ -14,6 +14,17 @@ export type ScoreResult = {
   level: ScoreLevel | null; // null if no thresholds configured
 };
 
+const clampScore = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+function computeLevel(
+  score: number,
+  thresholds?: ScoreThresholds,
+): ScoreLevel | null {
+  if (!thresholds) return null;
+  const { low, high } = thresholds;
+  return score < low ? "low" : score >= high ? "high" : "medium";
+}
+
 /**
  * Pure field-based score from the lead + config.rules.
  * - Non-select fields: weight is added if the field has any value (or true for boolean).
@@ -22,67 +33,31 @@ export type ScoreResult = {
  */
 export function computeLeadScore(
   lead: LeadInput,
-  config: LeadScoringConfig | null
+  config: LeadScoringConfig | null,
 ): ScoreResult | null {
-  if (!config || !config.rules || config.rules.length === 0) {
-    return null;
-  }
+  const rules = config?.rules;
+  if (!rules?.length) return null;
 
   const values = lead.custom_values ?? {};
   let total = 0;
 
-  for (const rule of config.rules) {
+  for (const rule of rules) {
     const value = values[rule.fieldKey];
+    if (value == null || value === "") continue;
 
-    // nothing set → no points
-    if (value === null || value === undefined || value === "") continue;
-
-    const hasOptionWeights =
-      rule.optionWeights && Object.keys(rule.optionWeights).length > 0;
-
-    if (hasOptionWeights && typeof value === "string") {
-      // SELECT field: use per-option weights
-      const optWeight = rule.optionWeights![value];
-      if (typeof optWeight === "number" && Number.isFinite(optWeight)) {
-        total += optWeight;
-      }
+    const optWeights = rule.optionWeights;
+    if (optWeights && typeof value === "string") {
+      const w = optWeights[value];
+      if (typeof w === "number" && Number.isFinite(w)) total += w;
       continue;
     }
 
     const base = typeof rule.weight === "number" ? rule.weight : 0;
-
-    // Non-select fields – treat weight as "points if the field is set"
-    if (typeof value === "boolean") {
-      if (value) total += base; // true → weight, false → 0
-    } else {
-      // text / number / link presence → weight
-      total += base;
-    }
+    total += typeof value === "boolean" ? (value ? base : 0) : base;
   }
 
-  if (!Number.isFinite(total)) {
-    return null;
-  }
+  if (!Number.isFinite(total)) return null;
 
-  const clamped = clampScore(total);
-  const level = computeLevel(clamped, config.thresholds);
-
-  return { score: clamped, level };
-}
-
-function clampScore(score: number): number {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function computeLevel(
-  score: number,
-  thresholds?: ScoreThresholds
-): ScoreLevel | null {
-  if (!thresholds) return null;
-
-  const { low, high } = thresholds;
-
-  if (score < low) return "low";
-  if (score >= high) return "high";
-  return "medium";
+  const score = clampScore(total);
+  return { score, level: computeLevel(score, config?.thresholds) };
 }

@@ -5,14 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-async function authedFetch(input: RequestInfo, init?: RequestInit) {
+async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("no_session");
-  return fetch(input, {
-    ...init,
-    headers: { ...(init?.headers ?? {}), Authorization: `Bearer ${token}` },
-  });
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+
+  return fetch(input, { ...init, headers });
 }
 
 // Stripe-first shape (minimal for this page)
@@ -24,22 +25,24 @@ type StripeProduct = {
   created?: number | null;
 };
 
-export default function ProductArchiveClient({ productId }: { productId: string }) {
+export default function ProductArchiveClient({
+  productId,
+}: {
+  productId: string;
+}) {
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // ✅ NEW: product fetch state
   const [product, setProduct] = useState<StripeProduct | null>(null);
   const [loadingProduct, setLoadingProduct] = useState(true);
 
-  const productName = useMemo(() => {
-    const n = String(product?.name ?? "").trim();
-    return n || productId;
-  }, [product?.name, productId]);
+  const productName = useMemo(
+    () => String(product?.name ?? "").trim() || productId,
+    [product?.name, productId],
+  );
 
-  // ✅ NEW: fetch product name from Stripe-backed endpoint
   useEffect(() => {
     let cancelled = false;
 
@@ -48,21 +51,25 @@ export default function ProductArchiveClient({ productId }: { productId: string 
       setErr(null);
 
       try {
-        const res = await authedFetch(`/api/billing/products/${encodeURIComponent(productId)}`, {
-          cache: "no-store",
-        });
-
-        const json = await res.json().catch(() => null);
+        const res = await authedFetch(
+          `/api/billing/products/${encodeURIComponent(productId)}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const json: any = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          // Don't hard-fail the page—just fall back to productId.
-          console.error("[ProductArchive] Failed to load product", res.status, json);
+          console.error(
+            "[ProductArchive] Failed to load product",
+            res.status,
+            json,
+          );
           if (!cancelled) setProduct(null);
           return;
         }
 
-        const p = json?.product ?? null;
-
+        const p = json.product;
         if (!cancelled) {
           setProduct(
             p
@@ -73,7 +80,7 @@ export default function ProductArchiveClient({ productId }: { productId: string 
                   active: typeof p.active === "boolean" ? p.active : undefined,
                   created: typeof p.created === "number" ? p.created : null,
                 }
-              : null
+              : null,
           );
         }
       } catch (e) {
@@ -92,13 +99,16 @@ export default function ProductArchiveClient({ productId }: { productId: string 
   async function archive() {
     setErr(null);
     setSaving(true);
+
     try {
       const res = await authedFetch(
         `/api/billing/products/${encodeURIComponent(productId)}/archive`,
-        { method: "POST" }
+        {
+          method: "POST",
+        },
       );
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
+      const json: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
       router.push("/billing/products");
     } catch (e: any) {
       setErr(String(e?.message ?? "archive_failed"));
@@ -112,9 +122,14 @@ export default function ProductArchiveClient({ productId }: { productId: string 
       <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-5 shadow-sm">
         <h1 className="text-xl font-semibold text-rose-800">Archive product</h1>
         <p className="mt-1 text-sm text-rose-700">
-          This sets <span className="font-semibold">active=false</span> in Stripe. Existing invoices are unaffected.
+          This sets <span className="font-semibold">active=false</span> in
+          Stripe. Existing invoices are unaffected.
         </p>
-        {!!err && <p className="mt-3 text-xs font-semibold text-rose-700">Error: {err}</p>}
+        {!!err && (
+          <p className="mt-3 text-xs font-semibold text-rose-700">
+            Error: {err}
+          </p>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
@@ -134,7 +149,7 @@ export default function ProductArchiveClient({ productId }: { productId: string 
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             disabled={saving}
           >
             Cancel
@@ -144,7 +159,7 @@ export default function ProductArchiveClient({ productId }: { productId: string 
             type="button"
             onClick={archive}
             disabled={saving}
-            className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60 cursor-pointer"
+            className="cursor-pointer rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
           >
             {saving ? "Archiving…" : "Archive"}
           </button>

@@ -3,40 +3,57 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
-type RouteContext = {
-  params: Promise<{ invoiceId: string }>;
-};
+type RouteContext = { params: Promise<{ invoiceId: string }> };
+
+function cleanInvoiceId(v: unknown) {
+  const raw = String(v ?? "").trim();
+  if (!raw) return null;
+
+  const lowered = raw.toLowerCase();
+  if (lowered === "undefined" || lowered === "null") return null;
+
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {}
+
+  decoded = decoded.trim();
+  const dLower = decoded.toLowerCase();
+  if (!decoded || dLower === "undefined" || dLower === "null") return null;
+
+  // Stripe invoice ids: in_...
+  if (!/^in_[A-Za-z0-9]+$/.test(decoded)) return null;
+
+  return decoded;
+}
 
 export async function GET(req: Request, ctx: RouteContext) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  const { stripeAccountId, livemode } = auth.ctx;
-  const stripe = getStripe(livemode ? "live" : "test");
-
-  // ✅ Next expects params Promise in this build
-  const { invoiceId: raw } = await ctx.params;
-  const rawInvoiceId = String(raw ?? "").trim();
-
-  if (!rawInvoiceId || rawInvoiceId === "undefined" || rawInvoiceId === "null") {
+  const invoiceId = cleanInvoiceId((await ctx.params).invoiceId);
+  if (!invoiceId) {
     return NextResponse.json(
-      { error: "missing_invoiceId", hint: "Route param invoiceId was empty/undefined." },
-      { status: 400 }
+      {
+        error: "invalid_invoiceId",
+        hint: "Expected a Stripe invoice id like in_123...",
+      },
+      { status: 400 },
     );
   }
 
-  const invoiceId = decodeURIComponent(rawInvoiceId);
+  const stripe = getStripe(auth.ctx.livemode ? "live" : "test");
 
   try {
     const inv = await stripe.invoices.retrieve(
       invoiceId,
       { expand: ["customer", "lines.data.price.product"] },
-      { stripeAccount: stripeAccountId }
+      { stripeAccount: auth.ctx.stripeAccountId },
     );
 
     const customer =
@@ -47,22 +64,18 @@ export async function GET(req: Request, ctx: RouteContext) {
             email: (inv.customer as any).email ?? null,
           }
         : inv.customer
-        ? { id: String(inv.customer), name: null, email: null }
-        : null;
+          ? { id: String(inv.customer), name: null, email: null }
+          : null;
 
-    const lines = (inv.lines?.data ?? []).map((l: any) => {
-      const price = l.price;
-      const product = price?.product;
-      return {
-        id: l.id,
-        description: l.description ?? null,
-        quantity: l.quantity ?? null,
-        amount: l.amount ?? null,
-        currency: l.currency ?? inv.currency ?? null,
-        price_id: price?.id ?? null,
-        product_name: (product as any)?.name ?? null,
-      };
-    });
+    const lines = (inv.lines?.data ?? []).map((l: any) => ({
+      id: l.id,
+      description: l.description ?? null,
+      quantity: l.quantity ?? null,
+      amount: l.amount ?? null,
+      currency: l.currency ?? inv.currency ?? null,
+      price_id: l.price?.id ?? null,
+      product_name: (l.price?.product as any)?.name ?? null,
+    }));
 
     return NextResponse.json({
       invoice: {
@@ -85,7 +98,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "stripe_error" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

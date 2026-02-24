@@ -108,7 +108,8 @@ function jsonError(message: string, status = 500, details?: unknown) {
 }
 
 function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
@@ -121,7 +122,9 @@ function isScope(v: string): v is Scope {
 }
 
 function normalizeRole(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   return "member";
@@ -147,10 +150,16 @@ function supabaseAdmin() {
 async function resolveTeamContext(
   admin: ReturnType<typeof supabaseAdmin>,
   userId: string,
-  req: Request
-): Promise<{ teamId: string; role: Role; roles: Role[]; isManagerOrAdmin: boolean }> {
+  req: Request,
+): Promise<{
+  teamId: string;
+  role: Role;
+  roles: Role[];
+  isManagerOrAdmin: boolean;
+}> {
   const url = new URL(req.url);
-  const teamIdParam = (url.searchParams.get("teamId") ?? "").trim() || null;
+  // searchParams.get() returns string | null (never undefined) => use `|| ""` to avoid "?? unreachable"
+  const teamIdParam = (url.searchParams.get("teamId") || "").trim() || null;
 
   if (teamIdParam) {
     const { data, error } = await admin
@@ -184,7 +193,9 @@ async function resolveTeamContext(
 
   if (error) throw new Error("team_member_lookup_failed");
 
-  const firstTm = (data as Pick<TeamMemberRow, "team_id" | "role" | "joined_at"> | null) ?? null;
+  const firstTm =
+    (data as Pick<TeamMemberRow, "team_id" | "role" | "joined_at"> | null) ??
+    null;
   if (!firstTm?.team_id) throw new Error("missing_team_membership");
 
   const role = normalizeRole(firstTm.role);
@@ -226,11 +237,19 @@ async function loadRecentLeadsWithFallback(args: {
 
   for (const sel of selectCandidates) {
     const q = applyLeadScope(
-      admin.from("leads").select(sel).order("created_at", { ascending: false }).limit(8)
+      admin
+        .from("leads")
+        .select(sel)
+        .order("created_at", { ascending: false })
+        .limit(8),
     );
 
     const { data, error } = await q;
-    if (!error) return { rows: (data ?? []) as any[], usedSelect: sel };
+    if (!error)
+      return {
+        rows: Array.isArray(data) ? (data as any[]) : [],
+        usedSelect: sel,
+      };
 
     lastErr = error;
   }
@@ -248,12 +267,13 @@ export async function GET(req: Request) {
     if (!token) return jsonError("missing_auth", 401);
 
     const url = new URL(req.url);
-    const bucketRaw = String(url.searchParams.get("bucket") ?? "week").trim();
-    const daysRaw = Number(url.searchParams.get("days") ?? "120");
-    const scopeRaw = String(url.searchParams.get("scope") ?? "team").trim();
+    const bucketRaw = String(url.searchParams.get("bucket") || "week").trim();
+    const daysRaw = Number(url.searchParams.get("days") || "120");
+    const scopeRaw = String(url.searchParams.get("scope") || "team").trim();
 
     if (!isBucket(bucketRaw)) return jsonError("invalid_bucket", 400);
-    if (!Number.isFinite(daysRaw) || daysRaw < 7 || daysRaw > 365) return jsonError("invalid_days", 400);
+    if (!Number.isFinite(daysRaw) || daysRaw < 7 || daysRaw > 365)
+      return jsonError("invalid_days", 400);
     if (!isScope(scopeRaw)) return jsonError("invalid_scope", 400);
 
     const bucket: Bucket = bucketRaw;
@@ -265,12 +285,17 @@ export async function GET(req: Request) {
     // validate token => user
     const { data: userRes, error: userErr } = await admin.auth.getUser(token);
     const user = userRes?.user ?? null;
-    if (userErr || !user) return jsonError("invalid_session", 401, userErr?.message);
+    if (userErr || !user)
+      return jsonError("invalid_session", 401, userErr?.message);
 
     const userId = String(user.id);
 
     // team/role from team_members
-    const { teamId, role, roles, isManagerOrAdmin } = await resolveTeamContext(admin, userId, req);
+    const { teamId, role, roles, isManagerOrAdmin } = await resolveTeamContext(
+      admin,
+      userId,
+      req,
+    );
 
     // scope enforcement
     const effectiveScope: Scope = isManagerOrAdmin ? requestedScope : "me";
@@ -298,19 +323,30 @@ export async function GET(req: Request) {
         .from("pipeline_stages")
         .select("id, team_id, name, position")
         .eq("team_id", teamId)
-        .order("position", { ascending: true }),
+        .order("position", {
+          ascending: true,
+        }),
       admin
         .from("conversion_metrics")
-        .select("id, team_id, label, from_stage_id, to_stage_id, position, target_rate")
+        .select(
+          "id, team_id, label, from_stage_id, to_stage_id, position, target_rate",
+        )
         .eq("team_id", teamId)
         .order("position", { ascending: true }),
     ]);
 
-    if (stagesRes.error) return jsonError("stages_load_failed", 500, stagesRes.error);
-    if (metricsRes.error) return jsonError("metrics_load_failed", 500, metricsRes.error);
+    if (stagesRes.error)
+      return jsonError("stages_load_failed", 500, stagesRes.error);
+    if (metricsRes.error)
+      return jsonError("metrics_load_failed", 500, metricsRes.error);
 
-    const stages = ((stagesRes.data ?? []) as PipelineStageRow[]) ?? [];
-    const metrics = ((metricsRes.data ?? []) as ConversionMetricRow[]) ?? [];
+    // ✅ avoid "?? unreachable" regardless of Supabase type inference
+    const stages: PipelineStageRow[] = Array.isArray(stagesRes.data)
+      ? (stagesRes.data as any)
+      : [];
+    const metrics: ConversionMetricRow[] = Array.isArray(metricsRes.data)
+      ? (metricsRes.data as any)
+      : [];
 
     const stageIdToName = new Map<string, string>();
     for (const s of stages) stageIdToName.set(String(s.id), String(s.name));
@@ -320,15 +356,22 @@ export async function GET(req: Request) {
     // ---------------------------
     const funnelPromise = (async () => {
       const leadsQuery = applyLeadScope(
-        admin.from("leads").select("id, team_id, stage_id, setter_id, closer_id")
+        admin
+          .from("leads")
+          .select("id, team_id, stage_id, setter_id, closer_id"),
       );
 
       const { data, error } = await leadsQuery;
       if (error) throw new Error("leads_load_failed");
 
-      const safeLeads = ((data ?? []) as Pick<LeadRow, "id" | "stage_id" | "setter_id" | "closer_id">[]) ?? [];
-      const stageIdToCount = new Map<string, number>();
+      const safeLeads = Array.isArray(data)
+        ? (data as Pick<
+            LeadRow,
+            "id" | "stage_id" | "setter_id" | "closer_id"
+          >[])
+        : [];
 
+      const stageIdToCount = new Map<string, number>();
       for (const l of safeLeads) {
         const sid = l.stage_id ? String(l.stage_id) : "";
         if (!sid) continue;
@@ -342,7 +385,10 @@ export async function GET(req: Request) {
         leadCount: stageIdToCount.get(String(s.id)) ?? 0,
       }));
 
-      const metricByPair = new Map<string, { label: string; target_rate: number | null }>();
+      const metricByPair = new Map<
+        string,
+        { label: string; target_rate: number | null }
+      >();
       for (const m of metrics) {
         metricByPair.set(`${m.from_stage_id}__${m.to_stage_id}`, {
           label: String(m.label ?? ""),
@@ -359,12 +405,18 @@ export async function GET(req: Request) {
         const toCount = toS.leadCount;
 
         const metric = metricByPair.get(`${fromS.id}__${toS.id}`);
-        const label = metric?.label?.trim() ? metric.label.trim() : `${fromS.name} → ${toS.name}`;
+        const label = metric?.label?.trim()
+          ? metric.label.trim()
+          : `${fromS.name} → ${toS.name}`;
         const targetRate = metric?.target_rate ?? null;
 
-        const actualConversionRate = fromCount > 0 ? Math.round((toCount / fromCount) * 1000) / 10 : null;
+        const actualConversionRate =
+          fromCount > 0 ? Math.round((toCount / fromCount) * 1000) / 10 : null;
         const dropOffCount = Math.max(0, fromCount - toCount);
-        const dropOffRate = fromCount > 0 ? Math.round(((fromCount - toCount) / fromCount) * 1000) / 10 : null;
+        const dropOffRate =
+          fromCount > 0
+            ? Math.round(((fromCount - toCount) / fromCount) * 1000) / 10
+            : null;
 
         edges.push({
           fromStageId: fromS.id,
@@ -386,13 +438,16 @@ export async function GET(req: Request) {
     // Activity (RPC)
     // ---------------------------
     const activityPromise = (async () => {
-      const { data, error } = await (admin as any).rpc("dashboard_activity_series", {
-        p_team_id: teamId,
-        p_user_id: userId,
-        p_bucket: bucket,
-        p_from: from.toISOString(),
-        p_to: now.toISOString(),
-      });
+      const { data, error } = await (admin as any).rpc(
+        "dashboard_activity_series",
+        {
+          p_team_id: teamId,
+          p_user_id: userId,
+          p_bucket: bucket,
+          p_from: from.toISOString(),
+          p_to: now.toISOString(),
+        },
+      );
 
       if (error) {
         return {
@@ -409,7 +464,9 @@ export async function GET(req: Request) {
         bucket,
         from: from.toISOString(),
         to: now.toISOString(),
-        series: ((data ?? []) as DashboardActivityRow[]) ?? [],
+        series: Array.isArray(data)
+          ? (data as DashboardActivityRow[])
+          : ([] as DashboardActivityRow[]),
       };
     })();
 
@@ -417,18 +474,27 @@ export async function GET(req: Request) {
     // KPIs
     // ---------------------------
     const kpisPromise = (async () => {
-      const leadsTotalQ = applyLeadScope(admin.from("leads").select("id", { count: "exact", head: true }));
+      const leadsTotalQ = applyLeadScope(
+        admin.from("leads").select("id", { count: "exact", head: true }),
+      );
       const { count: leads_total, error: ltErr } = await leadsTotalQ;
       if (ltErr) throw new Error("kpi_leads_total_failed");
 
       const leads7Q = applyLeadScope(
-        admin.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from7.toISOString())
+        admin
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", from7.toISOString()),
       );
       const leads30Q = applyLeadScope(
-        admin.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from30.toISOString())
+        admin
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", from30.toISOString()),
       );
 
-      const [{ count: leads_new_7d }, { count: leads_new_30d }] = await Promise.all([leads7Q, leads30Q]);
+      const [{ count: leads_new_7d }, { count: leads_new_30d }] =
+        await Promise.all([leads7Q, leads30Q]);
 
       const applyMsgScope = (q: any) => {
         let qq = q.eq("team_id", teamId);
@@ -442,7 +508,7 @@ export async function GET(req: Request) {
           .select("id", { count: "exact", head: true })
           .gte("sent_at", from7.toISOString())
           .eq("direction", "outbound")
-          .neq("channel", "pipeline")
+          .neq("channel", "pipeline"),
       );
       const msgs30Q = applyMsgScope(
         admin
@@ -450,10 +516,11 @@ export async function GET(req: Request) {
           .select("id", { count: "exact", head: true })
           .gte("sent_at", from30.toISOString())
           .eq("direction", "outbound")
-          .neq("channel", "pipeline")
+          .neq("channel", "pipeline"),
       );
 
-      const [{ count: messages_sent_7d }, { count: messages_sent_30d }] = await Promise.all([msgs7Q, msgs30Q]);
+      const [{ count: messages_sent_7d }, { count: messages_sent_30d }] =
+        await Promise.all([msgs7Q, msgs30Q]);
 
       const bookings7Q = admin
         .from("bookings")
@@ -467,7 +534,8 @@ export async function GET(req: Request) {
         .eq("team_id", teamId)
         .gte("created_at", from30.toISOString());
 
-      const [{ count: bookings_7d }, { count: bookings_30d }] = await Promise.all([bookings7Q, bookings30Q]);
+      const [{ count: bookings_7d }, { count: bookings_30d }] =
+        await Promise.all([bookings7Q, bookings30Q]);
 
       let outcomesQ: any = admin
         .from("booking_outcomes")
@@ -475,19 +543,33 @@ export async function GET(req: Request) {
         .eq("team_id", teamId)
         .gte("created_at", from30.toISOString());
 
-      if (effectiveScope === "me") outcomesQ = outcomesQ.eq("closer_user_id", userId);
+      if (effectiveScope === "me")
+        outcomesQ = outcomesQ.eq("closer_user_id", userId);
 
       const { data: outcomes, error: oErr } = await outcomesQ;
       if (oErr) throw new Error("kpi_outcomes_failed");
 
-      const rows = ((outcomes ?? []) as Pick<BookingOutcomeRow, "attended_status" | "closed_on_call">[]) ?? [];
-      const totalOutcomes = rows.length;
+      const rows = Array.isArray(outcomes)
+        ? (outcomes as Pick<
+            BookingOutcomeRow,
+            "attended_status" | "closed_on_call"
+          >[])
+        : [];
 
-      const showed = rows.filter((r) => String(r.attended_status ?? "") === "showed").length;
+      const totalOutcomes = rows.length;
+      const showed = rows.filter(
+        (r) => String(r.attended_status ?? "") === "showed",
+      ).length;
       const closed = rows.filter((r) => !!r.closed_on_call).length;
 
-      const show_rate_30d = totalOutcomes > 0 ? Math.round((showed / totalOutcomes) * 1000) / 10 : null;
-      const close_rate_30d = totalOutcomes > 0 ? Math.round((closed / totalOutcomes) * 1000) / 10 : null;
+      const show_rate_30d =
+        totalOutcomes > 0
+          ? Math.round((showed / totalOutcomes) * 1000) / 10
+          : null;
+      const close_rate_30d =
+        totalOutcomes > 0
+          ? Math.round((closed / totalOutcomes) * 1000) / 10
+          : null;
 
       return {
         leads_total: leads_total ?? 0,
@@ -510,7 +592,9 @@ export async function GET(req: Request) {
 
       const { data: upcomingRaw, error: upErr } = await admin
         .from("bookings")
-        .select("id, start_at, end_at, lead_id, invitee_first_name, invitee_email, booking_link_id")
+        .select(
+          "id, start_at, end_at, lead_id, invitee_first_name, invitee_email, booking_link_id",
+        )
         .eq("team_id", teamId)
         .gte("start_at", now.toISOString())
         .lte("start_at", to14.toISOString())
@@ -519,7 +603,11 @@ export async function GET(req: Request) {
 
       if (upErr) throw new Error("upcoming_bookings_failed");
 
-      const upcoming = (((upcomingRaw ?? []) as Partial<BookingRow>[]) ?? [])
+      const upcomingRows: Partial<BookingRow>[] = Array.isArray(upcomingRaw)
+        ? (upcomingRaw as any)
+        : [];
+
+      const upcoming = upcomingRows
         .filter((b) => !!b.start_at)
         .map((b) => ({
           id: String(b.id ?? ""),
@@ -531,26 +619,30 @@ export async function GET(req: Request) {
           booking_link_id: b.booking_link_id ? String(b.booking_link_id) : null,
         }));
 
-      // ✅ FIX: robust leads selects (no assumptions about "name")
+      // robust leads selects (no assumptions about "name")
       const { rows: recentRaw } = await loadRecentLeadsWithFallback({
         admin,
         applyLeadScope,
       });
 
-      const normalizedRecent = (recentRaw ?? []).map((l: any) => {
-        const stageId = l.stage_id ? String(l.stage_id) : null;
-        const stage_name = stageId ? stageIdToName.get(stageId) ?? null : null;
+      const normalizedRecent = (Array.isArray(recentRaw) ? recentRaw : []).map(
+        (l: any) => {
+          const stageId = l.stage_id ? String(l.stage_id) : null;
+          const stage_name = stageId
+            ? (stageIdToName.get(stageId) ?? null)
+            : null;
 
-        return {
-          id: String(l.id ?? ""),
-          name: (l.lead_name ?? l.name ?? null) as string | null,
-          stage_id: stageId,
-          stage_name,
-          stage: stage_name, // ✅ client expects "stage"
-          created_at: String(l.created_at ?? ""),
-          score: l.score == null ? null : Number(l.score),
-        };
-      });
+          return {
+            id: String(l.id ?? ""),
+            name: (l.lead_name ?? l.name ?? null) as string | null,
+            stage_id: stageId,
+            stage_name,
+            stage: stage_name, // client expects "stage"
+            created_at: String(l.created_at ?? ""),
+            score: l.score == null ? null : Number(l.score),
+          };
+        },
+      );
 
       const leadIds = normalizedRecent.map((l: any) => l.id).filter(Boolean);
 
@@ -558,11 +650,16 @@ export async function GET(req: Request) {
         .from("lead_messages")
         .select("lead_id, sent_at")
         .eq("team_id", teamId)
-        .in("lead_id", leadIds.length ? leadIds : ["00000000-0000-0000-0000-000000000000"])
+        .in(
+          "lead_id",
+          leadIds.length ? leadIds : ["00000000-0000-0000-0000-000000000000"],
+        )
         .order("sent_at", { ascending: false })
         .limit(200);
 
-      const msgRows = ((msgRowsRaw ?? []) as Pick<LeadMessageRow, "lead_id" | "sent_at">[]) ?? [];
+      const msgRows = Array.isArray(msgRowsRaw)
+        ? (msgRowsRaw as Pick<LeadMessageRow, "lead_id" | "sent_at">[])
+        : [];
 
       const lastByLead = new Map<string, string>();
       for (const m of msgRows) {
@@ -588,8 +685,6 @@ export async function GET(req: Request) {
         .sort((a: any, b: any) => Number(b.score ?? -1) - Number(a.score ?? -1))
         .slice(0, 6);
 
-      const feed: Array<any> = [];
-
       const [feedMsgsRes, feedBookingsRes] = await Promise.all([
         admin
           .from("lead_messages")
@@ -605,6 +700,15 @@ export async function GET(req: Request) {
           .limit(10),
       ]);
 
+      const feedMsgRows = Array.isArray(feedMsgsRes.data)
+        ? feedMsgsRes.data
+        : [];
+      const feedBookingRows = Array.isArray(feedBookingsRes.data)
+        ? feedBookingsRes.data
+        : [];
+
+      const feed: any[] = [];
+
       for (const l of normalizedRecent) {
         feed.push({
           type: "lead_created",
@@ -614,7 +718,7 @@ export async function GET(req: Request) {
         });
       }
 
-      for (const m of (feedMsgsRes.data ?? []) as any[]) {
+      for (const m of feedMsgRows as any[]) {
         feed.push({
           type: "message",
           at: String(m.sent_at ?? ""),
@@ -623,7 +727,7 @@ export async function GET(req: Request) {
         });
       }
 
-      for (const b of (feedBookingsRes.data ?? []) as any[]) {
+      for (const b of feedBookingRows as any[]) {
         feed.push({
           type: "booking",
           at: String(b.created_at ?? ""),
@@ -665,13 +769,21 @@ export async function GET(req: Request) {
     const msg = String(e?.message ?? e);
 
     if (msg === "missing_team_membership") {
-      return jsonError("missing_team", 400, "User is not in any team_members row");
+      return jsonError(
+        "missing_team",
+        400,
+        "User is not in any team_members row",
+      );
     }
     if (msg === "not_a_member_of_team") {
       return jsonError("forbidden", 403, "Not a member of requested teamId");
     }
     if (msg === "recent_leads_failed") {
-      return jsonError("recent_leads_failed", 500, (e as any).details ?? "unknown_recent_leads_error");
+      return jsonError(
+        "recent_leads_failed",
+        500,
+        (e as any).details ?? "unknown_recent_leads_error",
+      );
     }
 
     console.error("[dashboard] unexpected:", e);

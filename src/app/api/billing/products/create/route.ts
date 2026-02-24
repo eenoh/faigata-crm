@@ -42,9 +42,7 @@ function supabaseAdmin() {
 // -----------------------------
 function getBearerToken(req: Request) {
   const h =
-    req.headers.get("authorization") ||
-    req.headers.get("Authorization") ||
-    "";
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
@@ -53,11 +51,15 @@ function parseLivemode(req: Request): boolean {
   const url = new URL(req.url);
   const sp = url.searchParams;
 
-  const mode = String(sp.get("mode") ?? "").trim().toLowerCase();
+  const mode = String(sp.get("mode") ?? "")
+    .trim()
+    .toLowerCase();
   if (mode === "live") return true;
   if (mode === "test") return false;
 
-  const lm = String(sp.get("livemode") ?? "").trim().toLowerCase();
+  const lm = String(sp.get("livemode") ?? "")
+    .trim()
+    .toLowerCase();
   if (lm === "1" || lm === "true") return true;
   if (lm === "0" || lm === "false") return false;
 
@@ -66,7 +68,9 @@ function parseLivemode(req: Request): boolean {
 }
 
 function normalizeRoleOne(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   if (s === "closer") return "closer";
@@ -108,13 +112,19 @@ function isStripeAccountId(v: unknown) {
   return /^acct_[a-zA-Z0-9]+$/.test(s);
 }
 
-// Stripe paginator
+function isStripeInterval(
+  v: string,
+): v is Stripe.PriceCreateParams.Recurring.Interval {
+  return v === "day" || v === "week" || v === "month" || v === "year";
+}
+
+// Stripe paginator (used to return product prices right away)
 async function listAll<T extends { id: string }>(
   listFn: (
     params: { limit: number; starting_after?: string },
-    opts: any
+    opts: any,
   ) => Promise<{ data: T[]; has_more: boolean }>,
-  opts: any
+  opts: any,
 ): Promise<T[]> {
   const out: T[] = [];
   let starting_after: string | undefined;
@@ -122,12 +132,11 @@ async function listAll<T extends { id: string }>(
   while (true) {
     const page = await listFn(
       { limit: 100, ...(starting_after ? { starting_after } : {}) },
-      opts
+      opts,
     );
-
     out.push(...(page.data ?? []));
-    if (!page.has_more || !page.data?.length) break;
 
+    if (!page.has_more || !page.data?.length) break;
     starting_after = page.data[page.data.length - 1]!.id;
   }
 
@@ -163,7 +172,6 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
     .select("team_id, role")
     .eq("id", userId)
     .maybeSingle();
-
   const profilesTeamId = String((profile as any)?.team_id ?? "").trim() || null;
   const profilesRoleRaw: unknown = (profile as any)?.role;
 
@@ -204,7 +212,6 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
   if (!teamId) teamId = profilesTeamId;
   if (!teamId) return null;
 
-  // roles -> highest
   const role = mergeHighestRole(teamMembersRoleRaw, profilesRoleRaw);
 
   // teamId -> orgId
@@ -213,7 +220,6 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
     .select("organization_id")
     .eq("id", teamId)
     .maybeSingle();
-
   const orgId = String((teamRow as any)?.organization_id ?? "").trim();
   if (!orgId) return null;
 
@@ -225,9 +231,10 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
     .eq("livemode", livemode)
     .maybeSingle();
 
-  const stripeAccountId = String((acctRow as any)?.stripe_account_id ?? "").trim();
-  if (!stripeAccountId) return null;
-  if (!isStripeAccountId(stripeAccountId)) return null;
+  const stripeAccountId = String(
+    (acctRow as any)?.stripe_account_id ?? "",
+  ).trim();
+  if (!stripeAccountId || !isStripeAccountId(stripeAccountId)) return null;
 
   return { userId, teamId, orgId, role, livemode, stripeAccountId };
 }
@@ -235,14 +242,13 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
 // -----------------------------
 // Route
 // -----------------------------
-
 export async function GET(_req: NextRequest, _ctx: RouteContext) {
   return NextResponse.json(
     {
       error: "method_not_supported",
       message: "Use POST /api/billing/products/create to create a product.",
     },
-    { status: 405 }
+    { status: 405 },
   );
 }
 
@@ -253,95 +259,122 @@ export async function POST(req: NextRequest, _ctx: RouteContext) {
       {
         error: "unauthorized",
         reason: "no_billing_ctx",
-        hint:
-          "Pass Authorization: Bearer <token>. Ensure profiles/team_members exists, teams.organization_id is set, and organization_stripe_accounts row exists for this org + livemode.",
+        hint: "Pass Authorization: Bearer <token>. Ensure profiles/team_members exists, teams.organization_id is set, and organization_stripe_accounts row exists for this org + livemode.",
       },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   const allowed: Role[] = ["admin", "manager", "closer"];
   if (!allowed.includes(billingCtx.role)) {
     return NextResponse.json(
-      { error: "forbidden", message: "You do not have permission to create billing products." },
-      { status: 403 }
+      {
+        error: "forbidden",
+        message: "You do not have permission to create billing products.",
+      },
+      { status: 403 },
     );
   }
 
   const body = (await req.json().catch(() => null)) as any;
   const name = String(body?.name ?? "").trim();
-  if (!name) {
+  if (!name)
     return NextResponse.json({ error: "missing_name" }, { status: 400 });
-  }
 
   const description =
     body?.description != null ? String(body.description) : undefined;
   const active = typeof body?.active === "boolean" ? body.active : true;
 
   const pricePayload = body?.price ?? null;
-  const wantsPrice = pricePayload && typeof pricePayload === "object";
+  const wantsPrice = !!pricePayload && typeof pricePayload === "object";
 
   try {
     const stripe = stripeClient(billingCtx.livemode);
 
+    // 1) Create product
     const product = await stripe.products.create(
-      { name, description, active },
-      { stripeAccount: billingCtx.stripeAccountId } as any
+      { name, ...(description !== undefined ? { description } : {}), active },
+      { stripeAccount: billingCtx.stripeAccountId } as any,
     );
 
+    // 2) Optional initial price
     let createdPrice: Stripe.Price | null = null;
 
     if (wantsPrice) {
       const unit_amount = Number(pricePayload?.unit_amount);
-      const currency = String(pricePayload?.currency ?? "usd").toLowerCase();
+      const currency =
+        String(pricePayload?.currency ?? "usd")
+          .trim()
+          .toLowerCase() || "usd";
 
       if (!Number.isFinite(unit_amount) || unit_amount <= 0) {
         return NextResponse.json(
           { error: "invalid_price_unit_amount" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
-      const recurring = pricePayload?.recurring ?? null;
+      const recurringRaw = pricePayload?.recurring ?? null;
+      let recurring: Stripe.PriceCreateParams.Recurring | undefined;
+
+      if (recurringRaw && typeof recurringRaw === "object") {
+        const intervalRaw = String(recurringRaw.interval ?? "")
+          .trim()
+          .toLowerCase();
+        const countRaw = Number(recurringRaw.interval_count ?? 1);
+
+        if (intervalRaw) {
+          if (!isStripeInterval(intervalRaw)) {
+            return NextResponse.json(
+              {
+                error: "invalid_interval",
+                allowed: ["day", "week", "month", "year"],
+              },
+              { status: 400 },
+            );
+          }
+
+          recurring = {
+            interval: intervalRaw,
+            interval_count:
+              Number.isFinite(countRaw) && countRaw >= 1
+                ? Math.floor(countRaw)
+                : 1,
+          };
+        }
+      }
 
       createdPrice = await stripe.prices.create(
         {
           product: product.id,
           unit_amount: Math.round(unit_amount),
           currency,
-          ...(recurring && typeof recurring === "object"
-            ? {
-                recurring: {
-                  interval: String(recurring.interval ?? "month") as any,
-                },
-              }
-            : {}),
+          ...(recurring ? { recurring } : {}),
         },
-        { stripeAccount: billingCtx.stripeAccountId } as any
+        { stripeAccount: billingCtx.stripeAccountId } as any,
       );
     }
 
-    // Return list of prices for the created product
+    // 3) Return prices for this product (handy for UI)
     const allPrices = await listAll<Stripe.Price>(
       (params, opts) => stripe.prices.list(params, opts) as any,
-      { stripeAccount: billingCtx.stripeAccountId }
+      { stripeAccount: billingCtx.stripeAccountId },
     );
 
     const prices = allPrices
-      .filter((pr) => {
-        const prPid =
-          typeof pr.product === "string"
+      .filter(
+        (pr) =>
+          (typeof pr.product === "string"
             ? pr.product
-            : (pr.product as any)?.id ?? null;
-        return prPid === product.id;
-      })
+            : (pr.product as any)?.id) === product.id,
+      )
       .sort(
         (a, b) =>
           (typeof b.created === "number" ? b.created : 0) -
-          (typeof a.created === "number" ? a.created : 0)
+          (typeof a.created === "number" ? a.created : 0),
       );
 
-    // ✅ Optional: record activity (NO .catch on builder)
+    // 4) Best-effort activity log
     try {
       const sb = supabaseAdmin();
       const { error: activityErr } = await sb
@@ -355,25 +388,22 @@ export async function POST(req: NextRequest, _ctx: RouteContext) {
           actor_user_id: billingCtx.userId,
           payload: {
             name,
-            description,
+            description: description ?? null,
             active,
             createdPrice: createdPrice?.id ?? null,
           },
+          created_at: new Date().toISOString(),
         } as any);
 
-      // swallow errors intentionally (non-critical)
-      if (activityErr) {
-        // optionally log:
-        // console.warn("[billing/products/create] activity insert failed", activityErr);
-      }
+      // swallow logging errors intentionally
+      void activityErr;
     } catch {
-      // swallow errors intentionally (non-critical)
+      // swallow logging errors intentionally
     }
 
     return NextResponse.json({
       product,
       prices,
-      activity: [],
       source: "stripe",
       livemode: billingCtx.livemode,
       stripeAccountId: billingCtx.stripeAccountId,
@@ -383,7 +413,7 @@ export async function POST(req: NextRequest, _ctx: RouteContext) {
   } catch (e: any) {
     return NextResponse.json(
       { error: "stripe_create_failed", message: String(e?.message ?? e) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

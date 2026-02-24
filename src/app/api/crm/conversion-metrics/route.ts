@@ -17,6 +17,8 @@ type PostBody = {
   definitions?: DefinitionPayload[];
 };
 
+const json = (data: any, status = 200) => NextResponse.json(data, { status });
+
 async function loadStages(teamId: string) {
   const { data, error } = await supabaseAdmin
     .from("pipeline_stages")
@@ -27,15 +29,15 @@ async function loadStages(teamId: string) {
     console.error("[ConversionMetricsAPI] loadStages error", error);
     throw new Error(error.message || "Failed to load pipeline stages");
   }
-
   return data ?? [];
 }
 
 async function loadConversionMetrics(teamId: string) {
   const { data, error } = await supabaseAdmin
     .from("conversion_metrics")
-    // be explicit so we reliably have target_rate available
-    .select("id, team_id, label, from_stage_id, to_stage_id, position, target_rate")
+    .select(
+      "id, team_id, label, from_stage_id, to_stage_id, position, target_rate",
+    )
     .eq("team_id", teamId)
     .order("position", { ascending: true });
 
@@ -43,101 +45,97 @@ async function loadConversionMetrics(teamId: string) {
     console.error("[ConversionMetricsAPI] loadConversionMetrics error", error);
     throw new Error(error.message || "Failed to load conversion metrics");
   }
-
   return data ?? [];
 }
 
+const mapFrom = <K, V>(rows: any[], key: (r: any) => K, val: (r: any) => V) => {
+  const m = new Map<K, V>();
+  for (const r of rows) m.set(key(r), val(r));
+  return m;
+};
+
+const toIntOrNull = (v: unknown) => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n) | 0 : null;
+};
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as PostBody | null;
-
-  if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  if (!body) return json({ error: "Invalid JSON" }, 400);
 
   const teamId = body.teamId;
   const action = body.action;
+  if (!teamId || !action)
+    return json({ error: "Missing teamId or action" }, 400);
 
-  if (!teamId || !action) {
-    return NextResponse.json({ error: "Missing teamId or action" }, { status: 400 });
-  }
-
-  /* ---------- GET: list definitions ---------- */
   if (action === "get") {
     try {
       const [stages, metrics] = await Promise.all([
         loadStages(teamId),
         loadConversionMetrics(teamId),
       ]);
+      const stageIdToName = mapFrom(
+        stages as any[],
+        (s) => String(s.id),
+        (s) => String(s.name),
+      );
 
-      const stageIdToName = new Map<string, string>();
-      for (const s of stages as any[]) {
-        stageIdToName.set(s.id, s.name);
-      }
+      const result = (metrics as any[]).map((m, index) => {
+        const fromName =
+          stageIdToName.get(String(m.from_stage_id)) ?? "(deleted)";
+        const toName = stageIdToName.get(String(m.to_stage_id)) ?? "(deleted)";
+        return {
+          label:
+            m.label ??
+            `${fromName === "(deleted)" ? "" : fromName} → ${toName === "(deleted)" ? "" : toName}`.trim(),
+          fromStage: fromName,
+          toStage: toName,
+          position: typeof m.position === "number" ? m.position : index,
+          // ✅ return camelCase for the client
+          targetRate:
+            typeof m.target_rate === "number" ? m.target_rate | 0 : null,
+        };
+      });
 
-      const result = (metrics as any[]).map((m, index) => ({
-        label:
-          m.label ??
-          `${stageIdToName.get(m.from_stage_id) ?? ""} → ${stageIdToName.get(m.to_stage_id) ?? ""}`,
-        fromStage: stageIdToName.get(m.from_stage_id) ?? "(deleted)",
-        toStage: stageIdToName.get(m.to_stage_id) ?? "(deleted)",
-        position: typeof m.position === "number" ? m.position : index,
-
-        // ✅ return camelCase for the client
-        targetRate: typeof m.target_rate === "number" ? (m.target_rate | 0) : null,
-      }));
-
-      return NextResponse.json(result);
+      return json(result);
     } catch (err: any) {
       console.error("[ConversionMetricsAPI] GET failed", err);
-      return NextResponse.json(
+      return json(
         {
           error: "Failed to fetch conversion metric definitions",
           details: err?.message ?? String(err),
         },
-        { status: 500 }
+        500,
       );
     }
   }
 
-  /* ---------- SAVE: overwrite definitions ---------- */
   if (action === "save") {
     const defs = body.definitions ?? [];
-
-    if (!Array.isArray(defs)) {
-      return NextResponse.json({ error: "definitions must be an array" }, { status: 400 });
-    }
+    if (!Array.isArray(defs))
+      return json({ error: "definitions must be an array" }, 400);
 
     try {
       const stages = await loadStages(teamId);
-      const nameToStageId = new Map<string, string>();
-
-      for (const s of stages as any[]) {
-        nameToStageId.set(s.name, s.id);
-      }
+      const nameToStageId = mapFrom(
+        stages as any[],
+        (s) => String(s.name),
+        (s) => String(s.id),
+      );
 
       const rows = defs
         .map((d, index) => {
           const fromId = nameToStageId.get(d.fromStage);
           const toId = nameToStageId.get(d.toStage);
-
           if (!fromId || !toId) {
             console.warn(
               "[ConversionMetricsAPI] Missing stage for definition",
               d.fromStage,
-              d.toStage
+              d.toStage,
             );
             return null;
           }
-
-          const raw = (d as any).targetRate;
-
-          // normalize to int or null (DB column is int4)
-          const normalizedTarget =
-            raw == null
-              ? null
-              : Number.isFinite(Number(raw))
-              ? (Math.round(Number(raw)) | 0)
-              : null;
 
           return {
             team_id: teamId,
@@ -145,9 +143,7 @@ export async function POST(req: Request) {
             from_stage_id: fromId,
             to_stage_id: toId,
             position: index,
-
-            // ✅ persist to DB column
-            target_rate: normalizedTarget,
+            target_rate: toIntOrNull((d as any).targetRate),
           };
         })
         .filter(Boolean) as any[];
@@ -156,48 +152,51 @@ export async function POST(req: Request) {
         .from("conversion_metrics")
         .delete()
         .eq("team_id", teamId);
-
       if (deleteError) {
-        console.error("[ConversionMetricsAPI] Failed to clear old definitions", deleteError);
-        return NextResponse.json(
+        console.error(
+          "[ConversionMetricsAPI] Failed to clear old definitions",
+          deleteError,
+        );
+        return json(
           {
             error: "Failed to save conversion metric definitions (delete)",
             details: deleteError.message,
           },
-          { status: 500 }
+          500,
         );
       }
 
-      // If all rows were filtered out due to missing stages, avoid inserting []
-      if (rows.length === 0) {
-        return NextResponse.json({ ok: true });
-      }
+      if (!rows.length) return json({ ok: true });
 
-      const { error: insertError } = await supabaseAdmin.from("conversion_metrics").insert(rows);
-
+      const { error: insertError } = await supabaseAdmin
+        .from("conversion_metrics")
+        .insert(rows);
       if (insertError) {
-        console.error("[ConversionMetricsAPI] Failed to insert definitions", insertError);
-        return NextResponse.json(
+        console.error(
+          "[ConversionMetricsAPI] Failed to insert definitions",
+          insertError,
+        );
+        return json(
           {
             error: "Failed to save conversion metric definitions (insert)",
             details: insertError.message,
           },
-          { status: 500 }
+          500,
         );
       }
 
-      return NextResponse.json({ ok: true });
+      return json({ ok: true });
     } catch (err: any) {
       console.error("[ConversionMetricsAPI] SAVE failed", err);
-      return NextResponse.json(
+      return json(
         {
           error: "Failed to save conversion metric definitions",
           details: err?.message ?? String(err),
         },
-        { status: 500 }
+        500,
       );
     }
   }
 
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  return json({ error: "Unknown action" }, 400);
 }

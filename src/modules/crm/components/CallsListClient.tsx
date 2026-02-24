@@ -14,13 +14,30 @@ type OutcomeRow = {
   offer_product_id?: string | null;
 };
 
-// ⚠️ booking_outcomes can come back as array OR object depending on select / relationship shape
 type BookingRow = {
   id: string;
   start_at: string;
   end_at: string;
   booking_outcomes?: OutcomeRow[] | OutcomeRow | null;
 };
+
+const COL_CLASSES = [
+  "w-[20%]",
+  "w-[20%]",
+  "w-[16%]",
+  "w-[12%]",
+  "w-[12%]",
+  "w-[15%]",
+  "w-[2.5%]",
+  "w-[2.5%]",
+] as const;
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(v: string) {
+  return UUID_RE.test(v);
+}
 
 function isStripeProductId(id: string) {
   return /^prod_[a-zA-Z0-9]+$/.test(id);
@@ -30,11 +47,6 @@ function readBrowserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-// normalize outcomes whether API returns array/object/null
 function pickOutcome(b: BookingRow): OutcomeRow | null {
   const raw: any = (b as any)?.booking_outcomes;
   if (!raw) return null;
@@ -50,37 +62,20 @@ function toLabel(s: string) {
 
 function statusPill(status: string) {
   const s = (status || "unknown").toLowerCase();
-  if (s === "attended") return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
+  if (s === "attended")
+    return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
   if (s === "no_show") return "bg-rose-50/60 text-rose-700 ring-rose-200";
   if (s === "cancelled") return "bg-slate-100/70 text-slate-700 ring-slate-200";
-  if (s === "rescheduled") return "bg-amber-50/60 text-amber-800 ring-amber-200";
+  if (s === "rescheduled")
+    return "bg-amber-50/60 text-amber-800 ring-amber-200";
   return "bg-slate-100/70 text-slate-700 ring-slate-200";
 }
 
-// Transparent, color-coded Yes/No (green for Yes, red for No)
 function yesNoPill(isYes: boolean) {
   return isYes
     ? "bg-emerald-50/60 text-emerald-700 ring-emerald-200"
     : "bg-rose-50/60 text-rose-700 ring-rose-200";
 }
-
-/**
- * ✅ IMPORTANT (fixes hydration error):
- * Never put literal whitespace / {" "} / comments inside <colgroup>.
- * We render <col> via map to guarantee there are NO text nodes.
- */
-const COL_CLASSES = [
-  "w-[20%]", // Date
-  "w-[20%]", // Time
-  "w-[16%]", // Attendance
-  "w-[12%]", // Offer
-  "w-[12%]", // Closed
-  "w-[15%]", // Product/Service
-  "w-[2.5%]", // View
-  "w-[2.5%]", // Edit
-] as const;
-
-/* -------------------- Loading UI -------------------- */
 
 function CallsLoadingState() {
   return (
@@ -106,7 +101,16 @@ function CallsLoadingState() {
 
             <thead className="bg-slate-50">
               <tr className="text-left">
-                {["Date", "Time", "Attendance", "Offer", "Closed", "Product/Service", "View", "Edit"].map((h) => (
+                {[
+                  "Date",
+                  "Time",
+                  "Attendance",
+                  "Offer",
+                  "Closed",
+                  "Product/Service",
+                  "View",
+                  "Edit",
+                ].map((h) => (
                   <th
                     key={h}
                     className={[
@@ -153,7 +157,10 @@ function CallsLoadingState() {
 
             <tfoot>
               <tr>
-                <td colSpan={8} className="border-t border-slate-100 bg-white px-4 py-3">
+                <td
+                  colSpan={8}
+                  className="border-t border-slate-100 bg-white px-4 py-3"
+                >
                   <div className="h-3 w-80 rounded bg-slate-100 animate-pulse" />
                 </td>
               </tr>
@@ -164,8 +171,6 @@ function CallsLoadingState() {
     </div>
   );
 }
-
-/* -------------------- Product badge + loading state -------------------- */
 
 function ProductBadgeLoading() {
   return (
@@ -179,8 +184,6 @@ function ProductBadgeLoading() {
   );
 }
 
-/* -------------------- Main -------------------- */
-
 export default function CallsListClient({ leadId }: { leadId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -189,32 +192,34 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
   const [calls, setCalls] = useState<BookingRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
-  // needed to auth billing labels endpoint (fixes 401 in common setups)
   const [teamId, setTeamId] = useState<string | null>(null);
 
-  const viewerTz = useMemo(() => readBrowserTimeZone(), []);
-  const normalizedLeadId = useMemo(() => decodeURIComponent(String(leadId ?? "")).trim(), [leadId]);
+  const viewerTz = useMemo(readBrowserTimeZone, []);
+  const normalizedLeadId = useMemo(
+    () => decodeURIComponent(String(leadId ?? "")).trim(),
+    [leadId],
+  );
 
-  // prod_... -> product name
-  const [productLabels, setProductLabels] = useState<Record<string, string>>({});
+  const [productLabels, setProductLabels] = useState<Record<string, string>>(
+    {},
+  );
   const [productsResolving, setProductsResolving] = useState(false);
 
-  // ✅ read the header search query (?q=...) for filtering rows on this page
   const qRaw = searchParams.get("q") ?? "";
   const q = qRaw.toLowerCase();
 
-  /**
-   * Resolve Stripe product ids -> names via your authed billing endpoint.
-   * Returns: { [prodId]: "Name" }
-   *
-   * IMPORTANT:
-   * Many setups require passing team/org context. We include `x-team-id`.
-   * If your getAuthedBillingContext expects a different header, change it below.
-   */
-  async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
-    const uniq = Array.from(new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProductId)));
-    if (uniq.length === 0) return {};
-    if (!teamId) return {};
+  async function fetchStripeProductLabels(
+    ids: string[],
+  ): Promise<Record<string, string>> {
+    const uniq = Array.from(
+      new Set(
+        ids
+          .map((x) => String(x ?? "").trim())
+          .filter(Boolean)
+          .filter(isStripeProductId),
+      ),
+    );
+    if (!uniq.length || !teamId) return {};
 
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -225,19 +230,14 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        "x-team-id": teamId, // ✅ key fix for 401 (if your ctx resolver needs it)
+        "x-team-id": teamId,
       },
       body: JSON.stringify({ ids: uniq }),
       cache: "no-store",
     });
 
     const json = await res.json().catch(() => null);
-    if (!res.ok) {
-      // silent fail: we just won't show labels
-      return {};
-    }
-
-    const labels = json?.labels;
+    const labels = res.ok ? json?.labels : null;
     if (!labels || typeof labels !== "object") return {};
 
     const out: Record<string, string> = {};
@@ -256,7 +256,11 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
         setLoading(true);
         setErr(null);
 
-        if (!normalizedLeadId || normalizedLeadId === "undefined" || normalizedLeadId === "null") {
+        if (
+          !normalizedLeadId ||
+          normalizedLeadId === "undefined" ||
+          normalizedLeadId === "null"
+        ) {
           setErr("Missing lead id.");
           return;
         }
@@ -272,7 +276,12 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
           return;
         }
 
-        const { data: profile } = await supabase.from("profiles").select("team_id").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("team_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
         const tId = String(profile?.team_id ?? "").trim();
         if (!tId) {
           setErr("No team found for your user.");
@@ -289,11 +298,12 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
         const res = await fetch(
           `/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/calls?teamId=${encodeURIComponent(tId)}`,
-          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
         );
 
         const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || `load_failed_${res.status}`);
+        if (!res.ok)
+          throw new Error(json?.error || `load_failed_${res.status}`);
 
         if (!cancelled) setCalls((json?.calls ?? []) as BookingRow[]);
       } catch (e: any) {
@@ -313,20 +323,30 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
       .map((c) => {
         const outcome = pickOutcome(c);
 
-        const start = DateTime.fromISO(c.start_at, { setZone: true }).setZone(viewerTz);
-        const end = DateTime.fromISO(c.end_at, { setZone: true }).setZone(viewerTz);
+        const start = DateTime.fromISO(c.start_at, { setZone: true }).setZone(
+          viewerTz,
+        );
+        const end = DateTime.fromISO(c.end_at, { setZone: true }).setZone(
+          viewerTz,
+        );
 
-        const dateLabel = start.isValid ? start.toLocaleString(DateTime.DATE_MED) : c.start_at;
+        const dateLabel = start.isValid
+          ? start.toLocaleString(DateTime.DATE_MED)
+          : c.start_at;
         const timeLabel =
           start.isValid && end.isValid
             ? `${start.toLocaleString(DateTime.TIME_SIMPLE)} – ${end.toLocaleString(DateTime.TIME_SIMPLE)}`
             : "—";
 
-        const attendedRaw = String(outcome?.attended_status ?? "unknown").toLowerCase();
+        const attendedRaw = String(
+          outcome?.attended_status ?? "unknown",
+        ).toLowerCase();
         const offerMade = !!outcome?.offer_made;
         const closed = !!outcome?.closed_on_call;
 
-        const offerProductId = String((outcome as any)?.offer_product_id ?? "").trim();
+        const offerProductId = String(
+          (outcome as any)?.offer_product_id ?? "",
+        ).trim();
 
         return {
           id: c.id,
@@ -343,14 +363,15 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
       .sort((a, b) => b.startMillis - a.startMillis);
   }, [calls, viewerTz]);
 
-  // ✅ filter rows by q (spaces allowed; we do not trim away spaces while typing)
   const filteredRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return rows;
 
     return rows.filter((r) => {
       const productLabel =
-        r.offerMade && r.offerProductId ? String(productLabels[r.offerProductId] ?? "").toLowerCase() : "";
+        r.offerMade && r.offerProductId
+          ? String(productLabels[r.offerProductId] ?? "").toLowerCase()
+          : "";
 
       const haystack = [
         r.dateLabel,
@@ -369,23 +390,22 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
     });
   }, [rows, q, productLabels]);
 
-  // Fetch product names for offered products (based on ALL rows so labels are available for search)
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       if (!teamId) return;
 
-      const ids = (rows ?? [])
+      const ids = rows
         .filter((r) => r.offerMade && r.offerProductId)
         .map((r) => r.offerProductId as string)
         .filter(isStripeProductId);
 
       const uniq = Array.from(new Set(ids));
-      if (uniq.length === 0) return;
+      if (!uniq.length) return;
 
       const missing = uniq.filter((id) => !productLabels[id]);
-      if (missing.length === 0) return;
+      if (!missing.length) return;
 
       try {
         setProductsResolving(true);
@@ -401,17 +421,15 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [rows, productLabels, teamId]); // teamId added
+  }, [rows, productLabels, teamId]);
 
   if (loading) return <CallsLoadingState />;
   if (err) return <p className="text-sm text-rose-600">{err}</p>;
 
-  const isFiltering = q.trim().length > 0;
   const showRows = filteredRows;
 
   return (
     <div className="max-w-5xl space-y-4">
-      {/* Header */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -421,7 +439,8 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                 "Booked calls for this lead."
               ) : (
                 <>
-                  Showing {showRows.length} of {rows.length} calls for this lead.
+                  Showing {showRows.length} of {rows.length} calls for this
+                  lead.
                 </>
               )}
             </p>
@@ -430,7 +449,9 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}`)}
+              onClick={() =>
+                router.push(`/leads/${encodeURIComponent(normalizedLeadId)}`)
+              }
               className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               Back to Lead
@@ -439,7 +460,6 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
         </div>
       </div>
 
-      {/* Empty */}
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
           No calls booked yet.
@@ -448,9 +468,11 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
           <div className="font-semibold text-slate-900">No matches</div>
           <div className="mt-1 text-xs text-slate-500">
-            Try a different search (e.g. <span className="font-semibold text-slate-700">attended</span>,{" "}
+            Try a different search (e.g.{" "}
+            <span className="font-semibold text-slate-700">attended</span>,{" "}
             <span className="font-semibold text-slate-700">no show</span>,{" "}
-            <span className="font-semibold text-slate-700">yes</span>, or a product name).
+            <span className="font-semibold text-slate-700">yes</span>, or a
+            product name).
           </div>
         </div>
       ) : (
@@ -465,13 +487,21 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
               <thead className="bg-slate-50">
                 <tr className="text-left">
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">Date</th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">Time</th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                    Date
+                  </th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                    Time
+                  </th>
                   <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     Attendance
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">Offer</th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">Closed</th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                    Offer
+                  </th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                    Closed
+                  </th>
                   <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     Product / Service
                   </th>
@@ -487,23 +517,27 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
               <tbody className="divide-y divide-slate-100">
                 {showRows.map((r) => {
                   const shouldShowProduct = r.offerMade && !!r.offerProductId;
-                  const label = shouldShowProduct ? productLabels[r.offerProductId as string] : null;
+                  const label = shouldShowProduct
+                    ? productLabels[r.offerProductId as string]
+                    : null;
 
                   return (
                     <tr key={r.id} className="hover:bg-slate-50/70">
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900 truncate">{r.dateLabel}</div>
+                        <div className="font-semibold text-slate-900 truncate">
+                          {r.dateLabel}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="text-slate-700 truncate">{r.timeLabel}</div>
+                        <div className="text-slate-700 truncate">
+                          {r.timeLabel}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(
-                            r.attendedRaw
-                          )}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(r.attendedRaw)}`}
                         >
                           {r.attendedLabel}
                         </span>
@@ -511,9 +545,7 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
-                            r.offerMade
-                          )}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(r.offerMade)}`}
                         >
                           {r.offerMade ? "Yes" : "No"}
                         </span>
@@ -521,15 +553,12 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
-                            r.closed
-                          )}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(r.closed)}`}
                         >
                           {r.closed ? "Yes" : "No"}
                         </span>
                       </td>
 
-                      {/* Product/Service */}
                       <td className="px-4 py-3">
                         {shouldShowProduct ? (
                           label ? (
@@ -548,14 +577,13 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                         )}
                       </td>
 
-                      {/* View (tight) */}
                       <td className="px-2 py-3">
                         <div className="flex justify-center">
                           <button
                             type="button"
                             onClick={() =>
                               router.push(
-                                `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}/view`
+                                `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}/view`,
                               )
                             }
                             className="inline-flex p-1 !text-slate-600 hover:!text-slate-800 transition-colors cursor-pointer"
@@ -567,13 +595,14 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                         </div>
                       </td>
 
-                      {/* Edit (tight) */}
                       <td className="px-2 py-3">
                         <div className="flex justify-center">
                           <button
                             type="button"
                             onClick={() =>
-                              router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}`)
+                              router.push(
+                                `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}`,
+                              )
                             }
                             className="inline-flex p-1 !text-indigo-600 hover:!text-indigo-700 transition-colors cursor-pointer"
                             title="Edit Call Tracking"
@@ -591,8 +620,10 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
           </div>
 
           <div className="border-t border-slate-100 bg-white px-4 py-3 text-xs text-slate-500">
-            Use <span className="font-semibold text-slate-700">View</span> to read notes/outcomes, or{" "}
-            <span className="font-semibold text-slate-700">Edit</span> to update tracking.
+            Use <span className="font-semibold text-slate-700">View</span> to
+            read notes/outcomes, or{" "}
+            <span className="font-semibold text-slate-700">Edit</span> to update
+            tracking.
           </div>
         </div>
       )}

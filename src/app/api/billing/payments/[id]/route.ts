@@ -9,34 +9,55 @@ import {
 
 export const runtime = "nodejs";
 
+function cleanId(v: unknown) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+
+  const lower = s.toLowerCase();
+  if (lower === "undefined" || lower === "null") return null;
+
+  // Stripe PaymentIntent IDs look like pi_...
+  if (!/^pi_[A-Za-z0-9]+$/.test(s)) return null;
+
+  return s;
+}
+
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await ctx.params; // ✅ params is a Promise in newer Next.js
-  const paymentIntentId = String(id ?? "").trim();
+  const paymentIntentId = cleanId((await ctx.params).id);
+  if (!paymentIntentId) {
+    return NextResponse.json(
+      { error: "invalid_payment_intent_id" },
+      { status: 400 },
+    );
+  }
 
-  const authHeader = req.headers.get("authorization") || "";
+  const authHeader = req.headers.get("authorization") ?? "";
   const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!jwt) return NextResponse.json({ error: "missing_token" }, { status: 401 });
+  if (!jwt) {
+    return NextResponse.json({ error: "missing_token" }, { status: 401 });
+  }
 
   const user = await getUserFromBearer(jwt);
-  if (!user) return NextResponse.json({ error: "invalid_session" }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: "invalid_session" }, { status: 401 });
+  }
 
   const orgId = await getOrgIdForUser(user.id);
-  if (!orgId) return NextResponse.json({ error: "missing_org" }, { status: 400 });
-
-  if (!paymentIntentId) {
-    return NextResponse.json({ error: "missing_id" }, { status: 400 });
+  if (!orgId) {
+    return NextResponse.json({ error: "missing_org" }, { status: 400 });
   }
 
   const sb = adminClient();
+
   const { data, error } = await sb
     .from("organization_stripe_payments")
     .select("*")
     .eq("org_id", orgId)
     .eq("stripe_payment_intent_id", paymentIntentId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

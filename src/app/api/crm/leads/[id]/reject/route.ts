@@ -2,28 +2,51 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 function hasSetterRole(role: unknown): boolean {
   const arr = Array.isArray(role) ? role : [];
   return arr.map((r) => String(r).trim().toLowerCase()).includes("setter");
 }
 
 function readBearerToken(req: Request): string | null {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!h) return null;
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
 
 function jsonError(code: string, status: number, detail?: unknown) {
   return NextResponse.json(
-    { ok: false, error: code, ...(detail !== undefined ? { detail } : null) },
-    { status }
+    { ok: false, error: code, ...(detail !== undefined ? { detail } : {}) },
+    { status },
   );
 }
 
-async function readParamsId(ctx: any): Promise<string> {
-  const p = await Promise.resolve(ctx?.params ?? {});
-  return String(p?.id ?? "").trim();
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  );
+}
+
+function getSupabaseServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url) throw new Error("missing_supabase_url");
+  if (!serviceKey) throw new Error("missing_service_role_key");
+
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+// ✅ Next in your setup passes params as a Promise
+type RouteContext = { params: Promise<{ id: string | string[] }> };
+
+function pickParam(v: unknown): string {
+  if (Array.isArray(v)) return String(v[0] ?? "").trim();
+  return String(v ?? "").trim();
 }
 
 function readIdFromUrl(req: Request): string {
@@ -40,54 +63,41 @@ function readIdFromUrl(req: Request): string {
   return "";
 }
 
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-function getSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url) throw new Error("missing_supabase_url");
-  if (!serviceKey) throw new Error("missing_service_role_key");
-
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-export async function POST(req: Request, ctx: any) {
+export async function POST(req: Request, ctx: RouteContext) {
   try {
     const supabase = getSupabaseServerClient();
 
     // ---- leadId ----
-    const idFromParams = await readParamsId(ctx);
+    const { id } = await ctx.params;
+    const idFromParams = pickParam(id);
     const idFromUrl = readIdFromUrl(req);
     const leadId = (idFromParams || idFromUrl).trim();
 
-    if (!leadId) {
+    if (!leadId || leadId === "undefined" || leadId === "null") {
       return jsonError(
         "missing_lead_id",
         400,
-        "No lead id found in route params or URL. Expected /api/crm/leads/:id/reject"
+        "No lead id found in route params or URL. Expected /api/crm/leads/:id/reject",
       );
     }
-    if (!isUuid(leadId)) return jsonError("invalid_lead_id", 400, "Lead id must be a UUID.");
+    if (!isUuid(leadId))
+      return jsonError("invalid_lead_id", 400, "Lead id must be a UUID.");
 
     // ---- body ----
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}) as any);
     const teamId = String(body?.teamId ?? "").trim();
     if (!teamId) return jsonError("missing_team_id", 400);
+    if (!isUuid(teamId)) return jsonError("invalid_team_id", 400);
 
     // ---- auth ----
     const token = readBearerToken(req);
     if (!token) return jsonError("missing_auth_token", 401);
 
-    const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
-    const user = userRes?.user;
-    if (userErr || !user) return jsonError("unauthorized", 401);
-
-    const userId = user.id;
+    const { data: userRes, error: userErr } =
+      await supabase.auth.getUser(token);
+    const user = userRes?.user ?? null;
+    const userId = user?.id ? String(user.id) : null;
+    if (userErr || !userId) return jsonError("unauthorized", 401);
 
     // 1) requester must be a setter
     const { data: me, error: meErr } = await supabase
@@ -98,20 +108,24 @@ export async function POST(req: Request, ctx: any) {
 
     if (meErr) return jsonError("profile_load_failed", 500, meErr.message);
     if (!me) return jsonError("profile_not_found", 403);
-    if (String(me.team_id ?? "") !== teamId) return jsonError("team_mismatch", 403);
+    if (String(me.team_id ?? "") !== teamId)
+      return jsonError("team_mismatch", 403);
     if (!hasSetterRole(me.role)) return jsonError("not_a_setter", 403);
 
     // 2) load lead + ensure requester is current setter
     const { data: lead, error: leadErr } = await supabase
       .from("leads")
-      .select("id, team_id, setter_id, prospector_id, rejected_count, rejected_by")
+      .select(
+        "id, team_id, setter_id, prospector_id, rejected_count, rejected_by",
+      )
       .eq("id", leadId)
       .eq("team_id", teamId)
       .maybeSingle();
 
     if (leadErr) return jsonError("lead_load_failed", 500, leadErr.message);
     if (!lead) return jsonError("lead_not_found", 404);
-    if (String(lead.setter_id ?? "") !== userId) return jsonError("not_current_setter", 403);
+    if (String((lead as any).setter_id ?? "") !== userId)
+      return jsonError("not_current_setter", 403);
 
     // 3) choose a new setter
     const { data: teamProfiles, error: profilesErr } = await supabase
@@ -119,20 +133,24 @@ export async function POST(req: Request, ctx: any) {
       .select("id, role")
       .eq("team_id", teamId);
 
-    if (profilesErr) return jsonError("failed_to_load_setters", 500, profilesErr.message);
+    if (profilesErr)
+      return jsonError("failed_to_load_setters", 500, profilesErr.message);
 
-    const eligible = (teamProfiles ?? [])
-      .filter((p) => p?.id && p.id !== userId)
-      .filter((p) => hasSetterRole((p as any).role))
-      .map((p) => p.id as string);
+    const eligible = (Array.isArray(teamProfiles) ? teamProfiles : [])
+      .filter((p: any) => p?.id && String(p.id) !== userId)
+      .filter((p: any) => hasSetterRole(p?.role))
+      .map((p: any) => String(p.id));
 
-    if (eligible.length === 0) return jsonError("no_other_setter_available", 409);
+    if (eligible.length === 0)
+      return jsonError("no_other_setter_available", 409);
 
     const newSetterId = eligible[Math.floor(Math.random() * eligible.length)];
 
     // 4) update lead reject tracking
-    const nextCount = Number(lead.rejected_count ?? 0) + 1;
-    const prevRejectedBy = Array.isArray(lead.rejected_by) ? (lead.rejected_by as string[]) : [];
+    const nextCount = Number((lead as any).rejected_count ?? 0) + 1;
+    const prevRejectedBy = Array.isArray((lead as any).rejected_by)
+      ? ((lead as any).rejected_by as string[])
+      : [];
     const mergedRejectedBy = Array.from(new Set([...prevRejectedBy, userId]));
     const nowIso = new Date().toISOString();
 
@@ -148,7 +166,8 @@ export async function POST(req: Request, ctx: any) {
       .eq("id", leadId)
       .eq("team_id", teamId);
 
-    if (updateErr) return jsonError("lead_update_failed", 500, updateErr.message);
+    if (updateErr)
+      return jsonError("lead_update_failed", 500, updateErr.message);
 
     // 5) Insert timeline event (KEEP LEGACY BODY FORMAT so UI doesn't break)
     // Body format: LEAD_REJECTED|<oldSetterId>|<newSetterId>|<count>
@@ -168,6 +187,7 @@ export async function POST(req: Request, ctx: any) {
       channel: "pipeline",
       body: eventBody,
       sent_at: nowIso,
+      created_at: nowIso,
 
       // ✅ analytics
       event_type: "lead_rejected",
@@ -175,18 +195,26 @@ export async function POST(req: Request, ctx: any) {
         old_setter_id: userId,
         new_setter_id: newSetterId,
         rejection_count: nextCount,
-        prospector_id: lead.prospector_id ?? null,
+        prospector_id: (lead as any).prospector_id ?? null,
       },
     });
 
     if (msgErr) {
       return NextResponse.json(
-        { ok: true, newSetterId, rejectedCount: nextCount, warning: "timeline_insert_failed" },
-        { status: 200 }
+        {
+          ok: true,
+          newSetterId,
+          rejectedCount: nextCount,
+          warning: "timeline_insert_failed",
+        },
+        { status: 200 },
       );
     }
 
-    return NextResponse.json({ ok: true, newSetterId, rejectedCount: nextCount }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, newSetterId, rejectedCount: nextCount },
+      { status: 200 },
+    );
   } catch (e: any) {
     return jsonError("unexpected_error", 500, String(e?.message ?? e));
   }

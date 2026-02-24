@@ -3,30 +3,27 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
+function getBearer(req: NextRequest) {
+  const auth =
+    req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m?.[1] ?? null;
+}
+
 export async function POST(req: NextRequest) {
-  // Require bearer token (same pattern as your other integration routes)
-  const authHeader =
-    req.headers.get("authorization") ?? req.headers.get("Authorization");
-
-  const accessJwt =
-    authHeader && authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
-
-  if (!accessJwt) {
+  const jwt = getBearer(req);
+  if (!jwt) {
     return NextResponse.json({ error: "missing_auth" }, { status: 401 });
   }
 
-  const { data: userData, error: userError } =
-    await supabaseAdmin.auth.getUser(accessJwt);
-
-  if (userError || !userData?.user) {
+  const { data, error } = await supabaseAdmin.auth.getUser(jwt);
+  if (error || !data?.user) {
     return NextResponse.json({ error: "invalid_auth" }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
 
-  // ✅ Clear the UI-hint cookie so the user can re-run connect cleanly
+  // Clear Google calendar UI-hint cookie
   res.cookies.set("calendar_google_connected", "", {
     path: "/",
     httpOnly: true,

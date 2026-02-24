@@ -1,7 +1,14 @@
 // src/context/WorkspaceContext.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type WorkspaceContextValue = {
@@ -11,9 +18,11 @@ type WorkspaceContextValue = {
   loading: boolean;
 };
 
-const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
+  undefined,
+);
 
-function normalizeSupabaseError(err: unknown) {
+function normErr(err: unknown) {
   const e = err as any;
   return {
     message: e?.message,
@@ -25,8 +34,13 @@ function normalizeSupabaseError(err: unknown) {
   };
 }
 
+function logErr(label: string, err: unknown) {
+  // keep your detailed error shape, but reduce repetition
+  console.error(label, normErr(err));
+}
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const [value, setValue] = useState<WorkspaceContextValue>({
+  const [state, setState] = useState<WorkspaceContextValue>({
     userId: null,
     teamId: null,
     teamName: null,
@@ -38,11 +52,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
-          if (userError) console.error("[Workspace] auth.getUser failed", normalizeSupabaseError(userError));
-          if (!cancelled) setValue({ userId: null, teamId: null, teamName: null, loading: false });
+          if (userError) logErr("[Workspace] auth.getUser failed", userError);
+          if (!cancelled) {
+            setState({
+              userId: null,
+              teamId: null,
+              teamName: null,
+              loading: false,
+            });
+          }
           return;
         }
 
@@ -54,19 +76,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           .from("profiles")
           .select("team_id")
           .eq("id", userId)
-          .maybeSingle(); // ✅ avoids noisy error when row not found / not visible
+          .maybeSingle();
 
-        if (profileError) {
-          console.error("[Workspace] profiles select failed", normalizeSupabaseError(profileError));
-        }
-
-        let teamId: string | null = profile?.team_id ?? null;
+        if (profileError)
+          logErr("[Workspace] profiles select failed", profileError);
 
         // 2) fallback: auth.user_metadata.primary_team_id
-        if (!teamId) {
-          const metaTeam = (user.user_metadata as any)?.primary_team_id;
-          if (typeof metaTeam === "string" && metaTeam.length > 0) teamId = metaTeam;
-        }
+        const metaTeam = (user.user_metadata as any)?.primary_team_id;
+        const teamId =
+          (profile?.team_id as string | null) ??
+          (typeof metaTeam === "string" && metaTeam.length ? metaTeam : null);
 
         // 3) team name (treat "not found/hidden" as normal)
         let teamName: string | null = null;
@@ -75,19 +94,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             .from("teams")
             .select("name")
             .eq("id", teamId)
-            .maybeSingle(); // ✅ avoids PGRST noise for 0 rows under RLS
+            .maybeSingle();
 
-          if (teamError) {
-            console.error("[Workspace] teams select failed", normalizeSupabaseError(teamError));
-          } else {
-            teamName = team?.name ?? null;
-          }
+          if (teamError) logErr("[Workspace] teams select failed", teamError);
+          else teamName = team?.name ?? null;
         }
 
-        if (!cancelled) setValue({ userId, teamId, teamName, loading: false });
+        if (!cancelled) setState({ userId, teamId, teamName, loading: false });
       } catch (err) {
-        console.error("[Workspace] error", normalizeSupabaseError(err));
-        if (!cancelled) setValue({ userId: null, teamId: null, teamName: null, loading: false });
+        logErr("[Workspace] error", err);
+        if (!cancelled) {
+          setState({
+            userId: null,
+            teamId: null,
+            teamName: null,
+            loading: false,
+          });
+        }
       }
     })();
 
@@ -96,11 +119,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  const value = useMemo(() => state, [state]);
+
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
 }
 
 export function useWorkspace() {
   const ctx = useContext(WorkspaceContext);
-  if (!ctx) throw new Error("useWorkspace must be used inside <WorkspaceProvider>");
+  if (!ctx)
+    throw new Error("useWorkspace must be used inside <WorkspaceProvider>");
   return ctx;
 }

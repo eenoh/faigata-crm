@@ -1,61 +1,62 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { stripeClient } from "@/app/api/utils/stripeClient";
 import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 
 export const runtime = "nodejs";
 
+const ok = () => NextResponse.json({ ok: true });
+const err = (error: string, status: number) =>
+  NextResponse.json({ error }, { status });
+
+const pickLivemode = (event: Stripe.Event, orgAcct: any) =>
+  typeof (event as any).livemode === "boolean"
+    ? Boolean((event as any).livemode)
+    : Boolean(orgAcct?.livemode);
+
+const pickProductId = (pr: Stripe.Price) =>
+  typeof pr.product === "string"
+    ? pr.product
+    : ((pr.product as any)?.id ?? null);
+
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "missing_webhook_secret" }, { status: 500 });
-  }
+  if (!secret) return err("missing_webhook_secret", 500);
 
   const sig = req.headers.get("stripe-signature");
-  if (!sig) {
-    return NextResponse.json({ error: "missing_signature" }, { status: 400 });
-  }
+  if (!sig) return err("missing_signature", 400);
 
   const raw = Buffer.from(await req.arrayBuffer());
 
-  // We can't know livemode until we parse the event,
-  // so first construct a Stripe instance with a key from env (test key is fine),
-  // then re-init once we know event.livemode if your stripeClient uses different keys.
-  //
-  // However: Stripe's constructEvent does NOT require a live/test key match,
-  // it just needs a Stripe instance.
+  // Stripe key doesn't need to match livemode for signature verification;
+  // we just need a Stripe instance to call constructEvent.
   const stripeForWebhook = stripeClient(false);
 
   let event: Stripe.Event;
   try {
     event = stripeForWebhook.webhooks.constructEvent(raw, sig, secret);
   } catch {
-    return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
+    return err("invalid_signature", 400);
   }
 
-  // connected account id (critical)
+  // Connected account id (critical). If missing, acknowledge.
   const acct = (event as any).account as string | undefined;
-  if (!acct) return NextResponse.json({ ok: true });
+  if (!acct) return ok();
 
   const sb = adminClient();
 
-  // resolve org by connected account
+  // Resolve org by connected account
   const { data: orgAcct } = await sb
     .from("organization_stripe_accounts")
     .select("org_id, livemode, stripe_account_id")
     .eq("stripe_account_id", acct)
     .maybeSingle();
 
-  if (!orgAcct?.org_id) return NextResponse.json({ ok: true });
+  const orgId = orgAcct?.org_id as string | undefined;
+  if (!orgId) return ok();
 
-  const orgId = orgAcct.org_id as string;
-
-  // ✅ Source of truth for event livemode:
-  // Prefer event.livemode (Stripe sends this), fallback to DB row.
-  const livemode = typeof (event as any).livemode === "boolean"
-    ? !!(event as any).livemode
-    : !!orgAcct.livemode;
-
+  const livemode = pickLivemode(event, orgAcct);
+  const nowIso = new Date().toISOString();
   const obj: any = event.data.object;
 
   if (event.type.startsWith("product.")) {
@@ -68,11 +69,11 @@ export async function POST(req: Request) {
         stripe_product_id: p.id,
         stripe_name: p.name ?? null,
         stripe_description: p.description ?? null,
-        stripe_active: !!p.active,
+        stripe_active: Boolean(p.active),
         stripe_created: typeof p.created === "number" ? p.created : null,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
       },
-      { onConflict: "org_id,livemode,stripe_product_id" }
+      { onConflict: "org_id,livemode,stripe_product_id" },
     );
 
     await sb.from("organization_stripe_catalog_activity").insert({
@@ -83,12 +84,13 @@ export async function POST(req: Request) {
       type: `webhook_${event.type.replace(".", "_")}`,
       payload: { id: p.id, name: p.name, active: p.active },
     });
+
+    return ok();
   }
 
   if (event.type.startsWith("price.")) {
     const pr = obj as Stripe.Price;
-    const productId =
-      typeof pr.product === "string" ? pr.product : (pr.product as any)?.id ?? null;
+    const productId = pickProductId(pr);
 
     await sb.from("organization_stripe_prices").upsert(
       {
@@ -96,16 +98,16 @@ export async function POST(req: Request) {
         livemode,
         stripe_price_id: pr.id,
         stripe_product_id: productId,
-        stripe_active: !!pr.active,
+        stripe_active: Boolean(pr.active),
         stripe_created: typeof pr.created === "number" ? pr.created : null,
         currency: pr.currency ?? null,
         unit_amount: typeof pr.unit_amount === "number" ? pr.unit_amount : null,
         price_type: pr.type ?? null,
         interval: pr.recurring?.interval ?? null,
         interval_count: pr.recurring?.interval_count ?? null,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
       },
-      { onConflict: "org_id,livemode,stripe_price_id" }
+      { onConflict: "org_id,livemode,stripe_price_id" },
     );
 
     await sb.from("organization_stripe_catalog_activity").insert({
@@ -117,7 +119,9 @@ export async function POST(req: Request) {
       type: `webhook_${event.type.replace(".", "_")}`,
       payload: { id: pr.id, active: pr.active, product: productId },
     });
+
+    return ok();
   }
 
-  return NextResponse.json({ ok: true });
+  return ok();
 }

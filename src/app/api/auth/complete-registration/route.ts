@@ -2,6 +2,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+type Body = {
+  userId?: string;
+  teamId?: string | null;
+  inviteId?: string | null;
+  companyId?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+};
+
+const bad = (error: string, status = 400) =>
+  NextResponse.json({ error }, { status });
+
+function pickName(
+  client: string | null | undefined,
+  meta: any,
+  snake: string,
+  camel: string,
+) {
+  return client ?? meta?.[snake] ?? meta?.[camel] ?? null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -11,76 +32,70 @@ export async function POST(req: NextRequest) {
       companyId: companyIdFromClient,
       firstName: firstNameFromClient,
       lastName: lastNameFromClient,
-    } = (await req.json()) as {
-      userId?: string;
-      teamId?: string | null;
-      inviteId?: string | null;
-      companyId?: string | null;
-      firstName?: string | null;
-      lastName?: string | null;
-    };
+    } = (await req.json()) as Body;
 
-    if (!userId) {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-    }
+    if (!userId) return bad("Missing userId");
+    if (!teamId) return NextResponse.json({ redirectTo: "/onboarding" });
 
-    // No teamId in URL → normal flow, create new team during onboarding
-    if (!teamId) {
-      return NextResponse.json({ redirectTo: "/onboarding" });
-    }
-
-    // 1) Load auth user (for canonical email + existing metadata)
+    // 1) Auth user (canonical email + metadata)
     const { data: userRes, error: authError } =
       await supabaseAdmin.auth.admin.getUserById(userId);
-
-    if (authError || !userRes?.user) {
+    const user = userRes?.user;
+    if (authError || !user) {
       console.error("[complete-registration] auth lookup error", authError);
-      return NextResponse.json({ error: "User not found" }, { status: 400 });
+      return bad("User not found");
     }
 
-    const email = userRes.user.email;
-    const meta = (userRes.user.user_metadata || {}) as Record<string, any>;
+    const email = user.email;
+    if (!email) return bad("User has no email");
 
-    if (!email) {
-      return NextResponse.json(
-        { error: "User has no email" },
-        { status: 400 }
-      );
-    }
+    const meta = (user.user_metadata ?? {}) as Record<string, any>;
 
-    // 2) Determine first / last name:
-    const firstName =
-      firstNameFromClient ??
-      meta.first_name ??
-      meta.firstName ??
-      null;
-
-    const lastName =
-      lastNameFromClient ??
-      meta.last_name ??
-      meta.lastName ??
-      null;
-
+    // 2) Names (client -> metadata snake -> metadata camel)
+    const firstName = pickName(
+      firstNameFromClient,
+      meta,
+      "first_name",
+      "firstName",
+    );
+    const lastName = pickName(
+      lastNameFromClient,
+      meta,
+      "last_name",
+      "lastName",
+    );
     const fullName = [firstName, lastName].filter(Boolean).join(" ") || null;
 
-    // 3) Make sure auth user metadata is updated (so Supabase "Display name" is correct)
-    try {
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+    // 3) Best-effort metadata update (Display name)
+    supabaseAdmin.auth.admin
+      .updateUserById(userId, {
         user_metadata: {
           ...meta,
           first_name: firstName,
           last_name: lastName,
           full_name: fullName,
         },
-      });
-    } catch (updateErr) {
-      console.error(
-        "[complete-registration] failed to update auth user metadata",
-        updateErr
+      })
+      .catch((e) =>
+        console.error(
+          "[complete-registration] failed to update auth user metadata",
+          e,
+        ),
       );
-    }
 
-    // 4) Find the invite for this team/email (prefer specific inviteId)
+    // 4) Invite for this email/team (prefer inviteId)
+    const inviteSelect = supabaseAdmin
+      .from("team_invites")
+      .select("id, team_id, role, invited_by")
+      .eq("email", email)
+      .eq("team_id", teamId)
+      .is("accepted_at", null);
+
+    const inviteById = inviteId
+      ? inviteSelect.eq("id", inviteId).maybeSingle()
+      : null;
+    const inviteFallback = inviteSelect.maybeSingle();
+
     let invite: {
       id: string;
       team_id: string;
@@ -88,58 +103,36 @@ export async function POST(req: NextRequest) {
       invited_by: string | null;
     } | null = null;
 
-    if (inviteId) {
-      const { data, error } = await supabaseAdmin
-        .from("team_invites")
-        .select("id, team_id, role, invited_by")
-        .eq("id", inviteId)
-        .eq("email", email)
-        .single();
-
-      if (error) {
+    if (inviteById) {
+      const { data, error } = await inviteById;
+      if (error)
         console.error("[complete-registration] invite lookup error", error);
-      } else {
-        invite = data;
-      }
+      else invite = data ?? null;
     }
 
     if (!invite) {
-      const { data, error } = await supabaseAdmin
-        .from("team_invites")
-        .select("id, team_id, role, invited_by")
-        .eq("email", email)
-        .eq("team_id", teamId)
-        .is("accepted_at", null)
-        .maybeSingle();
-
-      if (error) {
+      const { data, error } = await inviteFallback;
+      if (error)
         console.error("[complete-registration] invite fallback error", error);
-      } else {
-        invite = data;
-      }
+      else invite = data ?? null;
     }
 
-    // 5) Work out company_id (prefer inviter's company; fallback to client-provided)
+    // 5) company_id (inviter wins, else client)
     let companyId: string | null = companyIdFromClient ?? null;
 
     if (invite?.invited_by) {
-      const { data: inviterProfile, error: inviterError } = await supabaseAdmin
+      const { data: inviter, error } = await supabaseAdmin
         .from("profiles")
         .select("company_id")
         .eq("id", invite.invited_by)
         .single();
 
-      if (inviterError) {
-        console.error(
-          "[complete-registration] inviter profile error",
-          inviterError
-        );
-      } else if (inviterProfile?.company_id) {
-        companyId = inviterProfile.company_id as string;
-      }
+      if (error)
+        console.error("[complete-registration] inviter profile error", error);
+      else companyId = inviter?.company_id ?? companyId;
     }
 
-    // 6) Upsert profile with first/last name, team_id, company_id, and primary role
+    // 6) Upsert profile (preserve existing first/last/role if already set)
     const { data: existingProfile, error: profileSelectError } =
       await supabaseAdmin
         .from("profiles")
@@ -147,53 +140,44 @@ export async function POST(req: NextRequest) {
         .eq("id", userId)
         .maybeSingle();
 
-    if (profileSelectError) {
+    if (profileSelectError)
       console.error(
         "[complete-registration] profile select error",
-        profileSelectError
+        profileSelectError,
       );
-    }
 
-    if (!existingProfile) {
-      const { error: insertProfileError } = await supabaseAdmin
-        .from("profiles")
-        .insert({
+    const profilePayload = existingProfile
+      ? {
+          first_name: existingProfile.first_name ?? firstName,
+          last_name: existingProfile.last_name ?? lastName,
+          team_id: teamId,
+          company_id:
+            existingProfile.company_id ??
+            companyId ??
+            existingProfile.company_id,
+          role: existingProfile.role ?? invite?.role ?? existingProfile.role,
+        }
+      : {
           id: userId,
           first_name: firstName,
           last_name: lastName,
           team_id: teamId,
           company_id: companyId,
-          role: invite?.role ?? null, // optional "primary" profile role
-        });
+          role: invite?.role ?? null,
+        };
 
-      if (insertProfileError) {
-        console.error(
-          "[complete-registration] profile insert error",
-          insertProfileError
-        );
-      }
-    } else {
-      const { error: updateProfileError } = await supabaseAdmin
-        .from("profiles")
-        .update({
-          first_name: existingProfile.first_name ?? firstName,
-          last_name: existingProfile.last_name ?? lastName,
-          team_id: teamId,
-          company_id:
-            existingProfile.company_id ?? companyId ?? existingProfile.company_id,
-          role: existingProfile.role ?? invite?.role ?? existingProfile.role,
-        })
-        .eq("id", userId);
+    const profileWrite = existingProfile
+      ? supabaseAdmin.from("profiles").update(profilePayload).eq("id", userId)
+      : supabaseAdmin.from("profiles").insert(profilePayload);
 
-      if (updateProfileError) {
-        console.error(
-          "[complete-registration] profile update error",
-          updateProfileError
-        );
-      }
-    }
+    const { error: profileWriteError } = await profileWrite;
+    if (profileWriteError)
+      console.error(
+        "[complete-registration] profile write error",
+        profileWriteError,
+      );
 
-    // 7) Collect all roles for this invite → store in team_members
+    // 7) Collect roles for invite -> team_members
     let memberRoles: string[] = [];
 
     if (invite) {
@@ -202,64 +186,50 @@ export async function POST(req: NextRequest) {
         .select("role")
         .eq("invite_id", invite.id);
 
-      if (rolesError) {
+      if (rolesError)
         console.error(
           "[complete-registration] invite roles lookup error",
-          rolesError
+          rolesError,
         );
-      }
 
-      if (inviteRoles && inviteRoles.length > 0) {
-        memberRoles = inviteRoles.map((r) => r.role as string);
-      } else if (invite.role) {
-        memberRoles = [invite.role as string];
-      }
+      memberRoles = inviteRoles?.length
+        ? inviteRoles.map((r: any) => String(r.role))
+        : invite.role
+          ? [invite.role]
+          : [];
     }
 
     const { error: tmError } = await supabaseAdmin
       .from("team_members")
       .upsert(
-        {
-          team_id: teamId,
-          user_id: userId,
-          role: memberRoles,
-        },
-        { onConflict: "team_id,user_id" }
+        { team_id: teamId, user_id: userId, role: memberRoles },
+        { onConflict: "team_id,user_id" },
       );
 
-    if (tmError) {
-      console.error("[complete-registration] team_members upsert error", tmError);
-    }
+    if (tmError)
+      console.error(
+        "[complete-registration] team_members upsert error",
+        tmError,
+      );
 
-    // 8) Mark invite accepted
+    // 8) Mark invite accepted (best-effort)
     if (invite) {
-      const { error: inviteUpdateError } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from("team_invites")
         .update({ accepted_at: new Date().toISOString() })
         .eq("id", invite.id);
 
-      if (inviteUpdateError) {
-        console.error(
-          "[complete-registration] invite update error",
-          inviteUpdateError
-        );
-      }
+      if (error)
+        console.error("[complete-registration] invite update error", error);
     }
 
-    // 9) Redirect straight to this team's dashboard (userId implicit in session)
+    // 9) Redirect to dashboard
     const qs = new URLSearchParams({ team: teamId });
-    if (companyId) {
-      qs.set("company", companyId);
-    }
+    if (companyId) qs.set("company", companyId);
 
-    return NextResponse.json({
-      redirectTo: `/dashboard?${qs.toString()}`,
-    });
+    return NextResponse.json({ redirectTo: `/dashboard?${qs.toString()}` });
   } catch (err) {
     console.error("[complete-registration] unexpected error", err);
-    return NextResponse.json(
-      { error: "Unexpected error" },
-      { status: 500 }
-    );
+    return bad("Unexpected error", 500);
   }
 }

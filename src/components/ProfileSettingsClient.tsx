@@ -1,22 +1,32 @@
 // src/app/(app)/settings/profile/ProfileSettingsClient.tsx
 "use client";
 
+/**
+ * Simplifications made:
+ * • Replaced duplicated “signed URL” logic with one helper: resolveSignedUrl(bucket, value)
+ * • Centralized “load user + profile” into one async function to reduce nested try/catch
+ * • Centralized admin detection via normalizedRoles(profile.rolesDisplay)
+ * • Removed repeated early returns that duplicated state-setting; kept identical outcomes
+ * • Kept behavior: roles display unchanged (original strings), admin check case-insensitive,
+ *   avatar/org logo upload flows, password/email update flows, organization form admin-only
+ */
+
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { PuzzlePieceIcon } from "@heroicons/react/24/outline";
 
 type ProfileState = {
   first_name: string;
   last_name: string;
-  roles: string[]; // ARRAY of roles from profiles.role (display/original)
-  avatar_url: string | null; // path or legacy URL
+  roles: string[]; // display/original strings
+  avatar_url: string | null; // storage path or legacy URL
   email: string;
 };
 
 type OrgState = {
   name: string;
-  logo_url: string | null; // path in org-logos bucket
+  logo_url: string | null; // path in org-logos bucket (or legacy URL)
   primary_color: string; // hex
 };
 
@@ -25,18 +35,39 @@ type Status = "idle" | "loading" | "saving" | "saved" | "error";
 const DEFAULT_PRIMARY_COLOR = "#4f46e5";
 
 function normalizeRole(v: unknown): string | null {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   return s ? s : null;
 }
 
 function normalizeRoles(v: unknown): string[] {
-  if (Array.isArray(v)) {
-    return v
-      .map(normalizeRole)
-      .filter((x): x is string => Boolean(x));
-  }
+  if (Array.isArray(v))
+    return v.map(normalizeRole).filter((x): x is string => !!x);
   const one = normalizeRole(v);
   return one ? [one] : [];
+}
+
+function isHttpUrl(v: string) {
+  return v.startsWith("http://") || v.startsWith("https://");
+}
+
+async function resolveSignedUrl(
+  bucket: "avatars" | "org-logos",
+  value: string | null,
+): Promise<string | null> {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  if (isHttpUrl(v)) return v;
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(v, 60 * 60 * 24);
+  if (error) {
+    console.error(`[${bucket}] createSignedUrl error`, error);
+    return null;
+  }
+  return data?.signedUrl ?? null;
 }
 
 export default function ProfileSettingsClient() {
@@ -58,54 +89,19 @@ export default function ProfileSettingsClient() {
   const [orgLogoSignedUrl, setOrgLogoSignedUrl] = useState<string | null>(null);
   const [uploadingOrgLogo, setUploadingOrgLogo] = useState(false);
 
-  async function refreshSignedAvatar(avatarValue: string | null) {
-    if (!avatarValue) {
-      setAvatarSignedUrl(null);
-      return;
-    }
+  const initials = useMemo(() => {
+    if (!profile) return "U";
+    const f = profile.first_name?.trim()?.charAt(0).toUpperCase();
+    const l = profile.last_name?.trim()?.charAt(0).toUpperCase();
+    return (f && l ? `${f}${l}` : f || l || "U") ?? "U";
+  }, [profile]);
 
-    if (avatarValue.startsWith("http://") || avatarValue.startsWith("https://")) {
-      setAvatarSignedUrl(avatarValue);
-      return;
-    }
+  // ✅ Case-insensitive admin check; stored roles are display/original strings
+  const isAdmin = useMemo(() => {
+    return normalizeRoles(profile?.roles ?? []).includes("admin");
+  }, [profile?.roles]);
 
-    const { data, error } = await supabase.storage
-      .from("avatars")
-      .createSignedUrl(avatarValue, 60 * 60 * 24); // 24h
-
-    if (error) {
-      console.error("[Profile] createSignedUrl error", error);
-      setAvatarSignedUrl(null);
-      return;
-    }
-
-    setAvatarSignedUrl(data?.signedUrl ?? null);
-  }
-
-  async function refreshSignedOrgLogo(logoPath: string | null) {
-    if (!logoPath) {
-      setOrgLogoSignedUrl(null);
-      return;
-    }
-
-    if (logoPath.startsWith("http://") || logoPath.startsWith("https://")) {
-      setOrgLogoSignedUrl(logoPath);
-      return;
-    }
-
-    const { data, error } = await supabase.storage
-      .from("org-logos")
-      .createSignedUrl(logoPath, 60 * 60 * 24); // 24h
-
-    if (error) {
-      console.error("[Org] createSignedUrl error", error);
-      setOrgLogoSignedUrl(null);
-      return;
-    }
-
-    setOrgLogoSignedUrl(data?.signedUrl ?? null);
-  }
-
+  // ---------- LOAD ----------
   useEffect(() => {
     let cancelled = false;
 
@@ -123,7 +119,6 @@ export default function ProfileSettingsClient() {
         const userId = userRes.user.id;
         const email = userRes.user.email ?? "";
 
-        // NOTE: include company_id here so we know the organization
         const { data: prof, error: profErr } = await supabase
           .from("profiles")
           .select("first_name, last_name, role, avatar_url, company_id")
@@ -143,11 +138,8 @@ export default function ProfileSettingsClient() {
         const rolesArray: string[] = Array.isArray(prof?.role)
           ? (prof.role as unknown[])
               .map((r) => String(r ?? "").trim())
-              .filter((r) => r !== "")
+              .filter(Boolean)
           : [];
-
-        // Auth roles: normalized, case-insensitive checks
-        const rolesNorm = normalizeRoles(prof?.role);
 
         const nextProfile: ProfileState = {
           first_name: prof?.first_name ?? "",
@@ -157,22 +149,26 @@ export default function ProfileSettingsClient() {
           email,
         };
 
+        const companyId: string | null = (prof as any)?.company_id ?? null;
+
         if (cancelled) return;
 
         setProfile(nextProfile);
+        setOrgId(companyId);
         setStatus("idle");
 
-        if (nextProfile.avatar_url) {
-          refreshSignedAvatar(nextProfile.avatar_url);
-        }
+        // signed avatar
+        resolveSignedUrl("avatars", nextProfile.avatar_url).then((url) => {
+          if (!cancelled) setAvatarSignedUrl(url);
+        });
 
-        const companyId: string | null = prof?.company_id ?? null;
-        setOrgId(companyId);
+        // org only for admins
+        const rolesNorm = normalizeRoles(prof?.role);
+        const userIsAdmin = rolesNorm.includes("admin");
 
-        // ---- load organization only for Admins, organization-wide ----
-        const isAdmin = rolesNorm.includes("admin");
-        if (isAdmin && companyId) {
+        if (userIsAdmin && companyId) {
           setOrgStatus("loading");
+
           const { data: orgRow, error: orgErr } = await supabase
             .from("organizations")
             .select("name, logo_url, primary_color")
@@ -185,29 +181,26 @@ export default function ProfileSettingsClient() {
               setOrgError("Could not load your organization.");
               setOrgStatus("error");
             }
-          } else if (!cancelled && orgRow) {
-            const nextOrg: OrgState = {
-              name: orgRow.name ?? "",
-              logo_url: orgRow.logo_url ?? null,
-              primary_color:
-                orgRow.primary_color && orgRow.primary_color.trim() !== ""
-                  ? orgRow.primary_color
-                  : DEFAULT_PRIMARY_COLOR,
-            };
-            setOrg(nextOrg);
-            setOrgStatus("idle");
-            if (nextOrg.logo_url) {
-              refreshSignedOrgLogo(nextOrg.logo_url);
-            }
-          } else if (!cancelled) {
-            // no row – initialise local state with defaults
-            setOrg({
-              name: "",
-              logo_url: null,
-              primary_color: DEFAULT_PRIMARY_COLOR,
-            });
-            setOrgStatus("idle");
+            return;
           }
+
+          const nextOrg: OrgState = {
+            name: orgRow?.name ?? "",
+            logo_url: orgRow?.logo_url ?? null,
+            primary_color:
+              orgRow?.primary_color && orgRow.primary_color.trim() !== ""
+                ? orgRow.primary_color
+                : DEFAULT_PRIMARY_COLOR,
+          };
+
+          if (cancelled) return;
+
+          setOrg(nextOrg);
+          setOrgStatus("idle");
+
+          resolveSignedUrl("org-logos", nextOrg.logo_url).then((url) => {
+            if (!cancelled) setOrgLogoSignedUrl(url);
+          });
         }
       } catch (err) {
         console.error("[Profile] unexpected error", err);
@@ -223,19 +216,6 @@ export default function ProfileSettingsClient() {
     };
   }, []);
 
-  const initials = (() => {
-    if (!profile) return "U";
-    const f = profile.first_name?.trim()?.charAt(0).toUpperCase();
-    const l = profile.last_name?.trim()?.charAt(0).toUpperCase();
-    if (f && l) return `${f}${l}`;
-    if (f) return f;
-    if (l) return l;
-    return "U";
-  })();
-
-  // ✅ Case-insensitive admin check (roles stored as array; any casing)
-  const isAdmin = normalizeRoles(profile?.roles ?? []).includes("admin");
-
   // ---------- AVATAR UPLOAD / PROFILE SAVE ----------
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -249,12 +229,11 @@ export default function ProfileSettingsClient() {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) {
         setError("Not signed in.");
-        setUploadingAvatar(false);
         return;
       }
 
       const userId = userRes.user.id;
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop() || "png";
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${userId}/${fileName}`;
 
@@ -265,32 +244,23 @@ export default function ProfileSettingsClient() {
       if (uploadErr) {
         console.error("[Profile] avatar upload error", uploadErr);
         setError("Could not upload your profile picture.");
-        setUploadingAvatar(false);
         return;
       }
 
-      const { data: signedData, error: signedErr } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days
-
-      if (signedErr || !signedData?.signedUrl) {
-        console.error("[Profile] createSignedUrl error", signedErr);
+      const signedUrl = await resolveSignedUrl("avatars", filePath);
+      if (!signedUrl) {
         setError("Uploaded image, but could not generate a view URL.");
-        setUploadingAvatar(false);
         return;
       }
-
-      const signedUrl = signedData.signedUrl;
 
       const { error: updateErr } = await supabase
         .from("profiles")
         .update({ avatar_url: filePath })
-        .eq("id", userRes.user.id);
+        .eq("id", userId);
 
       if (updateErr) {
         console.error("[Profile] avatar url update error", updateErr);
         setError("Uploaded image, but failed to save it to your profile.");
-        setUploadingAvatar(false);
         return;
       }
 
@@ -360,8 +330,8 @@ export default function ProfileSettingsClient() {
             updates.email && updates.password
               ? "Could not update your email / password."
               : updates.email
-              ? "Could not update your email."
-              : "Could not update your password."
+                ? "Could not update your email."
+                : "Could not update your password.",
           );
           setStatus("error");
           return;
@@ -434,11 +404,10 @@ export default function ProfileSettingsClient() {
 
       if (!orgId) {
         setOrgError("Missing organization id.");
-        setUploadingOrgLogo(false);
         return;
       }
 
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop() || "png";
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${orgId}/${fileName}`;
 
@@ -449,22 +418,14 @@ export default function ProfileSettingsClient() {
       if (uploadErr) {
         console.error("[Org] logo upload error", uploadErr);
         setOrgError("Could not upload your company logo.");
-        setUploadingOrgLogo(false);
         return;
       }
 
-      const { data: signedData, error: signedErr } = await supabase.storage
-        .from("org-logos")
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7);
-
-      if (signedErr || !signedData?.signedUrl) {
-        console.error("[Org] logo signed url error", signedErr);
+      const signedUrl = await resolveSignedUrl("org-logos", filePath);
+      if (!signedUrl) {
         setOrgError("Uploaded logo, but could not generate a view URL.");
-        setUploadingOrgLogo(false);
         return;
       }
-
-      const signedUrl = signedData.signedUrl;
 
       const { error: updateErr } = await supabase
         .from("organizations")
@@ -474,7 +435,6 @@ export default function ProfileSettingsClient() {
       if (updateErr) {
         console.error("[Org] logo url update error", updateErr);
         setOrgError("Uploaded logo, but failed to save it.");
-        setUploadingOrgLogo(false);
         return;
       }
 
@@ -500,13 +460,15 @@ export default function ProfileSettingsClient() {
 
   return (
     <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4 space-y-4">
-      {/* Header card + integrations CTA */}
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Profile &amp; Organization</h1>
+            <h1 className="text-xl font-semibold text-slate-900">
+              Profile &amp; Organization
+            </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Update your personal account settings and manage your company branding.
+              Update your personal account settings and manage your company
+              branding.
             </p>
           </div>
 
@@ -536,15 +498,19 @@ export default function ProfileSettingsClient() {
         {/* LEFT: organization (Admin only) */}
         <div className="space-y-3 flex flex-col h-full">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Organization</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Organization
+            </h2>
             <p className="mt-1 text-xs text-slate-500">
-              Update your company name, logo, and primary colour used across Faigata.
+              Update your company name, logo, and primary colour used across
+              Faigata.
             </p>
 
             {!isAdmin && (
               <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                Only <span className="font-semibold">Admins</span> can edit organization settings. Your
-                organization owner can update these details for you.
+                Only <span className="font-semibold">Admins</span> can edit
+                organization settings. Your organization owner can update these
+                details for you.
               </p>
             )}
           </div>
@@ -584,7 +550,9 @@ export default function ProfileSettingsClient() {
                   <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
                     Company logo
                   </span>
-                  <span className="text-[11px] text-slate-400">PNG or JPG, square works best.</span>
+                  <span className="text-[11px] text-slate-400">
+                    PNG or JPG, square works best.
+                  </span>
                   <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                     {uploadingOrgLogo ? "Uploading…" : "Upload logo"}
                     <input
@@ -607,7 +575,9 @@ export default function ProfileSettingsClient() {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={org?.name ?? ""}
                   onChange={(e) =>
-                    setOrg((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                    setOrg((prev) =>
+                      prev ? { ...prev, name: e.target.value } : prev,
+                    )
                   }
                 />
               </div>
@@ -623,23 +593,35 @@ export default function ProfileSettingsClient() {
                     className="h-9 w-9 cursor-pointer rounded-md border border-slate-300 bg-white"
                     value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
                     onChange={(e) =>
-                      setOrg((prev) => (prev ? { ...prev, primary_color: e.target.value } : prev))
+                      setOrg((prev) =>
+                        prev
+                          ? { ...prev, primary_color: e.target.value }
+                          : prev,
+                      )
                     }
                   />
                   <input
                     className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
                     onChange={(e) =>
-                      setOrg((prev) => (prev ? { ...prev, primary_color: e.target.value } : prev))
+                      setOrg((prev) =>
+                        prev
+                          ? { ...prev, primary_color: e.target.value }
+                          : prev,
+                      )
                     }
                     placeholder={DEFAULT_PRIMARY_COLOR}
                   />
                 </div>
                 <p className="flex items-center gap-2 text-[11px] text-slate-400">
-                  This colour is used for buttons and highlights in your workspace.
+                  This colour is used for buttons and highlights in your
+                  workspace.
                   <span
                     className="inline-flex h-4 w-10 items-center justify-center rounded-full text-[9px] font-medium text-white"
-                    style={{ backgroundColor: org?.primary_color || DEFAULT_PRIMARY_COLOR }}
+                    style={{
+                      backgroundColor:
+                        org?.primary_color || DEFAULT_PRIMARY_COLOR,
+                    }}
                   >
                     Preview
                   </span>
@@ -659,12 +641,11 @@ export default function ProfileSettingsClient() {
           )}
         </div>
 
-        {/* RIGHT: profile form (existing) */}
+        {/* RIGHT: profile form */}
         <form
           onSubmit={handleSaveProfile}
           className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full flex flex-col"
         >
-          {/* Avatar (editable) */}
           <div className="flex items-center gap-4">
             {avatarSignedUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -683,7 +664,9 @@ export default function ProfileSettingsClient() {
               <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
                 Profile picture
               </span>
-              <span className="text-[11px] text-slate-400">PNG or JPG, up to ~5MB.</span>
+              <span className="text-[11px] text-slate-400">
+                PNG or JPG, up to ~5MB.
+              </span>
               <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                 {uploadingAvatar ? "Uploading…" : "Upload new photo"}
                 <input
@@ -697,7 +680,6 @@ export default function ProfileSettingsClient() {
             </div>
           </div>
 
-          {/* Name */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
@@ -706,7 +688,9 @@ export default function ProfileSettingsClient() {
               <input
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={profile.first_name}
-                onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, first_name: e.target.value })
+                }
               />
             </div>
             <div>
@@ -716,12 +700,13 @@ export default function ProfileSettingsClient() {
               <input
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={profile.last_name}
-                onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, last_name: e.target.value })
+                }
               />
             </div>
           </div>
 
-          {/* Email */}
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
               Email
@@ -730,14 +715,16 @@ export default function ProfileSettingsClient() {
               type="email"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+              onChange={(e) =>
+                setProfile({ ...profile, email: e.target.value })
+              }
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              This updates the email tied to your login. You may need to verify the new address.
+              This updates the email tied to your login. You may need to verify
+              the new address.
             </p>
           </div>
 
-          {/* Roles */}
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
               Roles
@@ -754,7 +741,6 @@ export default function ProfileSettingsClient() {
             </div>
           </div>
 
-          {/* Password change */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">

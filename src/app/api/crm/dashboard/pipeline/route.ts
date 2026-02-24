@@ -8,7 +8,12 @@ export const dynamic = "force-dynamic";
 type Scope = "team" | "me";
 type Role = "admin" | "manager" | "member";
 
-type FunnelStage = { id: string; name: string; position: number | null; leadCount: number };
+type FunnelStage = {
+  id: string;
+  name: string;
+  position: number | null;
+  leadCount: number;
+};
 
 type FunnelEdge = {
   fromStageId: string;
@@ -45,7 +50,12 @@ type ConversionMetricRow = {
   target_rate: number | null;
 };
 
-type TeamMemberRow = { team_id: string; user_id: string; role: string | null; joined_at: string | null };
+type TeamMemberRow = {
+  team_id: string;
+  user_id: string;
+  role: string | null;
+  joined_at: string | null;
+};
 type ProfileRow = { id: string; team_id: string | null; role: any };
 
 function jsonError(message: string, status = 500, details?: unknown) {
@@ -53,7 +63,8 @@ function jsonError(message: string, status = 500, details?: unknown) {
 }
 
 function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
@@ -63,7 +74,9 @@ function isScope(v: string): v is Scope {
 }
 
 function normalizeRole(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   return "member";
@@ -80,16 +93,19 @@ function supabaseAdmin() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url) throw new Error("missing_supabase_url");
   if (!serviceKey) throw new Error("missing_service_role_key");
-  return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 async function resolveTeamContext(
   admin: ReturnType<typeof supabaseAdmin>,
   userId: string,
-  req: Request
+  req: Request,
 ): Promise<{ teamId: string; roles: Role[]; isManagerOrAdmin: boolean }> {
   const url = new URL(req.url);
-  const teamIdParam = (url.searchParams.get("teamId") ?? "").trim() || null;
+  // ✅ searchParams.get returns string | null (never undefined) → use `|| ""` to avoid "?? unreachable"
+  const teamIdParam = (url.searchParams.get("teamId") || "").trim() || null;
 
   try {
     if (teamIdParam) {
@@ -101,10 +117,16 @@ async function resolveTeamContext(
         .maybeSingle();
       if (error) throw error;
 
-      const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
+      const tm =
+        (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
       if (!tm?.team_id) throw new Error("not_a_member_of_team");
+
       const role = normalizeRole(tm.role);
-      return { teamId: String(tm.team_id), roles: [role], isManagerOrAdmin: role === "admin" || role === "manager" };
+      return {
+        teamId: String(tm.team_id),
+        roles: [role],
+        isManagerOrAdmin: role === "admin" || role === "manager",
+      };
     }
 
     const { data, error } = await admin
@@ -116,16 +138,23 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (error) throw error;
+
     const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
     if (!tm?.team_id) throw new Error("missing_team_membership");
 
     const role = normalizeRole(tm.role);
-    return { teamId: String(tm.team_id), roles: [role], isManagerOrAdmin: role === "admin" || role === "manager" };
+    return {
+      teamId: String(tm.team_id),
+      roles: [role],
+      isManagerOrAdmin: role === "admin" || role === "manager",
+    };
   } catch (e: any) {
     const msg = String(e?.message ?? "");
     const code = String(e?.code ?? "");
     const isMissingTable =
-      code === "42P01" || (msg.toLowerCase().includes("relation") && msg.toLowerCase().includes("team_members"));
+      code === "42P01" ||
+      (msg.toLowerCase().includes("relation") &&
+        msg.toLowerCase().includes("team_members"));
 
     if (!isMissingTable) throw e;
 
@@ -136,15 +165,26 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (profErr) throw new Error("profile_lookup_failed");
+
     const p = (profile as ProfileRow | null) ?? null;
     if (!p?.team_id) throw new Error("missing_team");
+
     const roles = normalizeRolesArray(p.role);
-    const isManagerOrAdmin = roles.includes("admin") || roles.includes("manager");
-    return { teamId: String(p.team_id), roles: roles.length ? roles : ["member"], isManagerOrAdmin };
+    const isManagerOrAdmin =
+      roles.includes("admin") || roles.includes("manager");
+
+    return {
+      teamId: String(p.team_id),
+      roles: roles.length ? roles : ["member"],
+      isManagerOrAdmin,
+    };
   }
 }
 
-async function selectWithFallback(buildQuery: (sel: string) => Promise<any>, selects: string[]) {
+async function selectWithFallback(
+  buildQuery: (sel: string) => Promise<any>,
+  selects: string[],
+) {
   let lastErr: any = null;
   for (const sel of selects) {
     const { data, error } = await buildQuery(sel);
@@ -164,7 +204,7 @@ export async function GET(req: Request) {
     if (!token) return jsonError("missing_auth", 401);
 
     const url = new URL(req.url);
-    const scopeRaw = String(url.searchParams.get("scope") ?? "team").trim();
+    const scopeRaw = String(url.searchParams.get("scope") || "team").trim();
     if (!isScope(scopeRaw)) return jsonError("invalid_scope", 400);
     const requestedScope: Scope = scopeRaw;
 
@@ -172,15 +212,21 @@ export async function GET(req: Request) {
 
     const { data: userRes, error: userErr } = await admin.auth.getUser(token);
     const user = userRes?.user ?? null;
-    if (userErr || !user) return jsonError("invalid_session", 401, userErr?.message);
+    if (userErr || !user)
+      return jsonError("invalid_session", 401, userErr?.message);
     const userId = String(user.id);
 
-    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(admin, userId, req);
+    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(
+      admin,
+      userId,
+      req,
+    );
     const effectiveScope: Scope = isManagerOrAdmin ? requestedScope : "me";
 
     const applyLeadScope = (q: any) => {
       let qq = q.eq("team_id", teamId);
-      if (effectiveScope === "me") qq = qq.or(`setter_id.eq.${userId},closer_id.eq.${userId}`);
+      if (effectiveScope === "me")
+        qq = qq.or(`setter_id.eq.${userId},closer_id.eq.${userId}`);
       return qq;
     };
 
@@ -195,23 +241,31 @@ export async function GET(req: Request) {
         .order("created_at", { ascending: true }),
       admin
         .from("conversion_metrics")
-        .select("id, team_id, label, from_stage_id, to_stage_id, position, target_rate")
+        .select(
+          "id, team_id, label, from_stage_id, to_stage_id, position, target_rate",
+        )
         .eq("team_id", teamId)
         .order("position", { ascending: true }),
     ]);
 
-    if (stagesRes.error) return jsonError("stages_load_failed", 500, stagesRes.error);
-    if (metricsRes.error) return jsonError("metrics_load_failed", 500, metricsRes.error);
+    if (stagesRes.error)
+      return jsonError("stages_load_failed", 500, stagesRes.error);
+    if (metricsRes.error)
+      return jsonError("metrics_load_failed", 500, metricsRes.error);
 
-    let stages = (stagesRes.data ?? []) as PipelineStageRow[];
-    const metrics = (metricsRes.data ?? []) as ConversionMetricRow[];
+    // ✅ avoid "?? unreachable" in setups where supabase types make `.data` non-nullish
+    let stages: PipelineStageRow[] = Array.isArray(stagesRes.data)
+      ? (stagesRes.data as any)
+      : [];
+    const metrics: ConversionMetricRow[] = Array.isArray(metricsRes.data)
+      ? (metricsRes.data as any)
+      : [];
 
     // Sort stages with null positions last (JS-side)
     stages = [...stages].sort((a, b) => {
       const ap = a.position ?? Number.POSITIVE_INFINITY;
       const bp = b.position ?? Number.POSITIVE_INFINITY;
       if (ap !== bp) return ap - bp;
-      // stable tie-break by name/id if needed
       const an = normKey(String(a.name ?? ""));
       const bn = normKey(String(b.name ?? ""));
       if (an !== bn) return an.localeCompare(bn);
@@ -229,23 +283,25 @@ export async function GET(req: Request) {
     }
 
     // Leads schema fallback: stage_id OR stage(text)
-    const { data: leadRows, usedSelect } = await selectWithFallback(
+    const { data: leadRowsRaw, usedSelect } = await selectWithFallback(
       (sel) => applyLeadScope(admin.from("leads").select(sel)),
-      ["id, stage_id", "id, stage"]
+      ["id, stage_id", "id, stage"],
     );
+
+    const leadRows: any[] = Array.isArray(leadRowsRaw) ? leadRowsRaw : [];
 
     // Count leads per stage id
     const stageIdToCount = new Map<string, number>();
 
     if (usedSelect.includes("stage_id")) {
-      for (const l of leadRows as any[]) {
-        const sid = l.stage_id ? String(l.stage_id) : "";
+      for (const l of leadRows) {
+        const sid = l?.stage_id ? String(l.stage_id) : "";
         if (!sid) continue;
         stageIdToCount.set(sid, (stageIdToCount.get(sid) ?? 0) + 1);
       }
     } else {
-      for (const l of leadRows as any[]) {
-        const nmRaw = l.stage ? String(l.stage) : "";
+      for (const l of leadRows) {
+        const nmRaw = l?.stage ? String(l.stage) : "";
         if (!nmRaw) continue;
         const sid = stageNameToId.get(normKey(nmRaw));
         if (!sid) continue;
@@ -263,7 +319,11 @@ export async function GET(req: Request) {
     // Map conversion metrics by from/to stage ids (include position!)
     const metricByPair = new Map<
       string,
-      { label: string | null; target_rate: number | null; position: number | null }
+      {
+        label: string | null;
+        target_rate: number | null;
+        position: number | null;
+      }
     >();
 
     for (const m of metrics) {
@@ -274,14 +334,14 @@ export async function GET(req: Request) {
       });
     }
 
-    // Build edges for adjacent stage pairs (keeps funnel SVG logic compatible)
+    // Build edges for adjacent stage pairs
     const edges: FunnelEdge[] = [];
     for (let i = 0; i < funnelStages.length - 1; i++) {
       const fromS = funnelStages[i];
       const toS = funnelStages[i + 1];
 
-      const fromCount = fromS.leadCount; // still in FROM stage
-      const toCount = toS.leadCount;     // currently in TO stage
+      const fromCount = fromS.leadCount;
+      const toCount = toS.leadCount;
 
       const metric = metricByPair.get(`${fromS.id}__${toS.id}`);
 
@@ -289,19 +349,15 @@ export async function GET(req: Request) {
         metric?.label && metric.label.trim().length > 0
           ? metric.label.trim()
           : "Next stage";
-
       const targetRate = metric?.target_rate ?? null;
 
-      // ✅ Snapshot-based logic:
-      // total that reached the FROM stage ≈ (still in FROM) + (already in TO)
+      // Snapshot-based logic: reached FROM ~= still in FROM + already in TO
       const denom = fromCount + toCount;
-
       const actualConversionRate =
         denom > 0 ? Math.round((toCount / denom) * 1000) / 10 : null;
 
-      // ✅ Not converted yet = still in FROM stage (not fromCount - toCount)
+      // Not converted yet = still in FROM
       const dropOffCount = fromCount;
-
       const dropOffRate =
         denom > 0 ? Math.round((dropOffCount / denom) * 1000) / 10 : null;
 
@@ -310,10 +366,7 @@ export async function GET(req: Request) {
         toStageId: toS.id,
         fromStageName: fromS.name,
         toStageName: toS.name,
-
-        // ✅ table can sort by this; if no metric row exists, fallback to the stage index
         position: metric?.position ?? i,
-
         label,
         targetRate,
         actualConversionRate,
@@ -329,7 +382,7 @@ export async function GET(req: Request) {
       isManagerOrAdmin,
       scope: effectiveScope,
       funnel: {
-        leadTotal: (leadRows ?? []).length,
+        leadTotal: leadRows.length,
         stages: funnelStages,
         edges,
       },

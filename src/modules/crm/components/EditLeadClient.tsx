@@ -1,7 +1,6 @@
-// src/app/leads/[id]/edit/EditLeadClient.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
@@ -10,18 +9,9 @@ import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 import type { PipelineStageDef } from "@/modules/crm/data/pipelineStages";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
-/**
- * NOTE ABOUT "LEAD NAME"
- * ✅ Your schema DOES have a dedicated `lead_name` column.
- * We still keep `custom_values.lead_name` in sync for backward compatibility.
- */
-
 type LeadType = "individual" | "business";
 type Gender = "male" | "female";
 
-/**
- * ✅ Expanded Primary Contact Types
- */
 type ContactType =
   | "email"
   | "phone"
@@ -42,18 +32,20 @@ type ContactType =
   | "signal"
   | "other";
 
-type SourceCategory = "inbound" | "outbound" | "referral" | "partner" | "purchased";
+type SourceCategory =
+  | "inbound"
+  | "outbound"
+  | "referral"
+  | "partner"
+  | "purchased";
 type SourceName = "instagram" | "facebook" | "reddit" | "twitter_x" | "other";
 
-interface LeadRow {
+type LeadRow = {
   id: string;
   team_id: string;
   stage: string;
-
-  // ✅ real column
   lead_name: string | null;
 
-  // system fields
   niche: string | null;
   lead_type: LeadType | null;
   gender: Gender | null;
@@ -69,10 +61,9 @@ interface LeadRow {
   source_category: SourceCategory | null;
   source_name: SourceName | null;
 
-  // existing fields
   custom_values: Record<string, any> | null;
   notes: string | null;
-}
+};
 
 function contactValueLabel(type: ContactType) {
   switch (type) {
@@ -156,10 +147,65 @@ function contactValuePlaceholder(type: ContactType) {
   }
 }
 
-function normalizeNullishString(v: string) {
+function normalizeNullishString(v: unknown) {
   const s = String(v ?? "").trim();
   return s.length ? s : null;
 }
+
+type FormState = {
+  stage: string;
+
+  // lead name editor
+  leadName: string;
+  firstName: string;
+  lastName: string;
+
+  // system/core
+  niche: string;
+  leadType: LeadType;
+  gender: Gender | "";
+
+  country: string;
+  region: string;
+  city: string;
+  postalCode: string;
+
+  primaryContactType: ContactType;
+  primaryContactValue: string;
+
+  sourceCategory: SourceCategory;
+  sourceName: SourceName;
+
+  // custom + notes
+  customValues: Record<string, any>;
+  notes: string;
+};
+
+const EMPTY_FORM: FormState = {
+  stage: "",
+
+  leadName: "",
+  firstName: "",
+  lastName: "",
+
+  niche: "",
+  leadType: "business",
+  gender: "",
+
+  country: "",
+  region: "",
+  city: "",
+  postalCode: "",
+
+  primaryContactType: "other",
+  primaryContactValue: "",
+
+  sourceCategory: "inbound",
+  sourceName: "other",
+
+  customValues: {},
+  notes: "",
+};
 
 export function EditLeadClient() {
   const { id } = useParams<{ id: string }>();
@@ -168,45 +214,47 @@ export function EditLeadClient() {
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
-  const [stage, setStage] = useState("");
-
-  // system fields state
-  const [niche, setNiche] = useState("");
-  const [leadType, setLeadType] = useState<LeadType>("business");
-  const [gender, setGender] = useState<Gender | "">("");
-
-  const [country, setCountry] = useState("");
-  const [region, setRegion] = useState("");
-  const [city, setCity] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-
-  const [primaryContactType, setPrimaryContactType] = useState<ContactType>("other");
-  const [primaryContactValue, setPrimaryContactValue] = useState("");
-
-  const [sourceCategory, setSourceCategory] = useState<SourceCategory>("inbound");
-  const [sourceName, setSourceName] = useState<SourceName>("other");
-
-  // custom values + notes
-  const [customValues, setCustomValues] = useState<Record<string, any>>({});
-  const [notes, setNotes] = useState<string>("");
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ keep a dedicated lead_name state (real column)
-  const [leadNameCol, setLeadNameCol] = useState<string>("");
-
-  // Derived: whether to show split vs single editor
-  const leadNameMode = useMemo(() => {
+  const leadNameMode = useMemo<"split" | "single">(() => {
+    const cv = form.customValues ?? {};
     const hasFirstOrLast =
-      typeof customValues?.first_name === "string" || typeof customValues?.last_name === "string";
+      typeof cv.first_name === "string" || typeof cv.last_name === "string";
     return hasFirstOrLast ? "split" : "single";
-  }, [customValues]);
+  }, [form.customValues]);
 
-  const [leadName, setLeadName] = useState(""); // single input
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const showGender = form.leadType === "individual";
+
+  const fullName = useMemo(() => {
+    const computed =
+      leadNameMode === "split"
+        ? [form.firstName, form.lastName].filter(Boolean).join(" ").trim()
+        : form.leadName.trim();
+    return computed;
+  }, [leadNameMode, form.firstName, form.lastName, form.leadName]);
+
+  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function setCustom(key: string, value: any) {
+    setForm((prev) => ({
+      ...prev,
+      customValues: { ...(prev.customValues ?? {}), [key]: value },
+    }));
+  }
+
+  // If lead type flips away from individual -> clear gender
+  useEffect(() => {
+    if (form.leadType !== "individual" && form.gender) {
+      setField("gender", "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.leadType]);
 
   // -------- load lead + config --------
   useEffect(() => {
@@ -216,12 +264,15 @@ export function EditLeadClient() {
       if (workspaceLoading) return;
 
       if (!teamId || !id) {
-        setLoading(false);
         setError("We couldn’t determine your team or lead id.");
+        setLoading(false);
         return;
       }
 
       try {
+        setLoading(true);
+        setError(null);
+
         const [defs, stageDefs] = await Promise.all([
           getLeadFieldDefinitions(teamId),
           getPipelineStages(teamId),
@@ -234,7 +285,7 @@ export function EditLeadClient() {
               "id",
               "team_id",
               "stage",
-              "lead_name", // ✅ preload lead name from real column
+              "lead_name",
               "custom_values",
               "notes",
               "niche",
@@ -248,7 +299,7 @@ export function EditLeadClient() {
               "primary_contact_value",
               "source_category",
               "source_name",
-            ].join(",")
+            ].join(","),
           )
           .eq("id", id)
           .single<LeadRow>();
@@ -266,50 +317,54 @@ export function EditLeadClient() {
           return;
         }
 
-        setFields(defs ?? []);
-        setStages(stageDefs ?? []);
-        setStage(lead.stage || stageDefs?.[0]?.name || "");
-
-        // system fields
-        setNiche(lead.niche ?? "");
-        setLeadType((lead.lead_type ?? "business") as LeadType);
-        setGender((lead.gender ?? "") as Gender | "");
-
-        setCountry(lead.country ?? "");
-        setRegion(lead.region ?? "");
-        setCity(lead.city ?? "");
-        setPostalCode(lead.postal_code ?? "");
-
-        setPrimaryContactType(((lead.primary_contact_type as ContactType) ?? "other") as ContactType);
-        setPrimaryContactValue(lead.primary_contact_value ?? "");
-
-        setSourceCategory((lead.source_category ?? "inbound") as SourceCategory);
-        setSourceName((lead.source_name ?? "other") as SourceName);
-
-        // custom + notes
         const cv = lead.custom_values ?? {};
-        setCustomValues(cv);
-        setNotes(lead.notes ?? "");
-
-        // ✅ preload lead name from lead_name column first, then fall back to custom_values
-        const colName = typeof lead.lead_name === "string" ? lead.lead_name : "";
-        setLeadNameCol(colName);
+        const colName =
+          typeof lead.lead_name === "string" ? lead.lead_name : "";
 
         const cvFirst = typeof cv.first_name === "string" ? cv.first_name : "";
         const cvLast = typeof cv.last_name === "string" ? cv.last_name : "";
-        const cvSingleRaw =
-          typeof cv.lead_name === "string" ? cv.lead_name : [cvFirst, cvLast].filter(Boolean).join(" ");
+        const cvSingle =
+          typeof cv.lead_name === "string"
+            ? cv.lead_name
+            : [cvFirst, cvLast].filter(Boolean).join(" ");
 
-        const initialFull = (colName || cvSingleRaw || "").trim();
+        const initialFull = (colName || cvSingle || "").trim();
 
-        setFirstName(cvFirst);
-        setLastName(cvLast);
-        setLeadName(initialFull);
+        setFields(defs ?? []);
+        setStages(stageDefs ?? []);
 
-        setError(null);
-      } catch (err) {
-        console.error("[EditLead] unexpected load error", err);
-        if (!cancelled) setError("We couldn’t load this lead. Please try again.");
+        setForm({
+          ...EMPTY_FORM,
+          stage: lead.stage || stageDefs?.[0]?.name || "",
+
+          niche: lead.niche ?? "",
+          leadType: (lead.lead_type ?? "business") as LeadType,
+          gender: (lead.gender ?? "") as Gender | "",
+
+          country: lead.country ?? "",
+          region: lead.region ?? "",
+          city: lead.city ?? "",
+          postalCode: lead.postal_code ?? "",
+
+          primaryContactType: ((lead.primary_contact_type as ContactType) ??
+            "other") as ContactType,
+          primaryContactValue: lead.primary_contact_value ?? "",
+
+          sourceCategory: (lead.source_category ?? "inbound") as SourceCategory,
+          sourceName: (lead.source_name ?? "other") as SourceName,
+
+          customValues: cv,
+          notes: lead.notes ?? "",
+
+          // editor defaults
+          firstName: cvFirst,
+          lastName: cvLast,
+          leadName: initialFull,
+        });
+      } catch (e) {
+        console.error("[EditLead] unexpected load error", e);
+        if (!cancelled)
+          setError("We couldn’t load this lead. Please try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -321,70 +376,108 @@ export function EditLeadClient() {
     };
   }, [id, teamId, workspaceLoading]);
 
-  function handleCustomChange(key: string, value: any) {
-    setCustomValues((prev) => ({ ...prev, [key]: value }));
-  }
+  function validate(): string | null {
+    if (!form.stage) return "Pipeline stage is required.";
+    if (!fullName) return "Lead name is required.";
+    if (!form.niche.trim()) return "Niche / Industry is required.";
+    if (form.leadType === "individual" && !form.gender)
+      return "Gender is required for individuals.";
 
-  // ✅ Keep lead_name in sync:
-  // - write to real column state (leadNameCol)
-  // - mirror into custom_values.lead_name (+ first/last if split)
-  useEffect(() => {
-    const full =
-      leadNameMode === "split"
-        ? [firstName, lastName].filter(Boolean).join(" ").trim()
-        : leadName.trim();
+    if (!form.country.trim()) return "Country is required.";
+    if (!form.region.trim()) return "State / Region is required.";
+    if (!form.city.trim()) return "City is required.";
 
-    setLeadNameCol(full);
+    if (!form.primaryContactType) return "Primary contact type is required.";
+    if (!form.primaryContactValue.trim())
+      return "Primary contact value is required.";
 
-    setCustomValues((prev) => {
-      const next = { ...prev };
-
-      if (leadNameMode === "split") {
-        next.first_name = firstName;
-        next.last_name = lastName;
-        next.lead_name = full;
-        return next;
-      }
-
-      next.lead_name = full;
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstName, lastName, leadName, leadNameMode]);
-
-  // If lead type changes to business, clear gender
-  useEffect(() => {
-    if (leadType !== "individual") setGender("");
-  }, [leadType]);
-
-  function validate() {
-    if (!stage) return "Pipeline stage is required.";
-
-    const full =
-      leadNameMode === "split"
-        ? [firstName, lastName].filter(Boolean).join(" ").trim()
-        : leadName.trim();
-
-    if (!full) return "Lead name is required.";
-
-    if (!niche.trim()) return "Niche / Industry is required.";
-    if (!leadType) return "Lead type is required.";
-    if (leadType === "individual" && !gender) return "Gender is required for individuals.";
-
-    if (!country.trim()) return "Country is required.";
-    if (!region.trim()) return "State / Region is required.";
-    if (!city.trim()) return "City is required.";
-
-    if (!primaryContactType) return "Primary contact type is required.";
-    if (!primaryContactValue.trim()) return "Primary contact value is required.";
-
-    if (!sourceCategory) return "Source category is required.";
-    if (!sourceName) return "Source name is required.";
+    if (!form.sourceCategory) return "Source category is required.";
+    if (!form.sourceName) return "Source name is required.";
 
     return null;
   }
 
-  // -------- save --------
+  function renderCustomField(field: LeadFieldDefinition) {
+    const value = form.customValues?.[field.key] ?? "";
+
+    const baseLabel =
+      "block text-xs font-medium uppercase tracking-wide text-slate-600";
+
+    const baseInput =
+      "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
+    if (field.type === "text" || field.type === "link") {
+      return (
+        <div key={field.key} className="space-y-1">
+          <label className={baseLabel}>{field.label}</label>
+          <input
+            className={baseInput}
+            value={value}
+            onChange={(e) => setCustom(field.key, e.target.value)}
+          />
+        </div>
+      );
+    }
+
+    if (field.type === "number") {
+      return (
+        <div key={field.key} className="space-y-1">
+          <label className={baseLabel}>{field.label}</label>
+          <input
+            type="number"
+            className={baseInput}
+            value={value}
+            onChange={(e) =>
+              setCustom(
+                field.key,
+                e.target.value === "" ? "" : Number(e.target.value),
+              )
+            }
+          />
+        </div>
+      );
+    }
+
+    if (field.type === "boolean") {
+      return (
+        <div key={field.key} className="space-y-1">
+          <label className={baseLabel}>{field.label}</label>
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              checked={Boolean(value)}
+              onChange={(e) => setCustom(field.key, e.target.checked)}
+            />
+            <span>Yes</span>
+          </label>
+        </div>
+      );
+    }
+
+    if (field.type === "select") {
+      return (
+        <div key={field.key} className="space-y-1">
+          <label className={baseLabel}>{field.label}</label>
+          <select
+            className={baseInput}
+            value={value}
+            onChange={(e) => setCustom(field.key, e.target.value)}
+          >
+            <option value="">Select…</option>
+            {(field.options ?? []).map((opt: string) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!teamId || !id) return;
@@ -399,37 +492,40 @@ export function EditLeadClient() {
     setError(null);
 
     try {
-      const cleanNotes = notes.trim() === "" ? null : notes.trim();
-      const cleanPostal = postalCode.trim() === "" ? null : postalCode.trim();
+      const cleanNotes = normalizeNullishString(form.notes);
+      const cleanPostal = normalizeNullishString(form.postalCode);
 
-      const fullName =
-        leadNameMode === "split"
-          ? [firstName, lastName].filter(Boolean).join(" ").trim()
-          : leadName.trim();
+      // ✅ keep backward compat mirror in custom_values
+      const nextCustomValues = { ...(form.customValues ?? {}) };
+      nextCustomValues.lead_name = fullName;
 
-      const payload: Partial<LeadRow> & { updated_at?: string } = {
-        stage,
+      if (leadNameMode === "split") {
+        nextCustomValues.first_name = form.firstName;
+        nextCustomValues.last_name = form.lastName;
+      }
+
+      const payload: Partial<LeadRow> & { updated_at: string } = {
+        stage: form.stage,
 
         // ✅ save to real column
         lead_name: normalizeNullishString(fullName),
 
-        niche: niche.trim(),
-        lead_type: leadType,
-        gender: leadType === "individual" ? (gender as Gender) : null,
+        niche: form.niche.trim(),
+        lead_type: form.leadType,
+        gender: form.leadType === "individual" ? (form.gender as Gender) : null,
 
-        country: country.trim(),
-        region: region.trim(),
-        city: city.trim(),
+        country: form.country.trim(),
+        region: form.region.trim(),
+        city: form.city.trim(),
         postal_code: cleanPostal,
 
-        primary_contact_type: primaryContactType,
-        primary_contact_value: primaryContactValue.trim(),
+        primary_contact_type: form.primaryContactType,
+        primary_contact_value: form.primaryContactValue.trim(),
 
-        source_category: sourceCategory,
-        source_name: sourceName,
+        source_category: form.sourceCategory,
+        source_name: form.sourceName,
 
-        // ✅ keep backward compat mirror in custom_values too
-        custom_values: { ...(customValues ?? {}), lead_name: fullName },
+        custom_values: nextCustomValues,
         notes: cleanNotes,
 
         updated_at: new Date().toISOString(),
@@ -476,7 +572,10 @@ export function EditLeadClient() {
           <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-10 rounded bg-slate-100 animate-pulse" />
+              <div
+                key={i}
+                className="h-10 rounded bg-slate-100 animate-pulse"
+              />
             ))}
           </div>
         </div>
@@ -487,66 +586,72 @@ export function EditLeadClient() {
   if (!teamId) {
     return (
       <p className="text-sm text-rose-500">
-        We couldn&apos;t determine your team from the workspace context. Please open this page from
-        your workspace or contact support.
+        We couldn&apos;t determine your team from the workspace context. Please
+        open this page from your workspace or contact support.
       </p>
     );
   }
 
-  const showGender = leadType === "individual";
-
-  // -------- UI --------
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Edit Lead</h1>
-            <p className="text-sm text-slate-500">
-              Update the lead’s core details, stage, and any custom fields your team tracks.
-            </p>
-          </div>
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold text-slate-900">Edit Lead</h1>
+          <p className="text-sm text-slate-500">
+            Update the lead’s core details, stage, and any custom fields your
+            team tracks.
+          </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
           className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
         >
-          {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+          {error && (
+            <p className="text-xs font-medium text-rose-600">{error}</p>
+          )}
 
           {/* Core details */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-slate-800">Core details</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              Core details
+            </h2>
 
             {/* Lead Name */}
             {leadNameMode === "split" ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">First Name</label>
+                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                    First Name
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    value={form.firstName}
+                    onChange={(e) => setField("firstName", e.target.value)}
                     placeholder="e.g. Alex"
                   />
                 </div>
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">Last Name</label>
+                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                    Last Name
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    value={form.lastName}
+                    onChange={(e) => setField("lastName", e.target.value)}
                     placeholder="e.g. Johnson"
                   />
                 </div>
               </div>
             ) : (
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">Lead Name</label>
+                <label className="block mb-1 text-sm font-medium text-slate-700">
+                  Lead Name
+                </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={leadName}
-                  onChange={(e) => setLeadName(e.target.value)}
+                  value={form.leadName}
+                  onChange={(e) => setField("leadName", e.target.value)}
                   placeholder="e.g. Alex Johnson or Acme Inc."
                 />
               </div>
@@ -560,19 +665,23 @@ export function EditLeadClient() {
                 </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
+                  value={form.niche}
+                  onChange={(e) => setField("niche", e.target.value)}
                   placeholder="e.g. Real Estate, SaaS, Healthcare"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">Lead Type</label>
+                <label className="block mb-1 text-sm font-medium text-slate-700">
+                  Lead Type
+                </label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={leadType}
-                  onChange={(e) => setLeadType(e.target.value as LeadType)}
+                  value={form.leadType}
+                  onChange={(e) =>
+                    setField("leadType", e.target.value as LeadType)
+                  }
                   required
                 >
                   <option value="individual">Individual</option>
@@ -582,11 +691,15 @@ export function EditLeadClient() {
 
               {showGender && (
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">Gender</label>
+                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                    Gender
+                  </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as Gender)}
+                    value={form.gender}
+                    onChange={(e) =>
+                      setField("gender", e.target.value as Gender)
+                    }
                     required
                   >
                     <option value="">Select…</option>
@@ -600,36 +713,44 @@ export function EditLeadClient() {
 
           {/* Location */}
           <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Location</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Location
+            </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">Country</label>
+                <label className="block mb-1 text-sm font-medium text-slate-700">
+                  Country
+                </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
+                  value={form.country}
+                  onChange={(e) => setField("country", e.target.value)}
                   placeholder="e.g. United States"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">State / Region</label>
+                <label className="block mb-1 text-sm font-medium text-slate-700">
+                  State / Region
+                </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
+                  value={form.region}
+                  onChange={(e) => setField("region", e.target.value)}
                   placeholder="e.g. California"
                   required
                 />
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">City</label>
+                <label className="block mb-1 text-sm font-medium text-slate-700">
+                  City
+                </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  value={form.city}
+                  onChange={(e) => setField("city", e.target.value)}
                   placeholder="e.g. San Diego"
                   required
                 />
@@ -637,12 +758,13 @@ export function EditLeadClient() {
 
               <div>
                 <label className="block mb-1 text-sm font-medium text-slate-700">
-                  ZIP / Postal Code <span className="text-slate-400 font-normal">(optional)</span>
+                  ZIP / Postal Code{" "}
+                  <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  value={form.postalCode}
+                  onChange={(e) => setField("postalCode", e.target.value)}
                   placeholder="e.g. 92101"
                 />
               </div>
@@ -651,7 +773,9 @@ export function EditLeadClient() {
 
           {/* Contact */}
           <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Contact</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Contact
+            </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="block mb-1 text-sm font-medium text-slate-700">
@@ -659,13 +783,17 @@ export function EditLeadClient() {
                 </label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={primaryContactType}
-                  onChange={(e) => setPrimaryContactType(e.target.value as ContactType)}
+                  value={form.primaryContactType}
+                  onChange={(e) =>
+                    setField(
+                      "primaryContactType",
+                      e.target.value as ContactType,
+                    )
+                  }
                   required
                 >
                   <option value="email">Email</option>
                   <option value="phone">Phone</option>
-
                   <option value="linkedin">LinkedIn</option>
                   <option value="instagram">Instagram</option>
                   <option value="facebook">Facebook</option>
@@ -674,29 +802,28 @@ export function EditLeadClient() {
                   <option value="tiktok">TikTok</option>
                   <option value="youtube">YouTube</option>
                   <option value="snapchat">Snapchat</option>
-
                   <option value="whatsapp">WhatsApp</option>
                   <option value="telegram">Telegram</option>
                   <option value="signal">Signal</option>
                   <option value="wechat">WeChat</option>
                   <option value="line">LINE</option>
-
                   <option value="discord">Discord</option>
                   <option value="slack">Slack</option>
-
                   <option value="other">Other</option>
                 </select>
               </div>
 
               <div>
                 <label className="block mb-1 text-sm font-medium text-slate-700">
-                  {contactValueLabel(primaryContactType)}
+                  {contactValueLabel(form.primaryContactType)}
                 </label>
                 <input
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={primaryContactValue}
-                  onChange={(e) => setPrimaryContactValue(e.target.value)}
-                  placeholder={contactValuePlaceholder(primaryContactType)}
+                  value={form.primaryContactValue}
+                  onChange={(e) =>
+                    setField("primaryContactValue", e.target.value)
+                  }
+                  placeholder={contactValuePlaceholder(form.primaryContactType)}
                   required
                 />
               </div>
@@ -705,7 +832,9 @@ export function EditLeadClient() {
 
           {/* Source */}
           <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Source</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Source
+            </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="block mb-1 text-sm font-medium text-slate-700">
@@ -713,8 +842,10 @@ export function EditLeadClient() {
                 </label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={sourceCategory}
-                  onChange={(e) => setSourceCategory(e.target.value as SourceCategory)}
+                  value={form.sourceCategory}
+                  onChange={(e) =>
+                    setField("sourceCategory", e.target.value as SourceCategory)
+                  }
                   required
                 >
                   <option value="inbound">Inbound</option>
@@ -731,8 +862,10 @@ export function EditLeadClient() {
                 </label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={sourceName}
-                  onChange={(e) => setSourceName(e.target.value as SourceName)}
+                  value={form.sourceName}
+                  onChange={(e) =>
+                    setField("sourceName", e.target.value as SourceName)
+                  }
                   required
                 >
                   <option value="instagram">Instagram</option>
@@ -747,11 +880,13 @@ export function EditLeadClient() {
 
           {/* Stage */}
           <div className="border-t border-slate-100 pt-4">
-            <label className="block mb-1 text-sm font-medium text-slate-700">Pipeline Stage</label>
+            <label className="block mb-1 text-sm font-medium text-slate-700">
+              Pipeline Stage
+            </label>
             <select
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={stage}
-              onChange={(e) => setStage(e.target.value)}
+              value={form.stage}
+              onChange={(e) => setField("stage", e.target.value)}
               required
             >
               {stages.map((s) => (
@@ -765,92 +900,11 @@ export function EditLeadClient() {
           {/* Custom fields */}
           {fields.length > 0 && (
             <div className="border-t border-slate-100 pt-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-800">Custom fields</h2>
+              <h2 className="mb-3 text-sm font-semibold text-slate-800">
+                Custom fields
+              </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {fields.map((field) => {
-                  const value = customValues[field.key] ?? "";
-
-                  if (field.type === "text" || field.type === "link") {
-                    return (
-                      <div key={field.key} className="space-y-1">
-                        <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
-                          {field.label}
-                        </label>
-                        <input
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={value}
-                          onChange={(e) => handleCustomChange(field.key, e.target.value)}
-                        />
-                      </div>
-                    );
-                  }
-
-                  if (field.type === "number") {
-                    return (
-                      <div key={field.key} className="space-y-1">
-                        <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
-                          {field.label}
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={value}
-                          onChange={(e) =>
-                            handleCustomChange(
-                              field.key,
-                              e.target.value === "" ? "" : Number(e.target.value)
-                            )
-                          }
-                        />
-                      </div>
-                    );
-                  }
-
-                  if (field.type === "boolean") {
-                    return (
-                      <div key={field.key} className="space-y-1">
-                        <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
-                          {field.label}
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            checked={Boolean(value)}
-                            onChange={(e) => handleCustomChange(field.key, e.target.checked)}
-                          />
-                          <span>Yes</span>
-                        </label>
-                      </div>
-                    );
-                  }
-
-                  if (field.type === "select") {
-                    return (
-                      <div key={field.key} className="space-y-1">
-                        <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
-                          {field.label}
-                        </label>
-                        <select
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={value}
-                          onChange={(e) => handleCustomChange(field.key, e.target.value)}
-                        >
-                          <option value="">Select…</option>
-
-                          {/* ✅ FIX: opt typed (no implicit any) */}
-                          {(field.options ?? []).map((opt: string) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })}
+                {fields.map(renderCustomField)}
               </div>
             </div>
           )}
@@ -863,8 +917,8 @@ export function EditLeadClient() {
             </p>
             <textarea
               className="min-h-[120px] w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={(e) => setField("notes", e.target.value)}
               placeholder="Add context, objections, personal details, or anything else that helps your team close this deal."
             />
           </div>

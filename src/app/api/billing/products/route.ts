@@ -30,7 +30,10 @@ type BillingCtx = {
 type CurrentPrice = {
   currency: string | null;
   unit_amount: number | null;
-  recurring?: { interval: "day" | "week" | "month" | "year"; interval_count?: number } | null;
+  recurring?: {
+    interval: "day" | "week" | "month" | "year";
+    interval_count?: number;
+  } | null;
 };
 
 // -----------------------------
@@ -56,30 +59,33 @@ function normalize(s: string | null | undefined) {
 }
 
 function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
 
 function isStripeAccountId(v: unknown) {
-  const s = String(v ?? "").trim();
-  return /^acct_[a-zA-Z0-9]+$/.test(s);
+  return /^acct_[a-zA-Z0-9]+$/.test(String(v ?? "").trim());
 }
 
 function parseLivemode(req: Request): boolean {
   const url = new URL(req.url);
   const sp = url.searchParams;
 
-  const mode = String(sp.get("mode") ?? "").trim().toLowerCase();
+  const mode = String(sp.get("mode") ?? "")
+    .trim()
+    .toLowerCase();
   if (mode === "live") return true;
   if (mode === "test") return false;
 
-  const lm = String(sp.get("livemode") ?? "").trim().toLowerCase();
+  const lm = String(sp.get("livemode") ?? "")
+    .trim()
+    .toLowerCase();
   if (lm === "1" || lm === "true") return true;
   if (lm === "0" || lm === "false") return false;
 
-  // default TEST
-  return false;
+  return false; // default TEST
 }
 
 /**
@@ -92,18 +98,17 @@ function roleSetFromUnknown(v: unknown): Set<Role> {
   const out = new Set<Role>();
 
   const pushOne = (x: unknown) => {
-    const s = String(x ?? "").trim().toLowerCase();
+    const s = String(x ?? "")
+      .trim()
+      .toLowerCase();
     if (s === "admin") out.add("admin");
     else if (s === "manager") out.add("manager");
     else if (s === "closer") out.add("closer");
     else if (s) out.add("member");
   };
 
-  if (Array.isArray(v)) {
-    for (const x of v) pushOne(x);
-  } else {
-    pushOne(v);
-  }
+  if (Array.isArray(v)) for (const x of v) pushOne(x);
+  else pushOne(v);
 
   if (out.size === 0) out.add("member");
   return out;
@@ -116,7 +121,10 @@ function pickHighestRole(roles: Set<Role>): Role {
   return "member";
 }
 
-function mergeHighestRole(...roleLikes: unknown[]): { highest: Role; merged: Set<Role> } {
+function mergeHighestRole(...roleLikes: unknown[]): {
+  highest: Role;
+  merged: Set<Role>;
+} {
   const merged = new Set<Role>();
   for (const rl of roleLikes) {
     const set = roleSetFromUnknown(rl);
@@ -125,32 +133,9 @@ function mergeHighestRole(...roleLikes: unknown[]): { highest: Role; merged: Set
   return { highest: pickHighestRole(merged), merged };
 }
 
-async function resolveOrgIdFromTeamId(admin: ReturnType<typeof supabaseAdmin>, teamId: string) {
-  const { data, error } = await admin.from("teams").select("organization_id").eq("id", teamId).maybeSingle();
-  if (error) return null;
-
-  const orgId = String((data as any)?.organization_id ?? "").trim();
-  return orgId || null;
-}
-
-async function resolveStripeAccountIdForOrg(
-  admin: ReturnType<typeof supabaseAdmin>,
-  orgId: string,
-  livemode: boolean
-) {
-  const { data, error } = await admin
-    .from("organization_stripe_accounts")
-    .select("stripe_account_id")
-    .eq("org_id", orgId)
-    .eq("livemode", livemode)
-    .maybeSingle();
-
-  if (error) return null;
-
-  const stripeAccountId = String((data as any)?.stripe_account_id ?? "").trim();
-  return stripeAccountId || null;
-}
-
+// -----------------------------
+// Billing context resolver
+// -----------------------------
 async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
   const token = getBearerToken(req);
   if (!token) return null;
@@ -167,8 +152,10 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
 
   // 2) resolve teamId hint from query/header
   const url = new URL(req.url);
-  const teamIdParam = String(url.searchParams.get("teamId") ?? "").trim() || null;
-  const teamIdHeader = String(req.headers.get("x-team-id") ?? "").trim() || null;
+  const teamIdParam =
+    String(url.searchParams.get("teamId") ?? "").trim() || null;
+  const teamIdHeader =
+    String(req.headers.get("x-team-id") ?? "").trim() || null;
   const teamIdCandidate = teamIdParam || teamIdHeader;
 
   let teamId: string | null = null;
@@ -215,19 +202,43 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
 
   if (!profErr && profile) {
     profilesRoleRaw = (profile as any).role;
-    if (!teamId && (profile as any).team_id) teamId = String((profile as any).team_id);
+    if (!teamId && (profile as any).team_id)
+      teamId = String((profile as any).team_id);
   }
 
   if (!teamId) return null;
 
   // 6) merged role (case-insensitive + array support)
-  const mergedRole = mergeHighestRole(teamMembersRoleRaw, profilesRoleRaw).highest;
+  const mergedRole = mergeHighestRole(
+    teamMembersRoleRaw,
+    profilesRoleRaw,
+  ).highest;
 
   // 7) teamId -> orgId (teams.organization_id)
-  const orgId = await resolveOrgIdFromTeamId(admin, teamId);
+  const { data: teamRow, error: teamErr } = await admin
+    .from("teams")
+    .select("organization_id")
+    .eq("id", teamId)
+    .maybeSingle();
 
-  // 8) orgId -> stripeAccountId
-  const stripeAccountId = orgId ? await resolveStripeAccountIdForOrg(admin, orgId, livemode) : null;
+  const orgId = !teamErr
+    ? String((teamRow as any)?.organization_id ?? "").trim() || null
+    : null;
+
+  // 8) orgId -> stripeAccountId (organization_stripe_accounts.org_id = orgId)
+  let stripeAccountId: string | null = null;
+  if (orgId) {
+    const { data: acctRow, error: acctErr } = await admin
+      .from("organization_stripe_accounts")
+      .select("stripe_account_id")
+      .eq("org_id", orgId)
+      .eq("livemode", livemode)
+      .maybeSingle();
+
+    stripeAccountId = !acctErr
+      ? String((acctRow as any)?.stripe_account_id ?? "").trim() || null
+      : null;
+  }
 
   return {
     userId,
@@ -249,30 +260,39 @@ async function resolveBillingCtx(req: Request): Promise<BillingCtx | null> {
 // Stripe helpers
 // -----------------------------
 async function listAll<T extends { id: string }>(
-  listFn: (params: { limit: number; starting_after?: string }, opts: any) => Promise<{ data: T[]; has_more: boolean }>,
-  opts: any
+  listFn: (
+    params: { limit: number; starting_after?: string },
+    opts: any,
+  ) => Promise<{ data: T[]; has_more: boolean }>,
+  opts: any,
 ): Promise<T[]> {
   const out: T[] = [];
   let starting_after: string | undefined;
 
-  while (true) {
-    const page = await listFn({ limit: 100, ...(starting_after ? { starting_after } : {}) }, opts);
-
+  for (;;) {
+    const page = await listFn(
+      { limit: 100, ...(starting_after ? { starting_after } : {}) },
+      opts,
+    );
     out.push(...(page.data ?? []));
     if (!page.has_more || !page.data?.length) break;
-
     starting_after = page.data[page.data.length - 1]!.id;
   }
 
   return out;
 }
 
-function toCurrentPriceShape(pr: Stripe.Price | null | undefined): CurrentPrice | null {
+function toCurrentPriceShape(
+  pr: Stripe.Price | null | undefined,
+): CurrentPrice | null {
   if (!pr) return null;
 
   const recurring =
     pr.type === "recurring" && pr.recurring?.interval
-      ? { interval: pr.recurring.interval, interval_count: pr.recurring.interval_count ?? 1 }
+      ? {
+          interval: pr.recurring.interval,
+          interval_count: pr.recurring.interval_count ?? 1,
+        }
       : null;
 
   return {
@@ -293,7 +313,7 @@ function extractDefaultPriceId(p: Stripe.Product): string | null {
 function pickCurrentPriceForProduct(
   product: Stripe.Product,
   pricesByProduct: Map<string, Stripe.Price[]>,
-  priceById: Map<string, Stripe.Price>
+  priceById: Map<string, Stripe.Price>,
 ): Stripe.Price | null {
   const defaultPriceId = extractDefaultPriceId(product);
   if (defaultPriceId) {
@@ -306,9 +326,7 @@ function pickCurrentPriceForProduct(
 
   const sorted = [...list].sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
   const newestActive = sorted.find((x) => x.active) ?? null;
-  if (newestActive) return newestActive;
-
-  return sorted[0] ?? null;
+  return newestActive ?? sorted[0] ?? null;
 }
 
 // -----------------------------
@@ -317,25 +335,22 @@ function pickCurrentPriceForProduct(
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
+  const now = new Date().toISOString();
 
   try {
-    const token = getBearerToken(req);
-    if (!token) {
-      return NextResponse.json(
-        { error: "missing_token", message: "Missing Authorization: Bearer <token>." },
-        { status: 401 }
-      );
-    }
-
     const ctx = await resolveBillingCtx(req);
     if (!ctx) {
       return NextResponse.json(
-        { error: "unauthorized", message: "Invalid session or user not found." },
-        { status: 401 }
+        {
+          error: "unauthorized",
+          message:
+            "Invalid session or user not found (or missing Bearer token).",
+        },
+        { status: 401 },
       );
     }
 
-    // ✅ allowed roles
+    // allowed roles
     const allowed: Role[] = ["admin", "manager", "closer"];
     if (!allowed.includes(ctx.role)) {
       return NextResponse.json(
@@ -349,11 +364,11 @@ export async function GET(req: Request) {
             roleSources: ctx.roleSources,
           },
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    // ✅ Must have orgId
+    // Must have orgId
     if (!ctx.orgId) {
       return NextResponse.json(
         {
@@ -362,11 +377,11 @@ export async function GET(req: Request) {
           hint: "Set teams.organization_id for the current team, then connect Stripe at org level.",
           details: { teamId: ctx.teamId },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // ✅ Must have stripe account mapping (org-level)
+    // Must have stripe account mapping (org-level)
     const stripeAccountId = String(ctx.stripeAccountId ?? "").trim();
     if (!stripeAccountId) {
       return NextResponse.json(
@@ -376,39 +391,50 @@ export async function GET(req: Request) {
           hint:
             "Insert a row in organization_stripe_accounts with " +
             "org_id=<teams.organization_id>, livemode=<true|false>, stripe_account_id='acct_...'.",
-          details: { teamId: ctx.teamId, orgId: ctx.orgId, livemode: ctx.livemode },
+          details: {
+            teamId: ctx.teamId,
+            orgId: ctx.orgId,
+            livemode: ctx.livemode,
+          },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!isStripeAccountId(stripeAccountId)) {
       return NextResponse.json(
-        { error: "invalid_stripe_account_id", message: `Invalid stripeAccountId: ${stripeAccountId}` },
-        { status: 400 }
+        {
+          error: "invalid_stripe_account_id",
+          message: `Invalid stripeAccountId: ${stripeAccountId}`,
+        },
+        { status: 400 },
       );
     }
 
     const stripe = stripeClient(ctx.livemode);
 
     // 1) all products
-    const productsAll = await listAll<Stripe.Product>((params, opts) => stripe.products.list(params, opts) as any, {
-      stripeAccount: stripeAccountId,
-    });
+    const productsAll = await listAll<Stripe.Product>(
+      (params, opts) => stripe.products.list(params as any, opts) as any,
+      { stripeAccount: stripeAccountId },
+    );
 
     // 2) all prices
-    const pricesAll = await listAll<Stripe.Price>((params, opts) => stripe.prices.list(params, opts) as any, {
-      stripeAccount: stripeAccountId,
-    });
+    const pricesAll = await listAll<Stripe.Price>(
+      (params, opts) => stripe.prices.list(params as any, opts) as any,
+      { stripeAccount: stripeAccountId },
+    );
 
     const pricesByProduct = new Map<string, Stripe.Price[]>();
     const priceById = new Map<string, Stripe.Price>();
 
     for (const pr of pricesAll) {
       priceById.set(pr.id, pr);
-      const pid = typeof pr.product === "string" ? pr.product : ((pr.product as any)?.id ?? null);
+      const pid =
+        typeof pr.product === "string"
+          ? pr.product
+          : ((pr.product as any)?.id ?? null);
       if (!pid) continue;
-
       const list = pricesByProduct.get(pid) ?? [];
       list.push(pr);
       pricesByProduct.set(pid, list);
@@ -416,7 +442,11 @@ export async function GET(req: Request) {
 
     const rows = productsAll.map((p) => {
       const stripe_created = typeof p.created === "number" ? p.created : null;
-      const currentStripePrice = pickCurrentPriceForProduct(p, pricesByProduct, priceById);
+      const currentStripePrice = pickCurrentPriceForProduct(
+        p,
+        pricesByProduct,
+        priceById,
+      );
       const current_price = toCurrentPriceShape(currentStripePrice);
 
       return {
@@ -426,11 +456,12 @@ export async function GET(req: Request) {
         stripe_active: !!p.active,
         stripe_created,
 
+        // placeholders (if you later merge DB/local edits)
         local_name: null,
         local_description: null,
         is_archived: false,
 
-        updated_at: stripe_created ? new Date(stripe_created * 1000).toISOString() : new Date().toISOString(),
+        updated_at: now,
         display_name: p.name ?? p.id,
 
         current_price,
@@ -476,7 +507,7 @@ export async function GET(req: Request) {
           requestId: e?.requestId ?? null,
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -16,15 +16,14 @@ type TeamMemberRow = {
   role: string | null;
   joined_at: string | null;
 };
-
-type ProfileRow = {
-  id: string;
-  team_id: string | null;
-  role: any;
-};
+type ProfileRow = { id: string; team_id: string | null; role: any };
 
 type LeadMessageRow = { lead_id: string; sent_at: string | null };
-type BookingOutcomeRow = { attended_status: string | null; closed_on_call: boolean | null; closer_user_id?: string | null };
+type BookingOutcomeRow = {
+  attended_status: string | null;
+  closed_on_call: boolean | null;
+  closer_user_id?: string | null;
+};
 
 type PipelineStageRow = {
   id: string;
@@ -66,12 +65,9 @@ type FunnelEdge = {
   toStageId: string;
   fromStageName: string;
   toStageName: string;
-
   position: number | null;
   label: string;
-
   targetRate: number | null;
-
   actualConversionRate: number | null;
   dropOffCount: number;
   dropOffRate: number | null;
@@ -85,60 +81,76 @@ type ActivityPoint = {
 
 /* -------------------- helpers -------------------- */
 
-function jsonError(message: string, status = 500, details?: unknown) {
-  return NextResponse.json({ error: message, details }, { status });
-}
+const json = (data: any, status = 200) => NextResponse.json(data, { status });
+const jsonError = (error: string, status = 500, details?: unknown) =>
+  json({ error, details }, status);
 
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1]?.trim() || null;
-}
+const bearer = (req: Request) => {
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  return h.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null;
+};
 
-function normalizeRole(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+const normalizeRole = (v: unknown): Role => {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   return "member";
-}
+};
 
-function normalizeRolesArray(raw: unknown): Role[] {
+const normalizeRolesArray = (raw: unknown): Role[] => {
   if (Array.isArray(raw)) return raw.map(normalizeRole);
   if (typeof raw === "string") return [normalizeRole(raw)];
   return [];
-}
+};
 
-function isScope(v: string): v is Scope {
-  return v === "team" || v === "me";
-}
+const isScope = (v: string): v is Scope => v === "team" || v === "me";
 
 function supabaseAdmin() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url) throw new Error("missing_supabase_url");
   if (!serviceKey) throw new Error("missing_service_role_key");
-
   return createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
-function normalizeTargetRate(v: unknown): number | null {
+const normalizeTargetRate = (v: unknown): number | null => {
   if (v == null) return null;
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   const asPct = n > 0 && n < 1 ? n * 100 : n;
   const clamped = Math.max(0, Math.min(100, asPct));
   return Math.round(clamped * 10) / 10;
-}
+};
 
 async function resolveTeamContext(
   admin: ReturnType<typeof supabaseAdmin>,
   userId: string,
-  req: Request
+  req: Request,
 ): Promise<{ teamId: string; roles: Role[]; isManagerOrAdmin: boolean }> {
   const url = new URL(req.url);
-  const teamIdParam = (url.searchParams.get("teamId") ?? "").trim() || null;
+  const teamIdParam = (url.searchParams.get("teamId") || "").trim() || null;
+
+  const roleInfo = (role: unknown) => {
+    const r = normalizeRole(role);
+    return {
+      roles: [r] as Role[],
+      isManagerOrAdmin: r === "admin" || r === "manager",
+    };
+  };
+
+  const isMissingTeamMembersTable = (e: any) => {
+    const msg = String(e?.message ?? "").toLowerCase();
+    const code = String(e?.code ?? "");
+    return (
+      code === "42P01" ||
+      (msg.includes("relation") && msg.includes("team_members"))
+    );
+  };
 
   try {
     if (teamIdParam) {
@@ -150,15 +162,11 @@ async function resolveTeamContext(
         .maybeSingle();
 
       if (error) throw error;
-      const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
-      if (!tm?.team_id) throw new Error("not_a_member_of_team");
 
-      const role = normalizeRole(tm.role);
-      return {
-        teamId: String(tm.team_id),
-        roles: [role],
-        isManagerOrAdmin: role === "admin" || role === "manager",
-      };
+      const tm =
+        (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
+      if (!tm?.team_id) throw new Error("not_a_member_of_team");
+      return { teamId: String(tm.team_id), ...roleInfo(tm.role) };
     }
 
     const { data, error } = await admin
@@ -170,22 +178,12 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (error) throw error;
+
     const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
     if (!tm?.team_id) throw new Error("missing_team_membership");
-
-    const role = normalizeRole(tm.role);
-    return {
-      teamId: String(tm.team_id),
-      roles: [role],
-      isManagerOrAdmin: role === "admin" || role === "manager",
-    };
+    return { teamId: String(tm.team_id), ...roleInfo(tm.role) };
   } catch (e: any) {
-    const msg = String(e?.message ?? "");
-    const code = String(e?.code ?? "");
-    const isMissingTable =
-      code === "42P01" || (msg.toLowerCase().includes("relation") && msg.toLowerCase().includes("team_members"));
-
-    if (!isMissingTable) throw e;
+    if (!isMissingTeamMembersTable(e)) throw e;
 
     const { data: profile, error: profErr } = await admin
       .from("profiles")
@@ -194,16 +192,27 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (profErr) throw new Error("profile_lookup_failed");
+
     const p = (profile as ProfileRow | null) ?? null;
     if (!p?.team_id) throw new Error("missing_team");
 
     const roles = normalizeRolesArray(p.role);
-    const isManagerOrAdmin = roles.includes("admin") || roles.includes("manager");
-    return { teamId: String(p.team_id), roles: roles.length ? roles : ["member"], isManagerOrAdmin };
+    const isManagerOrAdmin =
+      roles.includes("admin") || roles.includes("manager");
+
+    return {
+      teamId: String(p.team_id),
+      roles: roles.length ? roles : ["member"],
+      isManagerOrAdmin,
+    };
   }
 }
 
-async function selectWithFallback(admin: any, buildQuery: (sel: string) => any, selects: string[]) {
+async function selectWithFallback(
+  admin: any,
+  buildQuery: (sel: string) => any,
+  selects: string[],
+) {
   let lastErr: any = null;
   for (const sel of selects) {
     const { data, error } = await buildQuery(sel);
@@ -214,40 +223,38 @@ async function selectWithFallback(admin: any, buildQuery: (sel: string) => any, 
 }
 
 /* -------------------- attendance normalization for SHOW RATE -------------------- */
-/**
- * Show Rate should mean: attended / total outcomes.
- * But enum labels differ across DBs (you already saw enum mismatch).
- * So we normalize values and support common synonyms:
- * - "attended" (preferred)
- * - "showed" / "show" (legacy)
- */
-function normAttendance(v: unknown): string {
-  return String(v ?? "").trim().toLowerCase();
-}
 
+const normAttendance = (v: unknown) =>
+  String(v ?? "")
+    .trim()
+    .toLowerCase();
 const SHOW_VALUES = new Set(["attended", "showed", "show"]);
+
 /* -------------------- route -------------------- */
 
 export async function GET(req: Request) {
   try {
-    const token = getBearerToken(req);
+    const token = bearer(req);
     if (!token) return jsonError("missing_auth", 401);
 
     const url = new URL(req.url);
     const scopeRaw = String(url.searchParams.get("scope") ?? "team").trim();
     if (!isScope(scopeRaw)) return jsonError("invalid_scope", 400);
+
     const requestedScope: Scope = scopeRaw;
 
     const admin = supabaseAdmin();
 
     const { data: userRes, error: userErr } = await admin.auth.getUser(token);
-    const user = userRes?.user ?? null;
-    if (userErr || !user) return jsonError("invalid_session", 401, userErr?.message);
+    const userId = userRes?.user?.id ? String(userRes.user.id) : null;
+    if (userErr || !userId)
+      return jsonError("invalid_session", 401, userErr?.message);
 
-    const userId = String(user.id);
-
-    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(admin, userId, req);
-
+    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(
+      admin,
+      userId,
+      req,
+    );
     const effectiveScope: Scope = isManagerOrAdmin ? requestedScope : "me";
 
     const now = new Date();
@@ -256,9 +263,8 @@ export async function GET(req: Request) {
 
     const applyLeadScope = (q: any) => {
       let qq = q.eq("team_id", teamId);
-      if (effectiveScope === "me") {
+      if (effectiveScope === "me")
         qq = qq.or(`setter_id.eq.${userId},closer_id.eq.${userId}`);
-      }
       return qq;
     };
 
@@ -271,78 +277,92 @@ export async function GET(req: Request) {
     // ---------- KPIs ----------
     const kpisPromise = (async () => {
       const { count: leads_total, error: ltErr } = await applyLeadScope(
-        admin.from("leads").select("id", { count: "exact", head: true })
+        admin.from("leads").select("id", { count: "exact", head: true }),
       );
       if (ltErr) throw ltErr;
 
-      const leads7Q = applyLeadScope(
-        admin.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from7.toISOString())
-      );
-      const leads30Q = applyLeadScope(
-        admin.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from30.toISOString())
-      );
+      const [{ count: leads_new_7d }, { count: leads_new_30d }] =
+        await Promise.all([
+          applyLeadScope(
+            admin
+              .from("leads")
+              .select("id", { count: "exact", head: true })
+              .gte("created_at", from7.toISOString()),
+          ),
+          applyLeadScope(
+            admin
+              .from("leads")
+              .select("id", { count: "exact", head: true })
+              .gte("created_at", from30.toISOString()),
+          ),
+        ]);
 
-      const [{ count: leads_new_7d }, { count: leads_new_30d }] = await Promise.all([leads7Q, leads30Q]);
+      const [{ count: messages_sent_7d }, { count: messages_sent_30d }] =
+        await Promise.all([
+          applyMsgScope(
+            admin
+              .from("lead_messages")
+              .select("id", { count: "exact", head: true })
+              .gte("sent_at", from7.toISOString())
+              .eq("direction", "outbound")
+              .neq("channel", "pipeline"),
+          ),
+          applyMsgScope(
+            admin
+              .from("lead_messages")
+              .select("id", { count: "exact", head: true })
+              .gte("sent_at", from30.toISOString())
+              .eq("direction", "outbound")
+              .neq("channel", "pipeline"),
+          ),
+        ]);
 
-      const msgs7Q = applyMsgScope(
-        admin
-          .from("lead_messages")
-          .select("id", { count: "exact", head: true })
-          .gte("sent_at", from7.toISOString())
-          .eq("direction", "outbound")
-          .neq("channel", "pipeline")
-      );
-      const msgs30Q = applyMsgScope(
-        admin
-          .from("lead_messages")
-          .select("id", { count: "exact", head: true })
-          .gte("sent_at", from30.toISOString())
-          .eq("direction", "outbound")
-          .neq("channel", "pipeline")
-      );
+      const [{ count: bookings_7d }, { count: bookings_30d }] =
+        await Promise.all([
+          admin
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("team_id", teamId)
+            .gte("created_at", from7.toISOString()),
+          admin
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("team_id", teamId)
+            .gte("created_at", from30.toISOString()),
+        ]);
 
-      const [{ count: messages_sent_7d }, { count: messages_sent_30d }] = await Promise.all([msgs7Q, msgs30Q]);
-
-      const bookings7Q = admin
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("team_id", teamId)
-        .gte("created_at", from7.toISOString());
-
-      const bookings30Q = admin
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("team_id", teamId)
-        .gte("created_at", from30.toISOString());
-
-      const [{ count: bookings_7d }, { count: bookings_30d }] = await Promise.all([bookings7Q, bookings30Q]);
-
-      // ✅ outcomes for show + close rate
       let outcomesQ: any = admin
         .from("booking_outcomes")
         .select("attended_status, closed_on_call, closer_user_id, created_at")
         .eq("team_id", teamId)
         .gte("created_at", from30.toISOString());
 
-      if (effectiveScope === "me") outcomesQ = outcomesQ.eq("closer_user_id", userId);
+      if (effectiveScope === "me")
+        outcomesQ = outcomesQ.eq("closer_user_id", userId);
 
       const { data: outcomes, error: oErr } = await outcomesQ;
       if (oErr) throw oErr;
 
-      const rows = ((outcomes ?? []) as BookingOutcomeRow[]) ?? [];
+      // ✅ fix "?? unreachable" by avoiding redundant nullish coalescing
+      const rows: BookingOutcomeRow[] = Array.isArray(outcomes)
+        ? (outcomes as BookingOutcomeRow[])
+        : [];
 
-      // ✅ total = all outcomes with a non-null attended_status
-      const eligible = rows.filter((r) => normAttendance(r.attended_status).length > 0);
+      const eligible = rows.filter(
+        (r) => normAttendance(r.attended_status).length > 0,
+      );
       const total = eligible.length;
-
-      // ✅ attended/showed/show = "show"
-      const attended = eligible.filter((r) => SHOW_VALUES.has(normAttendance(r.attended_status))).length;
-
-      // close rate = closed_on_call / total eligible outcomes
+      const attended = eligible.filter((r) =>
+        SHOW_VALUES.has(normAttendance(r.attended_status)),
+      ).length;
       const closed = eligible.filter((r) => !!r.closed_on_call).length;
 
-      const show_rate_30d = total > 0 ? Math.round((attended / total) * 1000) / 10 : null;
-      const close_rate_30d = total > 0 ? Math.round((closed / total) * 1000) / 10 : null;
+      const show_rate_30d = total
+        ? Math.round((attended / total) * 1000) / 10
+        : null;
+      const close_rate_30d = total
+        ? Math.round((closed / total) * 1000) / 10
+        : null;
 
       return {
         leads_total: leads_total ?? 0,
@@ -363,7 +383,9 @@ export async function GET(req: Request) {
 
       const { data: upcomingRaw, error: upErr } = await admin
         .from("bookings")
-        .select("id, start_at, end_at, lead_id, invitee_first_name, invitee_email, booking_link_id")
+        .select(
+          "id, start_at, end_at, lead_id, invitee_first_name, invitee_email, booking_link_id",
+        )
         .eq("team_id", teamId)
         .gte("start_at", now.toISOString())
         .lte("start_at", to14.toISOString())
@@ -386,7 +408,14 @@ export async function GET(req: Request) {
 
       const { data: recentRaw } = await selectWithFallback(
         admin,
-        (sel) => applyLeadScope(admin.from("leads").select(sel).order("created_at", { ascending: false }).limit(8)),
+        (sel) =>
+          applyLeadScope(
+            admin
+              .from("leads")
+              .select(sel)
+              .order("created_at", { ascending: false })
+              .limit(8),
+          ),
         [
           "id, lead_name, stage_id, stage, created_at, score",
           "id, lead_name, stage_id, created_at, score",
@@ -394,26 +423,35 @@ export async function GET(req: Request) {
           "id, lead_name, stage_id, created_at",
           "id, lead_name, stage, created_at",
           "id, created_at",
-        ]
+        ],
       );
 
       const recentLeads = (recentRaw ?? []) as any[];
-      const leadIds = recentLeads.map((l) => String(l.id ?? "")).filter(Boolean);
+      const leadIds = recentLeads
+        .map((l) => String(l.id ?? ""))
+        .filter(Boolean);
 
       const { data: msgRowsRaw } = await admin
         .from("lead_messages")
         .select("lead_id, sent_at")
         .eq("team_id", teamId)
-        .in("lead_id", leadIds.length ? leadIds : ["00000000-0000-0000-0000-000000000000"])
+        .in(
+          "lead_id",
+          leadIds.length ? leadIds : ["00000000-0000-0000-0000-000000000000"],
+        )
         .order("sent_at", { ascending: false })
         .limit(200);
 
-      const msgRows = ((msgRowsRaw ?? []) as LeadMessageRow[]) ?? [];
+      // ✅ fix "?? unreachable" by avoiding redundant nullish coalescing
+      const msgRows: LeadMessageRow[] = Array.isArray(msgRowsRaw)
+        ? (msgRowsRaw as LeadMessageRow[])
+        : [];
+
       const lastByLead = new Map<string, string>();
       for (const m of msgRows) {
         const lid = String(m.lead_id ?? "");
-        if (!lid) continue;
-        if (!lastByLead.has(lid)) lastByLead.set(lid, String(m.sent_at ?? ""));
+        if (lid && !lastByLead.has(lid))
+          lastByLead.set(lid, String(m.sent_at ?? ""));
       }
 
       const normalizedRecent = recentLeads.map((l) => ({
@@ -435,13 +473,13 @@ export async function GET(req: Request) {
         .filter((x) => {
           if (!x.last_activity_at) return true;
           const ms = Date.parse(x.last_activity_at);
-          if (!Number.isFinite(ms)) return true;
-          return ms < Date.now() - 3 * 24 * 60 * 60 * 1000;
+          return (
+            !Number.isFinite(ms) || ms < Date.now() - 3 * 24 * 60 * 60 * 1000
+          );
         })
         .sort((a, b) => Number(b.score ?? -1) - Number(a.score ?? -1))
         .slice(0, 6);
 
-      const feed: any[] = [];
       const [feedMsgsRes, feedBookingsRes] = await Promise.all([
         admin
           .from("lead_messages")
@@ -457,31 +495,33 @@ export async function GET(req: Request) {
           .limit(10),
       ]);
 
-      for (const l of normalizedRecent) {
-        feed.push({
+      const feedMsgRows = Array.isArray(feedMsgsRes.data)
+        ? feedMsgsRes.data
+        : [];
+      const feedBookingRows = Array.isArray(feedBookingsRes.data)
+        ? feedBookingsRes.data
+        : [];
+
+      const feed: any[] = [
+        ...normalizedRecent.map((l) => ({
           type: "lead_created",
           at: l.created_at,
           lead_id: l.id,
           label: `Lead added: ${l.name ?? "Unnamed"}`,
-        });
-      }
-      for (const m of (feedMsgsRes.data ?? []) as any[]) {
-        feed.push({
+        })),
+        ...feedMsgRows.map((m: any) => ({
           type: "message",
           at: String(m.sent_at ?? ""),
           lead_id: m.lead_id ?? null,
           label: `${m.direction === "inbound" ? "Inbound" : "Outbound"} message`,
-        });
-      }
-      for (const b of (feedBookingsRes.data ?? []) as any[]) {
-        feed.push({
+        })),
+        ...feedBookingRows.map((b: any) => ({
           type: "booking",
           at: String(b.created_at ?? ""),
           lead_id: b.lead_id ?? null,
           label: `Booking created (${b.invitee_email ?? "invitee"})`,
-        });
-      }
-      feed.sort((a, b) => Date.parse(String(b.at)) - Date.parse(String(a.at)));
+        })),
+      ].sort((a, b) => Date.parse(String(b.at)) - Date.parse(String(a.at)));
 
       return {
         upcoming_bookings: upcoming,
@@ -503,14 +543,19 @@ export async function GET(req: Request) {
       if (stErr) throw stErr;
 
       const stageRows = (stageRowsRaw ?? []) as PipelineStageRow[];
-
       if (!stageRows.length) {
-        return { leadTotal: 0, stages: [] as FunnelStage[], edges: [] as FunnelEdge[] };
+        return {
+          leadTotal: 0,
+          stages: [] as FunnelStage[],
+          edges: [] as FunnelEdge[],
+        };
       }
 
       const { data: metricsRaw, error: mErr } = await admin
         .from("conversion_metrics")
-        .select("id, team_id, label, from_stage_id, to_stage_id, position, target_rate")
+        .select(
+          "id, team_id, label, from_stage_id, to_stage_id, position, target_rate",
+        )
         .eq("team_id", teamId)
         .order("position", { ascending: true, nullsFirst: true })
         .order("created_at", { ascending: true });
@@ -519,33 +564,44 @@ export async function GET(req: Request) {
 
       const metrics = (metricsRaw ?? []) as ConversionMetricRow[];
 
-      const metricByPair = new Map<string, { label: string | null; position: number | null; targetRate: number | null }>();
+      const metricByPair = new Map<
+        string,
+        {
+          label: string | null;
+          position: number | null;
+          targetRate: number | null;
+        }
+      >();
 
       for (const m of metrics) {
         const key = `${m.from_stage_id}__${m.to_stage_id}`;
-        if (metricByPair.has(key)) continue;
-        metricByPair.set(key, {
-          label: m.label ?? null,
-          position: m.position ?? null,
-          targetRate: normalizeTargetRate(m.target_rate),
-        });
+        if (!metricByPair.has(key)) {
+          metricByPair.set(key, {
+            label: m.label ?? null,
+            position: m.position ?? null,
+            targetRate: normalizeTargetRate(m.target_rate),
+          });
+        }
       }
 
       let leads: LeadRowStage[] = [];
       try {
-        const { data: leadRows, error: lErr } = await applyLeadScope(admin.from("leads").select("id, stage_id, stage"));
+        const { data: leadRows, error: lErr } = await applyLeadScope(
+          admin.from("leads").select("id, stage_id, stage"),
+        );
         if (lErr) throw lErr;
         leads = (leadRows ?? []) as LeadRowStage[];
       } catch {
-        const { data: leadRows2, error: lErr2 } = await applyLeadScope(admin.from("leads").select("id, stage"));
+        const { data: leadRows2, error: lErr2 } = await applyLeadScope(
+          admin.from("leads").select("id, stage"),
+        );
         if (lErr2) throw lErr2;
         leads = (leadRows2 ?? []) as LeadRowStage[];
       }
 
-      const leadTotal = leads.length;
-
-      const countsByStageId = new Map<string, number>();
-      for (const s of stageRows) countsByStageId.set(String(s.id), 0);
+      const countsByStageId = new Map<string, number>(
+        stageRows.map((s) => [String(s.id), 0]),
+      );
 
       for (const l of leads) {
         const sid = l.stage_id ? String(l.stage_id) : null;
@@ -554,21 +610,32 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const stageText = (l.stage ?? "").toString().trim().toLowerCase();
-        if (stageText) {
-          const match = stageRows.find((s) => (s.name ?? "").toString().trim().toLowerCase() === stageText);
-          if (match) {
-            const mid = String(match.id);
-            countsByStageId.set(mid, (countsByStageId.get(mid) ?? 0) + 1);
-          }
+        const stageText = String(l.stage ?? "")
+          .trim()
+          .toLowerCase();
+        if (!stageText) continue;
+
+        const match = stageRows.find(
+          (s) =>
+            String(s.name ?? "")
+              .trim()
+              .toLowerCase() === stageText,
+        );
+        if (match) {
+          countsByStageId.set(
+            String(match.id),
+            (countsByStageId.get(String(match.id)) ?? 0) + 1,
+          );
         }
       }
 
       const stages: FunnelStage[] = [...stageRows]
         .sort(
           (a, b) =>
-            (a.position ?? Number.POSITIVE_INFINITY) - (b.position ?? Number.POSITIVE_INFINITY) ||
-            Date.parse(String(a.created_at ?? "")) - Date.parse(String(b.created_at ?? ""))
+            (a.position ?? Number.POSITIVE_INFINITY) -
+              (b.position ?? Number.POSITIVE_INFINITY) ||
+            Date.parse(String(a.created_at ?? "")) -
+              Date.parse(String(b.created_at ?? "")),
         )
         .map((s) => ({
           id: String(s.id),
@@ -577,72 +644,75 @@ export async function GET(req: Request) {
           leadCount: countsByStageId.get(String(s.id)) ?? 0,
         }));
 
-      const edges: FunnelEdge[] = [];
-      for (let i = 0; i < stages.length - 1; i++) {
-        const from = stages[i];
+      const edges: FunnelEdge[] = stages.slice(0, -1).map((from, i) => {
         const to = stages[i + 1];
-
-        const fromCount = from.leadCount;
-        const toCount = to.leadCount;
-
         const metric = metricByPair.get(`${from.id}__${to.id}`);
 
-        const label = (metric?.label ?? "").trim().length > 0 ? String(metric!.label).trim() : "Next stage";
-        const position = metric?.position ?? i;
-        const targetRate = metric?.targetRate ?? null;
+        const denom = from.leadCount + to.leadCount;
+        const actualConversionRate = denom
+          ? Math.round((to.leadCount / denom) * 1000) / 10
+          : null;
 
-        const denom = fromCount + toCount;
-        const actualConversionRate = denom > 0 ? Math.round((toCount / denom) * 1000) / 10 : null;
+        const dropOffCount = from.leadCount;
+        const dropOffRate = denom
+          ? Math.round((dropOffCount / denom) * 1000) / 10
+          : null;
 
-        const dropOffCount = fromCount;
-        const dropOffRate = denom > 0 ? Math.round((dropOffCount / denom) * 1000) / 10 : null;
+        const label =
+          (metric?.label ?? "").trim().length > 0
+            ? String(metric!.label).trim()
+            : "Next stage";
 
-        edges.push({
+        return {
           fromStageId: from.id,
           toStageId: to.id,
           fromStageName: from.name,
           toStageName: to.name,
-          position,
+          position: metric?.position ?? i,
           label,
-          targetRate,
+          targetRate: metric?.targetRate ?? null,
           actualConversionRate,
           dropOffCount,
           dropOffRate,
-        });
-      }
+        };
+      });
 
-      return { leadTotal, stages, edges };
+      return { leadTotal: leads.length, stages, edges };
     })();
 
     // ---------- Activity ----------
     const activityPromise = (async () => {
-      const url = new URL(req.url);
       const bucketRaw = String(url.searchParams.get("bucket") ?? "week").trim();
       const daysRaw = Number(url.searchParams.get("days") ?? 120);
 
-      const bucket: "day" | "week" | "month" = bucketRaw === "day" || bucketRaw === "month" ? bucketRaw : "week";
-      const days = Number.isFinite(daysRaw) ? Math.max(7, Math.min(365, daysRaw)) : 120;
+      const bucket: "day" | "week" | "month" =
+        bucketRaw === "day" || bucketRaw === "month" ? bucketRaw : "week";
+      const days = Number.isFinite(daysRaw)
+        ? Math.max(7, Math.min(365, daysRaw))
+        : 120;
 
       const to = new Date();
       const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
       const [leadsRes, msgsRes] = await Promise.all([
-        applyLeadScope(admin.from("leads").select("id, created_at").gte("created_at", from.toISOString())),
+        applyLeadScope(
+          admin
+            .from("leads")
+            .select("id, created_at")
+            .gte("created_at", from.toISOString()),
+        ),
         applyMsgScope(
           admin
             .from("lead_messages")
             .select("id, sent_at, direction, channel")
             .gte("sent_at", from.toISOString())
             .eq("direction", "outbound")
-            .neq("channel", "pipeline")
+            .neq("channel", "pipeline"),
         ),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
       if (msgsRes.error) throw msgsRes.error;
-
-      const leadsRows = (leadsRes.data ?? []) as any[];
-      const msgRows = (msgsRes.data ?? []) as any[];
 
       const bucketKey = (d: Date) => {
         const dd = new Date(d);
@@ -663,25 +733,38 @@ export async function GET(req: Request) {
 
       const map = new Map<string, ActivityPoint>();
 
+      const leadsRows = Array.isArray(leadsRes.data) ? leadsRes.data : [];
+      const msgRows = Array.isArray(msgsRes.data) ? msgsRes.data : [];
+
       for (const l of leadsRows) {
-        const t = Date.parse(String(l.created_at ?? ""));
+        const t = Date.parse(String((l as any).created_at ?? ""));
         if (!Number.isFinite(t)) continue;
         const key = bucketKey(new Date(t));
-        const cur = map.get(key) ?? { bucket_start: key, leads_created: 0, messages_sent: 0 };
+        const cur = map.get(key) ?? {
+          bucket_start: key,
+          leads_created: 0,
+          messages_sent: 0,
+        };
         cur.leads_created += 1;
         map.set(key, cur);
       }
 
       for (const m of msgRows) {
-        const t = Date.parse(String(m.sent_at ?? ""));
+        const t = Date.parse(String((m as any).sent_at ?? ""));
         if (!Number.isFinite(t)) continue;
         const key = bucketKey(new Date(t));
-        const cur = map.get(key) ?? { bucket_start: key, leads_created: 0, messages_sent: 0 };
+        const cur = map.get(key) ?? {
+          bucket_start: key,
+          leads_created: 0,
+          messages_sent: 0,
+        };
         cur.messages_sent += 1;
         map.set(key, cur);
       }
 
-      const series = Array.from(map.values()).sort((a, b) => Date.parse(a.bucket_start) - Date.parse(b.bucket_start));
+      const series = Array.from(map.values()).sort(
+        (a, b) => Date.parse(a.bucket_start) - Date.parse(b.bucket_start),
+      );
 
       return {
         ok: true,
@@ -692,9 +775,14 @@ export async function GET(req: Request) {
       };
     })();
 
-    const [kpis, panels, funnel, activity] = await Promise.all([kpisPromise, panelsPromise, funnelPromise, activityPromise]);
+    const [kpis, panels, funnel, activity] = await Promise.all([
+      kpisPromise,
+      panelsPromise,
+      funnelPromise,
+      activityPromise,
+    ]);
 
-    return NextResponse.json({
+    return json({
       ok: true,
       teamId,
       roles,
@@ -706,8 +794,7 @@ export async function GET(req: Request) {
       panels,
     });
   } catch (e: any) {
-    const msg = String(e?.message ?? e);
     console.error("[dashboard-overview] unexpected:", e);
-    return jsonError("unhandled_error", 500, msg);
+    return jsonError("unhandled_error", 500, String(e?.message ?? e));
   }
 }

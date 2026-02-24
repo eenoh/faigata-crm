@@ -5,57 +5,51 @@ import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 
 export const runtime = "nodejs";
 
-function buildLeadLabel(l: any) {
-  // Prefer lead_name, then primary contact value
-  const name = (l?.lead_name ?? "").trim();
-  const pcv = (l?.primary_contact_value ?? "").trim();
-  return name || pcv || l?.id || "Lead";
-}
+const leadLabel = (l: any) =>
+  String(l?.lead_name ?? "").trim() ||
+  String(l?.primary_contact_value ?? "").trim() ||
+  l?.id ||
+  "Lead";
 
 export async function GET(req: Request) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   const { orgId } = auth.ctx;
-  const url = new URL(req.url);
-  const q = (url.searchParams.get("q") ?? "").trim();
+  const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
 
   const sb = adminClient();
-
   let query = sb
     .from("leads")
     .select(
-      "id, lead_name, stage, created_at, primary_contact_type, primary_contact_value"
+      "id, lead_name, stage, created_at, primary_contact_type, primary_contact_value",
     )
     .eq("team_id", orgId)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (q) {
-    // fuzzy-ish search
+  if (q)
     query = query.or(
-      `lead_name.ilike.%${q}%,primary_contact_value.ilike.%${q}%`
+      `lead_name.ilike.%${q}%,primary_contact_value.ilike.%${q}%`,
     );
-  }
 
   const { data, error } = await query;
-  if (error) {
+  if (error)
     return NextResponse.json({ error: error.message }, { status: 400 });
-  }
 
-  const leads = (data ?? []).map((l: any) => ({
-    id: l.id,
-    label: buildLeadLabel(l),
-    stage: l.stage ?? "—",
-    created_at: l.created_at,
-    primary_contact_type: l.primary_contact_type ?? null,
-    primary_contact_value: l.primary_contact_value ?? null,
-  }));
-
-  return NextResponse.json({ leads });
+  return NextResponse.json({
+    leads: (data ?? []).map((l: any) => ({
+      id: l.id,
+      label: leadLabel(l),
+      stage: l.stage ?? "—",
+      created_at: l.created_at,
+      primary_contact_type: l.primary_contact_type ?? null,
+      primary_contact_value: l.primary_contact_value ?? null,
+    })),
+  });
 }

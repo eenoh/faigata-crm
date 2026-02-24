@@ -6,13 +6,45 @@ export const runtime = "nodejs";
 
 type Slot = { start: string; end: string };
 type AvailabilityMode = "business_hours" | "twenty_four_seven";
+type BookingType = "one_on_one" | "group" | "round_robin";
 
 type RouteContext = {
   params: Promise<{ slug?: string }>;
 };
 
+const SLOT_STEP_MIN = 15;
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+
+function json(body: any, status = 200) {
+  return NextResponse.json(body, { status });
+}
+
 function overlap(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
+}
+
+function isValidYmd(s: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+function isValidTimeZone(tz: string) {
+  try {
+    // throws RangeError if tz invalid
+    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveSlug(url: URL, slugFromParams?: string) {
+  if (slugFromParams) return String(slugFromParams).trim() || undefined;
+
+  // fallback: /api/crm/booking-links/[slug]/availability
+  const parts = url.pathname.split("/").filter(Boolean);
+  const idx = parts.indexOf("booking-links");
+  const guess = idx >= 0 ? parts[idx + 1] : undefined;
+  return guess ? String(guess).trim() : undefined;
 }
 
 /** returns minutes offset of `timeZone` from UTC at the given UTC instant */
@@ -29,7 +61,8 @@ function tzOffsetMinutes(timeZone: string, utcDate: Date) {
   });
 
   const parts = dtf.formatToParts(utcDate);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
 
   const y = Number(get("year"));
   const m = Number(get("month"));
@@ -53,7 +86,7 @@ function makeUtcFromLocal(
   d: number,
   hh: number,
   mm = 0,
-  ss = 0
+  ss = 0,
 ) {
   const guessUtc = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
   const offset = tzOffsetMinutes(timeZone, guessUtc);
@@ -72,18 +105,34 @@ function parseWorkDays(raw: any): number[] {
     .map((x) => Number(x))
     .filter((x) => Number.isFinite(x) && x >= 0 && x <= 6);
 
-  // IMPORTANT: if missing, default to ALL days (not Mon–Fri)
-  return Array.from(new Set(cleaned.length ? cleaned : [0, 1, 2, 3, 4, 5, 6]));
+  // default to ALL days
+  return Array.from(new Set(cleaned.length ? cleaned : [...ALL_DAYS]));
 }
 
 /**
  * Day-of-week (Sun=0..Sat=6) for a given Y-M-D *in the requested tz*.
  * Uses local NOON to avoid DST midnight edge cases.
  */
-function dowForYmdInTz(timeZone: string, y: number, m: number, d: number): number {
+function dowForYmdInTz(
+  timeZone: string,
+  y: number,
+  m: number,
+  d: number,
+): number {
   const noonUtc = makeUtcFromLocal(timeZone, y, m, d, 12, 0, 0);
-  const wd = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(noonUtc);
-  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+  }).format(noonUtc);
+  const map: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
   return map[wd] ?? 0;
 }
 
@@ -92,11 +141,6 @@ function dowForYmdInTz(timeZone: string, y: number, m: number, d: number): numbe
  * - availability_mode
  * - work_start_minute / work_end_minute (0..1440)
  * - work_days
- *
- * IMPORTANT:
- * - NO hardcoded 09:00–17:00.
- * - If business_hours but minutes are missing, default to open window 00:00–24:00.
- * - If end==1440, endUtc becomes next day 00:00.
  */
 function computeWorkWindowUtc(args: {
   tz: string;
@@ -109,7 +153,6 @@ function computeWorkWindowUtc(args: {
   workDaysRaw: any;
 }): { workStartUtc: Date; workEndUtc: Date; workDays: number[] } | null {
   const { tz, yy, mm, dd, availabilityMode } = args;
-
   const workDays = parseWorkDays(args.workDaysRaw);
 
   if (availabilityMode !== "twenty_four_seven") {
@@ -117,15 +160,12 @@ function computeWorkWindowUtc(args: {
     if (workDays.length && !workDays.includes(dow)) return null;
   }
 
-  // If 24/7 => full day window
   if (availabilityMode === "twenty_four_seven") {
-    const startUtc = makeUtcFromLocal(tz, yy, mm, dd, 0, 0, 0);
-    // end is next day 00:00
-    const endUtc = makeUtcFromLocal(tz, yy, mm, dd + 1, 0, 0, 0);
-    return { workStartUtc: startUtc, workEndUtc: endUtc, workDays };
+    const workStartUtc = makeUtcFromLocal(tz, yy, mm, dd, 0, 0, 0);
+    const workEndUtc = makeUtcFromLocal(tz, yy, mm, dd + 1, 0, 0, 0);
+    return { workStartUtc, workEndUtc, workDays };
   }
 
-  // business_hours: use stored minutes; if missing => open window
   const startMin = Number.isFinite(Number(args.workStartMinuteRaw))
     ? clampMinute(Number(args.workStartMinuteRaw))
     : 0;
@@ -134,13 +174,11 @@ function computeWorkWindowUtc(args: {
     ? clampMinute(Number(args.workEndMinuteRaw))
     : 24 * 60;
 
-  // invalid window => no availability
   if (endMin <= startMin) return null;
 
   const sh = Math.floor(startMin / 60);
   const sm = startMin % 60;
 
-  // endMin can be 1440 => next day 00:00
   const endIsNextDay = endMin >= 24 * 60;
   const eh = endIsNextDay ? 0 : Math.floor(endMin / 60);
   const em = endIsNextDay ? 0 : endMin % 60;
@@ -153,12 +191,15 @@ function computeWorkWindowUtc(args: {
   return { workStartUtc, workEndUtc, workDays };
 }
 
-/* -------------------- google helpers (fixed behavior) -------------------- */
+/* -------------------- google helpers -------------------- */
 
 class GoogleReconnectRequiredError extends Error {
   detail?: string;
   userId?: string;
-  constructor(message = "google_reconnect_required", opts?: { detail?: string; userId?: string }) {
+  constructor(
+    message = "google_reconnect_required",
+    opts?: { detail?: string; userId?: string },
+  ) {
     super(message);
     this.name = "GoogleReconnectRequiredError";
     this.detail = opts?.detail;
@@ -186,7 +227,6 @@ async function refreshAccessToken(refreshToken: string) {
 
   const json: any = await r.json().catch(() => ({}));
   if (!r.ok) {
-    console.error("[availability] refresh failed", json);
     const code = String(json?.error || "unknown");
     const desc = String(json?.error_description || "");
     throw new GoogleReconnectRequiredError("google_reconnect_required", {
@@ -200,6 +240,19 @@ async function refreshAccessToken(refreshToken: string) {
   };
 }
 
+function isReconnectStatus(status: number) {
+  return status === 401 || status === 403;
+}
+
+function normalizeBookingType(raw: unknown): BookingType {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "group") return "group";
+  if (s === "round_robin") return "round_robin";
+  return "one_on_one";
+}
+
 /* -------------------- route -------------------- */
 
 export async function GET(req: NextRequest, ctx: RouteContext) {
@@ -207,29 +260,30 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
   try {
     const url = new URL(req.url);
-
-    // ✅ Next expects ctx.params to be a Promise → await it
     const { slug: slugFromParams } = await ctx.params;
 
-    let slug = slugFromParams;
-    if (!slug) {
-      const parts = url.pathname.split("/").filter(Boolean);
-      const idx = parts.indexOf("booking-links");
-      slug = idx >= 0 ? parts[idx + 1] : undefined;
-    }
+    const slug = resolveSlug(url, slugFromParams);
+    const dateRaw = String(url.searchParams.get("date") ?? "").trim(); // YYYY-MM-DD
+    const tzRaw = String(url.searchParams.get("tz") ?? "UTC").trim();
+    const token = String(url.searchParams.get("t") ?? "").trim() || null;
 
-    const date = url.searchParams.get("date"); // YYYY-MM-DD
-    const tz = url.searchParams.get("tz") || "UTC";
-    const token = url.searchParams.get("t"); // optional invite token
+    if (!slug) return json({ error: "missing_slug" }, 400);
+    if (!dateRaw) return json({ error: "missing_date" }, 400);
+    if (!isValidYmd(dateRaw)) return json({ error: "invalid_date" }, 400);
 
-    if (!slug) return NextResponse.json({ error: "missing_slug" }, { status: 400 });
-    if (!date) return NextResponse.json({ error: "missing_date" }, { status: 400 });
+    const tz = isValidTimeZone(tzRaw) ? tzRaw : "UTC";
+
+    const [yy, mm, dd] = dateRaw.split("-").map((x) => Number(x));
+    if (!yy || !mm || !dd) return json({ error: "invalid_date" }, 400);
+
+    // ✅ re-use the same admin client for the whole request
+    const sb = supabaseAdmin;
 
     // If token present, resolve booking link from invite
     let linkIdFromToken: string | null = null;
 
     if (token) {
-      const { data: inv, error: invErr } = await supabaseAdmin
+      const { data: inv, error: invErr } = await sb
         .from("booking_link_invites")
         .select("booking_link_id, used_at, expires_at")
         .eq("token", token)
@@ -238,43 +292,49 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       if (invErr) {
         console.error("[availability] invite query error", invErr);
       } else if (inv?.booking_link_id) {
-        if (inv.used_at) return NextResponse.json({ slots: [] });
-        if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) {
-          return NextResponse.json({ slots: [] });
-        }
+        if (inv.used_at) return json({ slots: [] });
+        if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now())
+          return json({ slots: [] });
         linkIdFromToken = String(inv.booking_link_id);
       }
     }
 
-    // includes availability fields
     const baseSelect =
       "id, slug, owner_user_id, booking_type, duration_minutes, buffer_before_minutes, buffer_after_minutes, min_notice_hours, max_notice_days, primary_color, availability_mode, work_start_minute, work_end_minute, work_days";
 
+    const linkQuery = sb.from("booking_links").select(baseSelect);
     const { data: link, error: linkErr } = linkIdFromToken
-      ? await supabaseAdmin.from("booking_links").select(baseSelect).eq("id", linkIdFromToken).maybeSingle()
-      : await supabaseAdmin.from("booking_links").select(baseSelect).eq("slug", slug).maybeSingle();
+      ? await linkQuery.eq("id", linkIdFromToken).maybeSingle()
+      : await linkQuery.eq("slug", slug).maybeSingle();
 
     if (linkErr) {
       console.error("[availability] booking link query error", linkErr);
-      return NextResponse.json({ error: "booking_link_query_failed" }, { status: 500 });
+      return json({ error: "booking_link_query_failed" }, 500);
     }
-    if (!link) return NextResponse.json({ error: "booking_link_not_found" }, { status: 404 });
+    if (!link) return json({ error: "booking_link_not_found" }, 404);
 
-    // If token present, ensure URL slug matches link.slug
     if (token && linkIdFromToken && String(link.slug) !== String(slug)) {
-      return NextResponse.json({ error: "token_slug_mismatch" }, { status: 409 });
+      return json({ error: "token_slug_mismatch" }, 409);
     }
 
-    const minNoticeHours = Number(link.min_notice_hours ?? 0);
-    const maxNoticeDays = Number(link.max_notice_days ?? 365);
+    // booking bounds
+    const minNoticeHours = Number((link as any).min_notice_hours ?? 0);
+    const maxNoticeDays = Number((link as any).max_notice_days ?? 365);
+
     const nowMs = Date.now();
     const minBookableMs = nowMs + minNoticeHours * 60 * 60 * 1000;
     const maxBookableMs = nowMs + maxNoticeDays * 24 * 60 * 60 * 1000;
 
-    const [yy, mm, dd] = date.split("-").map((x) => Number(x));
-    if (!yy || !mm || !dd) return NextResponse.json({ error: "invalid_date" }, { status: 400 });
-
-    const reqDayStartUtcMs = makeUtcFromLocal(tz, yy, mm, dd, 0, 0, 0).getTime();
+    // compare "requested day start" against "min day start" and max timestamp
+    const reqDayStartUtcMs = makeUtcFromLocal(
+      tz,
+      yy,
+      mm,
+      dd,
+      0,
+      0,
+      0,
+    ).getTime();
 
     const minDay = new Date(minBookableMs);
     const minDayStartUtcMs = makeUtcFromLocal(
@@ -284,45 +344,57 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       minDay.getUTCDate(),
       0,
       0,
-      0
+      0,
     ).getTime();
 
-    if (reqDayStartUtcMs < minDayStartUtcMs) return NextResponse.json({ slots: [] });
-    if (reqDayStartUtcMs > maxBookableMs) return NextResponse.json({ slots: [] });
+    if (reqDayStartUtcMs < minDayStartUtcMs) return json({ slots: [] });
+    if (reqDayStartUtcMs > maxBookableMs) return json({ slots: [] });
 
-    const bookingType = String(link.booking_type || "one_on_one");
+    // booking type
+    const bookingType = normalizeBookingType((link as any).booking_type);
 
     /* Determine hosts */
     let hostIds: string[] = [];
 
     if (bookingType === "group" || bookingType === "round_robin") {
-      const { data: hostsRows, error: hostsErr } = await supabaseAdmin
+      const { data: hostsRows, error: hostsErr } = await sb
         .from("booking_link_hosts")
         .select("user_id")
-        .eq("booking_link_id", link.id);
+        .eq("booking_link_id", (link as any).id);
 
       if (hostsErr) {
-        console.error("[availability] booking_link_hosts query error", hostsErr);
-        return NextResponse.json({ error: "hosts_query_failed" }, { status: 500 });
+        console.error(
+          "[availability] booking_link_hosts query error",
+          hostsErr,
+        );
+        return json({ error: "hosts_query_failed" }, 500);
       }
 
-      hostIds = Array.from(new Set((hostsRows ?? []).map((r: any) => String(r.user_id)).filter(Boolean)));
+      hostIds = Array.from(
+        new Set(
+          (hostsRows ?? []).map((r: any) => String(r.user_id)).filter(Boolean),
+        ),
+      );
 
-      if (bookingType === "group" && link.owner_user_id) {
-        const owner = String(link.owner_user_id);
+      if (bookingType === "group" && (link as any).owner_user_id) {
+        const owner = String((link as any).owner_user_id);
         if (!hostIds.includes(owner)) hostIds.unshift(owner);
       }
 
-      if (!hostIds.length && link.owner_user_id) hostIds = [String(link.owner_user_id)];
+      if (!hostIds.length && (link as any).owner_user_id)
+        hostIds = [String((link as any).owner_user_id)];
     } else {
-      if (link.owner_user_id) hostIds = [String(link.owner_user_id)];
+      if ((link as any).owner_user_id)
+        hostIds = [String((link as any).owner_user_id)];
     }
 
-    if (!hostIds.length) return NextResponse.json({ error: "no_hosts_configured" }, { status: 400 });
+    if (!hostIds.length) return json({ error: "no_hosts_configured" }, 400);
 
     /* Compute availability window from booking_links */
     const availabilityMode =
-      (String(link.availability_mode || "business_hours") as AvailabilityMode) || "business_hours";
+      (String(
+        (link as any).availability_mode || "business_hours",
+      ) as AvailabilityMode) || "business_hours";
 
     const window = computeWorkWindowUtc({
       tz,
@@ -335,50 +407,49 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       workDaysRaw: (link as any).work_days,
     });
 
-    if (!window) return NextResponse.json({ slots: [] });
+    if (!window) return json({ slots: [] });
 
     const { workStartUtc, workEndUtc } = window;
-    if (workEndUtc.getTime() <= workStartUtc.getTime()) return NextResponse.json({ slots: [] });
+    const workStartMs = workStartUtc.getTime();
+    const workEndMs = workEndUtc.getTime();
+    if (workEndMs <= workStartMs) return json({ slots: [] });
 
     /* Pull tokens */
-    const durationMin = Number(link.duration_minutes ?? 30);
-    const bufferBefore = Number(link.buffer_before_minutes ?? 0);
-    const bufferAfter = Number(link.buffer_after_minutes ?? 0);
-    const slotStepMin = 15;
+    const durationMin = Number((link as any).duration_minutes ?? 30);
+    const bufferBefore = Number((link as any).buffer_before_minutes ?? 0);
+    const bufferAfter = Number((link as any).buffer_after_minutes ?? 0);
 
-    const { data: tokenRows, error: tokErr } = await supabaseAdmin
+    const { data: tokenRows, error: tokErr } = await sb
       .from("user_google_calendar_tokens")
       .select("user_id, access_token, refresh_token, expiry_date")
       .in("user_id", hostIds);
 
     if (tokErr) {
       console.error("[availability] token query error", tokErr);
-      return NextResponse.json({ error: "token_query_failed" }, { status: 500 });
+      return json({ error: "token_query_failed" }, 500);
     }
 
     const byUser = new Map<string, any>();
-    for (const row of tokenRows ?? []) byUser.set(String((row as any).user_id), row);
+    for (const row of tokenRows ?? [])
+      byUser.set(String((row as any).user_id), row);
 
-    // if refresh_token missing, it's not connected (or needs reconnect)
     const missing = hostIds.filter((uid) => !byUser.get(uid)?.refresh_token);
     if (missing.length) {
-      return NextResponse.json({ error: "host_calendar_not_connected", missingHostIds: missing }, { status: 400 });
+      return json(
+        { error: "host_calendar_not_connected", missingHostIds: missing },
+        400,
+      );
     }
 
-    async function getAccessTokenForUser(userId: string): Promise<string> {
-      const row = byUser.get(userId);
-      let accessToken = (row?.access_token as string | null) ?? null;
-      const expiry = row?.expiry_date ? new Date(row.expiry_date).getTime() : 0;
-      const isExpired = !accessToken || !expiry || Date.now() > expiry - 60_000;
-
-      if (!isExpired) return accessToken!;
-
-      const refreshed = await refreshAccessToken(String(row.refresh_token));
-      accessToken = refreshed.access_token;
-
-      const newExpiryDate = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-
-      await supabaseAdmin
+    async function saveToken(
+      userId: string,
+      accessToken: string,
+      expiresInSec: number,
+    ) {
+      const newExpiryDate = new Date(
+        Date.now() + expiresInSec * 1000,
+      ).toISOString();
+      const { error } = await sb
         .from("user_google_calendar_tokens")
         .update({
           access_token: accessToken,
@@ -387,9 +458,36 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         })
         .eq("user_id", userId);
 
-      byUser.set(userId, { ...(row ?? {}), access_token: accessToken, expiry_date: newExpiryDate });
+      if (!error) {
+        const row = byUser.get(userId);
+        byUser.set(userId, {
+          ...(row ?? {}),
+          access_token: accessToken,
+          expiry_date: newExpiryDate,
+        });
+      }
+    }
 
-      return accessToken!;
+    async function ensureAccessToken(userId: string): Promise<string> {
+      const row = byUser.get(userId);
+      const refreshToken = String(row?.refresh_token ?? "");
+      if (!refreshToken) {
+        throw new GoogleReconnectRequiredError("google_reconnect_required", {
+          userId,
+          detail: "missing_refresh_token",
+        });
+      }
+
+      const accessToken = (row?.access_token as string | null) ?? null;
+      const expiry = row?.expiry_date ? new Date(row.expiry_date).getTime() : 0;
+      const needsRefresh =
+        !accessToken || !expiry || Date.now() > expiry - 60_000;
+
+      if (!needsRefresh && accessToken) return accessToken;
+
+      const refreshed = await refreshAccessToken(refreshToken);
+      await saveToken(userId, refreshed.access_token, refreshed.expires_in);
+      return refreshed.access_token;
     }
 
     async function callFreeBusy(accessToken: string) {
@@ -408,42 +506,33 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       });
     }
 
-    async function fetchBusyRanges(userId: string): Promise<Array<[number, number]>> {
+    async function fetchBusyRanges(
+      userId: string,
+    ): Promise<Array<[number, number]>> {
       const row = byUser.get(userId);
-      if (!row?.refresh_token) {
-        throw new GoogleReconnectRequiredError("google_reconnect_required", {
-          userId,
-          detail: "missing_refresh_token",
-        });
-      }
+      const refreshToken = String(row?.refresh_token ?? "");
 
-      let accessToken = await getAccessTokenForUser(userId);
+      let accessToken = await ensureAccessToken(userId);
       let fbRes = await callFreeBusy(accessToken);
 
-      if (fbRes.status === 401 || fbRes.status === 403) {
-        const refreshed = await refreshAccessToken(String(row.refresh_token));
+      // If token revoked/expired, refresh once and retry
+      if (isReconnectStatus(fbRes.status)) {
+        const refreshed = await refreshAccessToken(refreshToken);
+        await saveToken(userId, refreshed.access_token, refreshed.expires_in);
+
         accessToken = refreshed.access_token;
-
-        const newExpiryDate = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-        await supabaseAdmin
-          .from("user_google_calendar_tokens")
-          .update({
-            access_token: accessToken,
-            expiry_date: newExpiryDate,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId);
-
-        byUser.set(userId, { ...(row ?? {}), access_token: accessToken, expiry_date: newExpiryDate });
-
         fbRes = await callFreeBusy(accessToken);
       }
 
       const fbJson: any = await fbRes.json().catch(() => ({}));
       if (!fbRes.ok) {
-        console.error("[availability] freeBusy failed for user", userId, fbJson);
+        console.error(
+          "[availability] freeBusy failed for user",
+          userId,
+          fbJson,
+        );
 
-        if (fbRes.status === 401 || fbRes.status === 403) {
+        if (isReconnectStatus(fbRes.status)) {
           const msg = String(fbJson?.error?.message || fbRes.status);
           throw new GoogleReconnectRequiredError("google_reconnect_required", {
             userId,
@@ -454,24 +543,32 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         throw new Error(`google_freebusy_failed:${fbRes.status}`);
       }
 
-      const busy: Array<{ start: string; end: string }> = fbJson?.calendars?.primary?.busy ?? [];
+      const busy: Array<{ start: string; end: string }> =
+        fbJson?.calendars?.primary?.busy ?? [];
       return busy
-        .map((b) => [Date.parse(b.start), Date.parse(b.end)] as [number, number])
+        .map(
+          (b) => [Date.parse(b.start), Date.parse(b.end)] as [number, number],
+        )
         .filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e));
     }
 
     let busyPerHost: Array<Array<[number, number]>> = [];
     try {
-      busyPerHost = await Promise.all(hostIds.map((uid) => fetchBusyRanges(uid)));
+      busyPerHost = await Promise.all(
+        hostIds.map((uid) => fetchBusyRanges(uid)),
+      );
     } catch (e: any) {
-      if (e?.name === "GoogleReconnectRequiredError" || e?.message === "google_reconnect_required") {
-        return NextResponse.json(
+      if (
+        e?.name === "GoogleReconnectRequiredError" ||
+        e?.message === "google_reconnect_required"
+      ) {
+        return json(
           {
             error: "host_calendar_reconnect_required",
             hostId: e?.userId ?? null,
             ...(isDev ? { detail: e?.detail ?? null } : {}),
           },
-          { status: 400 }
+          400,
         );
       }
       throw e;
@@ -479,57 +576,80 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
     const slots: Slot[] = [];
 
-    for (
-      let t = workStartUtc.getTime();
-      t + durationMin * 60_000 <= workEndUtc.getTime();
-      t += slotStepMin * 60_000
-    ) {
+    const durationMs = durationMin * 60_000;
+    const stepMs = SLOT_STEP_MIN * 60_000;
+    const bufferBeforeMs = bufferBefore * 60_000;
+    const bufferAfterMs = bufferAfter * 60_000;
+
+    for (let t = workStartMs; t + durationMs <= workEndMs; t += stepMs) {
       const start = t;
-      const end = t + durationMin * 60_000;
+      const end = t + durationMs;
 
       if (start < minBookableMs) continue;
       if (start > maxBookableMs) continue;
 
-      const blockedStart = start - bufferBefore * 60_000;
-      const blockedEnd = end + bufferAfter * 60_000;
+      const blockedStart = start - bufferBeforeMs;
+      const blockedEnd = end + bufferAfterMs;
 
       if (bookingType === "group") {
+        // available only if NONE of hosts conflict
         const conflictsAnyHost = busyPerHost.some((ranges) =>
-          ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be))
+          ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be)),
         );
         if (!conflictsAnyHost) {
-          slots.push({ start: new Date(start).toISOString(), end: new Date(end).toISOString() });
+          slots.push({
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+          });
         }
-      } else if (bookingType === "round_robin") {
+        continue;
+      }
+
+      if (bookingType === "round_robin") {
+        // available if ANY host is free
         const anyHostFree = busyPerHost.some((ranges) => {
-          const conflict = ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be));
+          const conflict = ranges.some(([bs, be]) =>
+            overlap(blockedStart, blockedEnd, bs, be),
+          );
           return !conflict;
         });
         if (anyHostFree) {
-          slots.push({ start: new Date(start).toISOString(), end: new Date(end).toISOString() });
+          slots.push({
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+          });
         }
-      } else {
-        const ranges = busyPerHost[0] ?? [];
-        const conflict = ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be));
-        if (!conflict) {
-          slots.push({ start: new Date(start).toISOString(), end: new Date(end).toISOString() });
-        }
+        continue;
+      }
+
+      // one_on_one: first host only
+      const ranges = busyPerHost[0] ?? [];
+      const conflict = ranges.some(([bs, be]) =>
+        overlap(blockedStart, blockedEnd, bs, be),
+      );
+      if (!conflict) {
+        slots.push({
+          start: new Date(start).toISOString(),
+          end: new Date(end).toISOString(),
+        });
       }
     }
 
-    return NextResponse.json({
+    return json({
       slots,
       hostIds,
-      primary_color: link.primary_color ?? null,
+      primary_color: (link as any).primary_color ?? null,
       booking_type: bookingType,
 
       availability_mode: availabilityMode,
       work_start_minute: (link as any).work_start_minute ?? null,
       work_end_minute: (link as any).work_end_minute ?? null,
       work_days: (link as any).work_days ?? null,
+      tz,
+      date: dateRaw,
     });
   } catch (err: any) {
     console.error("[availability] unexpected error", err);
-    return NextResponse.json({ error: "availability_internal_error" }, { status: 500 });
+    return json({ error: "availability_internal_error" }, 500);
   }
 }

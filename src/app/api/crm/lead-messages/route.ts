@@ -3,25 +3,19 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
-function getTeamId(req: Request) {
-  return new URL(req.url).searchParams.get("teamId");
-}
+const json = (data: any, status = 200) => NextResponse.json(data, { status });
 
-function getLeadId(req: Request) {
-  return new URL(req.url).searchParams.get("leadId");
-}
+const q = (req: Request) => new URL(req.url).searchParams;
+const getTeamId = (req: Request) => q(req).get("teamId")?.trim() || "";
+const getLeadId = (req: Request) => q(req).get("leadId")?.trim() || "";
 
 /* ---------- GET: list messages for one lead ---------- */
 export async function GET(req: Request) {
   const teamId = getTeamId(req);
   const leadId = getLeadId(req);
 
-  if (!teamId || !leadId) {
-    return NextResponse.json(
-      { error: "Missing teamId or leadId" },
-      { status: 400 }
-    );
-  }
+  if (!teamId || !leadId)
+    return json({ error: "Missing teamId or leadId" }, 400);
 
   const { data, error } = await supabaseAdmin
     .from("lead_messages")
@@ -42,21 +36,18 @@ export async function GET(req: Request) {
         last_name,
         avatar_url
       )
-    `
+    `,
     )
     .eq("team_id", teamId)
     .eq("lead_id", leadId)
     .order("sent_at", { ascending: true });
 
   if (error) {
-    console.error("[API] Failed to fetch lead_messages", error);
-    return NextResponse.json(
-      { error: "Failed to fetch messages" },
-      { status: 500 }
-    );
+    console.error("[lead-messages][GET] Failed to fetch lead_messages", error);
+    return json({ error: "Failed to fetch messages" }, 500);
   }
 
-  return NextResponse.json(data ?? []);
+  return json(Array.isArray(data) ? data : []);
 }
 
 /* ---------- POST: add message ---------- */
@@ -64,14 +55,11 @@ export async function POST(req: Request) {
   const teamId = getTeamId(req);
   const leadId = getLeadId(req);
 
-  if (!teamId || !leadId) {
-    return NextResponse.json(
-      { error: "Missing teamId or leadId" },
-      { status: 400 }
-    );
-  }
+  if (!teamId || !leadId)
+    return json({ error: "Missing teamId or leadId" }, 400);
 
-  const body = await req.json();
+  const body = (await req.json().catch(() => null)) as any;
+  if (!body) return json({ error: "Invalid JSON body" }, 400);
 
   const payload = {
     team_id: teamId,
@@ -97,25 +85,25 @@ export async function POST(req: Request) {
       body,
       sent_at,
       created_at
-    `
+    `,
     )
     .single();
 
   if (error) {
-    console.error("[API] Failed to create lead_message", error);
-    return NextResponse.json(
-      { error: "Failed to create message" },
-      { status: 500 }
-    );
+    console.error("[lead-messages][POST] Failed to create lead_message", error);
+    return json({ error: "Failed to create message" }, 500);
   }
 
   // 🔁 Recompute score after the new message (for inbound frequency / pipeline moves)
   try {
     await recomputeLeadScore(teamId, leadId);
   } catch (e) {
-    console.error("[API] Failed to recompute score after message", e);
-    // we still return 201 for the message; scoring failure shouldn’t block UI
+    console.error(
+      "[lead-messages][POST] Failed to recompute score after message",
+      e,
+    );
+    // scoring failure shouldn’t block UI
   }
 
-  return NextResponse.json(data);
+  return json(data);
 }

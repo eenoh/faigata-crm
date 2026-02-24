@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AcceptInviteClient() {
@@ -21,10 +21,10 @@ export default function AcceptInviteClient() {
   const [orgName, setOrgName] = useState<string | null>(null);
 
   const [resolvedTeamId, setResolvedTeamId] = useState<string | null>(
-    teamQuery
+    teamQuery,
   );
   const [resolvedCompanyId, setResolvedCompanyId] = useState<string | null>(
-    companyQuery
+    companyQuery,
   );
 
   const [firstName, setFirstName] = useState("");
@@ -34,20 +34,18 @@ export default function AcceptInviteClient() {
 
   const [error, setError] = useState<string | null>(null);
 
-  // Build login link that preserves invite + resolved team + company
   const loginHref = useMemo(() => {
     const q = new URLSearchParams();
     if (inviteId) q.set("invite", inviteId);
-    if (resolvedTeamId ?? teamQuery)
-      q.set("team", (resolvedTeamId ?? teamQuery) as string);
-    if (resolvedCompanyId ?? companyQuery)
-      q.set("company", (resolvedCompanyId ?? companyQuery) as string);
+    const team = resolvedTeamId ?? teamQuery;
+    const company = resolvedCompanyId ?? companyQuery;
+    if (team) q.set("team", team);
+    if (company) q.set("company", company);
 
     const qs = q.toString();
     return `/login${qs ? `?${qs}` : ""}`;
   }, [inviteId, resolvedTeamId, resolvedCompanyId, teamQuery, companyQuery]);
 
-  // Load invite metadata via API
   useEffect(() => {
     let cancelled = false;
 
@@ -60,37 +58,27 @@ export default function AcceptInviteClient() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/crm/invite/accept?inviteId=${encodeURIComponent(inviteId)}`
+          `/api/crm/invite/accept?inviteId=${encodeURIComponent(inviteId)}`,
         );
-
-        let json: any = null;
-        try {
-          json = await res.json();
-        } catch {
-          json = null;
-        }
+        const json = (await res.json().catch(() => null)) as any;
 
         if (cancelled) return;
 
         if (!res.ok || !json) {
-          console.error("[accept-invite] load invite error", json ?? {});
           setError(
-            (json && json.error) ||
-              "This invitation could not be found or is no longer valid."
+            json?.error ||
+              "This invitation could not be found or is no longer valid.",
           );
-        } else {
-          setInviteEmail(json.email);
-          setEmail(json.email);
-          setOrgName(json.organizationName ?? null);
-          setResolvedTeamId(json.teamId ?? null);
-          setResolvedCompanyId(json.companyId ?? null);
-          // json.roles is available if you later want to show them
+          return;
         }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("[accept-invite] load error", err);
-          setError("Could not load invitation.");
-        }
+
+        setInviteEmail(json.email ?? "");
+        setEmail(json.email ?? "");
+        setOrgName(json.organizationName ?? null);
+        setResolvedTeamId(json.teamId ?? null);
+        setResolvedCompanyId(json.companyId ?? null);
+      } catch {
+        if (!cancelled) setError("Could not load invitation.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -101,26 +89,19 @@ export default function AcceptInviteClient() {
     };
   }, [inviteId]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!inviteId) {
-      setError("Missing invitation information in the link.");
-      return;
-    }
-
-    if (!firstName || !lastName || !email || !password) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
-    if (inviteEmail && inviteEmail.toLowerCase() !== email.toLowerCase()) {
-      setError("Email must match the one the invitation was sent to.");
-      return;
-    }
+    if (!inviteId)
+      return setError("Missing invitation information in the link.");
+    if (!firstName || !lastName || !email || !password)
+      return setError("Please fill in all fields.");
+    if (inviteEmail && inviteEmail.toLowerCase() !== email.toLowerCase())
+      return setError("Email must match the one the invitation was sent to.");
 
     setSubmitting(true);
+
     try {
       const res = await fetch("/api/crm/accept", {
         method: "POST",
@@ -134,18 +115,11 @@ export default function AcceptInviteClient() {
         }),
       });
 
-      let json: any = null;
-      try {
-        json = await res.json();
-      } catch {
-        json = null;
-      }
+      const json = (await res.json().catch(() => null)) as any;
 
       if (!res.ok || !json?.ok) {
-        console.error("[accept-invite] server error", json ?? {});
         setError(
-          (json && json.error) ||
-            "Failed to accept invitation. Please try again."
+          json?.error || "Failed to accept invitation. Please try again.",
         );
         return;
       }
@@ -154,37 +128,27 @@ export default function AcceptInviteClient() {
         json.teamId ?? resolvedTeamId ?? teamQuery;
 
       // Optional: sign the user in so they have a session right away
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        console.warn(
-          "[accept-invite] sign-in after creation failed; user may need to log in manually",
-          signInError
-        );
-      }
+      await supabase.auth
+        .signInWithPassword({ email, password })
+        .catch(() => null);
 
       setSuccessMode(true);
 
-      // progress bar animation + redirect
       let pct = 0;
       const interval = setInterval(() => {
-        pct += 5;
-        if (pct >= 100) {
-          pct = 100;
-          clearInterval(interval);
-          if (redirectTeamId) {
-            router.replace(`/dashboard?team=${encodeURIComponent(redirectTeamId)}`);
-          } else {
-            router.replace("/dashboard");
-          }
-        }
+        pct = Math.min(100, pct + 5);
         setProgress(pct);
-      }, 150); // ~3s total
-    } catch (err) {
-      console.error("[accept-invite] unexpected error", err);
+
+        if (pct >= 100) {
+          clearInterval(interval);
+          router.replace(
+            redirectTeamId
+              ? `/dashboard?team=${encodeURIComponent(redirectTeamId)}`
+              : "/dashboard",
+          );
+        }
+      }, 150);
+    } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
@@ -318,8 +282,6 @@ export default function AcceptInviteClient() {
   );
 }
 
-/* floating input */
-
 function FloatingInput({
   label,
   type,
@@ -335,12 +297,11 @@ function FloatingInput({
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
-  const inputType = isPassword && showPassword ? "text" : type;
 
   return (
     <div className="relative">
       <input
-        type={inputType}
+        type={isPassword && showPassword ? "text" : type}
         required={required}
         className="peer w-full rounded-xl border border-slate-300 px-3.5 pr-10 pt-5 pb-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-transparent"
         value={value}

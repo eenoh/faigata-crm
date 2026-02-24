@@ -14,6 +14,12 @@ type PostBody = {
   rates?: RatePayload[];
 };
 
+function clampPct(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
 async function loadStages(teamId: string) {
   const { data, error } = await supabaseAdmin
     .from("pipeline_stages")
@@ -25,7 +31,7 @@ async function loadStages(teamId: string) {
     throw new Error(error.message || "Failed to load pipeline stages");
   }
 
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
 
 async function loadConversionMetrics(teamId: string) {
@@ -39,12 +45,12 @@ async function loadConversionMetrics(teamId: string) {
   if (error) {
     console.error(
       "[PipelineConversionsAPI] loadConversionMetrics error",
-      error
+      error,
     );
     throw new Error(error.message || "Failed to load conversion metrics");
   }
 
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
 
 export async function POST(req: Request) {
@@ -54,13 +60,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const teamId = body.teamId;
+  const teamId = typeof body.teamId === "string" ? body.teamId.trim() : "";
   const action = body.action;
 
   if (!teamId || !action) {
     return NextResponse.json(
       { error: "Missing teamId or action" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -74,16 +80,14 @@ export async function POST(req: Request) {
 
       const stageIdToName = new Map<string, string>();
       for (const s of stages as any[]) {
-        stageIdToName.set(s.id, s.name);
+        stageIdToName.set(String(s.id), String(s.name ?? "Untitled"));
       }
 
-      const result: RatePayload[] = (metrics as any[]).map((m, index) => ({
-        fromStage: stageIdToName.get(m.from_stage_id) ?? "(deleted)",
-        toStage: stageIdToName.get(m.to_stage_id) ?? "(deleted)",
+      const result: RatePayload[] = (metrics as any[]).map((m) => ({
+        fromStage: stageIdToName.get(String(m.from_stage_id)) ?? "(deleted)",
+        toStage: stageIdToName.get(String(m.to_stage_id)) ?? "(deleted)",
         probability:
-          typeof m.target_rate === "number"
-            ? m.target_rate
-            : 0, // default if column missing or NULL
+          typeof m.target_rate === "number" ? clampPct(m.target_rate) : 0,
       }));
 
       return NextResponse.json(result);
@@ -94,58 +98,64 @@ export async function POST(req: Request) {
           error: "Failed to fetch pipeline conversion rates",
           details: err?.message ?? String(err),
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   }
 
   /* ---------- SAVE: overwrite conversion rates ---------- */
   if (action === "save") {
-    const rates = body.rates ?? [];
+    const rates = body.rates;
 
     if (!Array.isArray(rates) || rates.length === 0) {
-      return NextResponse.json(
-        { error: "No rates provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No rates provided" }, { status: 400 });
     }
 
     try {
       const stages = await loadStages(teamId);
-      const nameToStageId = new Map<string, string>();
 
+      // Build name -> stageId map (trim + case-sensitive as stored)
+      const nameToStageId = new Map<string, string>();
       for (const s of stages as any[]) {
-        nameToStageId.set(s.name, s.id);
+        const nm = String(s.name ?? "").trim();
+        if (!nm) continue;
+        nameToStageId.set(nm, String(s.id));
       }
 
       const rows = rates
         .map((r, index) => {
-          const fromId = nameToStageId.get(r.fromStage);
-          const toId = nameToStageId.get(r.toStage);
+          const fromName = String(r?.fromStage ?? "").trim();
+          const toName = String(r?.toStage ?? "").trim();
+          const fromId = nameToStageId.get(fromName);
+          const toId = nameToStageId.get(toName);
 
-          if (!fromId || !toId) {
+          if (!fromName || !toName || !fromId || !toId) {
             console.warn(
               "[PipelineConversionsAPI] Missing stage for rate",
-              r.fromStage,
-              r.toStage
+              fromName,
+              toName,
             );
             return null;
           }
 
           return {
             team_id: teamId,
-            label: `${r.fromStage} → ${r.toStage}`,
+            label: `${fromName} → ${toName}`,
             from_stage_id: fromId,
             to_stage_id: toId,
             // this column MUST exist in your DB for saving to work
-            target_rate: Math.max(
-              0,
-              Math.min(100, Number(r.probability) || 0)
-            ),
+            target_rate: clampPct(r?.probability),
             position: index,
           };
         })
         .filter(Boolean) as any[];
+
+      if (rows.length === 0) {
+        return NextResponse.json(
+          { error: "No valid rates provided" },
+          { status: 400 },
+        );
+      }
 
       // Simplest strategy: clear & reinsert
       const { error: deleteError } = await supabaseAdmin
@@ -156,14 +166,14 @@ export async function POST(req: Request) {
       if (deleteError) {
         console.error(
           "[PipelineConversionsAPI] Failed to clear old metrics",
-          deleteError
+          deleteError,
         );
         return NextResponse.json(
           {
             error: "Failed to save conversion rates (delete)",
             details: deleteError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -174,18 +184,18 @@ export async function POST(req: Request) {
       if (insertError) {
         console.error(
           "[PipelineConversionsAPI] Failed to insert metrics",
-          insertError
+          insertError,
         );
         return NextResponse.json(
           {
             error: "Failed to save conversion rates (insert)",
             details: insertError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, count: rows.length });
     } catch (err: any) {
       console.error("[PipelineConversionsAPI] SAVE failed", err);
       return NextResponse.json(
@@ -193,7 +203,7 @@ export async function POST(req: Request) {
           error: "Failed to save conversion rates",
           details: err?.message ?? String(err),
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   }

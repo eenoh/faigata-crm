@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function getTeamIdFromRequest(req: Request): string | null {
@@ -99,13 +100,20 @@ function splitSystemAndCustom(input: any) {
 function inferPrimaryContactType(
   primary_contact_type: any,
   primary_contact_value: any,
-  source_name: any
+  source_name: any,
 ): string | null {
   const pct = normalizeNullish(primary_contact_type);
   if (typeof pct === "string" && pct.trim() !== "") return pct;
 
-  const sn = normalizeNullish(source_name);
-  if (sn === "instagram" || sn === "facebook" || sn === "reddit" || sn === "twitter_x") return sn;
+  const snRaw = normalizeNullish(source_name);
+  const sn = typeof snRaw === "string" ? snRaw.trim().toLowerCase() : "";
+  if (
+    sn === "instagram" ||
+    sn === "facebook" ||
+    sn === "reddit" ||
+    sn === "twitter_x"
+  )
+    return sn;
 
   const vRaw = normalizeNullish(primary_contact_value);
   const v = typeof vRaw === "string" ? vRaw.trim().toLowerCase() : "";
@@ -152,14 +160,17 @@ export async function POST(req: Request) {
   const rawSystemFields: Record<string, any> = body.systemFields ?? {};
 
   // if someone accidentally put system keys into customValues, strip them
-  const { system: sysFromCustom, custom: safeCustomValues } = splitSystemAndCustom(rawCustomValues);
+  const { system: sysFromCustom, custom: safeCustomValues } =
+    splitSystemAndCustom(rawCustomValues);
 
   // explicit systemFields wins
   const system = { ...sysFromCustom, ...rawSystemFields };
 
   const prospectorId: string | null = body.prospectorId ?? null;
   const notes: string | null =
-    typeof body.notes === "string" && body.notes.trim() !== "" ? body.notes.trim() : null;
+    typeof body.notes === "string" && body.notes.trim() !== ""
+      ? body.notes.trim()
+      : null;
 
   if (!teamId) {
     return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
@@ -172,14 +183,17 @@ export async function POST(req: Request) {
   const primaryContactType = inferPrimaryContactType(
     (system as any).primary_contact_type,
     (system as any).primary_contact_value,
-    (system as any).source_name
+    (system as any).source_name,
   );
 
   // If still missing, fail fast with 400 (better than a 500 constraint error)
   if (!primaryContactType) {
     return NextResponse.json(
-      { error: "Missing primary_contact_type (required). Please select a Primary Contact Type." },
-      { status: 400 }
+      {
+        error:
+          "Missing primary_contact_type (required). Please select a Primary Contact Type.",
+      },
+      { status: 400 },
     );
   }
 
@@ -188,7 +202,10 @@ export async function POST(req: Request) {
   try {
     setterId = await assignSetterId(teamId, prospectorId);
   } catch (err) {
-    console.error("[LeadsAPI] assignSetterId failed – continuing without setter", err);
+    console.error(
+      "[LeadsAPI] assignSetterId failed – continuing without setter",
+      err,
+    );
     setterId = null;
   }
 
@@ -214,7 +231,9 @@ export async function POST(req: Request) {
 
     // ✅ never null (DB constraint)
     primary_contact_type: primaryContactType,
-    primary_contact_value: normalizeNullish((system as any).primary_contact_value),
+    primary_contact_value: normalizeNullish(
+      (system as any).primary_contact_value,
+    ),
 
     source_category: normalizeNullish((system as any).source_category),
     source_name: normalizeNullish((system as any).source_name),
@@ -225,13 +244,20 @@ export async function POST(req: Request) {
     notes,
   };
 
-  const { data, error } = await supabaseAdmin.from("leads").insert(insertPayload).select(LEAD_SELECT_COLUMNS).single();
+  const { data, error } = await supabaseAdmin
+    .from("leads")
+    .insert(insertPayload)
+    .select(LEAD_SELECT_COLUMNS)
+    .single();
 
   if (error || !data) {
     console.error("[LeadsAPI] Error creating lead", error);
     return NextResponse.json(
-      { error: error?.message ?? "Failed to create lead", details: error ?? null },
-      { status: 500 }
+      {
+        error: error?.message ?? "Failed to create lead",
+        details: error ?? null,
+      },
+      { status: 500 },
     );
   }
 
@@ -267,26 +293,31 @@ export async function POST(req: Request) {
         gender: (data as any).gender ?? null,
       };
 
-      const { error: msgErr } = await supabaseAdmin.from("lead_messages").insert({
-        team_id: teamId,
-        lead_id: createdLeadId,
+      const { error: msgErr } = await supabaseAdmin
+        .from("lead_messages")
+        .insert({
+          team_id: teamId,
+          lead_id: createdLeadId,
 
-        // required by your table
-        direction: "internal",
-        channel: "crm",
-        body: `Lead created${(data as any).lead_name ? `: ${(data as any).lead_name}` : ""}.`,
-        sender_profile_id: prospectorId, // nullable
-        user_id: prospectorId, // nullable
+          // required by your table
+          direction: "internal",
+          channel: "crm",
+          body: `Lead created${(data as any).lead_name ? `: ${(data as any).lead_name}` : ""}.`,
+          sender_profile_id: prospectorId, // nullable
+          user_id: prospectorId, // nullable
 
-        sent_at: nowISO,
-        created_at: nowISO,
+          sent_at: nowISO,
+          created_at: nowISO,
 
-        event_type,
-        event_data, // jsonb NOT NULL
-      });
+          event_type,
+          event_data, // jsonb NOT NULL
+        });
 
       if (msgErr) {
-        console.error("[LeadsAPI] lead_messages insert error (non-fatal):", msgErr);
+        console.error(
+          "[LeadsAPI] lead_messages insert error (non-fatal):",
+          msgErr,
+        );
       }
     }
   } catch (e) {
@@ -326,11 +357,19 @@ export async function GET(req: Request) {
   const id = getLeadIdFromRequest(req);
 
   if (id) {
-    const { data, error } = await supabaseAdmin.from("leads").select(LEAD_SELECT_COLUMNS).eq("team_id", teamId).eq("id", id).single();
+    const { data, error } = await supabaseAdmin
+      .from("leads")
+      .select(LEAD_SELECT_COLUMNS)
+      .eq("team_id", teamId)
+      .eq("id", id)
+      .single();
 
     if (error) {
       console.error("[LeadsAPI] Error fetching single lead", error);
-      return NextResponse.json({ error: error.message ?? "Failed to fetch lead", details: error }, { status: 500 });
+      return NextResponse.json(
+        { error: error.message ?? "Failed to fetch lead", details: error },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(data);
@@ -344,10 +383,15 @@ export async function GET(req: Request) {
 
   if (error) {
     console.error("[LeadsAPI] Error fetching leads", error);
-    return NextResponse.json({ error: error.message ?? "Failed to fetch leads", details: error }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message ?? "Failed to fetch leads", details: error },
+      { status: 500 },
+    );
   }
 
-  return NextResponse.json(data ?? []);
+  // ✅ avoids any TS “?? unreachable” setups by normalizing explicitly
+  const rows = Array.isArray(data) ? data : [];
+  return NextResponse.json(rows);
 }
 
 /* ---------- UPDATE lead ---------- */
@@ -360,7 +404,10 @@ export async function PATCH(req: Request) {
   const id: string | null = urlId ?? body.id ?? null;
 
   if (!teamId || !id) {
-    return NextResponse.json({ error: "Missing teamId or id" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing teamId or id" },
+      { status: 400 },
+    );
   }
 
   const updates = body.updates ?? body;
@@ -375,33 +422,50 @@ export async function PATCH(req: Request) {
 
   // customValues: strip system keys, but still apply them to real columns
   if (updates.customValues !== undefined) {
-    const { system: sysFromCustom, custom: safeCustomValues } = splitSystemAndCustom(updates.customValues);
+    const { system: sysFromCustom, custom: safeCustomValues } =
+      splitSystemAndCustom(updates.customValues);
 
     payload.custom_values = safeCustomValues;
 
     // apply system keys if present in customValues
-    if ("lead_name" in sysFromCustom) payload.lead_name = normalizeNullish(sysFromCustom.lead_name);
+    if ("lead_name" in sysFromCustom)
+      payload.lead_name = normalizeNullish(sysFromCustom.lead_name);
 
-    if ("niche" in sysFromCustom) payload.niche = normalizeNullish(sysFromCustom.niche);
-    if ("lead_type" in sysFromCustom) payload.lead_type = normalizeNullish(sysFromCustom.lead_type);
-    if ("gender" in sysFromCustom) payload.gender = normalizeNullish(sysFromCustom.gender);
+    if ("niche" in sysFromCustom)
+      payload.niche = normalizeNullish(sysFromCustom.niche);
+    if ("lead_type" in sysFromCustom)
+      payload.lead_type = normalizeNullish(sysFromCustom.lead_type);
+    if ("gender" in sysFromCustom)
+      payload.gender = normalizeNullish(sysFromCustom.gender);
 
-    if ("country" in sysFromCustom) payload.country = normalizeNullish(sysFromCustom.country);
-    if ("region" in sysFromCustom) payload.region = normalizeNullish(sysFromCustom.region);
-    if ("city" in sysFromCustom) payload.city = normalizeNullish(sysFromCustom.city);
-    if ("postal_code" in sysFromCustom) payload.postal_code = normalizeNullish(sysFromCustom.postal_code);
+    if ("country" in sysFromCustom)
+      payload.country = normalizeNullish(sysFromCustom.country);
+    if ("region" in sysFromCustom)
+      payload.region = normalizeNullish(sysFromCustom.region);
+    if ("city" in sysFromCustom)
+      payload.city = normalizeNullish(sysFromCustom.city);
+    if ("postal_code" in sysFromCustom)
+      payload.postal_code = normalizeNullish(sysFromCustom.postal_code);
 
     // ✅ Only update contact_type if provided. (Avoid overwriting with null.)
     if ("primary_contact_type" in sysFromCustom) {
-      const pct = inferPrimaryContactType(sysFromCustom.primary_contact_type, sysFromCustom.primary_contact_value, sysFromCustom.source_name);
+      const pct = inferPrimaryContactType(
+        sysFromCustom.primary_contact_type,
+        sysFromCustom.primary_contact_value,
+        sysFromCustom.source_name,
+      );
       if (pct) payload.primary_contact_type = pct;
     }
     if ("primary_contact_value" in sysFromCustom) {
-      payload.primary_contact_value = normalizeNullish(sysFromCustom.primary_contact_value);
+      payload.primary_contact_value = normalizeNullish(
+        sysFromCustom.primary_contact_value,
+      );
     }
 
-    if ("source_category" in sysFromCustom) payload.source_category = normalizeNullish(sysFromCustom.source_category);
-    if ("source_name" in sysFromCustom) payload.source_name = normalizeNullish(sysFromCustom.source_name);
+    if ("source_category" in sysFromCustom)
+      payload.source_category = normalizeNullish(sysFromCustom.source_category);
+    if ("source_name" in sysFromCustom)
+      payload.source_name = normalizeNullish(sysFromCustom.source_name);
 
     shouldRecomputeScore = true;
   }
@@ -419,26 +483,44 @@ export async function PATCH(req: Request) {
     if ("country" in sf) payload.country = normalizeNullish(sf.country);
     if ("region" in sf) payload.region = normalizeNullish(sf.region);
     if ("city" in sf) payload.city = normalizeNullish(sf.city);
-    if ("postal_code" in sf) payload.postal_code = normalizeNullish(sf.postal_code);
+    if ("postal_code" in sf)
+      payload.postal_code = normalizeNullish(sf.postal_code);
 
     // ✅ Only update contact_type if provided. (Avoid overwriting with null.)
-    if ("primary_contact_type" in sf || "primary_contact_value" in sf || "source_name" in sf) {
-      const pct = inferPrimaryContactType(sf.primary_contact_type, sf.primary_contact_value, sf.source_name);
+    if (
+      "primary_contact_type" in sf ||
+      "primary_contact_value" in sf ||
+      "source_name" in sf
+    ) {
+      const pct = inferPrimaryContactType(
+        sf.primary_contact_type,
+        sf.primary_contact_value,
+        sf.source_name,
+      );
       if (pct) payload.primary_contact_type = pct;
     }
-    if ("primary_contact_value" in sf) payload.primary_contact_value = normalizeNullish(sf.primary_contact_value);
+    if ("primary_contact_value" in sf)
+      payload.primary_contact_value = normalizeNullish(
+        sf.primary_contact_value,
+      );
 
-    if ("source_category" in sf) payload.source_category = normalizeNullish(sf.source_category);
-    if ("source_name" in sf) payload.source_name = normalizeNullish(sf.source_name);
+    if ("source_category" in sf)
+      payload.source_category = normalizeNullish(sf.source_category);
+    if ("source_name" in sf)
+      payload.source_name = normalizeNullish(sf.source_name);
 
     shouldRecomputeScore = true;
   }
 
-  if (updates.prospectorId !== undefined) payload.prospector_id = updates.prospectorId;
+  if (updates.prospectorId !== undefined)
+    payload.prospector_id = updates.prospectorId;
   if (updates.setterId !== undefined) payload.setter_id = updates.setterId;
   if (updates.closerId !== undefined) payload.closer_id = updates.closerId;
   if (updates.notes !== undefined) {
-    payload.notes = typeof updates.notes === "string" && updates.notes.trim() !== "" ? updates.notes.trim() : null;
+    payload.notes =
+      typeof updates.notes === "string" && updates.notes.trim() !== ""
+        ? updates.notes.trim()
+        : null;
   }
 
   payload.updated_at = new Date().toISOString();
@@ -454,8 +536,11 @@ export async function PATCH(req: Request) {
   if (error || !data) {
     console.error("[LeadsAPI] Error updating lead", error);
     return NextResponse.json(
-      { error: error?.message ?? "Failed to update lead", details: error ?? null },
-      { status: 500 }
+      {
+        error: error?.message ?? "Failed to update lead",
+        details: error ?? null,
+      },
+      { status: 500 },
     );
   }
 
@@ -491,14 +576,24 @@ export async function DELETE(req: Request) {
   const id: string | null = urlId ?? body.id ?? null;
 
   if (!teamId || !id) {
-    return NextResponse.json({ error: "Missing teamId or id" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing teamId or id" },
+      { status: 400 },
+    );
   }
 
-  const { error } = await supabaseAdmin.from("leads").delete().eq("team_id", teamId).eq("id", id);
+  const { error } = await supabaseAdmin
+    .from("leads")
+    .delete()
+    .eq("team_id", teamId)
+    .eq("id", id);
 
   if (error) {
     console.error("[LeadsAPI] Error deleting lead", error);
-    return NextResponse.json({ error: error.message ?? "Failed to delete lead", details: error }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message ?? "Failed to delete lead", details: error },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ ok: true });
@@ -516,7 +611,10 @@ export async function DELETE(req: Request) {
  *      (based on leads created this month).
  * 3) Otherwise → no setter assigned (null).
  */
-async function assignSetterId(teamId: string, prospectorId: string | null): Promise<string | null> {
+async function assignSetterId(
+  teamId: string,
+  prospectorId: string | null,
+): Promise<string | null> {
   if (!prospectorId) return null;
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -526,12 +624,17 @@ async function assignSetterId(teamId: string, prospectorId: string | null): Prom
     .single();
 
   if (profileError || !profile) {
-    console.error("[LeadsAPI] Failed to load profile for setter assignment", profileError);
+    console.error(
+      "[LeadsAPI] Failed to load profile for setter assignment",
+      profileError,
+    );
     return null;
   }
 
   // ✅ normalize roles (case-insensitive)
-  const rawRoles: string[] = Array.isArray((profile as any).role) ? (profile as any).role : [];
+  const rawRoles: string[] = Array.isArray((profile as any).role)
+    ? (profile as any).role
+    : [];
   const normRoles = rawRoles.map((r) => String(r).trim().toLowerCase());
 
   const isProspector = normRoles.includes("prospector");
@@ -554,7 +657,7 @@ async function assignSetterId(teamId: string, prospectorId: string | null): Prom
     return null;
   }
 
-  const setterIds = (teamProfiles ?? [])
+  const setterIds = (Array.isArray(teamProfiles) ? teamProfiles : [])
     .map((p: any) => {
       const roles: string[] = Array.isArray(p.role) ? p.role : [];
       const norm = roles.map((r) => String(r).trim().toLowerCase());
@@ -566,7 +669,9 @@ async function assignSetterId(teamId: string, prospectorId: string | null): Prom
 
   // Balance using leads created this month
   const now = new Date();
-  const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const firstOfMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
 
   const { data: leadsThisMonth, error: leadsError } = await supabaseAdmin
     .from("leads")
@@ -576,14 +681,17 @@ async function assignSetterId(teamId: string, prospectorId: string | null): Prom
     .gte("created_at", firstOfMonth.toISOString());
 
   if (leadsError) {
-    console.error("[LeadsAPI] Failed to load leads for setter balancing", leadsError);
+    console.error(
+      "[LeadsAPI] Failed to load leads for setter balancing",
+      leadsError,
+    );
     return setterIds[0] ?? null;
   }
 
   const counts: Record<string, number> = {};
   setterIds.forEach((id) => (counts[id] = 0));
 
-  for (const row of leadsThisMonth ?? []) {
+  for (const row of Array.isArray(leadsThisMonth) ? leadsThisMonth : []) {
     const sid = (row as any).setter_id as string | null;
     if (!sid) continue;
     counts[sid] = (counts[sid] ?? 0) + 1;

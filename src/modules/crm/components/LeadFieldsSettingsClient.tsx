@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getLeadFieldDefinitions,
   saveLeadFieldDefinitions,
@@ -11,7 +11,13 @@ import type {
 } from "@/modules/crm/types/lead";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
-const fieldTypes: CustomFieldType[] = ["text", "number", "select", "boolean", "link"];
+const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "select", label: "Dropdown" },
+  { value: "boolean", label: "Checkbox" },
+  { value: "link", label: "Link (URL)" },
+];
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -21,10 +27,68 @@ type SystemField = {
   note?: string;
 };
 
+const REQUIRED_SYSTEM_FIELDS: SystemField[] = [
+  { label: "Lead Name", required: true, note: "Required on every lead." },
+  {
+    label: "Niche / Industry",
+    required: true,
+    note: "Helps you segment and route leads.",
+  },
+  {
+    label: "Lead Type",
+    required: true,
+    note: "Choose whether this lead is an Individual or a Business.",
+  },
+  {
+    label: "Gender",
+    required: true,
+    note: "Only required when Lead Type is Individual.",
+  },
+  {
+    label: "Country",
+    required: true,
+    note: "Supports territory assignment, reporting, and location-based filtering.",
+  },
+  {
+    label: "State / Region",
+    required: true,
+    note: "Improves routing accuracy and makes filtering more precise.",
+  },
+  {
+    label: "City",
+    required: true,
+    note: "Useful for local targeting, territory views, and cleaner lists.",
+  },
+  {
+    label: "ZIP / Postal Code",
+    required: false,
+    note: "Optional—helpful for service areas and hyper-local targeting.",
+  },
+  {
+    label: "Primary Contact Type",
+    required: true,
+    note: "How you’ll reach them (email, phone, or a social profile).",
+  },
+  {
+    label: "Primary Contact Value",
+    required: true,
+    note: "The actual email, phone number, or profile link.",
+  },
+  {
+    label: "Source Category",
+    required: true,
+    note: "How the lead came in (Inbound, Outbound, Referral, Partner, Purchased).",
+  },
+  {
+    label: "Source Name",
+    required: true,
+    note: "Where it came from (Instagram, Facebook, Reddit, Twitter/X, etc.).",
+  },
+];
+
 /**
  * IMPORTANT:
  * These are system/core keys that must NEVER appear in lead_fields.custom key space
- * because they are real columns on `leads` and used as table column keys in UI.
  */
 const RESERVED_SYSTEM_KEYS = new Set<string>([
   "id",
@@ -39,8 +103,6 @@ const RESERVED_SYSTEM_KEYS = new Set<string>([
   "score",
   "score_updated_at",
   "notes",
-
-  // core fields / columns in your Leads table:
   "niche",
   "lead_type",
   "gender",
@@ -52,16 +114,14 @@ const RESERVED_SYSTEM_KEYS = new Set<string>([
   "primary_contact_value",
   "source_category",
   "source_name",
-
-  // also block these to avoid common collisions:
   "__score",
   "__stage",
   "__lead_name",
   "__location",
 ]);
 
-function normalizeKeyCandidate(s: string) {
-  return (s || "")
+function normalizeKeyCandidate(s: unknown) {
+  return String(s ?? "")
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "_")
@@ -69,23 +129,18 @@ function normalizeKeyCandidate(s: string) {
 }
 
 function nextFieldKey(existing: LeadFieldDefinition[]) {
-  // pick the next integer after the max `field_N`
   let max = 0;
   for (const f of existing) {
-    const k = String(f.key ?? "");
-    const m = /^field_(\d+)$/.exec(k);
-    if (m) {
-      const n = Number(m[1]);
-      if (!Number.isNaN(n)) max = Math.max(max, n);
-    }
+    const m = /^field_(\d+)$/.exec(String(f.key ?? ""));
+    if (!m) continue;
+    const n = Number(m[1]);
+    if (!Number.isNaN(n)) max = Math.max(max, n);
   }
   return `field_${max + 1}`;
 }
 
 function makeTempId() {
-  // Doesn’t change UI; only used to satisfy required typing for new rows before save.
   try {
-    // modern browsers
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const uuid = (globalThis as any)?.crypto?.randomUUID?.();
     if (uuid) return `tmp_${uuid}`;
@@ -95,78 +150,26 @@ function makeTempId() {
   return `tmp_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 }
 
+function parseCsvOptions(raw: string) {
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function LeadFieldsSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
+
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [selectInputs, setSelectInputs] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // ---- Locked system fields ----
-  const REQUIRED_SYSTEM_FIELDS: SystemField[] = useMemo(
-    () => [
-      { label: "Lead Name", required: true, note: "Required on every lead." },
-      {
-        label: "Niche / Industry",
-        required: true,
-        note: "Helps you segment and route leads.",
-      },
-      {
-        label: "Lead Type",
-        required: true,
-        note: "Choose whether this lead is an Individual or a Business.",
-      },
-      {
-        label: "Gender",
-        required: true,
-        note: "Only required when Lead Type is Individual.",
-      },
-      {
-        label: "Country",
-        required: true,
-        note: "Supports territory assignment, reporting, and location-based filtering.",
-      },
-      {
-        label: "State / Region",
-        required: true,
-        note: "Improves routing accuracy and makes filtering more precise.",
-      },
-      {
-        label: "City",
-        required: true,
-        note: "Useful for local targeting, territory views, and cleaner lists.",
-      },
-      {
-        label: "ZIP / Postal Code",
-        required: false,
-        note: "Optional—helpful for service areas and hyper-local targeting.",
-      },
-      {
-        label: "Primary Contact Type",
-        required: true,
-        note: "How you’ll reach them (email, phone, or a social profile).",
-      },
-      {
-        label: "Primary Contact Value",
-        required: true,
-        note: "The actual email, phone number, or profile link.",
-      },
-      {
-        label: "Source Category",
-        required: true,
-        note: "How the lead came in (Inbound, Outbound, Referral, Partner, Purchased).",
-      },
-      {
-        label: "Source Name",
-        required: true,
-        note: "Where it came from (Instagram, Facebook, Reddit, Twitter/X, etc.).",
-      },
-    ],
-    []
-  );
+  const markDirty = () => {
+    setSaveState("idle");
+    setErrorMessage(null);
+  };
 
-  // Load user-defined fields on mount (async)
   useEffect(() => {
     let cancelled = false;
 
@@ -174,7 +177,6 @@ export function LeadFieldsSettingsClient() {
       if (workspaceLoading) return;
 
       if (!teamId) {
-        console.warn("No teamId from workspace context, cannot load lead fields");
         setLoading(false);
         return;
       }
@@ -182,18 +184,20 @@ export function LeadFieldsSettingsClient() {
       try {
         const stored = await getLeadFieldDefinitions(teamId);
 
-        // Safety: filter out any stored fields that collide with system keys
         const safe = (stored ?? []).filter((f) => {
-          const k = normalizeKeyCandidate(String(f.key ?? ""));
+          const k = normalizeKeyCandidate(f.key);
           return k && !RESERVED_SYSTEM_KEYS.has(k);
         });
 
         if (!cancelled) setFields(safe as LeadFieldDefinition[]);
       } catch (err) {
-        console.error("Failed to load lead fields", err);
-        if (!cancelled) setFields([]);
-        if (!cancelled)
-          setErrorMessage("We couldn’t load your field configuration. Please try again.");
+        console.error("[LeadFields] load failed", err);
+        if (!cancelled) {
+          setFields([]);
+          setErrorMessage(
+            "We couldn’t load your field configuration. Please try again.",
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -205,47 +209,39 @@ export function LeadFieldsSettingsClient() {
   }, [teamId, workspaceLoading]);
 
   function addField() {
-    // team_id is required by LeadFieldDefinition typing
     if (!teamId) return;
 
-    setFields((prev) => {
-      const key = nextFieldKey(prev);
-      const next: LeadFieldDefinition = {
-        // ✅ satisfy required fields for typing
+    setFields((prev) => [
+      ...prev,
+      {
         id: makeTempId(),
         team_id: teamId,
-
-        key,
+        key: nextFieldKey(prev),
         label: "New field",
         type: "text",
-      } as LeadFieldDefinition;
+      } as LeadFieldDefinition,
+    ]);
 
-      return [...prev, next];
-    });
-
-    setSaveState("idle");
-    setErrorMessage(null);
+    markDirty();
   }
 
   function updateField(index: number, patch: Partial<LeadFieldDefinition>) {
-    setFields((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], ...patch };
-      return copy;
-    });
-    setSaveState("idle");
-    setErrorMessage(null);
+    setFields((prev) =>
+      prev.map((f, i) => (i === index ? { ...f, ...patch } : f)),
+    );
+    markDirty();
   }
 
   function removeField(index: number) {
     setFields((prev) => prev.filter((_, i) => i !== index));
-    setSaveState("idle");
-    setErrorMessage(null);
+    markDirty();
   }
 
   async function handleSave() {
     if (!teamId) {
-      setErrorMessage("Missing team. This page must be opened from within your workspace.");
+      setErrorMessage(
+        "Missing team. This page must be opened from within your workspace.",
+      );
       return;
     }
 
@@ -253,61 +249,61 @@ export function LeadFieldsSettingsClient() {
     setErrorMessage(null);
 
     try {
-      // ✅ normalize keys (but DO NOT derive them from labels)
-      const normalized: LeadFieldDefinition[] = fields
+      const normalized = fields
         .map((f) => {
-          const keyRaw = String(f.key ?? "").trim();
-          const key = normalizeKeyCandidate(keyRaw);
-
+          const key = normalizeKeyCandidate(f.key);
           return {
             ...f,
-            team_id: f.team_id ?? teamId, // keep safe if a temp row existed
+            team_id: f.team_id ?? teamId,
             key,
             label: String(f.label ?? "").trim() || "Untitled",
+            options:
+              f.type === "select"
+                ? Array.isArray((f as any).options)
+                  ? (f as any).options
+                  : []
+                : undefined,
           };
         })
         .filter((f) => Boolean(f.key));
 
-      // ✅ validate collisions
       const seen = new Set<string>();
-      const deduped: LeadFieldDefinition[] = [];
-
       for (const f of normalized) {
         const k = String(f.key);
 
-        if (!k) continue;
-
         if (RESERVED_SYSTEM_KEYS.has(k)) {
-          throw new Error(`Field key "${k}" conflicts with a system field. Please regenerate it.`);
+          throw new Error(
+            `Field key "${k}" conflicts with a system field. Please regenerate it.`,
+          );
         }
-
         if (seen.has(k)) {
           throw new Error(`Duplicate field key "${k}". Keys must be unique.`);
         }
-
         seen.add(k);
-        deduped.push(f);
       }
 
-      await saveLeadFieldDefinitions(teamId, deduped);
-      setFields(deduped);
+      await saveLeadFieldDefinitions(
+        teamId,
+        normalized as LeadFieldDefinition[],
+      );
+      setFields(normalized as LeadFieldDefinition[]);
       setSaveState("saved");
     } catch (err: any) {
-      console.error("Error while saving lead fields", err);
+      console.error("[LeadFields] save failed", err);
       setSaveState("error");
-      setErrorMessage(err?.message || "Saving your fields failed. Please try again.");
+      setErrorMessage(
+        err?.message || "Saving your fields failed. Please try again.",
+      );
     }
   }
-
-  /* ---------- States for loading / missing team ---------- */
 
   if (!teamId && !workspaceLoading) {
     return (
       <div className="max-w-xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
         <p className="font-medium">No team available</p>
         <p className="mt-1">
-          We couldn’t determine your team. Please open this page from within your workspace or
-          contact support.
+          We couldn’t determine your team. Please open this page from within
+          your workspace or contact support.
         </p>
       </div>
     );
@@ -320,20 +316,14 @@ export function LeadFieldsSettingsClient() {
           <div className="h-6 w-40 rounded bg-slate-100 animate-pulse" />
           <div className="mt-3 h-4 w-3/4 rounded bg-slate-100 animate-pulse" />
         </div>
-
         <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="h-4 w-48 rounded bg-slate-100 animate-pulse" />
-            <div className="h-6 w-16 rounded-full bg-slate-100 animate-pulse" />
-          </div>
-
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
-                  <div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" />
-                </div>
+              <div
+                key={i}
+                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+              >
+                <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
                 <div className="mt-2 h-3 w-5/6 rounded bg-slate-100 animate-pulse" />
               </div>
             ))}
@@ -343,33 +333,29 @@ export function LeadFieldsSettingsClient() {
     );
   }
 
-  /* ---------- Main UI ---------- */
-
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Lead Fields</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Core fields are required for every lead. Add extra fields below if you want your team to
-            capture more context—like budget, timeline, deal size, or anything specific to your
-            workflow.
-          </p>
-        </div>
+      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
+        <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
+          Lead Fields
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Core fields are required for every lead. Add extra fields below if you
+          want your team to capture more context.
+        </p>
       </div>
 
-      {/* Required system fields */}
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Required system fields</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Required system fields
+            </h2>
             <p className="mt-1 text-sm text-slate-600">
-              These core fields keep your leads consistent and make filtering reliable across your
-              workspace. They’re always available and can’t be turned off.
+              These core fields keep your leads consistent and make filtering
+              reliable across your workspace.
             </p>
           </div>
-
           <span className="text-[11px] rounded-full bg-slate-100 px-2 py-1 text-slate-600">
             Locked
           </span>
@@ -377,9 +363,14 @@ export function LeadFieldsSettingsClient() {
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {REQUIRED_SYSTEM_FIELDS.map((f) => (
-            <div key={f.label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+            <div
+              key={f.label}
+              className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+            >
               <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900">{f.label}</div>
+                <div className="text-sm font-medium text-slate-900">
+                  {f.label}
+                </div>
                 <span
                   className={`text-[10px] rounded-full px-2 py-0.5 ${
                     f.required
@@ -390,14 +381,14 @@ export function LeadFieldsSettingsClient() {
                   {f.required ? "Required" : "Optional"}
                 </span>
               </div>
-
-              {f.note && <div className="mt-1 text-[11px] text-slate-500">{f.note}</div>}
+              {f.note && (
+                <div className="mt-1 text-[11px] text-slate-500">{f.note}</div>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Errors / status */}
       {(errorMessage || saveState === "saved") && (
         <div className="space-y-2">
           {errorMessage && (
@@ -407,126 +398,123 @@ export function LeadFieldsSettingsClient() {
           )}
           {saveState === "saved" && !errorMessage && (
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
-              <span>✅ Changes saved</span>
+              ✅ Changes saved
             </div>
           )}
         </div>
       )}
 
-      {/* Custom fields */}
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Custom fields</h2>
-            <p className="mt-1 text-sm text-slate-600">Add optional fields your team wants to track.</p>
-          </div>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Custom fields
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Add optional fields your team wants to track.
+          </p>
         </div>
 
         <div className="mt-4 space-y-3">
           {fields.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-              <p className="font-medium text-slate-700">No custom fields yet.</p>
+              <p className="font-medium text-slate-700">
+                No custom fields yet.
+              </p>
               <p className="mt-1">
-                Add fields like <span className="font-semibold">Budget, Timeline, Lead Score</span>, etc.
+                Add fields like{" "}
+                <span className="font-semibold">
+                  Budget, Timeline, Deal size
+                </span>
+                , etc.
               </p>
             </div>
           )}
 
-          {fields.map((field, index) => (
-            <div
-              key={field.key ?? index}
-              className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm flex flex-col gap-2"
-            >
-              <div className="flex items-start gap-2">
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      value={field.label}
-                      onChange={(e) => updateField(index, { label: e.target.value })}
-                      placeholder="Label (e.g. Budget)"
-                    />
+          {fields.map((field, index) => {
+            const options = Array.isArray((field as any).options)
+              ? ((field as any).options as string[])
+              : [];
+            const optionsCsv = options.join(", ");
 
-                    <select
-                      className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                      value={field.type}
-                      onChange={(e) => updateField(index, { type: e.target.value as CustomFieldType })}
-                    >
-                      {fieldTypes.map((t) => (
-                        <option key={t} value={t}>
-                          {t === "text"
-                            ? "Text"
-                            : t === "number"
-                            ? "Number"
-                            : t === "select"
-                            ? "Dropdown"
-                            : t === "boolean"
-                            ? "Checkbox"
-                            : "Link (URL)"}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => removeField(index)}
-                      className="text-[11px] text-slate-400 hover:text-rose-600 cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {field.type === "select" && (
-                <div className="mt-1 space-y-2">
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Dropdown options
-                  </label>
-
+            return (
+              <div
+                key={field.id ?? `${field.key}_${index}`}
+                className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm flex flex-col gap-2"
+              >
+                <div className="flex gap-2">
                   <input
-                    type="text"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={
-                      selectInputs[field.key ?? String(index)] ??
-                      (Array.isArray((field as any).options) ? ((field as any).options as string[]).join(", ") : "")
+                    className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={field.label ?? ""}
+                    onChange={(e) =>
+                      updateField(index, { label: e.target.value })
                     }
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const fieldKey = field.key ?? String(index);
-
-                      setSelectInputs((prev) => ({ ...prev, [fieldKey]: raw }));
-
-                      const parsed = raw
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-
-                      updateField(index, { options: parsed } as Partial<LeadFieldDefinition>);
-                    }}
-                    placeholder="e.g. Small, Medium, Enterprise"
+                    placeholder="Label (e.g. Budget)"
                   />
 
-                  {Array.isArray((field as any).options) && ((field as any).options as string[]).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {((field as any).options as string[]).map((opt: string) => (
-                        <span
-                          key={opt}
-                          className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
-                        >
-                          {opt}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <select
+                    className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    value={field.type}
+                    onChange={(e) =>
+                      updateField(index, {
+                        type: e.target.value as CustomFieldType,
+                        options: [],
+                      } as any)
+                    }
+                  >
+                    {FIELD_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => removeField(index)}
+                    className="text-[11px] text-slate-400 hover:text-rose-600 cursor-pointer"
+                  >
+                    Remove
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {field.type === "select" && (
+                  <div className="mt-1 space-y-2">
+                    <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Dropdown options
+                    </label>
+
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={optionsCsv}
+                      onChange={(e) =>
+                        updateField(index, {
+                          options: parseCsvOptions(e.target.value),
+                        } as Partial<LeadFieldDefinition>)
+                      }
+                      placeholder="e.g. Small, Medium, Enterprise"
+                    />
+
+                    {options.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {options.map((opt) => (
+                          <span
+                            key={opt}
+                            className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                          >
+                            {opt}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="button"
@@ -545,7 +533,11 @@ export function LeadFieldsSettingsClient() {
           {saveState === "saving" ? "Saving…" : "Save Changes"}
         </button>
 
-        {saveState === "idle" && <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>}
+        {saveState === "idle" && (
+          <span className="text-xs text-slate-400">
+            Don’t forget to save your changes.
+          </span>
+        )}
       </div>
     </div>
   );

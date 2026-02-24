@@ -1,49 +1,62 @@
 // src/modules/crm/data/leadFields.ts
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 
-export async function getLeadFieldDefinitions(
-  teamId: string
-): Promise<LeadFieldDefinition[]> {
-  const res = await fetch("/api/crm/lead-fields", {
+const ENDPOINT = "/api/crm/lead-fields";
+
+async function postJSON<T>(
+  body: unknown,
+  { errMsg, requireJSON = true }: { errMsg: string; requireJSON?: boolean },
+): Promise<T> {
+  const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ teamId }),
+    body: JSON.stringify(body),
   });
 
   const contentType = res.headers.get("content-type") ?? "";
 
-  // If the response is not OK, log the body (might be HTML error page)
   if (!res.ok) {
     const text = await res.text();
     console.error(
-      "[leadFields] Failed to fetch lead fields",
+      "[leadFields]",
+      errMsg,
       res.status,
       contentType,
-      text.slice(0, 400)
+      text.slice(0, 400),
     );
-    throw new Error("Failed to fetch lead fields");
+    throw new Error(errMsg);
   }
 
-  // If it's not JSON, also log & bail (prevents `Unexpected token '<'`)
+  if (!requireJSON) return undefined as T;
+
   if (!contentType.includes("application/json")) {
     const text = await res.text();
     console.error(
       "[leadFields] API returned non-JSON",
       res.status,
       contentType,
-      text.slice(0, 400)
+      text.slice(0, 400),
     );
     throw new Error("Lead fields API did not return JSON");
   }
 
-  const data = (await res.json()) as LeadFieldDefinition[];
+  return (await res.json()) as T;
+}
+
+export async function getLeadFieldDefinitions(
+  teamId: string,
+): Promise<LeadFieldDefinition[]> {
+  const data = await postJSON<LeadFieldDefinition[]>(
+    { teamId },
+    { errMsg: "Failed to fetch lead fields", requireJSON: true },
+  );
   return data ?? [];
 }
 
 export async function saveLeadFieldDefinitions(
   teamId: string,
-  fields: LeadFieldDefinition[]
+  fields: LeadFieldDefinition[],
 ): Promise<void> {
   const payload = {
     teamId,
@@ -51,29 +64,12 @@ export async function saveLeadFieldDefinitions(
       key: f.key,
       label: f.label,
       type: f.type,
-      options: f.type === "select" ? f.options ?? [] : [],
+      options: f.type === "select" ? (f.options ?? []) : [],
     })),
   };
 
-  const res = await fetch("/api/crm/lead-fields", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify(payload),
+  await postJSON<void>(payload, {
+    errMsg: "Failed to save lead fields",
+    requireJSON: false,
   });
-
-  const contentType = res.headers.get("content-type") ?? "";
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(
-      "[leadFields] Failed to save lead fields",
-      res.status,
-      contentType,
-      text.slice(0, 400)
-    );
-    throw new Error("Failed to save lead fields");
-  }
-
-  // we don't actually need the response body here, so no res.json() at all
 }

@@ -95,7 +95,9 @@ function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
         <div className="border-b border-slate-200 bg-slate-100 px-4 py-2">
           <div
             className="grid gap-4"
-            style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+            style={{
+              gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
+            }}
           >
             {Array.from({ length: Math.max(0, colCount - 1) }).map((_, i) => (
               <div
@@ -126,7 +128,7 @@ function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
                       key={cIdx}
                       className="h-4 w-full max-w-[220px] rounded bg-slate-200/70 animate-pulse"
                     />
-                  )
+                  ),
                 )}
 
                 <div className="justify-self-start">
@@ -197,7 +199,7 @@ function contactHref(type: LeadContactType, value: string) {
 function deriveLeadName(
   leadNameCol: string | null | undefined,
   customValues: Record<string, any>,
-  stage: string
+  stage: string,
 ) {
   const directCol = String(leadNameCol ?? "").trim();
   if (directCol) return directCol;
@@ -215,7 +217,9 @@ function deriveLeadName(
     "account",
     "email",
   ];
-  const entries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v] as const);
+  const entries = Object.entries(cv).map(
+    ([k, v]) => [k.toLowerCase(), v] as const,
+  );
 
   for (const pref of preferredKeys) {
     const match = entries.find(
@@ -223,13 +227,13 @@ function deriveLeadName(
         key.includes(pref) &&
         value !== null &&
         value !== undefined &&
-        String(value).trim() !== ""
+        String(value).trim() !== "",
     );
     if (match) return String(match[1]).trim();
   }
 
   const anyField = entries.find(
-    ([, v]) => v !== null && v !== undefined && String(v).trim() !== ""
+    ([, v]) => v !== null && v !== undefined && String(v).trim() !== "",
   );
   if (anyField) return String(anyField[1]).trim();
 
@@ -266,7 +270,13 @@ function normalizeKey(s: unknown) {
 
 /* -------------------- pill UI -------------------- */
 
-function GrayPill({ children, title }: { children: React.ReactNode; title?: string }) {
+function GrayPill({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title?: string;
+}) {
   return (
     <span
       title={title}
@@ -322,7 +332,8 @@ export function LeadsClient() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           console.warn("[Leads] No authenticated user", userError);
@@ -362,7 +373,8 @@ export function LeadsClient() {
         const normRoles = roles.map((r) => String(r).trim().toLowerCase());
 
         const isProspector = normRoles.includes("prospector");
-        const managerOrAdmin = normRoles.includes("manager") || normRoles.includes("admin");
+        const managerOrAdmin =
+          normRoles.includes("manager") || normRoles.includes("admin");
 
         if (!cancelled) {
           setTeamId(tId);
@@ -402,35 +414,42 @@ export function LeadsClient() {
       try {
         setLoading(true);
 
-        const [fieldDefs, stageDefs, leadsRes, scoringConfig] = await Promise.all([
-          getLeadFieldDefinitions(teamId),
-          getPipelineStages(teamId),
-          (async () => {
-            const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`);
-            if (!res.ok) {
-              const text = await res.text();
-              console.error("[Leads] Failed to load leads", res.status, text.slice(0, 200));
-              throw new Error("Failed to load leads");
-            }
-            return (await res.json()) as any[];
-          })(),
-          (async (): Promise<ScoreThresholds | null> => {
-            const res = await fetch("/api/crm/lead-scoring-config", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ teamId, action: "get" }),
-            });
+        const [fieldDefs, stageDefs, leadsRes, scoringConfig] =
+          await Promise.all([
+            getLeadFieldDefinitions(teamId),
+            getPipelineStages(teamId),
+            (async () => {
+              const res = await fetch(
+                `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`,
+              );
+              if (!res.ok) {
+                const text = await res.text();
+                console.error(
+                  "[Leads] Failed to load leads",
+                  res.status,
+                  text.slice(0, 200),
+                );
+                throw new Error("Failed to load leads");
+              }
+              return (await res.json()) as any[];
+            })(),
+            (async (): Promise<ScoreThresholds | null> => {
+              const res = await fetch("/api/crm/lead-scoring-config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teamId, action: "get" }),
+              });
 
-            const ct = res.headers.get("content-type") ?? "";
-            if (!res.ok || !ct.includes("application/json")) return null;
+              const ct = res.headers.get("content-type") ?? "";
+              if (!res.ok || !ct.includes("application/json")) return null;
 
-            const json = await res.json();
-            const low = Number(json.thresholds?.low);
-            const high = Number(json.thresholds?.high);
-            if (Number.isNaN(low) || Number.isNaN(high)) return null;
-            return { low, high };
-          })(),
-        ]);
+              const json = await res.json();
+              const low = Number(json.thresholds?.low);
+              const high = Number(json.thresholds?.high);
+              if (Number.isNaN(low) || Number.isNaN(high)) return null;
+              return { low, high };
+            })(),
+          ]);
 
         if (cancelled) return;
 
@@ -451,7 +470,10 @@ export function LeadsClient() {
           (leadsRes ?? []).map((l) => {
             const cv = (l.custom_values ?? {}) as Record<string, any>;
 
-            const pick = <T,>(colVal: T | null | undefined, ...cvKeys: string[]) => {
+            const pick = <T,>(
+              colVal: T | null | undefined,
+              ...cvKeys: string[]
+            ) => {
               if (
                 colVal !== null &&
                 colVal !== undefined &&
@@ -460,7 +482,8 @@ export function LeadsClient() {
                 return colVal;
               for (const k of cvKeys) {
                 const v = cv?.[k];
-                if (v !== null && v !== undefined && String(v).trim() !== "") return v as T;
+                if (v !== null && v !== undefined && String(v).trim() !== "")
+                  return v as T;
               }
               return null;
             };
@@ -476,34 +499,53 @@ export function LeadsClient() {
               score: l.score ?? null,
 
               niche: pick<string>(l.niche ?? null, "niche", "industry"),
-              lead_type: pick<"individual" | "business">(l.lead_type ?? null, "lead_type"),
+              lead_type: pick<"individual" | "business">(
+                l.lead_type ?? null,
+                "lead_type",
+              ),
               gender: pick<"male" | "female">(l.gender ?? null, "gender"),
 
               country: pick<string>(l.country ?? null, "country"),
-              region: pick<string>(l.region ?? null, "region", "state", "province"),
+              region: pick<string>(
+                l.region ?? null,
+                "region",
+                "state",
+                "province",
+              ),
               city: pick<string>(l.city ?? null, "city"),
-              postal_code: pick<string>(l.postal_code ?? null, "postal_code", "zip", "zip_code"),
+              postal_code: pick<string>(
+                l.postal_code ?? null,
+                "postal_code",
+                "zip",
+                "zip_code",
+              ),
 
               primary_contact_type: pick<LeadContactType>(
                 l.primary_contact_type ?? null,
                 "primary_contact_type",
-                "contact_type"
+                "contact_type",
               ),
               primary_contact_value: pick<string>(
                 l.primary_contact_value ?? null,
                 "primary_contact_value",
                 "primary_contact",
-                "contact"
+                "contact",
               ),
 
-              source_category: pick<LeadSourceCategory>(l.source_category ?? null, "source_category"),
-              source_name: pick<LeadSourceName>(l.source_name ?? null, "source_name"),
+              source_category: pick<LeadSourceCategory>(
+                l.source_category ?? null,
+                "source_category",
+              ),
+              source_name: pick<LeadSourceName>(
+                l.source_name ?? null,
+                "source_name",
+              ),
 
               prospector_id: l.prospector_id ?? null,
               setter_id: l.setter_id ?? null,
               closer_id: l.closer_id ?? null,
             } as LeadRow;
-          })
+          }),
         );
 
         setThresholds(scoringConfig);
@@ -525,7 +567,12 @@ export function LeadsClient() {
   type TableCol =
     | { kind: "score"; key: "__score"; label: string }
     | { kind: "core"; key: string; label: string }
-    | { kind: "custom"; key: string; label: string; type: LeadFieldDefinition["type"] }
+    | {
+        kind: "custom";
+        key: string;
+        label: string;
+        type: LeadFieldDefinition["type"];
+      }
     | { kind: "stage"; key: "__stage"; label: string };
 
   const columns: TableCol[] = useMemo(() => {
@@ -542,7 +589,11 @@ export function LeadsClient() {
       { kind: "core", key: "country", label: "Country" },
       { kind: "core", key: "postal_code", label: "Postal Code" },
 
-      { kind: "core", key: "primary_contact_type", label: "Primary Contact Type" },
+      {
+        kind: "core",
+        key: "primary_contact_type",
+        label: "Primary Contact Type",
+      },
       { kind: "core", key: "primary_contact_value", label: "Primary Contact" },
       { kind: "core", key: "source_category", label: "Source Category" },
       { kind: "core", key: "source_name", label: "Source Name" },
@@ -579,15 +630,32 @@ export function LeadsClient() {
       (l) =>
         l.prospector_id === currentUserId ||
         l.setter_id === currentUserId ||
-        l.closer_id === currentUserId
+        l.closer_id === currentUserId,
     );
   }, [leads, currentUserId, isManagerOrAdmin]);
+
+  const normalizedCustomValues = useMemo(() => {
+    return (leads ?? []).reduce(
+      (acc, lead) => {
+        const cv = lead.customValues ?? {};
+        const norm: Record<string, any> = {};
+        for (const [k, v] of Object.entries(cv)) norm[normalizeKey(k)] = v;
+        acc[lead.id] = norm;
+        return acc;
+      },
+      {} as Record<string, Record<string, any>>,
+    );
+  }, [leads]);
 
   const filteredLeads = useMemo(() => {
     if (!query) return visibleLeads;
 
     return visibleLeads.filter((lead) => {
-      const leadName = deriveLeadName(lead.lead_name, lead.customValues ?? {}, lead.stage || "");
+      const leadName = deriveLeadName(
+        lead.lead_name,
+        lead.customValues ?? {},
+        lead.stage || "",
+      );
       const coreHaystack = [
         leadName,
         lead.stage,
@@ -627,12 +695,11 @@ export function LeadsClient() {
 
   // widths match the sticky right offsets
   const ACTION_COL_W = 64;
-  const ACTION_COL_COUNT = 4; // Log, View, Edit, Delete
-  const ACTION_AREA_W = ACTION_COL_W * ACTION_COL_COUNT;
 
   const actionThClass =
     "border-b border-slate-200 px-2 py-2 font-semibold text-slate-700 text-center w-16 whitespace-nowrap";
-  const actionTdClass = "border-b border-slate-100 px-2 py-2 align-top text-center w-16";
+  const actionTdClass =
+    "border-b border-slate-100 px-2 py-2 align-top text-center w-16";
 
   // add a clear divider between data and actions
   const actionDividerThClass = "border-l-2 border-slate-200";
@@ -651,7 +718,8 @@ export function LeadsClient() {
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a
+        workspace, or complete onboarding first.
       </div>
     );
   }
@@ -677,8 +745,8 @@ export function LeadsClient() {
             {loading
               ? "Loading your leads…"
               : query
-              ? `Showing ${visibleCount} of ${totalCount} leads you have access to.`
-              : `Showing ${totalCount} leads you have access to.`}
+                ? `Showing ${visibleCount} of ${totalCount} leads you have access to.`
+                : `Showing ${totalCount} leads you have access to.`}
           </p>
         </div>
 
@@ -699,14 +767,19 @@ export function LeadsClient() {
           <p>No leads yet (or none you can access).</p>
           {canAddLeads && (
             <p className="mt-1">
-              Click <span className="font-semibold">+ Add Lead</span> to create your first one.
+              Click <span className="font-semibold">+ Add Lead</span> to create
+              your first one.
             </p>
           )}
         </div>
       ) : visibleCount === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          <p className="font-semibold text-slate-700">No leads match “{query}”.</p>
-          <p className="mt-1">Try searching for a different name, field value, or stage.</p>
+          <p className="font-semibold text-slate-700">
+            No leads match “{query}”.
+          </p>
+          <p className="mt-1">
+            Try searching for a different name, field value, or stage.
+          </p>
         </div>
       ) : (
         <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -752,7 +825,9 @@ export function LeadsClient() {
                     </th>
                   )}
                   {showDeleteAlways && (
-                    <th className={`${actionThClass} sticky right-0 z-30 bg-slate-100`}>
+                    <th
+                      className={`${actionThClass} sticky right-0 z-30 bg-slate-100`}
+                    >
                       Delete
                     </th>
                   )}
@@ -761,15 +836,22 @@ export function LeadsClient() {
 
               <tbody>
                 {filteredLeads.map((lead) => {
-                  const isSetterOrCloserForLead =
+                  const isAssignedToLead =
                     !!currentUserId &&
-                    (lead.setter_id === currentUserId || lead.closer_id === currentUserId);
+                    (lead.setter_id === currentUserId ||
+                      lead.closer_id === currentUserId);
 
-                  const canLogMessagesForLead = isSetterOrCloserForLead;
-                  const canEditLeadForLead = isSetterOrCloserForLead;
+                  const canLogMessagesForLead =
+                    isManagerOrAdmin || isAssignedToLead;
+                  const canEditLeadForLead =
+                    isManagerOrAdmin || isAssignedToLead;
 
                   // ✅ FIX: use lead.lead_name first
-                  const leadName = deriveLeadName(lead.lead_name, lead.customValues ?? {}, lead.stage || "");
+                  const leadName = deriveLeadName(
+                    lead.lead_name,
+                    lead.customValues ?? {},
+                    lead.stage || "",
+                  );
 
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50">
@@ -782,7 +864,10 @@ export function LeadsClient() {
                           const classes = getScoreBadgeClasses(score);
 
                           return (
-                            <td key={cellKey} className="border-b border-slate-100 px-5 py-2.5 align-top">
+                            <td
+                              key={cellKey}
+                              className="border-b border-slate-100 px-5 py-2.5 align-top"
+                            >
                               {score != null ? (
                                 <span
                                   className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}
@@ -790,7 +875,9 @@ export function LeadsClient() {
                                   {score}
                                 </span>
                               ) : (
-                                <span className="text-xs text-slate-400">—</span>
+                                <span className="text-xs text-slate-400">
+                                  —
+                                </span>
                               )}
                             </td>
                           );
@@ -799,7 +886,10 @@ export function LeadsClient() {
                         // Stage
                         if (col.kind === "stage") {
                           return (
-                            <td key={cellKey} className="border-b border-slate-100 px-5 py-2.5 align-top">
+                            <td
+                              key={cellKey}
+                              className="border-b border-slate-100 px-5 py-2.5 align-top"
+                            >
                               <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                                 {lead.stage || "—"}
                               </span>
@@ -821,8 +911,15 @@ export function LeadsClient() {
                           }
 
                           if (col.key === "primary_contact_value") {
-                            const raw = String(lead.primary_contact_value ?? "").trim();
-                            const href = raw ? contactHref(lead.primary_contact_type ?? null, raw) : null;
+                            const raw = String(
+                              lead.primary_contact_value ?? "",
+                            ).trim();
+                            const href = raw
+                              ? contactHref(
+                                  lead.primary_contact_type ?? null,
+                                  raw,
+                                )
+                              : null;
 
                             return (
                               <td
@@ -832,8 +929,18 @@ export function LeadsClient() {
                                 {href ? (
                                   <a
                                     href={href}
-                                    target={href.startsWith("mailto:") || href.startsWith("tel:") ? undefined : "_blank"}
-                                    rel={href.startsWith("mailto:") || href.startsWith("tel:") ? undefined : "noopener noreferrer"}
+                                    target={
+                                      href.startsWith("mailto:") ||
+                                      href.startsWith("tel:")
+                                        ? undefined
+                                        : "_blank"
+                                    }
+                                    rel={
+                                      href.startsWith("mailto:") ||
+                                      href.startsWith("tel:")
+                                        ? undefined
+                                        : "noopener noreferrer"
+                                    }
                                     className="inline-flex max-w-[240px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
                                   >
                                     <span className="truncate">{raw}</span>
@@ -846,7 +953,10 @@ export function LeadsClient() {
                           }
 
                           if (col.key === "gender") {
-                            const show = lead.lead_type === "individual" ? lead.gender : null;
+                            const show =
+                              lead.lead_type === "individual"
+                                ? lead.gender
+                                : null;
                             return (
                               <td
                                 key={cellKey}
@@ -855,7 +965,9 @@ export function LeadsClient() {
                                 {show ? (
                                   <GenderPill gender={show} />
                                 ) : (
-                                  <span className="text-xs text-slate-400">—</span>
+                                  <span className="text-xs text-slate-400">
+                                    —
+                                  </span>
                                 )}
                               </td>
                             );
@@ -866,16 +978,22 @@ export function LeadsClient() {
                           // requested core fields get unified gray pill
                           if (CORE_PILL_KEYS.has(col.key)) {
                             const label =
-                              col.key === "niche" ? safeValue(v ?? null) : labelizeEnum(v ?? null);
+                              col.key === "niche"
+                                ? safeValue(v ?? null)
+                                : labelizeEnum(v ?? null);
                             return (
                               <td
                                 key={cellKey}
                                 className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
                               >
                                 {label === "—" ? (
-                                  <span className="text-xs text-slate-400">—</span>
+                                  <span className="text-xs text-slate-400">
+                                    —
+                                  </span>
                                 ) : (
-                                  <GrayPill title={String(label)}>{label}</GrayPill>
+                                  <GrayPill title={String(label)}>
+                                    {label}
+                                  </GrayPill>
                                 )}
                               </td>
                             );
@@ -893,7 +1011,8 @@ export function LeadsClient() {
                         }
 
                         // Custom
-                        const value = lead.customValues?.[col.key];
+                        const value =
+                          normalizedCustomValues[lead.id]?.[col.key];
 
                         // dropdown custom fields -> gray pill
                         if (col.kind === "custom" && col.type === "select") {
@@ -904,9 +1023,13 @@ export function LeadsClient() {
                               className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
                             >
                               {label === "—" ? (
-                                <span className="text-xs text-slate-400">—</span>
+                                <span className="text-xs text-slate-400">
+                                  —
+                                </span>
                               ) : (
-                                <GrayPill title={String(label)}>{String(label)}</GrayPill>
+                                <GrayPill title={String(label)}>
+                                  {String(label)}
+                                </GrayPill>
                               )}
                             </td>
                           );
@@ -920,7 +1043,9 @@ export function LeadsClient() {
                           value.trim() !== ""
                         ) {
                           const raw = value.trim();
-                          const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+                          const href = /^https?:\/\//i.test(raw)
+                            ? raw
+                            : `https://${raw}`;
 
                           return (
                             <td
@@ -944,7 +1069,9 @@ export function LeadsClient() {
                             key={cellKey}
                             className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
                           >
-                            {value !== null && value !== undefined && String(value).trim() !== ""
+                            {value !== null &&
+                            value !== undefined &&
+                            String(value).trim() !== ""
                               ? String(value)
                               : "—"}
                           </td>
@@ -1006,7 +1133,9 @@ export function LeadsClient() {
                       )}
 
                       {showDeleteAlways && (
-                        <td className={`${actionTdClass} sticky right-0 bg-white`}>
+                        <td
+                          className={`${actionTdClass} sticky right-0 bg-white`}
+                        >
                           {canDeleteLeads ? (
                             <Link
                               href={`/leads/${lead.id}/delete`}

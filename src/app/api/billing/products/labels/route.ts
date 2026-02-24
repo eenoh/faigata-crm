@@ -19,36 +19,33 @@ function isStripeAccountId(v: unknown) {
 }
 
 /**
- * ✅ Option A: Always return string[]
+ * Always returns string[]
  * Handles: "Admin", " admin ", ["admin","manager"], null, nested arrays, etc.
  */
 function normRoles(v: unknown): string[] {
   if (Array.isArray(v)) {
-    // recursively flatten
     const out: string[] = [];
     for (const item of v) out.push(...normRoles(item));
     return out;
   }
-
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   return s ? [s] : [];
 }
 
 export async function POST(req: NextRequest) {
   const billingCtx = await getAuthedBillingContext(req);
 
-  // ✅ If ctx is null, that's true unauth (token/session/team mapping failed)
+  // True unauth (token/session/team mapping failed)
   if (!billingCtx) {
     return jsonError("unauthorized", 401, {
-      hint:
-        "getAuthedBillingContext returned null. Check Authorization: Bearer token, and that ctx resolver can find team/org + stripe account mapping.",
+      hint: "getAuthedBillingContext returned null. Check Authorization: Bearer token, and that the resolver can find team/org + stripe account mapping.",
     });
   }
 
-  // ✅ Role checks should be 403, and case-insensitive
-  // billingCtx.role may be string | string[] | null depending on your resolver
+  // Role checks (403), case-insensitive
   const roles = normRoles((billingCtx as any).role);
-
   const allowed = new Set(["admin", "manager", "closer"]);
   const hasAllowedRole = roles.some((r) => allowed.has(r));
 
@@ -59,52 +56,63 @@ export async function POST(req: NextRequest) {
         roleRaw: (billingCtx as any).role ?? null,
         rolesNormalized: roles,
         teamId: (billingCtx as any).teamId ?? null,
-        organizationId: (billingCtx as any).organizationId ?? null,
+        orgId: (billingCtx as any).orgId ?? null,
         livemode: (billingCtx as any).livemode ?? null,
       },
     });
   }
 
-  const stripeAccountId = String((billingCtx as any).stripeAccountId ?? "").trim();
+  const stripeAccountId = String(
+    (billingCtx as any).stripeAccountId ?? "",
+  ).trim();
   if (!stripeAccountId) return jsonError("missing_stripe_account_id", 400);
   if (!isStripeAccountId(stripeAccountId)) {
     return jsonError("invalid_stripe_account_id", 400, { stripeAccountId });
   }
 
-  let body: unknown;
+  let body: any;
   try {
     body = await req.json();
   } catch {
     return jsonError("invalid_json_body", 400);
   }
 
-  const idsRaw = (body as any)?.ids;
+  const idsRaw = body?.ids;
   const ids: string[] = Array.from(
     new Set(
       (Array.isArray(idsRaw) ? idsRaw : [])
-        .map((x) => String(x ?? "").trim())
-        .filter((x): x is string => Boolean(x) && isStripeProductId(x))
-    )
+        .map((x: any) => String(x ?? "").trim())
+        .filter((x: string) => x && isStripeProductId(x)),
+    ),
   );
 
-  if (ids.length === 0) return NextResponse.json({ ok: true, labels: {} });
+  if (ids.length === 0) {
+    return NextResponse.json({ ok: true, labels: {} });
+  }
 
   try {
-    const stripe = stripeClient((billingCtx as any).livemode);
+    const stripe = stripeClient(!!(billingCtx as any).livemode);
 
     const labels: Record<string, string> = {};
 
-    await Promise.all(
-      ids.map(async (id: string) => {
-        try {
-          const p = await stripe.products.retrieve(id, { expand: [] }, { stripeAccount: stripeAccountId });
-          const name = String(p?.name ?? "").trim();
-          if (name) labels[id] = name;
-        } catch {
-          // ignore missing/forbidden product ids
-        }
-      })
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        stripe.products.retrieve(
+          id,
+          { expand: [] },
+          { stripeAccount: stripeAccountId },
+        ),
+      ),
     );
+
+    for (let i = 0; i < ids.length; i++) {
+      const r = results[i];
+      if (r.status !== "fulfilled") continue;
+
+      const p = r.value as any;
+      const name = String(p?.name ?? "").trim();
+      if (name) labels[ids[i]!] = name;
+    }
 
     return NextResponse.json({ ok: true, labels });
   } catch (e: any) {

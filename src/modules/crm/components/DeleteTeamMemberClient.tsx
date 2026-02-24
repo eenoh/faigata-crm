@@ -8,44 +8,59 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 
 export function DeleteTeamMemberClient() {
   const router = useRouter();
-  const params = useParams();
-  const { teamId, loading: workspaceLoading } = useWorkspace();
+  const { loading: workspaceLoading } = useWorkspace();
 
-  const userId = params.userId as string;
+  const params = useParams<{ userId?: string }>();
+  const userId = String(params?.userId ?? "");
 
   const [memberName, setMemberName] = useState("this user");
-  const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load member name
+  // Load member name (best-effort)
   useEffect(() => {
-    if (!userId) return;
+    let cancelled = false;
 
-    (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", userId)
-        .maybeSingle();
+    async function loadName() {
+      if (!userId) return;
 
-      if (data) {
-        const fullName = `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", userId)
+          .maybeSingle();
 
-        setMemberName(
-          fullName || "this user"
-        );
+        if (cancelled) return;
+        if (error || !data) return;
+
+        const fullName =
+          `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
+        setMemberName(fullName || "this user");
+      } catch {
+        // ignore name errors (UI still works)
       }
-    })();
+    }
+
+    loadName();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
-
   async function confirmDelete() {
-    setLoading(true);
+    if (!userId) {
+      setError("Missing user id.");
+      return;
+    }
+
+    setRemoving(true);
     setError(null);
 
     try {
-      const { data: session } = await supabase.auth.getSession();
-      const token = session.session?.access_token;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
       if (!token) {
         router.replace("/login");
         return;
@@ -68,8 +83,10 @@ export function DeleteTeamMemberClient() {
       }
 
       router.replace("/settings/team/members");
+    } catch (e: any) {
+      setError(String(e?.message ?? "Failed to remove team member."));
     } finally {
-      setLoading(false);
+      setRemoving(false);
     }
   }
 
@@ -108,7 +125,8 @@ export function DeleteTeamMemberClient() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+            disabled={removing}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
           >
             Cancel
           </button>
@@ -116,11 +134,11 @@ export function DeleteTeamMemberClient() {
           <button
             type="button"
             onClick={confirmDelete}
-            disabled={loading}
+            disabled={removing}
             className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 cursor-pointer"
           >
             <TrashIcon className="h-4 w-4" />
-            {loading ? "Removing…" : "Remove user"}
+            {removing ? "Removing…" : "Remove user"}
           </button>
         </div>
       </div>

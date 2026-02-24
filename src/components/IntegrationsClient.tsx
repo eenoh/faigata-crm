@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -93,8 +93,22 @@ const billingProviders = [
 function CalendarProviderIcon({ id }: { id: ProviderId }) {
   if (id === "google") {
     return (
-      <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
-        <rect x="5" y="7" width="22" height="20" rx="4" fill="#EEF2FF" stroke="#4F46E5" strokeWidth="1.4" />
+      <svg
+        viewBox="0 0 32 32"
+        className="h-7 w-7"
+        aria-hidden="true"
+        role="img"
+      >
+        <rect
+          x="5"
+          y="7"
+          width="22"
+          height="20"
+          rx="4"
+          fill="#EEF2FF"
+          stroke="#4F46E5"
+          strokeWidth="1.4"
+        />
         <rect x="9" y="11" width="5" height="2" rx="1" fill="#4F46E5" />
         <rect x="18" y="11" width="5" height="2" rx="1" fill="#4F46E5" />
         <rect x="9" y="16" width="4" height="3" rx="1" fill="#C7D2FE" />
@@ -103,7 +117,12 @@ function CalendarProviderIcon({ id }: { id: ProviderId }) {
         <rect x="9" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
         <rect x="14" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
         <rect x="19" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
-        <path d="M19 9.5L22.5 9.5" stroke="#10B981" strokeWidth="1.6" strokeLinecap="round" />
+        <path
+          d="M19 9.5L22.5 9.5"
+          stroke="#10B981"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
         <path
           d="M21.5 8L23 9.5L21.5 11"
           fill="none"
@@ -118,14 +137,32 @@ function CalendarProviderIcon({ id }: { id: ProviderId }) {
 
   return (
     <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
-      <rect x="6" y="7" width="18" height="19" rx="4" fill="#E0F2FE" stroke="#0369A1" strokeWidth="1.4" />
+      <rect
+        x="6"
+        y="7"
+        width="18"
+        height="19"
+        rx="4"
+        fill="#E0F2FE"
+        stroke="#0369A1"
+        strokeWidth="1.4"
+      />
       <rect x="9" y="11" width="5" height="2" rx="1" fill="#0369A1" />
       <rect x="16" y="11" width="5" height="2" rx="1" fill="#0369A1" />
       <rect x="9" y="16" width="4" height="3" rx="1" fill="#BAE6FD" />
       <rect x="14" y="16" width="4" height="3" rx="1" fill="#E5E7EB" />
       <rect x="9" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
       <rect x="14" y="21" width="4" height="3" rx="1" fill="#E5E7EB" />
-      <rect x="18.5" y="10" width="7.5" height="12" rx="2" fill="#FFFFFF" stroke="#0EA5E9" strokeWidth="1.2" />
+      <rect
+        x="18.5"
+        y="10"
+        width="7.5"
+        height="12"
+        rx="2"
+        fill="#FFFFFF"
+        stroke="#0EA5E9"
+        strokeWidth="1.2"
+      />
       <rect x="20" y="12" width="4" height="1.8" rx="0.9" fill="#0EA5E9" />
       <rect x="20" y="15" width="4" height="1.4" rx="0.7" fill="#BAE6FD" />
       <rect x="20" y="18" width="3" height="1.4" rx="0.7" fill="#E5E7EB" />
@@ -138,8 +175,24 @@ function EmailProviderIcon({ id }: { id: ProviderId }) {
   const fill = id === "google" ? "#DCFCE7" : "#E0F2FE";
   return (
     <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
-      <rect x="5" y="9" width="22" height="14" rx="3" fill={fill} stroke={stroke} strokeWidth="1.4" />
-      <path d="M7 11L16 17L25 11" fill="none" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect
+        x="5"
+        y="9"
+        width="22"
+        height="14"
+        rx="3"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="1.4"
+      />
+      <path
+        d="M7 11L16 17L25 11"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <circle cx="12" cy="22.5" r="2" fill="#E5E7EB" />
       <circle cx="18" cy="22.5" r="2" fill="#CBD5F5" />
     </svg>
@@ -149,7 +202,16 @@ function EmailProviderIcon({ id }: { id: ProviderId }) {
 function StripeProviderIcon() {
   return (
     <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
-      <rect x="6" y="7" width="20" height="19" rx="6" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="1.4" />
+      <rect
+        x="6"
+        y="7"
+        width="20"
+        height="19"
+        rx="6"
+        fill="#F5F3FF"
+        stroke="#7C3AED"
+        strokeWidth="1.4"
+      />
       <path
         d="M12 13.2c0-1.6 1.4-2.7 4-2.7 1.2 0 2.4.2 3.5.6v2.5c-1-.5-2.2-.8-3.4-.8-1.1 0-1.7.3-1.7.9 0 1.6 5.6.6 5.6 4.6 0 1.7-1.3 2.8-4.1 2.8-1.4 0-2.8-.3-3.9-.8v-2.6c1.2.6 2.6 1 3.8 1 1.1 0 1.8-.3 1.8-.9 0-1.6-5.6-.7-5.6-4.6z"
         fill="#7C3AED"
@@ -158,16 +220,15 @@ function StripeProviderIcon() {
   );
 }
 
-function readReconnectFlag() {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(GC_RECONNECT_FLAG_KEY) === "1";
-}
+const readReconnectFlag = () =>
+  typeof window !== "undefined" &&
+  window.localStorage.getItem(GC_RECONNECT_FLAG_KEY) === "1";
 
-function clearReconnectFlag() {
+const clearReconnectFlag = () => {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(GC_RECONNECT_FLAG_KEY);
   window.dispatchEvent(new Event("gc-reconnect-cleared"));
-}
+};
 
 export default function IntegrationsClient() {
   const searchParams = useSearchParams();
@@ -177,7 +238,9 @@ export default function IntegrationsClient() {
   const [status, setStatus] = useState<IntegrationStatus>(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
 
-  const [pendingCalendar, setPendingCalendar] = useState<ProviderId | null>(null);
+  const [pendingCalendar, setPendingCalendar] = useState<ProviderId | null>(
+    null,
+  );
   const [pendingStripe, setPendingStripe] = useState(false);
 
   const [googleReconnectNeeded, setGoogleReconnectNeeded] = useState(false);
@@ -185,91 +248,105 @@ export default function IntegrationsClient() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(true);
 
-  const fetchRoles = useMemo(() => {
-    return async () => {
-      try {
-        setRolesLoading(true);
-        const { data: userRes } = await supabase.auth.getUser();
-        const user = userRes.user;
-
-        if (!user?.id) {
-          setIsAdmin(false);
-          return;
-        }
-
-        const { data, error } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-
-        if (error) {
-          console.error("[Integrations] Failed to load roles", error);
-          setIsAdmin(false);
-          return;
-        }
-
-        const roles = (data?.role ?? []) as string[];
-        setIsAdmin(roles.some((r) => String(r).toLowerCase() === "admin"));
-      } finally {
-        setRolesLoading(false);
-      }
-    };
+  const getAccessToken = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
   }, []);
 
-  const fetchStatus = useMemo(() => {
-    return async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
+  const fetchRoles = useCallback(async () => {
+    try {
+      setRolesLoading(true);
 
-      if (!accessToken) {
-        setStatus(EMPTY_STATUS);
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes.user;
+
+      if (!user?.id) {
+        setIsAdmin(false);
         return;
       }
 
-      const [googleRes, stripeRes] = await Promise.allSettled([
-        fetch("/api/integrations/calendar/google/status", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-        fetch("/api/integrations/stripe/status", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      ]);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      let calendarEmail: Pick<IntegrationStatus, "calendar" | "email"> = {
-        calendar: { google: false, outlook: false },
-        email: { google: false, outlook: false },
-      };
-
-      if (googleRes.status === "fulfilled" && googleRes.value.ok) {
-        const json = (await googleRes.value.json()) as any;
-        calendarEmail = {
-          calendar: json?.calendar ?? calendarEmail.calendar,
-          email: json?.email ?? calendarEmail.email,
-        };
+      if (error) {
+        console.error("[Integrations] Failed to load roles", error);
+        setIsAdmin(false);
+        return;
       }
 
-      let stripeConnected = false;
-      if (stripeRes.status === "fulfilled" && stripeRes.value.ok) {
-        const json = (await stripeRes.value.json()) as any;
-        stripeConnected = !!json?.connected;
-      }
-
-      setStatus({
-        ...calendarEmail,
-        billing: { stripe: stripeConnected },
-      });
-    };
+      const roles = (data?.role ?? []) as string[];
+      setIsAdmin(roles.some((r) => String(r).toLowerCase() === "admin"));
+    } finally {
+      setRolesLoading(false);
+    }
   }, []);
 
-  async function clearGoogleConnectedCookie() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) return;
+  const fetchStatus = useCallback(async () => {
+    const token = await getAccessToken();
+
+    if (!token) {
+      setStatus(EMPTY_STATUS);
+      return;
+    }
+
+    const [googleRes, stripeRes] = await Promise.allSettled([
+      fetch("/api/integrations/calendar/google/status", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch("/api/integrations/stripe/status", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+
+    let calendarEmail: Pick<IntegrationStatus, "calendar" | "email"> = {
+      calendar: { google: false, outlook: false },
+      email: { google: false, outlook: false },
+    };
+
+    if (googleRes.status === "fulfilled" && googleRes.value.ok) {
+      const json = (await googleRes.value.json()) as any;
+      calendarEmail = {
+        calendar: json?.calendar ?? calendarEmail.calendar,
+        email: json?.email ?? calendarEmail.email,
+      };
+    }
+
+    let stripeConnected = false;
+    if (stripeRes.status === "fulfilled" && stripeRes.value.ok) {
+      const json = (await stripeRes.value.json()) as any;
+      stripeConnected = !!json?.connected;
+    }
+
+    setStatus({ ...calendarEmail, billing: { stripe: stripeConnected } });
+  }, [getAccessToken]);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      await Promise.all([fetchStatus(), fetchRoles()]);
+    } catch (e) {
+      console.error("[Integrations] Failed to load status/roles", e);
+      setStatus(EMPTY_STATUS);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchStatus, fetchRoles]);
+
+  const clearGoogleConnectedCookie = useCallback(async () => {
+    const token = await getAccessToken();
+    if (!token) return;
 
     await fetch("/api/integrations/calendar/google/clear-cookie", {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {});
-  }
+  }, [getAccessToken]);
 
   useEffect(() => {
     setGoogleReconnectNeeded(readReconnectFlag());
@@ -281,109 +358,94 @@ export default function IntegrationsClient() {
     window.addEventListener("gc-reconnect-cleared", onCleared as EventListener);
 
     return () => {
-      window.removeEventListener("gc-reconnect-required", onNeed as EventListener);
-      window.removeEventListener("gc-reconnect-cleared", onCleared as EventListener);
+      window.removeEventListener(
+        "gc-reconnect-required",
+        onNeed as EventListener,
+      );
+      window.removeEventListener(
+        "gc-reconnect-cleared",
+        onCleared as EventListener,
+      );
     };
   }, []);
 
   useEffect(() => {
     if (googleReconnectNeeded) clearGoogleConnectedCookie().catch(() => {});
-  }, [googleReconnectNeeded]);
+  }, [googleReconnectNeeded, clearGoogleConnectedCookie]);
 
   useEffect(() => {
-    let cancelled = false;
+    refresh();
 
-    (async () => {
-      try {
-        setLoading(true);
-        await Promise.all([fetchStatus(), fetchRoles()]);
-      } catch (e) {
-        console.error("[Integrations] Failed to load status/roles", e);
-        if (!cancelled) setStatus(EMPTY_STATUS);
-        if (!cancelled) setIsAdmin(false);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    const onFocus = () => {
-      fetchStatus().catch(() => {});
-      fetchRoles().catch(() => {});
-    };
+    const onFocus = () => refresh().catch(() => {});
     window.addEventListener("focus", onFocus);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [fetchStatus, fetchRoles]);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refresh]);
 
   useEffect(() => {
-    if (connectedParam === "google" || connectedParam === "stripe") {
+    // Re-fetch after redirect back from provider / error screen
+    if (
+      connectedParam === "google" ||
+      connectedParam === "stripe" ||
+      errorParam
+    ) {
       clearReconnectFlag();
-      fetchStatus().catch(() => {});
-      fetchRoles().catch(() => {});
+      refresh().catch(() => {});
     }
-    if (errorParam) {
-      fetchStatus().catch(() => {});
-      fetchRoles().catch(() => {});
-    }
-  }, [connectedParam, errorParam, fetchStatus, fetchRoles]);
+  }, [connectedParam, errorParam, refresh]);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      fetchStatus().catch(() => {});
-      fetchRoles().catch(() => {});
+      refresh().catch(() => {});
     });
     return () => sub.subscription.unsubscribe();
-  }, [fetchStatus, fetchRoles]);
+  }, [refresh]);
 
   const isCalendarConnected = (id: ProviderId) => status.calendar[id] ?? false;
   const isEmailConnected = (id: ProviderId) => status.email[id] ?? false;
   const isStripeConnected = status.billing.stripe;
 
-  async function startConnect(connectHref: string, providerId?: ProviderId) {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
+  const startConnect = useCallback(
+    async (connectHref: string, providerId?: ProviderId) => {
+      const token = await getAccessToken();
 
-    if (!accessToken) {
-      window.location.href = "/login";
-      return;
-    }
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
 
-    if (providerId === "google" && googleReconnectNeeded) {
-      await clearGoogleConnectedCookie().catch(() => {});
-    }
+      if (providerId === "google" && googleReconnectNeeded) {
+        await clearGoogleConnectedCookie().catch(() => {});
+      }
 
-    const res = await fetch(connectHref, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+      const res = await fetch(connectHref, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      const msg = (json as any)?.error || `connect_failed_${res.status}`;
-      window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
-      return;
-    }
+      if (!res.ok) {
+        const msg = (json as any)?.error || `connect_failed_${res.status}`;
+        window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
+        return;
+      }
 
-    const authUrl = (json as any)?.authUrl as string | undefined;
-    if (!authUrl) {
-      window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
-      return;
-    }
+      const authUrl = (json as any)?.authUrl as string | undefined;
+      if (!authUrl) {
+        window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
+        return;
+      }
 
-    window.location.href = authUrl;
-  }
+      window.location.href = authUrl;
+    },
+    [getAccessToken, googleReconnectNeeded, clearGoogleConnectedCookie],
+  );
 
-  async function handleCalendarClick(provider: (typeof calendarProviders)[number], connected: boolean) {
+  async function handleCalendarClick(
+    provider: (typeof calendarProviders)[number],
+    connected: boolean,
+  ) {
     if (!provider.enabled && !connected) return;
-
-    if (provider.id === "google" && googleReconnectNeeded) {
-      await startConnect(provider.connectHref, provider.id);
-      return;
-    }
 
     if (!connected) {
       await startConnect(provider.connectHref, provider.id);
@@ -393,14 +455,16 @@ export default function IntegrationsClient() {
     try {
       setPendingCalendar(provider.id);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) return;
+      const token = await getAccessToken();
+      if (!token) return;
 
-      const res = await fetch(`/api/integrations/calendar/${provider.id}/disconnect`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await fetch(
+        `/api/integrations/calendar/${provider.id}/disconnect`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -411,7 +475,11 @@ export default function IntegrationsClient() {
       await fetchStatus();
 
       if (provider.id === "google") {
-        window.open("https://myaccount.google.com/permissions", "_blank", "noopener,noreferrer");
+        window.open(
+          "https://myaccount.google.com/permissions",
+          "_blank",
+          "noopener,noreferrer",
+        );
       }
     } finally {
       setPendingCalendar(null);
@@ -419,23 +487,23 @@ export default function IntegrationsClient() {
   }
 
   async function handleStripeClick() {
-    if (!billingProviders[0].enabled) return;
+    const stripeProvider = billingProviders[0];
+    if (!stripeProvider.enabled) return;
 
     if (!isStripeConnected) {
-      await startConnect(billingProviders[0].connectHref);
+      await startConnect(stripeProvider.connectHref);
       return;
     }
 
     try {
       setPendingStripe(true);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) return;
+      const token = await getAccessToken();
+      if (!token) return;
 
       const res = await fetch("/api/integrations/stripe/disconnect", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
@@ -450,7 +518,10 @@ export default function IntegrationsClient() {
     }
   }
 
-  async function handleEmailClick(provider: (typeof emailProviders)[number], connected: boolean) {
+  async function handleEmailClick(
+    provider: (typeof emailProviders)[number],
+    connected: boolean,
+  ) {
     if (!provider.enabled && !connected) return;
     if (!connected) await startConnect(provider.connectHref, provider.id);
   }
@@ -459,32 +530,43 @@ export default function IntegrationsClient() {
     <div className="max-w-3xl space-y-6 pt-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Integrations</h1>
-        <p className="mt-1 text-sm text-slate-600">Connect your calendar and inbox to power bookings and communication.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Connect your calendar and inbox to power bookings and communication.
+        </p>
 
         {googleReconnectNeeded && (
           <p className="mt-2 text-xs font-semibold text-amber-700">
-            Your Google Calendar needs to be reconnected so booking links can check availability. Click “Reconnect Google
-            Calendar”.
+            Your Google Calendar needs to be reconnected so booking links can
+            check availability. Click “Reconnect Google Calendar”.
           </p>
         )}
 
         {!!errorParam && (
-          <p className="mt-2 text-xs font-semibold text-rose-600">Connection failed: {errorParam}</p>
+          <p className="mt-2 text-xs font-semibold text-rose-600">
+            Connection failed: {errorParam}
+          </p>
         )}
       </div>
 
       {/* Calendar */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Calendar Connections</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Calendar Connections
+          </h2>
           <p className="mt-1 text-xs text-slate-500">
-            We use your calendar to show availability and create events when a lead books a call.
+            We use your calendar to show availability and create events when a
+            lead books a call.
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {calendarProviders.map((p) => {
-            const connected = p.id === "google" && googleReconnectNeeded ? false : isCalendarConnected(p.id);
+            const connected =
+              p.id === "google" && googleReconnectNeeded
+                ? false
+                : isCalendarConnected(p.id);
+
             const isPending = pendingCalendar === p.id;
 
             return (
@@ -518,17 +600,25 @@ export default function IntegrationsClient() {
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {p.name}
+                  </h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
-                  <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
-                    {p.id === "google" ? "Great for Google Workspace teams" : "Great for Microsoft 365 / Outlook users"}
+                  <div
+                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                  >
+                    {p.id === "google"
+                      ? "Great for Google Workspace teams"
+                      : "Great for Microsoft 365 / Outlook users"}
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
-                    disabled={loading || isPending || (!p.enabled && !connected)}
+                    disabled={
+                      loading || isPending || (!p.enabled && !connected)
+                    }
                     onClick={() => handleCalendarClick(p, connected)}
                     className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
                       connected
@@ -539,16 +629,18 @@ export default function IntegrationsClient() {
                     {p.id === "google" && googleReconnectNeeded
                       ? "Reconnect Google Calendar"
                       : connected
-                      ? `Disconnect ${p.name}`
-                      : `Connect ${p.name}`}
+                        ? `Disconnect ${p.name}`
+                        : `Connect ${p.name}`}
                   </button>
 
-                  <p className={`text-[11px] leading-snug text-slate-400 ${connected ? "pb-[11px]" : ""}`}>
+                  <p
+                    className={`text-[11px] leading-snug text-slate-400 ${connected ? "pb-[11px]" : ""}`}
+                  >
                     {p.id === "google" && googleReconnectNeeded
                       ? "Reconnect to restore availability checks for booking links."
                       : connected
-                      ? "Currently syncing events from this calendar."
-                      : "We’ll only be able to see and manage events in your calendar."}
+                        ? "Currently syncing events from this calendar."
+                        : "We’ll only be able to see and manage events in your calendar."}
                   </p>
                 </div>
               </div>
@@ -560,8 +652,13 @@ export default function IntegrationsClient() {
       {/* Email */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Email Connections</h2>
-          <p className="mt-1 text-xs text-slate-500">Connect your inbox to send emails from FaigataCRM and log conversations to leads.</p>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Email Connections
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Connect your inbox to send emails from FaigataCRM and log
+            conversations to leads.
+          </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -593,9 +690,13 @@ export default function IntegrationsClient() {
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {p.name}
+                  </h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
-                  <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
+                  <div
+                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                  >
                     {p.id === "google"
                       ? "Requires Gmail / Workspace mail permissions"
                       : "Requires Outlook / Microsoft 365 mail permissions"}
@@ -632,8 +733,13 @@ export default function IntegrationsClient() {
       {isAdmin && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Billing Connections</h2>
-            <p className="mt-1 text-xs text-slate-500">Connect Stripe to create products, send invoices, and collect payments.</p>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Billing Connections
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Connect Stripe to create products, send invoices, and collect
+              payments.
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -653,21 +759,27 @@ export default function IntegrationsClient() {
                       Connected
                     </span>
                   ) : (
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                    >
                       Billing
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">{p.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {p.name}
+                  </h3>
                   <p className="mt-1 text-xs text-slate-500">{p.description}</p>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
-                    disabled={loading || rolesLoading || pendingStripe || !p.enabled}
+                    disabled={
+                      loading || rolesLoading || pendingStripe || !p.enabled
+                    }
                     onClick={handleStripeClick}
                     className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
                       isStripeConnected
@@ -675,7 +787,11 @@ export default function IntegrationsClient() {
                         : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
                     }`}
                   >
-                    {pendingStripe ? "Working..." : isStripeConnected ? "Disconnect Stripe" : "Connect Stripe (Test)"}
+                    {pendingStripe
+                      ? "Working..."
+                      : isStripeConnected
+                        ? "Disconnect Stripe"
+                        : "Connect Stripe (Test)"}
                   </button>
 
                   <p className="text-[11px] leading-snug text-slate-400">

@@ -4,8 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DateTime } from "luxon";
-import { supabase } from "@/lib/supabaseClient";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { supabase } from "@/lib/supabaseClient";
 
 type Outcome = {
   attended_status: string | null;
@@ -14,7 +14,7 @@ type Outcome = {
   notes: string | null;
   closer_user_id: string | null;
   updated_at: string | null;
-  offer_product_id?: string | null; // ✅ Stripe prod_...
+  offer_product_id?: string | null;
 };
 
 type Booking = {
@@ -33,14 +33,26 @@ function readBrowserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  return UUID_RE.test(v);
 }
 
+const ALLOWED_STATUS = new Set([
+  "unknown",
+  "attended",
+  "no_show",
+  "cancelled",
+  "rescheduled",
+]);
+
 function safeStatus(v: unknown) {
-  const s = String(v ?? "").trim().toLowerCase();
-  const allowed = new Set(["unknown", "attended", "no_show", "cancelled", "rescheduled"]);
-  return allowed.has(s) ? s : "unknown";
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_STATUS.has(s) ? s : "unknown";
 }
 
 function pickOutcome(b: Booking): Outcome | null {
@@ -58,10 +70,11 @@ function toLabel(s: string) {
 
 function statusPill(status: string) {
   const s = (status || "unknown").toLowerCase();
-  if (s === "attended") return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
+  if (s === "attended")
+    return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
   if (s === "no_show") return "bg-rose-50/60 text-rose-700 ring-rose-200";
-  if (s === "cancelled") return "bg-slate-100/70 text-slate-700 ring-slate-200";
-  if (s === "rescheduled") return "bg-amber-50/60 text-amber-800 ring-amber-200";
+  if (s === "rescheduled")
+    return "bg-amber-50/60 text-amber-800 ring-amber-200";
   return "bg-slate-100/70 text-slate-700 ring-slate-200";
 }
 
@@ -71,19 +84,22 @@ function yesNoPill(isYes: boolean) {
     : "bg-rose-50/60 text-rose-700 ring-rose-200";
 }
 
-/* -------------------- Stripe label resolving -------------------- */
-
 function isStripeProductId(id: string) {
   return /^prod_[a-zA-Z0-9]+$/.test(id);
 }
 
-/**
- * Resolve Stripe product ids -> names via your authed billing endpoint.
- * Returns: { [prodId]: "Name" }
- */
-async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
-  const uniq = Array.from(new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProductId)));
-  if (uniq.length === 0) return {};
+async function fetchStripeProductLabels(
+  ids: string[],
+): Promise<Record<string, string>> {
+  const uniq = Array.from(
+    new Set(
+      ids
+        .map((x) => String(x ?? "").trim())
+        .filter(Boolean)
+        .filter(isStripeProductId),
+    ),
+  );
+  if (!uniq.length) return {};
 
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -100,9 +116,7 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
   });
 
   const json = await res.json().catch(() => null);
-  if (!res.ok) return {};
-
-  const labels = json?.labels;
+  const labels = res.ok ? json?.labels : null;
   if (!labels || typeof labels !== "object") return {};
 
   const out: Record<string, string> = {};
@@ -112,8 +126,6 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
   }
   return out;
 }
-
-/* -------------------- Loading UI -------------------- */
 
 function DetailLoadingState() {
   return (
@@ -141,7 +153,6 @@ function DetailLoadingState() {
 }
 
 function ProductBadgeLoading() {
-  // pill skeleton matching final badge size to avoid layout shift
   return (
     <span
       aria-label="Resolving product"
@@ -153,14 +164,21 @@ function ProductBadgeLoading() {
   );
 }
 
-/* -------------------- Page -------------------- */
-
-export default function CallDetailClient({ leadId, bookingId }: { leadId: string; bookingId: string }) {
+export default function CallDetailClient({
+  leadId,
+  bookingId,
+}: {
+  leadId: string;
+  bookingId: string;
+}) {
   const router = useRouter();
-  const viewerTz = useMemo(() => readBrowserTimeZone(), []);
+  const viewerTz = useMemo(readBrowserTimeZone, []);
 
   const normalizedLeadId = useMemo(() => String(leadId ?? "").trim(), [leadId]);
-  const normalizedBookingId = useMemo(() => String(bookingId ?? "").trim(), [bookingId]);
+  const normalizedBookingId = useMemo(
+    () => String(bookingId ?? "").trim(),
+    [bookingId],
+  );
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -168,7 +186,6 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
   const [booking, setBooking] = useState<Booking | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
-  // prod_... -> product name
   const [productLabel, setProductLabel] = useState<string | null>(null);
   const [productResolving, setProductResolving] = useState(false);
   const [productLookupFailed, setProductLookupFailed] = useState(false);
@@ -176,7 +193,7 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
   async function fetchBooking(teamId: string, token: string) {
     const res = await fetch(
       `/api/crm/bookings/${encodeURIComponent(normalizedBookingId)}?teamId=${encodeURIComponent(teamId)}`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
     );
 
     const json = await res.json().catch(() => null);
@@ -184,7 +201,8 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
 
     const b = json?.booking as Booking;
     if (!b) throw new Error("missing_booking");
-    if (String(b.lead_id) !== String(normalizedLeadId)) throw new Error("booking_lead_mismatch");
+    if (String(b.lead_id) !== String(normalizedLeadId))
+      throw new Error("booking_lead_mismatch");
     return b;
   }
 
@@ -196,44 +214,37 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
         setLoading(true);
         setErr(null);
 
-        if (!normalizedLeadId || normalizedLeadId === "undefined" || normalizedLeadId === "null") {
-          setErr("Missing lead id.");
-          return;
-        }
-        if (!normalizedBookingId || normalizedBookingId === "undefined" || normalizedBookingId === "null") {
-          setErr("Missing booking id.");
-          return;
-        }
-        if (!isUuid(normalizedLeadId)) {
-          setErr("Invalid lead id.");
-          return;
-        }
-        if (!isUuid(normalizedBookingId)) {
-          setErr("Invalid booking id.");
-          return;
-        }
+        if (
+          !normalizedLeadId ||
+          normalizedLeadId === "undefined" ||
+          normalizedLeadId === "null"
+        )
+          return setErr("Missing lead id.");
+        if (
+          !normalizedBookingId ||
+          normalizedBookingId === "undefined" ||
+          normalizedBookingId === "null"
+        )
+          return setErr("Missing booking id.");
+        if (!isUuid(normalizedLeadId)) return setErr("Invalid lead id.");
+        if (!isUuid(normalizedBookingId)) return setErr("Invalid booking id.");
 
         const { data: userRes } = await supabase.auth.getUser();
         const user = userRes.user;
-        if (!user) {
-          setErr("Not signed in.");
-          return;
-        }
+        if (!user) return setErr("Not signed in.");
 
-        const { data: profile } = await supabase.from("profiles").select("team_id").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("team_id")
+          .eq("id", user.id)
+          .maybeSingle();
 
         const teamId = String(profile?.team_id ?? "").trim();
-        if (!teamId) {
-          setErr("No team found.");
-          return;
-        }
+        if (!teamId) return setErr("No team found.");
 
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
-        if (!token) {
-          setErr("Missing session token.");
-          return;
-        }
+        if (!token) return setErr("Missing session token.");
 
         const b = await fetchBooking(teamId, token);
         const o = pickOutcome(b);
@@ -243,7 +254,8 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           setOutcome(o);
         }
       } catch (e: any) {
-        if (!cancelled) setErr(String(e?.message ?? "Failed to load call details"));
+        if (!cancelled)
+          setErr(String(e?.message ?? "Failed to load call details"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -254,7 +266,6 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
     };
   }, [normalizedLeadId, normalizedBookingId]);
 
-  // If offer was made, resolve product/service name from Stripe (offer_product_id)
   useEffect(() => {
     let cancelled = false;
 
@@ -263,10 +274,12 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
       setProductLookupFailed(false);
 
       const offerMade = !!outcome?.offer_made;
-      const offerProductId = String((outcome as any)?.offer_product_id ?? "").trim();
+      const offerProductId = String(
+        (outcome as any)?.offer_product_id ?? "",
+      ).trim();
 
-      if (!offerMade) return;
-      if (!offerProductId) return; // offer made but no id stored
+      if (!offerMade || !offerProductId) return;
+
       if (!isStripeProductId(offerProductId)) {
         setProductLookupFailed(true);
         return;
@@ -295,12 +308,19 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
 
   if (loading) return <DetailLoadingState />;
   if (err) return <p className="text-sm text-rose-600">{err}</p>;
-  if (!booking) return <p className="text-sm text-slate-500">Call not found.</p>;
+  if (!booking)
+    return <p className="text-sm text-slate-500">Call not found.</p>;
 
-  const start = DateTime.fromISO(booking.start_at, { setZone: true }).setZone(viewerTz);
-  const end = DateTime.fromISO(booking.end_at, { setZone: true }).setZone(viewerTz);
+  const start = DateTime.fromISO(booking.start_at, { setZone: true }).setZone(
+    viewerTz,
+  );
+  const end = DateTime.fromISO(booking.end_at, { setZone: true }).setZone(
+    viewerTz,
+  );
 
-  const headerDate = start.isValid ? start.toLocaleString(DateTime.DATE_MED) : booking.start_at;
+  const headerDate = start.isValid
+    ? start.toLocaleString(DateTime.DATE_MED)
+    : booking.start_at;
   const headerTime =
     start.isValid && end.isValid
       ? `${start.toLocaleString(DateTime.TIME_SIMPLE)} – ${end.toLocaleString(DateTime.TIME_SIMPLE)}`
@@ -310,24 +330,22 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
   const attendedLabel = toLabel(attendedRaw);
 
   const offerMade = !!outcome?.offer_made;
-  const closedOnCall = attendedRaw === "attended" ? !!outcome?.closed_on_call : false;
+  const closedOnCall =
+    attendedRaw === "attended" ? !!outcome?.closed_on_call : false;
   const notes = String(outcome?.notes ?? "").trim();
 
-  const offerProductId = String((outcome as any)?.offer_product_id ?? "").trim();
-
-  const updatedLabel = outcome?.updated_at
-    ? (() => {
-        const dt = DateTime.fromISO(outcome.updated_at, { setZone: true }).setZone(viewerTz);
-        return dt.isValid ? dt.toLocaleString(DateTime.DATETIME_SHORT) : outcome.updated_at;
-      })()
-    : null;
+  const offerProductId = String(
+    (outcome as any)?.offer_product_id ?? "",
+  ).trim();
 
   const productCardContent = (() => {
     if (!offerMade) {
       return (
         <>
           <span className="text-slate-400">—</span>
-          <div className="mt-1 text-[11px] text-slate-400">No offer was made.</div>
+          <div className="mt-1 text-[11px] text-slate-400">
+            No offer was made.
+          </div>
         </>
       );
     }
@@ -353,7 +371,9 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           <span className="inline-flex max-w-full items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 truncate">
             {productLabel}
           </span>
-          <div className="mt-1 text-[11px] text-slate-400">Offer was made for this product/service.</div>
+          <div className="mt-1 text-[11px] text-slate-400">
+            Offer was made for this product/service.
+          </div>
         </>
       );
     }
@@ -364,7 +384,9 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           Product not found
         </span>
         <div className="mt-1 text-[11px] text-slate-500">
-          {productLookupFailed ? "We couldn’t resolve this product in Stripe." : "—"}
+          {productLookupFailed
+            ? "We couldn’t resolve this product in Stripe."
+            : "—"}
         </div>
       </>
     );
@@ -375,7 +397,9 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Call Details</h1>
+            <h1 className="text-xl font-semibold text-slate-900">
+              Call Details
+            </h1>
             <p className="mt-1 text-xs text-slate-500">
               {headerDate} · {headerTime}
             </p>
@@ -384,7 +408,11 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/calls`)}
+              onClick={() =>
+                router.push(
+                  `/leads/${encodeURIComponent(normalizedLeadId)}/calls`,
+                )
+              }
               className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               Back to Calls
@@ -394,7 +422,7 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
               type="button"
               onClick={() =>
                 router.push(
-                  `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(normalizedBookingId)}`
+                  `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(normalizedBookingId)}`,
                 )
               }
               className="cursor-pointer inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
@@ -411,12 +439,12 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Attendance</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Attendance
+            </div>
             <div className="mt-2">
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(
-                  attendedRaw
-                )}`}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(attendedRaw)}`}
               >
                 {attendedLabel}
               </span>
@@ -424,12 +452,12 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Offer Made</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Offer Made
+            </div>
             <div className="mt-2">
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
-                  offerMade
-                )}`}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(offerMade)}`}
               >
                 {offerMade ? "Yes" : "No"}
               </span>
@@ -437,21 +465,22 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Closed on Call</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Closed on Call
+            </div>
             <div className="mt-2">
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
-                  closedOnCall
-                )}`}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(closedOnCall)}`}
               >
                 {closedOnCall ? "Yes" : "No"}
               </span>
             </div>
           </div>
 
-          {/* Product / Service */}
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Product / Service</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Product / Service
+            </div>
             <div className="mt-2">{productCardContent}</div>
           </div>
         </div>
@@ -469,7 +498,11 @@ export default function CallDetailClient({ leadId, bookingId }: { leadId: string
               "focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300",
             ].join(" ")}
           >
-            {notes ? notes : <span className="text-slate-400">No notes yet.</span>}
+            {notes ? (
+              notes
+            ) : (
+              <span className="text-slate-400">No notes yet.</span>
+            )}
           </div>
         </div>
       </div>

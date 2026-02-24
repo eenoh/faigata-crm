@@ -7,14 +7,15 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
-async function authedFetch(input: RequestInfo, init?: RequestInit) {
+async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("no_session");
-  return fetch(input, {
-    ...init,
-    headers: { ...(init?.headers ?? {}), Authorization: `Bearer ${token}` },
-  });
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+
+  return fetch(input, { ...init, headers });
 }
 
 // Stripe-first shapes
@@ -32,7 +33,10 @@ type StripePrice = {
   created: number | null;
   currency: string | null;
   unit_amount: number | null;
-  recurring?: { interval: "day" | "week" | "month" | "year"; interval_count?: number } | null;
+  recurring?: {
+    interval: "day" | "week" | "month" | "year";
+    interval_count?: number;
+  } | null;
 };
 
 type Activity = {
@@ -46,62 +50,185 @@ type Activity = {
 };
 
 const CURRENCIES = [
-  "aed","afn","all","amd","ang","aoa","ars","aud","awg","azn",
-  "bam","bbd","bdt","bgn","bhd","bif","bmd","bnd","bob","brl","bsd","btn","bwp","byn","bzd",
-  "cad","cdf","chf","clp","cny","cop","crc","cve","czk",
-  "djf","dkk","dop","dzd",
-  "egp","ern","etb","eur",
-  "fjd","fkp",
-  "gbp","gel","ghs","gip","gmd","gnf","gtq","gyd",
-  "hkd","hnl","hrk","htg","huf",
-  "idr","ils","inr","iqd","irr","isk",
-  "jmd","jod","jpy",
-  "kes","kgs","khr","kmf","krw","kwd","kyd","kzt",
-  "lak","lbp","lkr","lrd","lsl","lyd",
-  "mad","mdl","mga","mkd","mmk","mnt","mop","mru","mur","mvr","mwk","mxn","myr","mzn",
-  "nad","ngn","nio","nok","npr","nzd",
+  "aed",
+  "afn",
+  "all",
+  "amd",
+  "ang",
+  "aoa",
+  "ars",
+  "aud",
+  "awg",
+  "azn",
+  "bam",
+  "bbd",
+  "bdt",
+  "bgn",
+  "bhd",
+  "bif",
+  "bmd",
+  "bnd",
+  "bob",
+  "brl",
+  "bsd",
+  "btn",
+  "bwp",
+  "byn",
+  "bzd",
+  "cad",
+  "cdf",
+  "chf",
+  "clp",
+  "cny",
+  "cop",
+  "crc",
+  "cve",
+  "czk",
+  "djf",
+  "dkk",
+  "dop",
+  "dzd",
+  "egp",
+  "ern",
+  "etb",
+  "eur",
+  "fjd",
+  "fkp",
+  "gbp",
+  "gel",
+  "ghs",
+  "gip",
+  "gmd",
+  "gnf",
+  "gtq",
+  "gyd",
+  "hkd",
+  "hnl",
+  "hrk",
+  "htg",
+  "huf",
+  "idr",
+  "ils",
+  "inr",
+  "iqd",
+  "irr",
+  "isk",
+  "jmd",
+  "jod",
+  "jpy",
+  "kes",
+  "kgs",
+  "khr",
+  "kmf",
+  "krw",
+  "kwd",
+  "kyd",
+  "kzt",
+  "lak",
+  "lbp",
+  "lkr",
+  "lrd",
+  "lsl",
+  "lyd",
+  "mad",
+  "mdl",
+  "mga",
+  "mkd",
+  "mmk",
+  "mnt",
+  "mop",
+  "mru",
+  "mur",
+  "mvr",
+  "mwk",
+  "mxn",
+  "myr",
+  "mzn",
+  "nad",
+  "ngn",
+  "nio",
+  "nok",
+  "npr",
+  "nzd",
   "omr",
-  "pab","pen","pgk","php","pkr","pln","pyg",
+  "pab",
+  "pen",
+  "pgk",
+  "php",
+  "pkr",
+  "pln",
+  "pyg",
   "qar",
-  "ron","rsd","rub","rwf",
-  "sar","sbd","scr","sek","sgd","shp","sle","sll","sos","srd","ssp","stn","svc","szl",
-  "thb","tjs","tmt","tnd","top","try","ttd","twd","tzs",
-  "uah","ugx","usd","uyu","uzs",
-  "ves","vnd","vuv",
+  "ron",
+  "rsd",
+  "rub",
+  "rwf",
+  "sar",
+  "sbd",
+  "scr",
+  "sek",
+  "sgd",
+  "shp",
+  "sle",
+  "sll",
+  "sos",
+  "srd",
+  "ssp",
+  "stn",
+  "svc",
+  "szl",
+  "thb",
+  "tjs",
+  "tmt",
+  "tnd",
+  "top",
+  "try",
+  "ttd",
+  "twd",
+  "tzs",
+  "uah",
+  "ugx",
+  "usd",
+  "uyu",
+  "uzs",
+  "ves",
+  "vnd",
+  "vuv",
   "wst",
-  "xaf","xcd","xof","xpf",
+  "xaf",
+  "xcd",
+  "xof",
+  "xpf",
   "yer",
-  "zar","zmw",
+  "zar",
+  "zmw",
 ] as const;
 
-function fmtMoney(currency: string | null, unit_amount: number | null) {
+const fmtMoney = (currency: string | null, unit_amount: number | null) => {
   if (!currency || unit_amount == null) return "—";
+  const cur = currency.toUpperCase();
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: currency.toUpperCase(),
+      currency: cur,
     }).format(unit_amount / 100);
   } catch {
     return `${unit_amount / 100} ${currency}`;
   }
-}
+};
 
-function fmtIso(iso: string) {
+const fmtIso = (iso: string) => {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
-}
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+};
 
-function fmtUnix(unix: number | null) {
-  if (!unix) return "—";
-  return new Date(unix * 1000).toLocaleString();
-}
+const fmtUnix = (unix: number | null) =>
+  unix ? new Date(unix * 1000).toLocaleString() : "—";
 
-function prettyEvent(type: string) {
-  return String(type || "")
+const prettyEvent = (type: string) =>
+  String(type || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
-}
 
 /* -------------------- Loading skeleton -------------------- */
 
@@ -116,7 +243,10 @@ function LoadingState() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         <div className="space-y-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+            <div
+              key={i}
+              className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm"
+            >
               <div className="h-4 w-28 rounded bg-slate-200/60 animate-pulse" />
               <div className="mt-3 h-4 w-64 rounded bg-slate-200/60 animate-pulse" />
               <div className="mt-2 h-4 w-48 rounded bg-slate-200/60 animate-pulse" />
@@ -132,23 +262,29 @@ function LoadingState() {
               <div className="h-8 w-28 rounded bg-slate-200/60 animate-pulse" />
             </div>
 
-            <div className="mt-4 rounded-xl border border-slate-200 overflow-hidden">
+            <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
               <div className="h-10 bg-slate-100" />
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-12 border-t border-slate-100 bg-white" />
+                <div
+                  key={i}
+                  className="h-12 border-t border-slate-100 bg-white"
+                />
               ))}
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <div className="h-4 w-40 rounded bg-slate-200/60 animate-pulse" />
             <div className="mt-2 h-3 w-56 rounded bg-slate-200/50 animate-pulse" />
           </div>
-          <div className="p-4 space-y-3">
+          <div className="space-y-3 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <div
+                key={i}
+                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+              >
                 <div className="h-3 w-48 rounded bg-slate-200/60 animate-pulse" />
                 <div className="mt-2 h-3 w-64 rounded bg-slate-200/50 animate-pulse" />
               </div>
@@ -162,22 +298,18 @@ function LoadingState() {
 
 /* -------------------- Activity timeline helpers -------------------- */
 
+const isRecurringPayload = (a: Activity) => !!a.payload?.recurring?.interval;
+
 function activityIcon(a: Activity) {
   const t = String(a.type || "").toLowerCase();
-
-  // ✅ new product icon
   if (t === "product_created") return "/icons/new-product.svg";
-
   if (t === "product_updated") return "/icons/product-updated.svg";
   if (t === "product_archived") return "/icons/product-archived.svg";
-
-  if (t === "price_created") {
-    if (a.payload?.recurring?.interval) return "/icons/price-recurring.svg";
-    return "/icons/price-one-time.svg";
-  }
-
+  if (t === "price_created")
+    return isRecurringPayload(a)
+      ? "/icons/price-recurring.svg"
+      : "/icons/price-one-time.svg";
   if (t === "price_archived") return "/icons/price-archived.svg";
-
   return "/icons/stage-change.svg";
 }
 
@@ -186,7 +318,10 @@ function activityLabel(a: Activity) {
   if (t === "product_created") return "New product";
   if (t === "product_updated") return "Product updated";
   if (t === "product_archived") return "Product archived";
-  if (t === "price_created") return a.payload?.recurring?.interval ? "Recurring price created" : "One-time price created";
+  if (t === "price_created")
+    return isRecurringPayload(a)
+      ? "Recurring price created"
+      : "One-time price created";
   if (t === "price_archived") return "Price archived";
   return prettyEvent(a.type);
 }
@@ -194,30 +329,34 @@ function activityLabel(a: Activity) {
 function activityText(a: Activity, productName: string) {
   const t = String(a.type || "").toLowerCase();
 
-  // ✅ EXACT requested wording
   if (t === "product_created") {
-    const nameFromPayload = String(a.payload?.name ?? "").trim();
-    const name = nameFromPayload || productName || "Product";
+    const name =
+      String(a.payload?.name ?? "").trim() || productName || "Product";
     return `New product: ${name}`;
   }
 
   if (t === "product_updated") {
     const name = a.payload?.name ? `Name → ${String(a.payload.name)}` : null;
-    const desc = a.payload?.description !== undefined ? "Description updated" : null;
-    return [name, desc].filter(Boolean).join(" · ") || "Product details changed";
+    const desc =
+      a.payload?.description !== undefined ? "Description updated" : null;
+    return (
+      [name, desc].filter(Boolean).join(" · ") || "Product details changed"
+    );
   }
 
-  if (t === "product_archived") {
+  if (t === "product_archived")
     return "Set to inactive in Stripe (existing invoices are unaffected).";
-  }
 
   if (t === "price_created") {
     const cur = String(a.payload?.currency ?? "").toUpperCase();
-    const amt = typeof a.payload?.unit_amount === "number" ? a.payload.unit_amount : null;
+    const amt =
+      typeof a.payload?.unit_amount === "number" ? a.payload.unit_amount : null;
+    const amountLabel =
+      amt != null && cur
+        ? fmtMoney(cur.toLowerCase(), amt)
+        : "New price created";
 
-    const amountLabel = amt != null && cur ? fmtMoney(cur.toLowerCase(), amt) : "New price created";
-
-    if (a.payload?.recurring?.interval) {
+    if (isRecurringPayload(a)) {
       const n = a.payload.recurring.interval_count ?? 1;
       const interval = a.payload.recurring.interval;
       return `${amountLabel} · Billed every ${n} ${interval}${n === 1 ? "" : "s"}`;
@@ -226,9 +365,8 @@ function activityText(a: Activity, productName: string) {
     return `${amountLabel} · One-time charge`;
   }
 
-  if (t === "price_archived") {
+  if (t === "price_archived")
     return `Archived Stripe price: ${a.stripe_price_id ?? ""}`.trim();
-  }
 
   if (t === "catalog_synced") {
     const p = a.payload?.products;
@@ -237,13 +375,55 @@ function activityText(a: Activity, productName: string) {
       typeof p === "number" ? `${p} products` : null,
       typeof pr === "number" ? `${pr} prices` : null,
     ].filter(Boolean);
-    return parts.length ? `Synced catalog · ${parts.join(" · ")}` : "Synced catalog";
+    return parts.length
+      ? `Synced catalog · ${parts.join(" · ")}`
+      : "Synced catalog";
   }
 
   return prettyEvent(a.type);
 }
 
-export default function ProductDetailClient({ productId }: { productId: string }) {
+/* -------------------- Component -------------------- */
+
+function mapProduct(pRaw: any, fallbackId: string): StripeProduct | null {
+  if (!pRaw) return null;
+  return {
+    id: String(pRaw.id ?? fallbackId),
+    name: pRaw.name ?? null,
+    description: pRaw.description ?? null,
+    active: !!pRaw.active,
+    created: typeof pRaw.created === "number" ? pRaw.created : null,
+  };
+}
+
+function mapPrices(pricesRaw: any[]): StripePrice[] {
+  return (pricesRaw ?? []).map((pr) => ({
+    id: String(pr.id ?? ""),
+    active: !!pr.active,
+    created: typeof pr.created === "number" ? pr.created : null,
+    currency: pr.currency ?? null,
+    unit_amount: typeof pr.unit_amount === "number" ? pr.unit_amount : null,
+    recurring: pr.recurring ?? null,
+  }));
+}
+
+function mapActivity(actRaw: any[]): Activity[] {
+  return (actRaw ?? []).map((a) => ({
+    id: String(a.id ?? ""),
+    type: String(a.type ?? ""),
+    payload: a.payload ?? {},
+    actor_user_id: a.actor_user_id ?? null,
+    created_at: String(a.created_at ?? new Date().toISOString()),
+    stripe_price_id: a.stripe_price_id ?? null,
+    stripe_product_id: a.stripe_product_id ?? null,
+  }));
+}
+
+export default function ProductDetailClient({
+  productId,
+}: {
+  productId: string;
+}) {
   const router = useRouter();
 
   const [product, setProduct] = useState<StripeProduct | null>(null);
@@ -254,89 +434,60 @@ export default function ProductDetailClient({ productId }: { productId: string }
 
   // price modal
   const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [currency, setCurrency] = useState<string>("usd");
-  const [amountCents, setAmountCents] = useState<string>("1000");
+  const [currency, setCurrency] = useState("usd");
+  const [amountCents, setAmountCents] = useState("1000");
   const [isRecurring, setIsRecurring] = useState(false);
-  const [interval, setInterval] = useState<"day" | "week" | "month" | "year">("month");
-  const [intervalCount, setIntervalCount] = useState<string>("1");
+  const [interval, setInterval] = useState<"day" | "week" | "month" | "year">(
+    "month",
+  );
+  const [intervalCount, setIntervalCount] = useState("1");
   const [savingPrice, setSavingPrice] = useState(false);
 
-  const displayName = useMemo(() => {
-    if (!product) return productId;
-    return product.name ?? product.id ?? productId;
-  }, [product, productId]);
+  const displayName = useMemo(
+    () => product?.name ?? product?.id ?? productId,
+    [product, productId],
+  );
 
-  async function load() {
-    setLoading(true);
-    setErr(null);
+  const load = useMemo(
+    () => async () => {
+      setLoading(true);
+      setErr(null);
 
-    try {
-      const res = await authedFetch(`/api/billing/products/${encodeURIComponent(productId)}`, {
-        cache: "no-store",
-      });
+      try {
+        const res = await authedFetch(
+          `/api/billing/products/${encodeURIComponent(productId)}`,
+          { cache: "no-store" },
+        );
+        const json: any = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
 
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
-
-      const pRaw = json?.product ?? null;
-      const pricesRaw = (json?.prices ?? []) as any[];
-      const actRaw = (json?.activity ?? []) as any[];
-
-      setProduct(
-        pRaw
-          ? {
-              id: String(pRaw.id ?? productId),
-              name: pRaw.name ?? null,
-              description: pRaw.description ?? null,
-              active: !!pRaw.active,
-              created: typeof pRaw.created === "number" ? pRaw.created : null,
-            }
-          : null
-      );
-
-      setPrices(
-        pricesRaw.map((pr) => ({
-          id: String(pr.id ?? ""),
-          active: !!pr.active,
-          created: typeof pr.created === "number" ? pr.created : null,
-          currency: pr.currency ?? null,
-          unit_amount: typeof pr.unit_amount === "number" ? pr.unit_amount : null,
-          recurring: pr.recurring ?? null,
-        }))
-      );
-
-      setActivity(
-        actRaw.map((a) => ({
-          id: String(a.id ?? ""),
-          type: String(a.type ?? ""),
-          payload: a.payload ?? {},
-          actor_user_id: a.actor_user_id ?? null,
-          created_at: String(a.created_at ?? new Date().toISOString()),
-          stripe_price_id: a.stripe_price_id ?? null,
-          stripe_product_id: a.stripe_product_id ?? null,
-        }))
-      );
-    } catch (e: any) {
-      setErr(String(e?.message ?? "load_failed"));
-      setProduct(null);
-      setPrices([]);
-      setActivity([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+        setProduct(mapProduct(json.product, productId));
+        setPrices(mapPrices(json.prices));
+        setActivity(mapActivity(json.activity));
+      } catch (e: any) {
+        setErr(String(e?.message ?? "load_failed"));
+        setProduct(null);
+        setPrices([]);
+        setActivity([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [productId],
+  );
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  }, [load]);
 
   async function syncAll() {
     setErr(null);
     try {
-      const res = await authedFetch("/api/billing/products/sync", { method: "POST" });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
+      const res = await authedFetch("/api/billing/products/sync", {
+        method: "POST",
+      });
+      const json: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
       await load();
     } catch (e: any) {
       setErr(String(e?.message ?? "sync_failed"));
@@ -349,24 +500,21 @@ export default function ProductDetailClient({ productId }: { productId: string }
 
     try {
       const unit_amount = Number(amountCents);
-      if (!Number.isFinite(unit_amount) || unit_amount <= 0) {
+      if (!Number.isFinite(unit_amount) || unit_amount <= 0)
         throw new Error("Invalid amount (cents).");
-      }
 
-      const cur = String(currency || "usd").trim().toLowerCase();
+      const cur = String(currency || "usd")
+        .trim()
+        .toLowerCase();
       if (!cur) throw new Error("Currency is required.");
 
-      const payload: any = {
-        currency: cur,
-        unit_amount,
-      };
+      const payload: any = { currency: cur, unit_amount };
 
-      if (isRecurring) {
+      if (isRecurring)
         payload.recurring = {
           interval,
           interval_count: Number(intervalCount) || 1,
         };
-      }
 
       const res = await authedFetch(
         `/api/billing/products/${encodeURIComponent(productId)}/prices/create`,
@@ -374,11 +522,11 @@ export default function ProductDetailClient({ productId }: { productId: string }
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
+      const json: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
 
       setPriceModalOpen(false);
       await load();
@@ -392,11 +540,12 @@ export default function ProductDetailClient({ productId }: { productId: string }
   async function archivePrice(priceId: string) {
     setErr(null);
     try {
-      const res = await authedFetch(`/api/billing/prices/${encodeURIComponent(priceId)}/archive`, {
-        method: "POST",
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
+      const res = await authedFetch(
+        `/api/billing/prices/${encodeURIComponent(priceId)}/archive`,
+        { method: "POST" },
+      );
+      const json: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
       await load();
     } catch (e: any) {
       setErr(String(e?.message ?? "price_archive_failed"));
@@ -409,7 +558,11 @@ export default function ProductDetailClient({ productId }: { productId: string }
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
         Product not found.
-        {!!err && <div className="mt-2 text-xs font-semibold text-rose-600">Error: {err}</div>}
+        {!!err && (
+          <div className="mt-2 text-xs font-semibold text-rose-600">
+            Error: {err}
+          </div>
+        )}
       </div>
     );
   }
@@ -421,11 +574,18 @@ export default function ProductDetailClient({ productId }: { productId: string }
         <div className="space-y-6 pb-6">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold text-slate-900">{displayName}</h1>
+              <h1 className="truncate text-2xl font-semibold text-slate-900">
+                {displayName}
+              </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Stripe ID: <span className="font-mono text-xs">{product.id}</span>
+                Stripe ID:{" "}
+                <span className="font-mono text-xs">{product.id}</span>
               </p>
-              {!!err && <p className="mt-2 text-xs font-semibold text-rose-600">Error: {err}</p>}
+              {!!err && (
+                <p className="mt-2 text-xs font-semibold text-rose-600">
+                  Error: {err}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -433,7 +593,7 @@ export default function ProductDetailClient({ productId }: { productId: string }
                 type="button"
                 onClick={syncAll}
                 title="Sync catalog from Stripe"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
               >
                 <span className="inline-flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4" />
@@ -443,15 +603,19 @@ export default function ProductDetailClient({ productId }: { productId: string }
 
               <Link
                 href={`/billing/products/${encodeURIComponent(productId)}/edit`}
-                className="inline-flex h-[28px] w-16 items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700 cursor-pointer"
+                className="inline-flex h-[28px] w-16 cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700"
               >
                 Edit
               </Link>
 
               <button
                 type="button"
-                onClick={() => router.push(`/billing/products/${encodeURIComponent(productId)}/delete`)}
-                className="inline-flex h-[28px] w-16 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100 cursor-pointer"
+                onClick={() =>
+                  router.push(
+                    `/billing/products/${encodeURIComponent(productId)}/delete`,
+                  )
+                }
+                className="inline-flex h-[28px] w-16 cursor-pointer items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100"
               >
                 Archive
               </button>
@@ -460,7 +624,9 @@ export default function ProductDetailClient({ productId }: { productId: string }
 
           {/* Status */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">Status</h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              Status
+            </h2>
             {product.active ? (
               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                 Active
@@ -470,20 +636,32 @@ export default function ProductDetailClient({ productId }: { productId: string }
                 Archived
               </span>
             )}
-            <p className="mt-2 text-xs text-slate-500">Created: {fmtUnix(product.created)}</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Created: {fmtUnix(product.created)}
+            </p>
           </div>
 
           {/* Details */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Details</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Details
+            </h2>
             <div className="space-y-2">
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Name</div>
-                <div className="text-sm text-slate-800">{product.name ?? "—"}</div>
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Name
+                </div>
+                <div className="text-sm text-slate-800">
+                  {product.name ?? "—"}
+                </div>
               </div>
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Description</div>
-                <div className="text-sm text-slate-800 whitespace-pre-wrap">{product.description ?? "—"}</div>
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Description
+                </div>
+                <div className="whitespace-pre-wrap text-sm text-slate-800">
+                  {product.description ?? "—"}
+                </div>
               </div>
             </div>
           </div>
@@ -494,7 +672,8 @@ export default function ProductDetailClient({ productId }: { productId: string }
               <div>
                 <h2 className="text-sm font-semibold text-slate-800">Prices</h2>
                 <p className="text-xs text-slate-500">
-                  Stripe prices are effectively immutable — create a new price and archive the old one.
+                  Stripe prices are effectively immutable — create a new price
+                  and archive the old one.
                 </p>
               </div>
 
@@ -518,21 +697,29 @@ export default function ProductDetailClient({ productId }: { productId: string }
                       <th className="px-4 py-2 font-semibold">Type</th>
                       <th className="px-4 py-2 font-semibold">Status</th>
                       <th className="px-4 py-2 font-semibold">Created</th>
-                      <th className="px-4 py-2 font-semibold text-right">Actions</th>
+                      <th className="px-4 py-2 font-semibold text-right">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {prices.map((pr) => {
-                      const amount = fmtMoney(pr.currency ?? null, pr.unit_amount ?? null);
+                      const amount = fmtMoney(pr.currency, pr.unit_amount);
                       const recurringLabel = pr.recurring?.interval
                         ? `${pr.recurring.interval_count ?? 1}× ${pr.recurring.interval}`
                         : "—";
-                      const typeLabel = pr.recurring?.interval ? `Recurring (${recurringLabel})` : "One-time";
+                      const typeLabel = pr.recurring?.interval
+                        ? `Recurring (${recurringLabel})`
+                        : "One-time";
 
                       return (
                         <tr key={pr.id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-2 font-semibold text-slate-900">{amount}</td>
-                          <td className="px-4 py-2 text-slate-700">{typeLabel}</td>
+                          <td className="px-4 py-2 font-semibold text-slate-900">
+                            {amount}
+                          </td>
+                          <td className="px-4 py-2 text-slate-700">
+                            {typeLabel}
+                          </td>
                           <td className="px-4 py-2">
                             {pr.active ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -544,7 +731,9 @@ export default function ProductDetailClient({ productId }: { productId: string }
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-slate-700">{fmtUnix(pr.created)}</td>
+                          <td className="px-4 py-2 text-slate-700">
+                            {fmtUnix(pr.created)}
+                          </td>
                           <td className="px-4 py-2 text-right">
                             {pr.active ? (
                               <button
@@ -571,8 +760,12 @@ export default function ProductDetailClient({ productId }: { productId: string }
         {/* RIGHT: Activity timeline */}
         <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-slate-800">Activity Timeline</h2>
-            <p className="text-xs text-slate-500">Product updates and price changes.</p>
+            <h2 className="text-sm font-semibold text-slate-800">
+              Activity Timeline
+            </h2>
+            <p className="text-xs text-slate-500">
+              Product updates and price changes.
+            </p>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -592,14 +785,16 @@ export default function ProductDetailClient({ productId }: { productId: string }
                         <img
                           src={iconSrc}
                           alt={label}
-                          className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                          className="h-8 w-8 rounded-full border border-slate-200 object-cover"
                         />
                       </div>
 
                       <div className="flex-1">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                           <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                            <span className="font-semibold text-slate-700">{label}</span>
+                            <span className="font-semibold text-slate-700">
+                              {label}
+                            </span>
                             <span>{fmtIso(a.created_at)}</span>
                           </div>
 
@@ -622,18 +817,24 @@ export default function ProductDetailClient({ productId }: { productId: string }
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
             <div className="border-b border-slate-100 px-5 py-4">
-              <h3 className="text-base font-semibold text-slate-900">Create price</h3>
-              <p className="mt-1 text-xs text-slate-500">Amount is in cents (e.g. 1000 = $10.00).</p>
+              <h3 className="text-base font-semibold text-slate-900">
+                Create price
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Amount is in cents (e.g. 1000 = $10.00).
+              </p>
             </div>
 
             <div className="space-y-4 px-5 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Currency</label>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Currency
+                  </label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 bg-white cursor-pointer"
+                    className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                   >
                     {CURRENCIES.map((c) => (
                       <option key={c} value={c}>
@@ -641,11 +842,15 @@ export default function ProductDetailClient({ productId }: { productId: string }
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-500">Pick a currency supported by your Stripe account.</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Pick a currency supported by your Stripe account.
+                  </p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Amount (cents)</label>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Amount (cents)
+                  </label>
                   <input
                     value={amountCents}
                     onChange={(e) => setAmountCents(e.target.value)}
@@ -663,7 +868,10 @@ export default function ProductDetailClient({ productId }: { productId: string }
                   onChange={(e) => setIsRecurring(e.target.checked)}
                   className="cursor-pointer"
                 />
-                <label htmlFor="recurring" className="text-sm text-slate-700 cursor-pointer">
+                <label
+                  htmlFor="recurring"
+                  className="cursor-pointer text-sm text-slate-700"
+                >
                   Recurring
                 </label>
               </div>
@@ -671,11 +879,13 @@ export default function ProductDetailClient({ productId }: { productId: string }
               {isRecurring && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">Interval</label>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Interval
+                    </label>
                     <select
                       value={interval}
                       onChange={(e) => setInterval(e.target.value as any)}
-                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white cursor-pointer"
+                      className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                     >
                       <option value="day">day</option>
                       <option value="week">week</option>
@@ -684,7 +894,9 @@ export default function ProductDetailClient({ productId }: { productId: string }
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">Interval count</label>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Interval count
+                    </label>
                     <input
                       value={intervalCount}
                       onChange={(e) => setIntervalCount(e.target.value)}

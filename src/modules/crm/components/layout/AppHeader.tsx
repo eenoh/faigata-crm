@@ -1,10 +1,15 @@
 // src/components/layout/AppHeader.tsx
 "use client";
 
-import type React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BellIcon,
   MagnifyingGlassIcon,
@@ -31,7 +36,6 @@ type HeaderUser = {
   role: string | null;
 };
 
-// minimal DB shapes used for reminders
 type HeaderLead = {
   id: string;
   team_id: string;
@@ -64,7 +68,7 @@ function diffHours(a: Date, b: Date) {
   return (a.getTime() - b.getTime()) / (1000 * 60 * 60);
 }
 
-// NEW: TTL handling for reminders (24h)
+// TTL handling for reminders (24h)
 const REMINDER_TTL_HOURS = 24;
 const REMINDER_LOCALSTORAGE_KEY = "faigatacrm.headerReminderFirstSeen";
 
@@ -76,31 +80,26 @@ function loadReminderSeenMap(): ReminderSeenMap {
     const raw = window.localStorage.getItem(REMINDER_LOCALSTORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      return parsed as ReminderSeenMap;
-    }
-  } catch (err) {
-    console.warn("[Header] Failed to load reminder seen map", err);
+    return parsed && typeof parsed === "object"
+      ? (parsed as ReminderSeenMap)
+      : {};
+  } catch {
+    return {};
   }
-  return {};
 }
 
 function saveReminderSeenMap(map: ReminderSeenMap) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(
-      REMINDER_LOCALSTORAGE_KEY,
-      JSON.stringify(map)
-    );
-  } catch (err) {
-    console.warn("[Header] Failed to save reminder seen map", err);
+    window.localStorage.setItem(REMINDER_LOCALSTORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
   }
 }
 
-// Use the same heuristic as LeadMessagesClient to label leads
+// Same heuristic as LeadMessagesClient to label leads
 function leadDisplayName(lead: HeaderLead): string {
   const cv = lead.custom_values ?? {};
-
   const preferredKeys = [
     "name",
     "full_name",
@@ -111,33 +110,31 @@ function leadDisplayName(lead: HeaderLead): string {
     "email",
   ];
 
-  const lowerEntries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v]);
+  const lowerEntries = Object.entries(cv).map(
+    ([k, v]) => [k.toLowerCase(), v] as const,
+  );
 
-  // 1) try preferred keys
   for (const pref of preferredKeys) {
     const match = lowerEntries.find(
       ([key, value]) =>
         key.includes(pref) &&
         value !== null &&
         value !== undefined &&
-        String(value).trim() !== ""
+        String(value).trim() !== "",
     );
     if (match) return String(match[1]).trim();
   }
 
-  // 2) otherwise any non-empty string field
   const anyField = lowerEntries.find(
     ([, value]) =>
       value !== null &&
       value !== undefined &&
       typeof value === "string" &&
-      String(value).trim() !== ""
+      String(value).trim() !== "",
   );
   if (anyField) return String(anyField[1]).trim();
 
-  // 3) final fallback – use stage instead of ugly id
-  const stageLabel = lead.stage || "Pipeline";
-  return `Lead in “${stageLabel}” stage`;
+  return `Lead in “${lead.stage || "Pipeline"}” stage`;
 }
 
 // role priority from lowest -> highest
@@ -149,7 +146,6 @@ const ROLE_PRIORITY: Record<string, number> = {
   admin: 5,
 };
 
-// Takes the array from Supabase and returns the highest role
 function getHighestRole(rawRoles: unknown): string | null {
   if (!Array.isArray(rawRoles)) return null;
 
@@ -169,9 +165,7 @@ function getHighestRole(rawRoles: unknown): string | null {
   return bestRole;
 }
 
-/** -------------------------------------------
- * Google Calendar reconnect banner (header)
- * ------------------------------------------ */
+/** Google Calendar reconnect banner (header) */
 const GC_RECONNECT_FLAG_KEY = "faigatacrm.googleCalendarReconnectRequired";
 
 function readGcReconnectFlag(): boolean {
@@ -218,15 +212,17 @@ export function AppHeader() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  // notifications
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // gc reconnect banner state
   const [gcReconnectNeeded, setGcReconnectNeeded] = useState(false);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
+
+  const searchRef = useRef<HTMLDivElement | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const leftClass = collapsed ? "left-16" : "left-64";
   const teamId = searchParams.get("team");
@@ -235,15 +231,13 @@ export function AppHeader() {
     setSearch(searchParams.get("q") ?? "");
   }, [searchParams]);
 
-  // ✅ Reconnect banner: init from local flag, then verify real status and clear stale flag
+  // Reconnect banner: init from local flag, then verify real status and clear stale flag
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      // fast local hint first
       setGcReconnectNeeded(readGcReconnectFlag());
 
-      // verify actual connection from DB/status route
       const connected = await fetchGoogleCalendarConnected();
       if (cancelled) return;
 
@@ -263,12 +257,17 @@ export function AppHeader() {
 
     return () => {
       cancelled = true;
-      window.removeEventListener("gc-reconnect-required", onNeed as EventListener);
-      window.removeEventListener("gc-reconnect-cleared", onCleared as EventListener);
+      window.removeEventListener(
+        "gc-reconnect-required",
+        onNeed as EventListener,
+      );
+      window.removeEventListener(
+        "gc-reconnect-cleared",
+        onCleared as EventListener,
+      );
     };
   }, []);
 
-  // Turn stored avatar path into a signed URL (or use legacy full URL)
   async function refreshAvatar(path: string | null) {
     if (!path) {
       setAvatarUrl(null);
@@ -285,7 +284,6 @@ export function AppHeader() {
       .createSignedUrl(path, 60 * 60 * 24);
 
     if (error) {
-      console.error("[Header] createSignedUrl error", error);
       setAvatarUrl(null);
       return;
     }
@@ -299,7 +297,8 @@ export function AppHeader() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           if (!cancelled) {
@@ -319,7 +318,6 @@ export function AppHeader() {
           .single();
 
         if (profileError) {
-          console.error("[Header] Failed to load profile", profileError);
           if (!cancelled) {
             setUser({
               id: userId,
@@ -331,7 +329,7 @@ export function AppHeader() {
             setAvatarUrl(null);
           }
         } else if (!cancelled) {
-          const highestRole = getHighestRole(profile?.role); // pick best one
+          const highestRole = getHighestRole(profile?.role);
 
           const headerUser: HeaderUser = {
             id: userId,
@@ -342,12 +340,9 @@ export function AppHeader() {
           };
 
           setUser(headerUser);
-          if (headerUser.avatarPath) {
-            refreshAvatar(headerUser.avatarPath);
-          }
+          if (headerUser.avatarPath) refreshAvatar(headerUser.avatarPath);
         }
-      } catch (err) {
-        console.error("[Header] Failed to load user/profile", err);
+      } catch {
         if (!cancelled) {
           setUser(null);
           setAvatarUrl(null);
@@ -366,18 +361,64 @@ export function AppHeader() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
+      if (!profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    }
+
+    if (profileOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileOpen]);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!notificationsRef.current) return;
+      if (!notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
       }
     }
 
-    if (profileOpen) {
+    if (notificationsOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [profileOpen]);
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [notificationsOpen]);
+
+  useEffect(() => {
+    function handleClickOutsideSearch(e: MouseEvent) {
+      if (!searchRef.current) return;
+
+      // If click is inside search container, do nothing
+      if (searchRef.current.contains(e.target as Node)) return;
+
+      // Clicked outside: clear search
+      if (search !== "") {
+        setSearch("");
+
+        // keep URL in sync on pages where q applies
+        if (
+          pathname.startsWith("/leads") ||
+          pathname.startsWith("/pipeline") ||
+          pathname.startsWith("/billing")
+        ) {
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete("q");
+          const qs = params.toString();
+          router.replace(qs ? `${pathname}?${qs}` : pathname);
+        }
+      }
+
+      setSearchFocused(false);
+    }
+
+    // Only listen while the user is interacting with search / or it has value
+    if (searchFocused || search.trim().length > 0) {
+      document.addEventListener("mousedown", handleClickOutsideSearch);
+    }
+
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutsideSearch);
+  }, [searchFocused, search, pathname, router, searchParams]);
 
   // Close on route change
   useEffect(() => {
@@ -385,7 +426,7 @@ export function AppHeader() {
     setNotificationsOpen(false);
   }, [pathname]);
 
-  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setSearch(value);
 
@@ -399,17 +440,12 @@ export function AppHeader() {
 
     const params = new URLSearchParams(searchParams.toString());
 
-    // ✅ allow spaces while typing; only treat as empty if it's ALL whitespace
-    if (value.trim().length > 0) {
-      params.set("q", value); // <-- no trim here
-    } else {
-      params.delete("q");
-    }
+    // allow spaces while typing; only treat as empty if it's ALL whitespace
+    if (value.trim().length > 0) params.set("q", value);
+    else params.delete("q");
 
     const qs = params.toString();
-    const url = qs ? `${pathname}?${qs}` : pathname;
-
-    router.replace(url);
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
   const initials = (() => {
@@ -417,9 +453,7 @@ export function AppHeader() {
     const first = user.firstName?.trim()?.charAt(0).toUpperCase();
     const last = user.lastName?.trim()?.charAt(0).toUpperCase();
     if (first && last) return `${first}${last}`;
-    if (first) return first;
-    if (last) return last;
-    return "U";
+    return first || last || "U";
   })();
 
   const displayName =
@@ -431,9 +465,7 @@ export function AppHeader() {
     const raw = user?.role;
     if (!raw || typeof raw !== "string") return "Member";
 
-    const value = raw.toLowerCase();
-
-    switch (value) {
+    switch (raw.toLowerCase()) {
       case "prospector":
         return "Prospector";
       case "setter":
@@ -452,14 +484,11 @@ export function AppHeader() {
   async function handleLogout() {
     try {
       await supabase.auth.signOut();
-    } catch (err) {
-      console.error("[Header] signOut error", err);
     } finally {
       router.replace("/login");
     }
   }
 
-  // ✅ Header reconnect button: actually starts OAuth again
   async function handleGoogleReconnect() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -485,18 +514,20 @@ export function AppHeader() {
 
       const authUrl = json?.authUrl as string | undefined;
       if (!authUrl) {
-        router.push(`/profile/integrations?error=${encodeURIComponent("missing_auth_url")}`);
+        router.push(
+          `/profile/integrations?error=${encodeURIComponent("missing_auth_url")}`,
+        );
         return;
       }
 
       window.location.href = authUrl;
-    } catch (e) {
-      console.error("[Header] Google reconnect failed", e);
-      router.push(`/profile/integrations?error=${encodeURIComponent("google_reconnect_failed")}`);
+    } catch {
+      router.push(
+        `/profile/integrations?error=${encodeURIComponent("google_reconnect_failed")}`,
+      );
     }
   }
 
-  // --------- REMINDERS (auto follow-ups + stage stuck) ----------
   const computeReminders = useCallback(async () => {
     if (!user || !teamId) {
       setReminders([]);
@@ -506,27 +537,19 @@ export function AppHeader() {
     setLoadingReminders(true);
 
     try {
-      // 1) Load leads for this setter
       const { data: leads, error: leadsError } = await supabase
         .from("leads")
         .select("id, team_id, setter_id, stage, custom_values, created_at")
         .eq("team_id", teamId)
         .eq("setter_id", user.id);
 
-      if (leadsError) {
-        console.error("[Header] leads error", leadsError);
-        setReminders([]);
-        return;
-      }
-
-      if (!leads || leads.length === 0) {
+      if (leadsError || !leads?.length) {
         setReminders([]);
         return;
       }
 
       const leadIds = leads.map((l) => l.id);
 
-      // 2) Load all messages for those leads
       const { data: msgs, error: msgsError } = await supabase
         .from("lead_messages")
         .select("id, team_id, lead_id, direction, channel, sent_at")
@@ -535,7 +558,6 @@ export function AppHeader() {
         .order("sent_at", { ascending: false });
 
       if (msgsError) {
-        console.error("[Header] lead_messages error", msgsError);
         setReminders([]);
         return;
       }
@@ -550,7 +572,6 @@ export function AppHeader() {
       const now = new Date();
       const candidateReminders: Reminder[] = [];
 
-      // thresholds in hours for no-inbound after outbound
       const followupThresholds = [
         { hours: 48, label: "No reply in 48 hours" },
         { hours: 96, label: "No reply in 4 days" },
@@ -562,7 +583,6 @@ export function AppHeader() {
       for (const lead of leads as HeaderLead[]) {
         const leadMsgs = byLead.get(lead.id) ?? [];
 
-        // ----- no inbound after outbound -----
         const lastOutbound = leadMsgs.find((m) => m.direction === "outbound");
         const lastInbound = leadMsgs.find((m) => m.direction === "inbound");
 
@@ -573,7 +593,6 @@ export function AppHeader() {
         ) {
           const hoursSince = diffHours(now, new Date(lastOutbound.sent_at));
 
-          // pick highest threshold that is passed
           let followLabel: string | null = null;
           for (let i = followupThresholds.length - 1; i >= 0; i--) {
             if (hoursSince >= followupThresholds[i].hours) {
@@ -583,10 +602,8 @@ export function AppHeader() {
           }
 
           if (followLabel) {
-            const reminderId = `noinbound-${lead.id}-${lastOutbound.sent_at}`;
-
             candidateReminders.push({
-              id: reminderId,
+              id: `noinbound-${lead.id}-${lastOutbound.sent_at}`,
               type: "no_inbound",
               leadId: lead.id,
               leadName: leadDisplayName(lead),
@@ -595,9 +612,8 @@ export function AppHeader() {
           }
         }
 
-        // ----- stage stuck -----
         const stageMsgs = leadMsgs.filter(
-          (m) => (m.channel ?? "").toLowerCase() === "pipeline"
+          (m) => (m.channel ?? "").toLowerCase() === "pipeline",
         );
         const lastStageChange = stageMsgs.length
           ? new Date(stageMsgs[0].sent_at)
@@ -606,10 +622,8 @@ export function AppHeader() {
         const hoursInStage = diffHours(now, lastStageChange);
 
         if (hoursInStage >= stageThresholdHours) {
-          const reminderId = `stage-${lead.id}-${lastStageChange.toISOString()}`;
-
           candidateReminders.push({
-            id: reminderId,
+            id: `stage-${lead.id}-${lastStageChange.toISOString()}`,
             type: "stage_stuck",
             leadId: lead.id,
             leadName: leadDisplayName(lead),
@@ -618,18 +632,13 @@ export function AppHeader() {
         }
       }
 
-      // apply 24h TTL per reminder instance
       const seenMap = loadReminderSeenMap();
-      const ttlHours = REMINDER_TTL_HOURS;
       const filteredReminders: Reminder[] = [];
 
       const candidateIds = new Set(candidateReminders.map((r) => r.id));
 
-      // Clean up any stored entries that are no longer relevant
       for (const key of Object.keys(seenMap)) {
-        if (!candidateIds.has(key)) {
-          delete seenMap[key];
-        }
+        if (!candidateIds.has(key)) delete seenMap[key];
       }
 
       for (const r of candidateReminders) {
@@ -640,27 +649,20 @@ export function AppHeader() {
           continue;
         }
 
-        const firstSeen = new Date(existing);
-        const ageHours = diffHours(now, firstSeen);
-
-        if (ageHours < ttlHours) {
-          filteredReminders.push(r);
-        } else {
-          delete seenMap[r.id];
-        }
+        const ageHours = diffHours(now, new Date(existing));
+        if (ageHours < REMINDER_TTL_HOURS) filteredReminders.push(r);
+        else delete seenMap[r.id];
       }
 
       saveReminderSeenMap(seenMap);
       setReminders(filteredReminders);
-    } catch (err) {
-      console.error("[Header] computeReminders error", err);
+    } catch {
       setReminders([]);
     } finally {
       setLoadingReminders(false);
     }
   }, [user, teamId]);
 
-  // initial & on user/team change
   useEffect(() => {
     if (!user || !teamId) {
       setReminders([]);
@@ -669,42 +671,38 @@ export function AppHeader() {
     computeReminders();
   }, [user, teamId, computeReminders]);
 
-  // re-run reminders when a message is logged for this team
   useEffect(() => {
     if (!user || !teamId) return;
 
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ teamId?: string; leadId?: string }>;
-      if (custom.detail?.teamId && custom.detail.teamId !== teamId) {
-        return;
-      }
+      if (custom.detail?.teamId && custom.detail.teamId !== teamId) return;
       computeReminders();
     };
 
     window.addEventListener("lead-message-logged", handler as EventListener);
-
-    return () => {
-      window.removeEventListener("lead-message-logged", handler as EventListener);
-    };
+    return () =>
+      window.removeEventListener(
+        "lead-message-logged",
+        handler as EventListener,
+      );
   }, [user, teamId, computeReminders]);
 
-  // optional – re-run when stage is updated
   useEffect(() => {
     if (!user || !teamId) return;
 
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ teamId?: string; leadId?: string }>;
-      if (custom.detail?.teamId && custom.detail.teamId !== teamId) {
-        return;
-      }
+      if (custom.detail?.teamId && custom.detail.teamId !== teamId) return;
       computeReminders();
     };
 
     window.addEventListener("lead-stage-updated", handler as EventListener);
-
-    return () => {
-      window.removeEventListener("lead-stage-updated", handler as EventListener);
-    };
+    return () =>
+      window.removeEventListener(
+        "lead-stage-updated",
+        handler as EventListener,
+      );
   }, [user, teamId, computeReminders]);
 
   const unreadCount = reminders.length;
@@ -725,7 +723,10 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-400 focus-within:ring-2 focus-within:ring-indigo-500">
+        <div
+          ref={searchRef}
+          className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-400 focus-within:ring-2 focus-within:ring-indigo-500"
+        >
           <MagnifyingGlassIcon className="h-4 w-4" />
           <input
             type="text"
@@ -736,7 +737,6 @@ export function AppHeader() {
           />
         </div>
 
-        {/* Google Calendar reconnect banner */}
         {gcReconnectNeeded && (
           <button
             type="button"
@@ -749,8 +749,7 @@ export function AppHeader() {
           </button>
         )}
 
-        {/* Notifications */}
-        <div className="relative">
+        <div ref={notificationsRef} className="relative">
           <button
             type="button"
             onClick={() => setNotificationsOpen((open) => !open)}
@@ -759,7 +758,6 @@ export function AppHeader() {
           >
             <BellIcon className="h-4 w-4" />
 
-            {/* Badge */}
             {unreadCount === 0 ? (
               <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
             ) : (
@@ -771,7 +769,6 @@ export function AppHeader() {
             )}
           </button>
 
-          {/* dropdown */}
           <div
             className={`absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg text-xs 
               transition-all duration-150 ease-out origin-top-right ${
@@ -804,8 +801,8 @@ export function AppHeader() {
                     onClick={() =>
                       router.push(
                         `/leads/${r.leadId}/messages?team=${encodeURIComponent(
-                          teamId ?? ""
-                        )}`
+                          teamId ?? "",
+                        )}`,
                       )
                     }
                     className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 cursor-pointer"
@@ -830,7 +827,6 @@ export function AppHeader() {
           </div>
         </div>
 
-        {/* Profile area with click-to-open menu */}
         <div ref={profileRef} className="relative flex items-center gap-2">
           <button
             type="button"
@@ -864,7 +860,6 @@ export function AppHeader() {
             </div>
           </button>
 
-          {/* Dropdown menu */}
           {!loadingUser && (
             <div
               className={`absolute right-0 top-9 mt-2 w-44

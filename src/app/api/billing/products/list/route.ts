@@ -14,17 +14,18 @@ type Role = "admin" | "manager" | "closer" | "member";
 
 type BillingCtx = {
   teamId: string;
-  organizationId: string | null; // ✅ NEW
+  organizationId: string; // resolved from teams.organization_id
   role: Role; // highest role resolved
-  roleSources: {
-    team_members?: Role;
-    profiles?: Role;
-    profilesRaw?: unknown;
-    teamMembersRaw?: unknown;
-  };
   livemode: boolean;
-  stripeAccountId: string | null;
+  stripeAccountId: string; // resolved from organization_stripe_accounts
 };
+
+// -----------------------------
+// Response helpers
+// -----------------------------
+function jsonError(error: string, status = 400, extra?: Record<string, any>) {
+  return NextResponse.json({ error, ...(extra ?? {}) }, { status });
+}
 
 // -----------------------------
 // Supabase Admin
@@ -45,14 +46,14 @@ function supabaseAdmin() {
 // Helpers
 // -----------------------------
 function getBearerToken(req: NextRequest) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
 
 function isStripeAccountId(v: unknown) {
-  const s = String(v ?? "").trim();
-  return /^acct_[a-zA-Z0-9]+$/.test(s);
+  return /^acct_[a-zA-Z0-9]+$/.test(String(v ?? "").trim());
 }
 
 function parseLivemode(req: NextRequest): boolean {
@@ -61,16 +62,30 @@ function parseLivemode(req: NextRequest): boolean {
   // ?livemode=1|0|true|false
   const sp = req.nextUrl.searchParams;
 
-  const mode = String(sp.get("mode") ?? "").trim().toLowerCase();
+  const mode = String(sp.get("mode") ?? "")
+    .trim()
+    .toLowerCase();
   if (mode === "live") return true;
   if (mode === "test") return false;
 
-  const lm = String(sp.get("livemode") ?? "").trim().toLowerCase();
+  const lm = String(sp.get("livemode") ?? "")
+    .trim()
+    .toLowerCase();
   if (lm === "1" || lm === "true") return true;
   if (lm === "0" || lm === "false") return false;
 
-  // Default: TEST
-  return false;
+  return false; // default TEST
+}
+
+function normalizeRoleOne(v: unknown): Role {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "admin") return "admin";
+  if (s === "manager") return "manager";
+  if (s === "closer") return "closer";
+  if (s === "member") return "member";
+  return "member";
 }
 
 /**
@@ -79,21 +94,13 @@ function parseLivemode(req: NextRequest): boolean {
  * - ["member","admin"]
  * - null/undefined
  */
-function roleSetFromUnknown(v: unknown): Set<Role> {
+function rolesFromUnknown(v: unknown): Set<Role> {
   const out = new Set<Role>();
 
-  const pushOne = (x: unknown) => {
-    const s = String(x ?? "").trim().toLowerCase();
-    if (s === "admin") out.add("admin");
-    else if (s === "manager") out.add("manager");
-    else if (s === "closer") out.add("closer");
-    else if (s) out.add("member");
-  };
-
   if (Array.isArray(v)) {
-    for (const x of v) pushOne(x);
-  } else {
-    pushOne(v);
+    for (const x of v) out.add(normalizeRoleOne(x));
+  } else if (v != null) {
+    out.add(normalizeRoleOne(v));
   }
 
   if (out.size === 0) out.add("member");
@@ -107,13 +114,12 @@ function pickHighestRole(roles: Set<Role>): Role {
   return "member";
 }
 
-function mergeHighestRole(...roleLikes: unknown[]): { highest: Role; merged: Set<Role> } {
+function mergeHighestRole(...roleLikes: unknown[]): Role {
   const merged = new Set<Role>();
   for (const rl of roleLikes) {
-    const set = roleSetFromUnknown(rl);
-    for (const r of set) merged.add(r);
+    for (const r of rolesFromUnknown(rl)) merged.add(r);
   }
-  return { highest: pickHighestRole(merged), merged };
+  return pickHighestRole(merged);
 }
 
 async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
@@ -127,17 +133,16 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
   if (userErr || !user) return null;
 
   const userId = String(user.id);
-
   const sp = req.nextUrl.searchParams;
+
   const teamIdParam = String(sp.get("teamId") ?? "").trim() || null;
-  const teamIdHeader = String(req.headers.get("x-team-id") ?? "").trim() || null;
+  const teamIdHeader =
+    String(req.headers.get("x-team-id") ?? "").trim() || null;
   const teamIdCandidate = teamIdParam || teamIdHeader;
 
   const livemode = parseLivemode(req);
 
   let teamId: string | null = null;
-
-  // We'll compute role from BOTH sources then take the highest
   let teamMembersRoleRaw: unknown = null;
   let profilesRoleRaw: unknown = null;
 
@@ -156,7 +161,7 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
     }
   }
 
-  // If not found, pick earliest membership
+  // fallback: earliest membership
   if (!teamId) {
     const { data, error } = await admin
       .from("team_members")
@@ -172,7 +177,7 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
     }
   }
 
-  // 2) profiles fallback (for team_id OR for role enrichment)
+  // 2) profiles fallback (for team_id OR role enrichment)
   const { data: profile, error: profErr } = await admin
     .from("profiles")
     .select("team_id, role")
@@ -186,10 +191,10 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
 
   if (!teamId) return null;
 
-  // ✅ profiles.role can be an array → merge roles + pick highest
-  const mergedRole = mergeHighestRole(teamMembersRoleRaw, profilesRoleRaw).highest;
+  // merge roles + pick highest
+  const role = mergeHighestRole(teamMembersRoleRaw, profilesRoleRaw);
 
-  // ✅ NEW: translate teamId -> organization_id (because organization_stripe_accounts.org_id = organization_id)
+  // teamId -> organization_id (organization_stripe_accounts.org_id = organization_id)
   const { data: teamRow, error: teamErr } = await admin
     .from("teams")
     .select("organization_id")
@@ -197,35 +202,29 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
     .maybeSingle();
 
   const organizationId =
-    !teamErr && teamRow?.organization_id ? String(teamRow.organization_id) : null;
+    !teamErr && teamRow?.organization_id
+      ? String(teamRow.organization_id)
+      : null;
 
-  // Resolve stripe account id using organizationId (not teamId)
-  let stripeAccountId: string | null = null;
-  if (organizationId) {
-    const { data: acctRow, error: acctErr } = await admin
-      .from("organization_stripe_accounts")
-      .select("stripe_account_id")
-      .eq("org_id", organizationId)
-      .eq("livemode", livemode)
-      .maybeSingle();
+  if (!organizationId) return null;
 
-    stripeAccountId =
-      !acctErr && acctRow?.stripe_account_id ? String(acctRow.stripe_account_id) : null;
-  }
+  // orgId -> stripe account
+  const { data: acctRow, error: acctErr } = await admin
+    .from("organization_stripe_accounts")
+    .select("stripe_account_id")
+    .eq("org_id", organizationId)
+    .eq("livemode", livemode)
+    .maybeSingle();
 
-  return {
-    teamId,
-    organizationId,
-    role: mergedRole,
-    roleSources: {
-      team_members: pickHighestRole(roleSetFromUnknown(teamMembersRoleRaw)),
-      profiles: pickHighestRole(roleSetFromUnknown(profilesRoleRaw)),
-      profilesRaw: profilesRoleRaw,
-      teamMembersRaw: teamMembersRoleRaw,
-    },
-    livemode,
-    stripeAccountId,
-  };
+  const stripeAccountId =
+    !acctErr && acctRow?.stripe_account_id
+      ? String(acctRow.stripe_account_id)
+      : null;
+
+  if (!stripeAccountId) return null;
+  if (!isStripeAccountId(stripeAccountId)) return null;
+
+  return { teamId, organizationId, role, livemode, stripeAccountId };
 }
 
 // -----------------------------
@@ -233,75 +232,34 @@ async function resolveBillingCtx(req: NextRequest): Promise<BillingCtx | null> {
 // -----------------------------
 export async function GET(req: NextRequest) {
   try {
-    const token = getBearerToken(req);
-    if (!token) {
-      return NextResponse.json(
-        { error: "missing_token", message: "Missing Authorization: Bearer <token>." },
-        { status: 401 }
-      );
-    }
-
     const ctx = await resolveBillingCtx(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: "unauthorized", message: "Invalid session or user not found." },
-        { status: 401 }
-      );
+      return jsonError("unauthorized", 401, {
+        message:
+          "Missing/invalid session or could not resolve org/Stripe account mapping.",
+        hint: "Ensure Authorization: Bearer <token> is sent; teams.organization_id is set; and organization_stripe_accounts has a row for (org_id=teams.organization_id, livemode).",
+      });
     }
 
-    // ✅ Allowed roles
+    // Allowed roles
     const allowed: Role[] = ["admin", "manager", "closer"];
     if (!allowed.includes(ctx.role)) {
-      return NextResponse.json(
-        {
-          error: "forbidden",
-          message: "You do not have permission to view billing products.",
-          details: {
-            teamId: ctx.teamId,
-            organizationId: ctx.organizationId,
-            role: ctx.role,
-            roleSources: ctx.roleSources,
-            livemode: ctx.livemode,
-          },
+      return jsonError("forbidden", 403, {
+        message: "You do not have permission to view billing products.",
+        details: {
+          teamId: ctx.teamId,
+          organizationId: ctx.organizationId,
+          role: ctx.role,
+          livemode: ctx.livemode,
         },
-        { status: 403 }
-      );
-    }
-
-    if (!ctx.organizationId) {
-      return NextResponse.json(
-        {
-          error: "missing_organization_id",
-          message: "teams.organization_id is null for this team; cannot resolve Stripe account mapping.",
-          details: { teamId: ctx.teamId },
-        },
-        { status: 400 }
-      );
-    }
-
-    const stripeAccountId = String(ctx.stripeAccountId ?? "").trim();
-    if (!stripeAccountId) {
-      return NextResponse.json(
-        {
-          error: "missing_stripe_account_id",
-          message: `No connected Stripe account found for this organization in ${ctx.livemode ? "LIVE" : "TEST"} mode.`,
-          hint:
-            "Insert a row in organization_stripe_accounts with org_id=<teams.organization_id>, livemode=<true|false>, stripe_account_id='acct_...'.",
-          details: { teamId: ctx.teamId, organizationId: ctx.organizationId, livemode: ctx.livemode },
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!isStripeAccountId(stripeAccountId)) {
-      return NextResponse.json(
-        { error: "invalid_stripe_account_id", message: `Invalid stripe_account_id: ${stripeAccountId}` },
-        { status: 400 }
-      );
+      });
     }
 
     const stripe = stripeClient(ctx.livemode);
-    const res = await stripe.products.list({ limit: 100 }, { stripeAccount: stripeAccountId });
+    const res = await stripe.products.list(
+      { limit: 100 },
+      { stripeAccount: ctx.stripeAccountId },
+    );
 
     const products = (res.data ?? []).map((p) => ({
       id: p.id,
@@ -314,23 +272,19 @@ export async function GET(req: NextRequest) {
       ok: true,
       products,
       livemode: ctx.livemode,
-      stripeAccountId,
+      stripeAccountId: ctx.stripeAccountId,
       teamId: ctx.teamId,
       organizationId: ctx.organizationId,
     });
   } catch (e: any) {
-    return NextResponse.json(
-      {
-        error: "billing_products_list_failed",
-        message: String(e?.message ?? e),
-        stripe: {
-          type: e?.type ?? null,
-          code: e?.code ?? null,
-          statusCode: e?.statusCode ?? null,
-          requestId: e?.requestId ?? null,
-        },
+    return jsonError("billing_products_list_failed", 500, {
+      message: String(e?.message ?? e),
+      stripe: {
+        type: e?.type ?? null,
+        code: e?.code ?? null,
+        statusCode: e?.statusCode ?? null,
+        requestId: e?.requestId ?? null,
       },
-      { status: 500 }
-    );
+    });
   }
 }

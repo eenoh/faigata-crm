@@ -136,7 +136,7 @@ function fmtPct(v: number | null) {
 }
 
 /**
- * ✅ Normalizes percent-like values:
+ * - Normalizes percent-like values:
  * - If API accidentally returns 0.5 meaning 50%, convert it.
  * - Keep normal values like 50 as-is.
  */
@@ -170,24 +170,38 @@ function compactNumber(n: number) {
 
 function fmtBucketLabel(iso: string, bucket: Bucket) {
   const d = new Date(iso);
-  if (bucket === "month") return d.toLocaleDateString(undefined, { year: "numeric", month: "short" });
-  if (bucket === "week") return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+  if (bucket === "month")
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short" });
+  if (bucket === "week")
+    return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
   return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
 }
 
 function formatYAxisTick(v: number) {
   try {
-    return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(v);
+    return new Intl.NumberFormat(undefined, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(v);
   } catch {
     return String(v);
   }
 }
 
-function ActivityTooltip({ active, payload, label, bucket }: ActivityTooltipProps) {
+function ActivityTooltip({
+  active,
+  payload,
+  label,
+  bucket,
+}: ActivityTooltipProps) {
   if (!active || !payload?.length || label == null) return null;
 
-  const leadsRaw = payload.find((p) => String(p.dataKey) === "leads_created")?.value;
-  const msgsRaw = payload.find((p) => String(p.dataKey) === "messages_sent")?.value;
+  const leadsRaw = payload.find(
+    (p) => String(p.dataKey) === "leads_created",
+  )?.value;
+  const msgsRaw = payload.find(
+    (p) => String(p.dataKey) === "messages_sent",
+  )?.value;
 
   const leads = Number(leadsRaw ?? 0);
   const messages = Number(msgsRaw ?? 0);
@@ -201,7 +215,10 @@ function ActivityTooltip({ active, payload, label, bucket }: ActivityTooltipProp
       <div className="mt-1 grid gap-1 text-[11px] text-slate-600">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ background: "#4f46e5" }} />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: "#4f46e5" }}
+            />
             <span>Leads added</span>
           </div>
           <span className="font-semibold text-slate-900">{leads}</span>
@@ -209,7 +226,10 @@ function ActivityTooltip({ active, payload, label, bucket }: ActivityTooltipProp
 
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ background: "rgba(79,70,229,0.45)" }} />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: "rgba(79,70,229,0.45)" }}
+            />
             <span>Messages sent</span>
           </div>
           <span className="font-semibold text-slate-900">{messages}</span>
@@ -370,7 +390,6 @@ function DashboardSkeleton() {
   );
 }
 
-
 /* -------------------- funnel helpers (from old) -------------------- */
 
 function clamp(n: number, min: number, max: number) {
@@ -451,12 +470,19 @@ function FunnelSvg({
     return lerp(topW, bottomW, tt);
   }
 
-  function trapezoidPoints(wTop: number, wBot: number, yTop: number, yBot: number) {
+  function trapezoidPoints(
+    wTop: number,
+    wBot: number,
+    yTop: number,
+    yBot: number,
+  ) {
     const x1 = cx - wTop / 2;
     const x2 = cx + wTop / 2;
     const x3 = cx + wBot / 2;
     const x4 = cx - wBot / 2;
-    return { points: `${x1},${yTop} ${x2},${yTop} ${x3},${yBot} ${x4},${yBot}` };
+    return {
+      points: `${x1},${yTop} ${x2},${yTop} ${x3},${yBot} ${x4},${yBot}`,
+    };
   }
 
   const segs = stages.map((stage, i) => {
@@ -515,8 +541,18 @@ function FunnelSvg({
         >
           <defs>
             <filter id="segShadow" x="-25%" y="-25%" width="150%" height="170%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2.0" floodOpacity="0.08" />
-              <feDropShadow dx="0" dy="8" stdDeviation="10" floodOpacity="0.08" />
+              <feDropShadow
+                dx="0"
+                dy="2"
+                stdDeviation="2.0"
+                floodOpacity="0.08"
+              />
+              <feDropShadow
+                dx="0"
+                dy="8"
+                stdDeviation="10"
+                floodOpacity="0.08"
+              />
             </filter>
 
             <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
@@ -526,7 +562,14 @@ function FunnelSvg({
             </linearGradient>
 
             {segs.map((s) => (
-              <linearGradient key={`g-${s.stage.id}`} id={`segGrad-${s.i}`} x1="0" y1="0" x2="1" y2="0">
+              <linearGradient
+                key={`g-${s.stage.id}`}
+                id={`segGrad-${s.i}`}
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="0"
+              >
                 <stop offset="0%" stopColor={s.base} />
                 <stop offset="55%" stopColor={s.base} />
                 <stop offset="100%" stopColor={s.band} />
@@ -534,7 +577,14 @@ function FunnelSvg({
             ))}
 
             {segs.map((s) => (
-              <linearGradient key={`b-${s.stage.id}`} id={`segBand-${s.i}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                key={`b-${s.stage.id}`}
+                id={`segBand-${s.i}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
                 <stop offset="0%" stopColor="rgba(255,255,255,0.18)" />
                 <stop offset="100%" stopColor="rgba(0,0,0,0.08)" />
               </linearGradient>
@@ -561,13 +611,20 @@ function FunnelSvg({
             const convText = hasEdge ? fmtPct(edge!.actualConversionRate) : "—";
 
             // ✅ normalize target everywhere
-            const normalizedTarget = hasEdge ? normalizePercent(edge!.targetRate) : null;
-            const tgtText = normalizedTarget != null ? `${normalizedTarget}%` : null;
+            const normalizedTarget = hasEdge
+              ? normalizePercent(edge!.targetRate)
+              : null;
+            const tgtText =
+              normalizedTarget != null ? `${normalizedTarget}%` : null;
 
-            const dropText = hasEdge ? `${edge!.dropOffCount} (${fmtPct(edge!.dropOffRate)})` : "—";
+            const dropText = hasEdge
+              ? `${edge!.dropOffCount} (${fmtPct(edge!.dropOffRate)})`
+              : "—";
 
             const isSelected = selectedStageId === s.stage.id;
-            const stroke = isSelected ? "rgba(79,70,229,0.55)" : "rgba(15,23,42,0.10)";
+            const stroke = isSelected
+              ? "rgba(79,70,229,0.55)"
+              : "rgba(15,23,42,0.10)";
             const strokeW = isSelected ? 3 : 2;
 
             return (
@@ -584,8 +641,18 @@ function FunnelSvg({
                   strokeWidth={strokeW}
                   strokeLinejoin="round"
                 />
-                <polygon points={lip.points} fill={`url(#segBand-${s.i})`} opacity={0.85} pointerEvents="none" />
-                <polygon points={s.points} fill="url(#gloss)" opacity={0.28} pointerEvents="none" />
+                <polygon
+                  points={lip.points}
+                  fill={`url(#segBand-${s.i})`}
+                  opacity={0.85}
+                  pointerEvents="none"
+                />
+                <polygon
+                  points={s.points}
+                  fill="url(#gloss)"
+                  opacity={0.28}
+                  pointerEvents="none"
+                />
 
                 <text
                   x={cx}
@@ -608,7 +675,8 @@ function FunnelSvg({
                   pointerEvents="none"
                   style={{ fontWeight: 800, fontSize: 10 }}
                 >
-                  {compactNumber(s.stage.leadCount)} lead{s.stage.leadCount === 1 ? "" : "s"}
+                  {compactNumber(s.stage.leadCount)} lead
+                  {s.stage.leadCount === 1 ? "" : "s"}
                 </text>
 
                 {hasEdge && (
@@ -631,11 +699,14 @@ function FunnelSvg({
         </svg>
 
         {selectedStageId && (
-          <div ref={detailsRef} className="mt-3 scroll-mt-24 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div
+            ref={detailsRef}
+            className="mt-3 scroll-mt-24 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+          >
             {(() => {
               const i = stages.findIndex((s) => s.id === selectedStageId);
               const s = i >= 0 ? stages[i] : null;
-              const e = i >= 0 ? edges[i] ?? null : null;
+              const e = i >= 0 ? (edges[i] ?? null) : null;
               if (!s) return null;
 
               const normalizedTarget = normalizePercent(e?.targetRate ?? null);
@@ -644,14 +715,17 @@ function FunnelSvg({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="truncate text-sm font-extrabold text-slate-900">{s.name}</div>
+                      <div className="truncate text-sm font-extrabold text-slate-900">
+                        {s.name}
+                      </div>
                       <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
                         Stage {i + 1}/{stages.length}
                       </span>
                     </div>
 
                     <div className="mt-0.5 text-[11px] text-slate-500">
-                      {s.leadCount} lead{s.leadCount === 1 ? "" : "s"} in this stage.
+                      {s.leadCount} lead{s.leadCount === 1 ? "" : "s"} in this
+                      stage.
                     </div>
 
                     {e && (
@@ -668,17 +742,27 @@ function FunnelSvg({
 
                   <div className="flex flex-wrap gap-2">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                      <div className="text-[10px] text-slate-500">Conversion</div>
-                      <div className="text-sm font-extrabold text-slate-900">{fmtPct(e?.actualConversionRate ?? null)}</div>
+                      <div className="text-[10px] text-slate-500">
+                        Conversion
+                      </div>
+                      <div className="text-sm font-extrabold text-slate-900">
+                        {fmtPct(e?.actualConversionRate ?? null)}
+                      </div>
                       {normalizedTarget != null && (
-                        <div className="text-[10px] text-slate-500">Target {normalizedTarget}%</div>
+                        <div className="text-[10px] text-slate-500">
+                          Target {normalizedTarget}%
+                        </div>
                       )}
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
                       <div className="text-[10px] text-slate-500">Drop-off</div>
-                      <div className="text-sm font-extrabold text-slate-900">{e ? e.dropOffCount : "—"}</div>
-                      <div className="text-[10px] text-slate-500">{fmtPct(e?.dropOffRate ?? null)}</div>
+                      <div className="text-sm font-extrabold text-slate-900">
+                        {e ? e.dropOffCount : "—"}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {fmtPct(e?.dropOffRate ?? null)}
+                      </div>
                     </div>
 
                     <button
@@ -720,7 +804,11 @@ function FunnelSvg({
                 </div>
               ) : (
                 [...edges]
-                  .sort((a, b) => (a.position ?? Number.POSITIVE_INFINITY) - (b.position ?? Number.POSITIVE_INFINITY))
+                  .sort(
+                    (a, b) =>
+                      (a.position ?? Number.POSITIVE_INFINITY) -
+                      (b.position ?? Number.POSITIVE_INFINITY),
+                  )
                   .map((e) => {
                     const fromId = e.fromStageId ?? null;
                     const toId = e.toStageId ?? null;
@@ -730,7 +818,9 @@ function FunnelSvg({
                       (selectedStageId && selectedStageId === toId);
 
                     const safeLabel =
-                      typeof e.label === "string" && e.label.trim().length > 0 ? e.label.trim() : "—";
+                      typeof e.label === "string" && e.label.trim().length > 0
+                        ? e.label.trim()
+                        : "—";
 
                     const normalizedTarget = normalizePercent(e.targetRate);
 
@@ -740,7 +830,9 @@ function FunnelSvg({
                         key={`${e.fromStageId}-${e.toStageId}-${e.position ?? "na"}`}
                         onClick={() => onSelectStageId(fromId)}
                         className={`grid w-full grid-cols-12 gap-2 border-t border-slate-200 px-3 py-2.5 text-left text-[12px] transition ${
-                          isRowActive ? "bg-indigo-50/60" : "bg-white hover:bg-slate-50"
+                          isRowActive
+                            ? "bg-indigo-50/60"
+                            : "bg-white hover:bg-slate-50"
                         }`}
                       >
                         <div className="col-span-4 min-w-0">
@@ -753,7 +845,10 @@ function FunnelSvg({
                         </div>
 
                         <div className="col-span-3 min-w-0">
-                          <div className="truncate text-slate-700" title={safeLabel}>
+                          <div
+                            className="truncate text-slate-700"
+                            title={safeLabel}
+                          >
                             {safeLabel}
                           </div>
                         </div>
@@ -763,7 +858,9 @@ function FunnelSvg({
                             {fmtPct(e.actualConversionRate)}
                           </div>
                           {normalizedTarget != null && (
-                            <div className="text-[10px] text-slate-500">Target {normalizedTarget}%</div>
+                            <div className="text-[10px] text-slate-500">
+                              Target {normalizedTarget}%
+                            </div>
                           )}
                         </div>
 
@@ -804,12 +901,14 @@ function StatCard({
     tone === "good"
       ? "border-emerald-200 bg-emerald-50"
       : tone === "warn"
-      ? "border-amber-200 bg-amber-50"
-      : "border-slate-200 bg-white";
+        ? "border-amber-200 bg-amber-50"
+        : "border-slate-200 bg-white";
 
   return (
     <div className={`rounded-xl border ${ring} p-3 shadow-sm`}>
-      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</div>
+      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+        {label}
+      </div>
       <div className="mt-1 text-xl font-extrabold text-slate-900">{value}</div>
       {sub && <div className="mt-1 text-[11px] text-slate-600">{sub}</div>}
     </div>
@@ -829,7 +928,9 @@ function SectionHeader({
     <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
       <div className="min-w-0">
         <div className="text-sm font-semibold text-slate-900">{title}</div>
-        {subtitle && <div className="mt-0.5 text-[11px] text-slate-500">{subtitle}</div>}
+        {subtitle && (
+          <div className="mt-0.5 text-[11px] text-slate-500">{subtitle}</div>
+        )}
       </div>
       {right}
     </div>
@@ -866,10 +967,15 @@ export default function DashboardClient() {
   }, []);
 
   async function authedGet(url: string) {
-    const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
+    const { data: sessionRes, error: sessionErr } =
+      await supabase.auth.getSession();
     const accessToken = sessionRes.session?.access_token ?? null;
-    if (sessionErr || !accessToken) throw new Error("Unauthorized: missing session token");
-    return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" });
+    if (sessionErr || !accessToken)
+      throw new Error("Unauthorized: missing session token");
+    return fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
   }
 
   const fetchOverview = async (opts?: { silent?: boolean }) => {
@@ -881,7 +987,9 @@ export default function DashboardClient() {
 
       setError(null);
 
-      const res = await authedGet(`/api/crm/dashboard/overview?bucket=${bucket}&days=${days}&scope=${scope}`);
+      const res = await authedGet(
+        `/api/crm/dashboard/overview?bucket=${bucket}&days=${days}&scope=${scope}`,
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Request failed (${res.status})`);
@@ -892,11 +1000,12 @@ export default function DashboardClient() {
       if (mountedRef.current) {
         setData(json);
         setSelectedStageId((prev) =>
-          prev && json.funnel?.stages?.some((s) => s.id === prev) ? prev : null
+          prev && json.funnel?.stages?.some((s) => s.id === prev) ? prev : null,
         );
       }
     } catch (e: any) {
-      if (mountedRef.current) setError(String(e?.message ?? "Failed to load dashboard"));
+      if (mountedRef.current)
+        setError(String(e?.message ?? "Failed to load dashboard"));
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -924,12 +1033,66 @@ export default function DashboardClient() {
 
     const channel = supabase
       .channel(`dashboard-live-${teamId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_messages", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "booking_outcomes", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pipeline_stages", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversion_metrics", filter: `team_id=eq.${teamId}` }, scheduleRefetch)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "leads",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "lead_messages",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "booking_outcomes",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pipeline_stages",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversion_metrics",
+          filter: `team_id=eq.${teamId}`,
+        },
+        scheduleRefetch,
+      )
       .subscribe();
 
     return () => {
@@ -943,7 +1106,10 @@ export default function DashboardClient() {
     if (!selectedStageId) return;
     setShowTable(true);
     requestAnimationFrame(() => {
-      detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      detailsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
   }, [selectedStageId]);
 
@@ -978,11 +1144,12 @@ export default function DashboardClient() {
     const first = stages[0]?.leadCount ?? 0;
     const last = stages.length ? stages[stages.length - 1].leadCount : 0;
     const overallDenom = first + last;
-    const overallConv = overallDenom > 0 ? Math.round((last / overallDenom) * 1000) / 10 : null;
-
+    const overallConv =
+      overallDenom > 0 ? Math.round((last / overallDenom) * 1000) / 10 : null;
 
     let worstEdge: FunnelEdge | null = null;
-    for (const e of edges) if (!worstEdge || e.dropOffCount > worstEdge.dropOffCount) worstEdge = e;
+    for (const e of edges)
+      if (!worstEdge || e.dropOffCount > worstEdge.dropOffCount) worstEdge = e;
 
     return { overallConv, worstEdge };
   }, [data]);
@@ -991,25 +1158,31 @@ export default function DashboardClient() {
 
   return (
     <div className="relative space-y-4">
-
       {/* Page Header */}
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
             <p className="mt-0.5 text-sm text-slate-600">
-              Your pipeline health, activity, bookings, and what needs attention.
+              Your pipeline health, activity, bookings, and what needs
+              attention.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 shadow-sm">
-              <span className={`h-2 w-2 rounded-full ${refreshing ? "bg-amber-500" : "bg-emerald-500"}`} />
-              <span className="font-semibold text-slate-800">{refreshing ? "Updating…" : "Live"}</span>
+              <span
+                className={`h-2 w-2 rounded-full ${refreshing ? "bg-amber-500" : "bg-emerald-500"}`}
+              />
+              <span className="font-semibold text-slate-800">
+                {refreshing ? "Updating…" : "Live"}
+              </span>
               {data && (
                 <>
                   <span className="mx-2 text-slate-300">•</span>
-                  <span className="font-semibold text-slate-800">{visibilityLabel}</span>
+                  <span className="font-semibold text-slate-800">
+                    {visibilityLabel}
+                  </span>
                 </>
               )}
             </div>
@@ -1067,12 +1240,45 @@ export default function DashboardClient() {
       {/* KPI Grid */}
       {data && !error && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <StatCard label="Leads" value={compactNumber(data.kpis.leads_total)} />
-          <StatCard label="New leads (7d)" value={compactNumber(data.kpis.leads_new_7d)} sub={`30d: ${compactNumber(data.kpis.leads_new_30d)}`} />
-          <StatCard label="Messages sent (7d)" value={compactNumber(data.kpis.messages_sent_7d)} sub={`30d: ${compactNumber(data.kpis.messages_sent_30d)}`} />
-          <StatCard label="Bookings (7d)" value={compactNumber(data.kpis.bookings_7d)} sub={`30d: ${compactNumber(data.kpis.bookings_30d)}`} />
-          <StatCard label="Show rate (30d)" value={fmtPct(data.kpis.show_rate_30d)} sub="Based on outcomes" tone={data.kpis.show_rate_30d != null && data.kpis.show_rate_30d >= 70 ? "good" : "default"} />
-          <StatCard label="Close rate (30d)" value={fmtPct(data.kpis.close_rate_30d)} sub="Based on outcomes" tone={data.kpis.close_rate_30d != null && data.kpis.close_rate_30d >= 20 ? "good" : "default"} />
+          <StatCard
+            label="Leads"
+            value={compactNumber(data.kpis.leads_total)}
+          />
+          <StatCard
+            label="New leads (7d)"
+            value={compactNumber(data.kpis.leads_new_7d)}
+            sub={`30d: ${compactNumber(data.kpis.leads_new_30d)}`}
+          />
+          <StatCard
+            label="Messages sent (7d)"
+            value={compactNumber(data.kpis.messages_sent_7d)}
+            sub={`30d: ${compactNumber(data.kpis.messages_sent_30d)}`}
+          />
+          <StatCard
+            label="Bookings (7d)"
+            value={compactNumber(data.kpis.bookings_7d)}
+            sub={`30d: ${compactNumber(data.kpis.bookings_30d)}`}
+          />
+          <StatCard
+            label="Show rate (30d)"
+            value={fmtPct(data.kpis.show_rate_30d)}
+            sub="Based on outcomes"
+            tone={
+              data.kpis.show_rate_30d != null && data.kpis.show_rate_30d >= 70
+                ? "good"
+                : "default"
+            }
+          />
+          <StatCard
+            label="Close rate (30d)"
+            value={fmtPct(data.kpis.close_rate_30d)}
+            sub="Based on outcomes"
+            tone={
+              data.kpis.close_rate_30d != null && data.kpis.close_rate_30d >= 20
+                ? "good"
+                : "default"
+            }
+          />
         </div>
       )}
 
@@ -1108,7 +1314,8 @@ export default function DashboardClient() {
                 </div>
               ) : stageCount === 1 ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-700">
-                  You only have <span className="font-semibold">1</span> stage. Add another stage to unlock conversions.
+                  You only have <span className="font-semibold">1</span> stage.
+                  Add another stage to unlock conversions.
                 </div>
               ) : (
                 <FunnelSvg
@@ -1126,13 +1333,16 @@ export default function DashboardClient() {
               {stageCount >= 2 && (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">
                   <span className="font-semibold">Overall conversion:</span>{" "}
-                  <span className="font-extrabold">{fmtPct(insights.overallConv)}</span>
+                  <span className="font-extrabold">
+                    {fmtPct(insights.overallConv)}
+                  </span>
                   {insights.worstEdge && (
                     <>
                       <span className="mx-2 text-slate-300">•</span>
                       <span className="font-semibold">Biggest drop:</span>{" "}
                       <span className="font-extrabold">
-                        {insights.worstEdge.fromStageName} → {insights.worstEdge.toStageName}
+                        {insights.worstEdge.fromStageName} →{" "}
+                        {insights.worstEdge.toStageName}
                       </span>
                     </>
                   )}
@@ -1155,22 +1365,36 @@ export default function DashboardClient() {
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
-                      <span className="h-2 w-2 rounded-full" style={{ background: BRAND }} />
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: BRAND }}
+                      />
                       Leads added
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
-                      <span className="h-2 w-2 rounded-full" style={{ background: "rgba(79,70,229,0.45)" }} />
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: "rgba(79,70,229,0.45)" }}
+                      />
                       Messages sent
                     </div>
                   </div>
 
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={activitySeries} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.10)" />
+                      <LineChart
+                        data={activitySeries}
+                        margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(15,23,42,0.10)"
+                        />
                         <XAxis
                           dataKey="bucket_start"
-                          tickFormatter={(v: string) => fmtBucketLabel(String(v), bucket)}
+                          tickFormatter={(v: string) =>
+                            fmtBucketLabel(String(v), bucket)
+                          }
                           minTickGap={18}
                           tick={{ fontSize: 11, fill: "rgba(15,23,42,0.60)" }}
                           axisLine={{ stroke: "rgba(15,23,42,0.12)" }}
@@ -1183,16 +1407,41 @@ export default function DashboardClient() {
                           axisLine={{ stroke: "rgba(15,23,42,0.12)" }}
                           tickLine={{ stroke: "rgba(15,23,42,0.12)" }}
                         />
-                        <Tooltip content={(props) => <ActivityTooltip {...props} bucket={bucket} />} />
+                        <Tooltip
+                          content={(props) => (
+                            <ActivityTooltip {...props} bucket={bucket} />
+                          )}
+                        />
                         <Legend wrapperStyle={{ display: "none" }} />
-                        <Line type="monotone" dataKey="leads_created" name="Leads added" stroke={BRAND} strokeWidth={3} dot={false} activeDot={{ r: 5 }} connectNulls />
-                        <Line type="monotone" dataKey="messages_sent" name="Messages sent" stroke={BRAND} strokeOpacity={0.45} strokeWidth={3} strokeDasharray="6 4" dot={false} activeDot={{ r: 5 }} connectNulls />
+                        <Line
+                          type="monotone"
+                          dataKey="leads_created"
+                          name="Leads added"
+                          stroke={BRAND}
+                          strokeWidth={3}
+                          dot={false}
+                          activeDot={{ r: 5 }}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="messages_sent"
+                          name="Messages sent"
+                          stroke={BRAND}
+                          strokeOpacity={0.45}
+                          strokeWidth={3}
+                          strokeDasharray="6 4"
+                          dot={false}
+                          activeDot={{ r: 5 }}
+                          connectNulls
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
 
                   <div className="mt-3 text-[10px] text-slate-500">
-                    Tip: hover the chart to compare leads added vs messages sent for the same period.
+                    Tip: hover the chart to compare leads added vs messages sent
+                    for the same period.
                   </div>
                 </div>
               )}
@@ -1223,14 +1472,20 @@ export default function DashboardClient() {
               ) : (
                 <div className="space-y-2">
                   {data.panels.needs_attention.map((l) => (
-                    <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50">
+                    <div
+                      key={l.id}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-[12px] font-semibold text-slate-900">
                             {l.name || "Unnamed lead"}
                           </div>
                           <div className="mt-0.5 text-[11px] text-slate-500">
-                            Stage: <span className="font-semibold text-slate-700">{l.stage || "—"}</span>
+                            Stage:{" "}
+                            <span className="font-semibold text-slate-700">
+                              {l.stage || "—"}
+                            </span>
                             {l.last_activity_at && (
                               <>
                                 <span className="mx-2 text-slate-300">•</span>
@@ -1252,7 +1507,10 @@ export default function DashboardClient() {
 
             {/* Upcoming bookings */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <SectionHeader title="Upcoming bookings" subtitle="Next 14 days" />
+              <SectionHeader
+                title="Upcoming bookings"
+                subtitle="Next 14 days"
+              />
 
               {data.panels.upcoming_bookings.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
@@ -1261,14 +1519,21 @@ export default function DashboardClient() {
               ) : (
                 <div className="space-y-2">
                   {data.panels.upcoming_bookings.map((b) => (
-                    <div key={b.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50">
+                    <div
+                      key={b.id}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-[12px] font-semibold text-slate-900">
-                            {b.invitee_first_name ? `${b.invitee_first_name}` : "Booking"}
+                            {b.invitee_first_name
+                              ? `${b.invitee_first_name}`
+                              : "Booking"}
                             {b.invitee_email ? ` · ${b.invitee_email}` : ""}
                           </div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">{fmtDateTime(b.start_at)}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            {fmtDateTime(b.start_at)}
+                          </div>
                         </div>
 
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
@@ -1292,14 +1557,25 @@ export default function DashboardClient() {
               ) : (
                 <div className="space-y-2">
                   {data.panels.feed.map((e, idx) => (
-                    <div key={`${e.type}-${idx}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <div
+                      key={`${e.type}-${idx}`}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-slate-900">{e.label}</div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">{fmtDateTime(e.at)}</div>
+                          <div className="truncate text-[12px] font-semibold text-slate-900">
+                            {e.label}
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            {fmtDateTime(e.at)}
+                          </div>
                         </div>
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                          {e.type === "lead_created" ? "Lead" : e.type === "booking" ? "Booking" : "Message"}
+                          {e.type === "lead_created"
+                            ? "Lead"
+                            : e.type === "booking"
+                              ? "Booking"
+                              : "Message"}
                         </span>
                       </div>
                     </div>

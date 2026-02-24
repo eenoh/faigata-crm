@@ -7,25 +7,53 @@ import { getAuthedBillingContext } from "@/app/api/utils/authedBilling";
 
 export const runtime = "nodejs";
 
-export async function POST(
-  req: NextRequest,
-  ctx: { params: Promise<{ priceId: string }> }
-) {
-  // ✅ Next.js dynamic params are async in newer versions
-  const { priceId } = await ctx.params;
-  const pid = String(priceId ?? "").trim();
-  if (!pid) return NextResponse.json({ error: "missing_price_id" }, { status: 400 });
+type RouteCtx = { params: Promise<{ priceId: string }> };
 
-  // Auth
+function safeDecode(v: string) {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
+function isStripePriceId(id: string) {
+  return /^price_[A-Za-z0-9]+$/.test(id);
+}
+
+export async function POST(req: NextRequest, ctx: RouteCtx) {
+  const { priceId: raw } = await ctx.params; // Next: params is Promise
+  const pid = safeDecode(String(raw ?? "")).trim();
+
+  const lower = pid.toLowerCase();
+
+  if (!pid || lower === "undefined" || lower === "null") {
+    return NextResponse.json({ error: "missing_price_id" }, { status: 400 });
+  }
+
+  // Optional but very helpful guard (avoids calling Stripe with garbage)
+  if (!isStripePriceId(pid)) {
+    return NextResponse.json(
+      {
+        error: "invalid_price_id",
+        hint: "Expected Stripe Price ID like price_123...",
+        received: pid,
+      },
+      { status: 400 },
+    );
+  }
+
   const billingCtx = await getAuthedBillingContext(req);
-  if (!billingCtx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!billingCtx) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
   const sb = adminClient();
 
-  // Load price row first (we need product_id for activity and to ensure it belongs to org)
+  // Ensure the price belongs to this org/livemode and grab product_id for activity logging
   const { data: priceRow, error: priceRowErr } = await sb
     .from("organization_stripe_prices")
-    .select("stripe_price_id, stripe_product_id, stripe_active")
+    .select("stripe_product_id")
     .eq("org_id", billingCtx.orgId)
     .eq("livemode", billingCtx.livemode)
     .eq("stripe_price_id", pid)
@@ -33,47 +61,43 @@ export async function POST(
 
   if (priceRowErr) {
     return NextResponse.json(
-      { error: "db_error", details: priceRowErr },
-      { status: 500 }
+      { error: "db_error", detail: priceRowErr.message },
+      { status: 500 },
     );
   }
-
   if (!priceRow) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Stripe: archive (deactivate) on connected account
   try {
     const stripe = stripeClient(billingCtx.livemode);
 
+    // Stripe: deactivate the price on the connected account
     const updated = await stripe.prices.update(
       pid,
       { active: false },
-      { stripeAccount: billingCtx.stripeAccountId }
+      { stripeAccount: billingCtx.stripeAccountId },
     );
 
     // DB: mirror state
     const { error: updErr } = await sb
       .from("organization_stripe_prices")
-      .update({
-        stripe_active: false,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ stripe_active: false, updated_at: new Date().toISOString() })
       .eq("org_id", billingCtx.orgId)
       .eq("livemode", billingCtx.livemode)
       .eq("stripe_price_id", pid);
 
     if (updErr) {
       return NextResponse.json(
-        { error: "db_update_failed", details: updErr },
-        { status: 500 }
+        { error: "db_update_failed", detail: updErr.message },
+        { status: 500 },
       );
     }
 
-    // Activity log (optional but useful)
-    const { error: actErr } = await sb
-      .from("organization_stripe_catalog_activity")
-      .insert({
+    // Activity log: best-effort (never fail the request if this insert fails)
+    // NOTE: Supabase returns a PromiseLike, which doesn't have .catch() in TS types.
+    try {
+      await sb.from("organization_stripe_catalog_activity").insert({
         org_id: billingCtx.orgId,
         livemode: billingCtx.livemode,
         stripe_product_id: priceRow.stripe_product_id ?? null,
@@ -82,18 +106,15 @@ export async function POST(
         type: "price_archived",
         payload: { stripe_active: updated.active },
       });
-
-    // Don’t fail the request just because logging failed
-    void actErr;
+    } catch {
+      // intentionally ignore activity logging failures
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
-      {
-        error: "stripe_update_failed",
-        message: String(e?.message ?? e),
-      },
-      { status: 500 }
+      { error: "stripe_update_failed", message: String(e?.message ?? e) },
+      { status: 500 },
     );
   }
 }

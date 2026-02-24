@@ -1,4 +1,14 @@
 // src/app/b/[slug]/page.tsx
+
+/**
+ * Simplifications made:
+ * • Centralized env validation and Supabase admin client creation (no non-null assertions)
+ * • Collapsed slug parsing into a single safe step with early notFound()
+ * • Extracted “find companyId” into a small helper to reduce repeated query boilerplate
+ * • Simplified logo URL resolution by normalizing path once and using a single return path
+ * • Reduced nesting/branching while keeping identical query behavior and fallbacks
+ */
+
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import PublicBookingPage from "@/modules/crm/components/PublicBookingPage";
@@ -26,8 +36,8 @@ type OrgInfo = {
 };
 
 function supabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) throw new Error("missing_supabase_env");
 
   return createClient(url, serviceKey, {
@@ -35,43 +45,71 @@ function supabaseAdmin() {
   });
 }
 
-function isHttpUrl(s?: string | null) {
-  return !!s && (s.startsWith("http://") || s.startsWith("https://"));
-}
+const isHttpUrl = (s?: string | null) =>
+  typeof s === "string" &&
+  (s.startsWith("http://") || s.startsWith("https://"));
 
 function normalizeLogoPath(raw: string) {
   let v = (raw || "").trim().replace(/^\/+/, "");
 
-  // "org-logos/xyz.png"
-  if (v.startsWith("org-logos/")) v = v.slice("org-logos/".length);
+  // allow a few common stored prefixes
+  v = v.replace(/^public\/org-logos\//, "");
+  v = v.replace(/^org-logos\//, "");
 
-  // "public/org-logos/xyz.png"
-  if (v.startsWith("public/org-logos/")) v = v.slice("public/org-logos/".length);
-
-  // if somebody stored "org-logos//x.png"
+  // if somebody stored extra slashes
   v = v.replace(/^\/+/, "");
 
   return v;
 }
 
-async function resolveOrgLogoUrl(admin: ReturnType<typeof supabaseAdmin>, raw: string | null) {
+async function resolveOrgLogoUrl(
+  admin: ReturnType<typeof supabaseAdmin>,
+  raw: string | null,
+) {
   const r = (raw || "").trim();
   if (!r) return null;
-
-  // already a full URL
   if (isHttpUrl(r)) return r;
 
-  // otherwise interpret as a path inside the org-logos bucket
   const path = normalizeLogoPath(r);
   if (!path) return null;
 
-  // Create a signed URL (works for public OR private buckets)
-  const signed = await admin.storage.from("org-logos").createSignedUrl(path, 60 * 60);
+  // signed URL works for public OR private buckets
+  const signed = await admin.storage
+    .from("org-logos")
+    .createSignedUrl(path, 60 * 60);
+
   if (signed.data?.signedUrl) return signed.data.signedUrl;
 
   // fallback to public URL (only works if bucket is public)
-  const publicUrl = admin.storage.from("org-logos").getPublicUrl(path).data.publicUrl;
-  return publicUrl || null;
+  return (
+    admin.storage.from("org-logos").getPublicUrl(path).data.publicUrl || null
+  );
+}
+
+async function findCompanyId(
+  admin: ReturnType<typeof supabaseAdmin>,
+  ownerUserId: string,
+  teamId: string,
+): Promise<string | null> {
+  // Prefer the booking link owner profile
+  const { data: ownerProfile } = await admin
+    .from("profiles")
+    .select("company_id")
+    .eq("id", ownerUserId)
+    .maybeSingle();
+
+  if (ownerProfile?.company_id) return String(ownerProfile.company_id);
+
+  // Fallback: any profile in that team with company_id
+  const { data: anyTeamProfile } = await admin
+    .from("profiles")
+    .select("company_id")
+    .eq("team_id", teamId)
+    .not("company_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  return anyTeamProfile?.company_id ? String(anyTeamProfile.company_id) : null;
 }
 
 export default async function BookingSlugPage({
@@ -90,37 +128,19 @@ export default async function BookingSlugPage({
   const { data: link, error: linkErr } = await admin
     .from("booking_links")
     .select(
-      "id, team_id, owner_user_id, name, slug, description, primary_color, booking_type, duration_minutes, min_notice_hours, max_notice_days"
+      "id, team_id, owner_user_id, name, slug, description, primary_color, booking_type, duration_minutes, min_notice_hours, max_notice_days",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (linkErr || !link) return notFound();
 
-  // 2) Resolve organization id via profiles.company_id
-  // Prefer the booking link owner profile (most reliable)
-  let companyId: string | null = null;
-
-  const { data: ownerProfile } = await admin
-    .from("profiles")
-    .select("company_id")
-    .eq("id", link.owner_user_id)
-    .maybeSingle();
-
-  if (ownerProfile?.company_id) companyId = String(ownerProfile.company_id);
-
-  // Fallback: any profile in that team with company_id
-  if (!companyId) {
-    const { data: anyTeamProfile } = await admin
-      .from("profiles")
-      .select("company_id")
-      .eq("team_id", link.team_id)
-      .not("company_id", "is", null)
-      .limit(1)
-      .maybeSingle();
-
-    if (anyTeamProfile?.company_id) companyId = String(anyTeamProfile.company_id);
-  }
+  // 2) Resolve organization id via profiles.company_id (owner first, then team fallback)
+  const companyId = await findCompanyId(
+    admin,
+    link.owner_user_id,
+    link.team_id,
+  );
 
   // 3) Fetch org by organizations.id = companyId
   let org: OrgInfo | null = null;

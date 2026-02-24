@@ -1,23 +1,36 @@
 // src/app/api/integrations/stripe/_org.ts
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+const TEAM_ORG_COLS = ["organization_id", "org_id", "organizationId"] as const;
+
+const asTrimmedString = (v: unknown): string | null => {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return s.length ? s : null;
+};
+
 async function maybeSingleId(sb: SupabaseClient, id: string) {
-  const { data, error } = await sb.from("organizations").select("id").eq("id", id).maybeSingle();
+  const { data, error } = await sb
+    .from("organizations")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
   if (error) return null;
-  return (data as any)?.id ? String((data as any).id) : null;
+  const found = (data as any)?.id;
+  return found ? String(found) : null;
 }
 
 async function ensureOrganizationRow(
   sb: SupabaseClient,
   orgId: string,
-  name: string
+  name: string,
 ): Promise<string | null> {
-  // already exists
   const exists = await maybeSingleId(sb, orgId);
   if (exists) return exists;
 
-  // Try to create the organization using EXACT id (important for FK)
-  // If your organizations.id is uuid with default, Postgres still allows explicit inserts.
+  // Create the organization using EXACT id (important for FK)
   const { data, error } = await sb
     .from("organizations")
     .upsert({ id: orgId, name } as any, { onConflict: "id" })
@@ -28,27 +41,45 @@ async function ensureOrganizationRow(
   return (data as any)?.id ? String((data as any).id) : null;
 }
 
-async function safeSelectTeamName(sb: SupabaseClient, teamId: string): Promise<string | null> {
-  const { data, error } = await sb.from("teams").select("name").eq("id", teamId).maybeSingle();
+async function safeSelectTeamName(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<string | null> {
+  const { data, error } = await sb
+    .from("teams")
+    .select("name")
+    .eq("id", teamId)
+    .maybeSingle();
+
   if (error) return null;
-  const name = (data as any)?.name;
-  return typeof name === "string" && name.trim().length ? name.trim() : null;
+  return asTrimmedString((data as any)?.name);
 }
 
-async function tryReadTeamOrgId(sb: SupabaseClient, teamId: string): Promise<string | null> {
-  const candidates = ["organization_id", "org_id", "organizationId"];
-  for (const col of candidates) {
-    const { data, error } = await sb.from("teams").select(`id, ${col}`).eq("id", teamId).maybeSingle();
+async function tryReadTeamOrgId(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<string | null> {
+  for (const col of TEAM_ORG_COLS) {
+    const { data, error } = await sb
+      .from("teams")
+      .select(`id, ${col}`)
+      .eq("id", teamId)
+      .maybeSingle();
+
     if (error) continue;
+
     const v = (data as any)?.[col];
     if (typeof v === "string" && v.length) return v;
   }
   return null;
 }
 
-async function tryWriteTeamOrgId(sb: SupabaseClient, teamId: string, orgId: string) {
-  const candidates = ["organization_id", "org_id", "organizationId"];
-  for (const col of candidates) {
+async function tryWriteTeamOrgId(
+  sb: SupabaseClient,
+  teamId: string,
+  orgId: string,
+) {
+  for (const col of TEAM_ORG_COLS) {
     const patch: Record<string, any> = { [col]: orgId };
     const { error } = await sb.from("teams").update(patch).eq("id", teamId);
     if (!error) return true;
@@ -56,9 +87,17 @@ async function tryWriteTeamOrgId(sb: SupabaseClient, teamId: string, orgId: stri
   return false;
 }
 
-async function tryWriteProfileCompanyId(sb: SupabaseClient, userId: string, orgId: string) {
+async function tryWriteProfileCompanyId(
+  sb: SupabaseClient,
+  userId: string,
+  orgId: string,
+) {
   // best-effort: don’t fail the flow if this column doesn’t exist / RLS, etc.
-  const { error } = await sb.from("profiles").update({ company_id: orgId } as any).eq("id", userId);
+  const { error } = await sb
+    .from("profiles")
+    .update({ company_id: orgId } as any)
+    .eq("id", userId);
+
   return !error;
 }
 
@@ -72,7 +111,10 @@ async function tryWriteProfileCompanyId(sb: SupabaseClient, userId: string, orgI
  * 3) teams.organization_id/org_id -> ensure organizations row exists
  * 4) create fresh org (generated id) and link best-effort
  */
-export async function ensureOrgIdForUser(sb: SupabaseClient, userId: string): Promise<string | null> {
+export async function ensureOrgIdForUser(
+  sb: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
   const { data: profile, error: profErr } = await sb
     .from("profiles")
     .select("team_id, company_id")
@@ -81,10 +123,14 @@ export async function ensureOrgIdForUser(sb: SupabaseClient, userId: string): Pr
 
   if (profErr) return null;
 
-  const companyId = (profile as any)?.company_id ? String((profile as any).company_id) : null;
-  const teamId = (profile as any)?.team_id ? String((profile as any).team_id) : null;
+  const companyId = (profile as any)?.company_id
+    ? String((profile as any).company_id)
+    : null;
 
-  // helpful name for org creation
+  const teamId = (profile as any)?.team_id
+    ? String((profile as any).team_id)
+    : null;
+
   const teamName = teamId ? await safeSelectTeamName(sb, teamId) : null;
   const fallbackName = teamName || "New organization";
 
@@ -94,13 +140,13 @@ export async function ensureOrgIdForUser(sb: SupabaseClient, userId: string): Pr
     if (ensured) return ensured;
   }
 
-  // 2) team_id candidate (many schemas use team_id as the org id)
+  // 2) team_id candidate
   if (teamId) {
     const ensured = await ensureOrganizationRow(sb, teamId, fallbackName);
     if (ensured) return ensured;
   }
 
-  // 3) team has explicit org id field
+  // 3) team explicit org id field
   if (teamId) {
     const teamOrgId = await tryReadTeamOrgId(sb, teamId);
     if (teamOrgId) {

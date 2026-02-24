@@ -128,7 +128,7 @@ function weekdayLabel(id: number) {
 /** ✅ part-of-day computed in the viewer tz */
 function partOfDay(
   iso: string,
-  zone: string
+  zone: string,
 ): "Night" | "Morning" | "Afternoon" | "Evening" {
   const dt = DateTime.fromISO(iso, { setZone: true }).setZone(zone);
   const h = dt.isValid ? dt.hour : 0;
@@ -257,39 +257,42 @@ export default function PublicBookingPage({
     () =>
       `linear-gradient(135deg, ${lighten(primary, 0.22)}, ${darken(
         primary,
-        0.06
+        0.06,
       )})`,
-    [primary]
+    [primary],
   );
 
   const pageGradient = useMemo(
     () =>
       `radial-gradient(900px 500px at 15% 10%, ${lighten(
         primary,
-        0.35
+        0.35,
       )}55, transparent 60%),
        radial-gradient(800px 500px at 85% 20%, ${darken(
          primary,
-         0.10
+         0.1,
        )}55, transparent 55%),
        linear-gradient(180deg, #0b1220 0%, #0b1220 35%, #0f172a 100%)`,
-    [primary]
+    [primary],
   );
 
   const slotGradient = useMemo(
-    () => `linear-gradient(135deg, ${lighten(primary, 0.10)}, ${darken(primary, 0.25)})`,
-    [primary]
+    () =>
+      `linear-gradient(135deg, ${lighten(primary, 0.1)}, ${darken(primary, 0.25)})`,
+    [primary],
   );
 
   const slotGradientHover = useMemo(
-    () => `linear-gradient(135deg, ${lighten(primary, 0.18)}, ${darken(primary, 0.18)})`,
-    [primary]
+    () =>
+      `linear-gradient(135deg, ${lighten(primary, 0.18)}, ${darken(primary, 0.18)})`,
+    [primary],
   );
 
   /** ✅ Dynamic tz (updates on focus + periodic refresh) */
   const [tz, setTz] = useState<string>("UTC");
   useEffect(() => {
-    const read = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const read = () =>
+      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     setTz(read());
     const id = window.setInterval(() => setTz(read()), 30_000);
     const onFocus = () => setTz(read());
@@ -319,18 +322,25 @@ export default function PublicBookingPage({
 
   const minBookableMs = useMemo(
     () => nowMs + minNoticeHours * 60 * 60 * 1000,
-    [nowMs, minNoticeHours]
+    [nowMs, minNoticeHours],
   );
 
   const maxBookableMs = useMemo(
     () => nowMs + maxNoticeDays * 24 * 60 * 60 * 1000,
-    [nowMs, maxNoticeDays]
+    [nowMs, maxNoticeDays],
   );
 
   /* date picker */
-  const todayYmd = useMemo(() => ymdFromDateLocal(new Date()), []);
-  const [anchorYmd, setAnchorYmd] = useState(() => todayYmd);
-  const [selectedDate, setSelectedDate] = useState(() => todayYmd);
+  const todayYmd = useMemo(() => {
+    const base = nowMs ? new Date(nowMs) : new Date();
+    return ymdFromDateLocal(base);
+  }, [nowMs]);
+  const [anchorYmd, setAnchorYmd] = useState(() =>
+    ymdFromDateLocal(new Date()),
+  );
+  const [selectedDate, setSelectedDate] = useState(() =>
+    ymdFromDateLocal(new Date()),
+  );
 
   const minDateForInput = useMemo(() => {
     if (nowMs === 0) return todayYmd;
@@ -366,7 +376,7 @@ export default function PublicBookingPage({
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDaysYmd(anchorYmd, i)),
-    [anchorYmd]
+    [anchorYmd],
   );
 
   const dayIsOutsideMax = useMemo((): boolean => {
@@ -381,6 +391,13 @@ export default function PublicBookingPage({
     return anchorStart > minStart;
   }, [nowMs, anchorYmd, minDateForInput]);
 
+  const canGoNextWeek = useMemo(() => {
+    if (nowMs === 0) return false;
+    const anchorEnd = ymdToUtcDate(addDaysYmd(anchorYmd, 6)).getTime();
+    const maxEnd = ymdToUtcDate(maxDateForInput).getTime();
+    return anchorEnd < maxEnd;
+  }, [nowMs, anchorYmd, maxDateForInput]);
+
   /* invitee details (inputs) */
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
@@ -394,7 +411,9 @@ export default function PublicBookingPage({
   }, [link.required_host_ids]);
 
   const hostsCountLabel =
-    isGroup && requiredHostIds.length ? ` · ${requiredHostIds.length} hosts` : "";
+    isGroup && requiredHostIds.length
+      ? ` · ${requiredHostIds.length} hosts`
+      : "";
 
   /* -------------------- availability meta (from route) -------------------- */
   const [availabilityMeta, setAvailabilityMeta] =
@@ -453,8 +472,8 @@ export default function PublicBookingPage({
       daysSorted.length === 7
         ? "Daily"
         : daysSorted.length
-        ? daysSorted.map(weekdayLabel).join(", ")
-        : "—";
+          ? daysSorted.map(weekdayLabel).join(", ")
+          : "—";
 
     // ✅ no "(Europe/Vienna)" etc.
     return `Availability: ${dayText} · ${start}–${end}`;
@@ -480,8 +499,8 @@ export default function PublicBookingPage({
     const end = s.end
       ? DateTime.fromISO(s.end, { setZone: true }).setZone(tz)
       : Number.isFinite(dur) && dur > 0
-      ? start.plus({ minutes: dur })
-      : null;
+        ? start.plus({ minutes: dur })
+        : null;
 
     if (!end || !end.isValid) return false;
 
@@ -502,8 +521,7 @@ export default function PublicBookingPage({
       const isNextDay = end
         .startOf("day")
         .equals(start.plus({ days: 1 }).startOf("day"));
-      const isMidnight =
-        end.hour === 0 && end.minute === 0 && end.second === 0;
+      const isMidnight = end.hour === 0 && end.minute === 0 && end.second === 0;
       if (isNextDay && isMidnight) {
         return startMins >= startMin;
       }
@@ -517,7 +535,7 @@ export default function PublicBookingPage({
     try {
       window.localStorage.setItem(
         "faigatacrm.googleCalendarReconnectRequired",
-        "1"
+        "1",
       );
       window.dispatchEvent(new Event("gc-reconnect-required"));
     } catch {}
@@ -587,19 +605,17 @@ export default function PublicBookingPage({
         // ✅ Server is the source of truth for work hours.
         const res = await fetch(
           `/api/crm/booking-links/${link.slug}/availability?${qs.toString()}`,
-          { cache: "no-store", signal: controller.signal }
+          { cache: "no-store", signal: controller.signal },
         );
 
-        const json = (await res.json().catch(() => null)) as
-          | {
-              slots?: Slot[];
-              availability_mode?: AvailabilityMode | null;
-              work_start_minute?: number | null;
-              work_end_minute?: number | null;
-              work_days?: number[] | null;
-              error?: string;
-            }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          slots?: Slot[];
+          availability_mode?: AvailabilityMode | null;
+          work_start_minute?: number | null;
+          work_end_minute?: number | null;
+          work_days?: number[] | null;
+          error?: string;
+        } | null;
 
         if (!res.ok) {
           // ✅ NEW: if host needs reconnect, tell the app (header + settings)
@@ -716,7 +732,7 @@ export default function PublicBookingPage({
     if (!selectedSlot) return null;
 
     const dt = DateTime.fromISO(selectedSlot.start, { setZone: true }).setZone(
-      tz
+      tz,
     );
     if (!dt.isValid) return `${selectedSlot.start}`;
 
@@ -786,7 +802,8 @@ export default function PublicBookingPage({
 
       const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) throw new Error(json?.error || `booking_failed_${res.status}`);
+      if (!res.ok)
+        throw new Error(json?.error || `booking_failed_${res.status}`);
 
       setBookingId(String((json as any).bookingId || ""));
     } catch (e: any) {
@@ -852,7 +869,9 @@ export default function PublicBookingPage({
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wide text-white/75">
                   Booking with {orgName} · {formatType(link.booking_type)}
-                  {link.duration_minutes ? ` · ${link.duration_minutes} min` : ""}
+                  {link.duration_minutes
+                    ? ` · ${link.duration_minutes} min`
+                    : ""}
                   {hostsCountLabel}
                 </p>
                 <h1 className="mt-0.5 truncate text-lg font-semibold">
@@ -870,8 +889,8 @@ export default function PublicBookingPage({
 
             {!token && (
               <p className="mt-2 text-[11px] text-white/80">
-                Note: this looks like a general scheduling link (not personalized
-                to a specific invite).
+                Note: this looks like a general scheduling link (not
+                personalized to a specific invite).
               </p>
             )}
 
@@ -962,7 +981,7 @@ export default function PublicBookingPage({
                     <p className="text-[12px] font-semibold text-emerald-100">
                       Booking confirmed
                     </p>
-                    <p className="mt-0.5 text-[11px] text-emerald-vt-100/70">
+                    <p className="mt-0.5 text-[11px] text-emerald-100/70">
                       Your booking has been saved.
                     </p>
                   </div>
@@ -1059,8 +1078,8 @@ export default function PublicBookingPage({
                           disabled
                             ? "border-white/10 bg-white/5 opacity-45 cursor-not-allowed"
                             : active
-                            ? "border-white/25 bg-white/12 cursor-pointer"
-                            : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 cursor-pointer",
+                              ? "border-white/25 bg-white/12 cursor-pointer"
+                              : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 cursor-pointer",
                         ].join(" ")}
                         onClick={() => {
                           if (disabled) return;
@@ -1080,8 +1099,17 @@ export default function PublicBookingPage({
 
                 <button
                   type="button"
-                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-white/80 hover:bg-white/10 cursor-pointer"
-                  onClick={() => setAnchorYmd((d) => addDaysYmd(d, 7))}
+                  disabled={!canGoNextWeek}
+                  className={[
+                    "rounded-lg border px-2 py-2 text-xs text-white/80",
+                    canGoNextWeek
+                      ? "border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer"
+                      : "border-white/10 bg-white/5 opacity-45 cursor-not-allowed",
+                  ].join(" ")}
+                  onClick={() => {
+                    if (!canGoNextWeek) return;
+                    setAnchorYmd((d) => addDaysYmd(d, 7));
+                  }}
                   aria-label="Next week"
                 >
                   →
@@ -1154,8 +1182,8 @@ export default function PublicBookingPage({
                                       disabled
                                         ? "border-white/10 bg-white/5 text-white/35 cursor-not-allowed"
                                         : active
-                                        ? "border-white/35 text-white cursor-pointer"
-                                        : "border-white/10 text-white hover:border-white/25 cursor-pointer",
+                                          ? "border-white/35 text-white cursor-pointer"
+                                          : "border-white/10 text-white hover:border-white/25 cursor-pointer",
                                     ].join(" ")}
                                     style={
                                       disabled
@@ -1223,11 +1251,11 @@ export default function PublicBookingPage({
           </div>
 
           <div className="border-t border-white/10 px-5 py-3 text-[11px] text-slate-300/70">
-            Powered by <span className="font-semibold text-white/90">Faigata</span>
+            Powered by{" "}
+            <span className="font-semibold text-white/90">Faigata</span>
           </div>
         </div>
       </div>
     </div>
   );
 }
-  

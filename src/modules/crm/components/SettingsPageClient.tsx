@@ -1,30 +1,105 @@
-// src/app/(app)/settings/SettingsPageClient.tsx
+// src/modules/crm/components/SettingsPageClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { LogoutButton } from "../../../app/(app)/settings/LogoutButton";
+import { LogoutButton } from "./LogoutButton";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
 type Profile = {
-  role: string[] | null;
+  role: unknown; // tolerant: string | string[] | null
 };
+
+type LoadingStage = "workspace" | "auth" | "profile" | "idle";
+
+function LoadingCard({ stage }: { stage: LoadingStage }) {
+  const title =
+    stage === "workspace"
+      ? "Loading workspace…"
+      : stage === "auth"
+        ? "Checking your session…"
+        : stage === "profile"
+          ? "Loading settings…"
+          : "Loading…";
+
+  const subtitle =
+    stage === "workspace"
+      ? "Finding your team context."
+      : stage === "auth"
+        ? "Verifying your account."
+        : stage === "profile"
+          ? "Fetching your profile and permissions."
+          : "Please wait.";
+
+  return (
+    <div className="max-w-3xl space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <p className="text-sm font-medium text-slate-700">{title}</p>
+        <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+
+        <div className="mt-4 space-y-3">
+          <div className="h-16 w-full animate-pulse rounded-2xl bg-slate-100" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
+            <div className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function normalizeRoles(raw: unknown): string[] {
+  if (raw === null || raw === undefined) return [];
+  if (Array.isArray(raw))
+    return raw.map((r) => String(r).trim()).filter(Boolean);
+
+  const s = String(raw).trim();
+  if (!s) return [];
+  if (s.includes(","))
+    return s
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  return [s];
+}
 
 export default function SettingsPageClient() {
   const router = useRouter();
-  const { teamId } = useWorkspace(); // <-- team comes from workspace context
+  const { teamId, loading: workspaceLoading } = useWorkspace();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>("workspace");
+
+  // ✅ ALWAYS call hooks before any return
+  const roles = useMemo(() => {
+    const raw = profile?.role ?? null;
+    return normalizeRoles(raw).map((r) => r.toLowerCase());
+  }, [profile?.role]);
+
+  const isManagerOrAdmin = useMemo(() => {
+    return roles.includes("manager") || roles.includes("admin");
+  }, [roles]);
+
+  const isLoading = workspaceLoading || authLoading || profileLoading;
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
+        if (!cancelled) {
+          setAuthLoading(true);
+          setProfileLoading(true);
+          setLoadingStage("auth");
+        }
+
         const { data: userRes, error: userError } =
           await supabase.auth.getUser();
 
@@ -37,6 +112,9 @@ export default function SettingsPageClient() {
         if (cancelled) return;
 
         setUserId(uid);
+        setAuthLoading(false);
+
+        if (!cancelled) setLoadingStage("profile");
 
         const { data, error: profileError } = await supabase
           .from("profiles")
@@ -50,14 +128,16 @@ export default function SettingsPageClient() {
           console.error("[Settings] Failed to load profile", profileError);
           setProfile({ role: null });
         } else {
-          setProfile({
-            role: (data?.role as string[] | null) ?? null,
-          });
+          setProfile({ role: data?.role ?? null });
         }
       } catch (err) {
         console.error("[Settings] Unexpected error", err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setAuthLoading(false);
+          setProfileLoading(false);
+          setLoadingStage("idle");
+        }
       }
     })();
 
@@ -66,44 +146,32 @@ export default function SettingsPageClient() {
     };
   }, [router]);
 
-  if (loading) {
+  useEffect(() => {
+    // keep stage label accurate
+    if (workspaceLoading) setLoadingStage("workspace");
+    else if (authLoading) setLoadingStage("auth");
+    else if (profileLoading) setLoadingStage("profile");
+    else setLoadingStage("idle");
+  }, [workspaceLoading, authLoading, profileLoading]);
+
+  // ✅ safe early returns AFTER hooks
+  if (isLoading) {
+    return <LoadingCard stage={loadingStage} />;
+  }
+
+  if (!profile || !teamId || !userId) {
     return (
-      <div className="max-w-3xl space-y-4">
-        <div className="h-16 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse" />
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="h-24 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse" />
-          <div className="h-24 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse" />
+      <div className="max-w-3xl space-y-6">
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+          <p className="font-medium">Settings unavailable</p>
+          <p className="mt-1">
+            We couldn’t find a team or profile for your account. Please open
+            this page from your workspace or contact support.
+          </p>
         </div>
       </div>
     );
   }
-
-  // ✅ use teamId from context, not from profile
-  if (!profile || !teamId || !userId) {
-    return (
-      <div className="max-w-3xl space-y-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-        <p className="text-sm text-slate-600">
-          We couldn’t find a team or profile for your account. Please contact
-          support.
-        </p>
-      </div>
-    );
-  }
-
-const roles = (profile.role ?? []).map((r) => String(r).trim().toLowerCase());
-
-const primaryRole =
-  roles.includes("admin")
-    ? "Admin"
-    : roles.includes("manager")
-    ? "Manager"
-    : roles[0]
-    ? roles[0][0].toUpperCase() + roles[0].slice(1)
-    : "Member";
-
-const isManagerOrAdmin = roles.includes("manager") || roles.includes("admin");
-
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -184,7 +252,8 @@ const isManagerOrAdmin = roles.includes("manager") || roles.includes("admin");
             Schedule Pages
           </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Create and manage your booking links that leads use to schedule calls.
+            Create and manage your booking links that leads use to schedule
+            calls.
           </p>
         </Link>
 
@@ -219,9 +288,10 @@ const isManagerOrAdmin = roles.includes("manager") || roles.includes("admin");
           </Link>
         )}
       </div>
-        <div className="mt-6">
-          <LogoutButton />
-        </div>
+
+      <div className="mt-6">
+        <LogoutButton />
+      </div>
     </div>
   );
 }

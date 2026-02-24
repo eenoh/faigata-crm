@@ -3,8 +3,26 @@ import { NextResponse } from "next/server";
 import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 
-function normalize(s: unknown) {
-  return String(s ?? "").trim().toLowerCase();
+export const runtime = "nodejs";
+
+function norm(v: unknown) {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function clampInt(
+  v: string | null,
+  { min, max, fallback }: { min: number; max: number; fallback: number },
+) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
+function escapeIlike(s: string) {
+  // Escape %, _ for LIKE/ILIKE patterns
+  return s.replace(/[%_]/g, "\\$&");
 }
 
 export async function GET(req: Request) {
@@ -12,18 +30,32 @@ export async function GET(req: Request) {
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  // ✅ ALWAYS use billing context (org + livemode + connected stripe account)
   const { orgId, livemode, stripeAccountId } = auth.ctx;
 
   const url = new URL(req.url);
-  const q = (url.searchParams.get("q") ?? "").trim();
-  const status = (url.searchParams.get("status") ?? "").trim();
-  const page = Math.max(1, Number(url.searchParams.get("page") ?? "1"));
-  const pageSize = Math.min(50, Math.max(10, Number(url.searchParams.get("pageSize") ?? "20")));
+  const qRaw = url.searchParams.get("q");
+  const statusRaw = url.searchParams.get("status");
+
+  const q = norm(qRaw);
+  const status = norm(statusRaw);
+
+  const page = clampInt(url.searchParams.get("page"), {
+    min: 1,
+    max: 10_000,
+    fallback: 1,
+  });
+  const pageSize = clampInt(url.searchParams.get("pageSize"), {
+    min: 10,
+    max: 50,
+    fallback: 20,
+  });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
   const sb = adminClient();
 
@@ -42,18 +74,17 @@ export async function GET(req: Request) {
       status,
       created_at_stripe
       `,
-      { count: "exact" }
+      { count: "exact" },
     )
     .eq("org_id", orgId)
     .eq("livemode", livemode)
-    .order("created_at_stripe", { ascending: false });
+    .order("created_at_stripe", { ascending: false })
+    .range(from, to);
 
   if (status) query = query.eq("status", status);
 
-  // ✅ Safe search: doesn’t depend on a tsvector column existing
   if (q) {
-    const needle = normalize(q);
-    // supabase .or(...) uses comma-separated filters
+    const needle = escapeIlike(q);
     query = query.or(
       [
         `stripe_payment_intent_id.ilike.%${needle}%`,
@@ -62,32 +93,27 @@ export async function GET(req: Request) {
         `customer_name.ilike.%${needle}%`,
         `description.ilike.%${needle}%`,
         `status.ilike.%${needle}%`,
-      ].join(",")
+      ].join(","),
     );
   }
 
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  const { data, error, count } = await query.range(from, to);
+  const { data, error, count } = await query;
 
   if (error) {
     return NextResponse.json(
       { error: "db_query_failed", detail: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   return NextResponse.json({
-    // ✅ helpful for debugging you’re reading the connected account
     stripeAccountId,
     livemode,
     items: data ?? [],
     page,
     pageSize,
     total: count ?? 0,
-    q,
-    status,
+    q: qRaw?.trim() ?? "",
+    status: statusRaw?.trim() ?? "",
   });
 }
-  

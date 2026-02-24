@@ -3,23 +3,58 @@
 
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { getPipelineStages, type PipelineStageDef } from "@/modules/crm/data/pipelineStages";
+import {
+  getPipelineStages,
+  type PipelineStageDef,
+} from "@/modules/crm/data/pipelineStages";
 import {
   getConversionMetricDefinitions,
   saveConversionMetricDefinitions,
   type ConversionMetricDefinition,
 } from "@/modules/crm/data/conversionMetricDefinitions";
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveState = "idle" | "saving" | "saved";
 
-/**
- * UI needs to edit + persist target_rate (integer) on conversation_metrics.
- * We keep UI minimal by adding a small numeric input per metric.
- */
 type ConversionMetricDefinitionWithTarget = ConversionMetricDefinition & {
-  /** stored as conversation_metrics.target_rate (int) */
   targetRate: number | null;
 };
+
+function LoadingState() {
+  return (
+    <div className="max-w-3xl space-y-6 animate-pulse">
+      {/* Header card skeleton */}
+      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
+        <div className="h-6 w-56 rounded bg-slate-100" />
+        <div className="mt-2 h-4 w-full max-w-xl rounded bg-slate-100" />
+        <div className="mt-2 h-4 w-96 rounded bg-slate-100" />
+      </div>
+
+      {/* List skeleton */}
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
+          >
+            <div className="flex flex-col md:flex-row gap-2">
+              <div className="h-10 flex-1 rounded-lg bg-slate-100" />
+              <div className="h-10 w-full md:w-40 rounded-lg bg-slate-100" />
+              <div className="h-10 w-full md:w-40 rounded-lg bg-slate-100" />
+              <div className="h-10 w-full md:w-32 rounded-lg bg-slate-100" />
+              <div className="h-6 w-16 rounded bg-slate-100 mt-2 md:mt-2" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Actions skeleton */}
+      <div className="flex flex-wrap items-center gap-3 pt-2">
+        <div className="h-5 w-44 rounded bg-slate-100" />
+        <div className="h-10 w-32 rounded-lg bg-slate-100" />
+      </div>
+    </div>
+  );
+}
 
 export function ConversionMetricDefinitionsSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
@@ -43,6 +78,8 @@ export function ConversionMetricDefinitionsSettingsClient() {
       }
 
       try {
+        setLoading(true);
+
         const [stageDefs, existingDefs] = await Promise.all([
           getPipelineStages(teamId),
           getConversionMetricDefinitions(teamId),
@@ -50,21 +87,27 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
         if (cancelled) return;
 
-        const sortedStages = [...(stageDefs ?? [])].sort((a, b) => a.position - b.position);
-        setStages(sortedStages);
+        setStages(
+          [...(stageDefs ?? [])].sort((a, b) => a.position - b.position),
+        );
 
-        // Ensure targetRate always exists in local state (UI + validation)
-        const normalized: ConversionMetricDefinitionWithTarget[] = (existingDefs ?? []).map((d: any) => ({
-          ...(d as ConversionMetricDefinition),
-          targetRate:
-            typeof d?.targetRate === "number"
-              ? (Number.isFinite(d.targetRate) ? (d.targetRate | 0) : null)
-              : typeof d?.target_rate === "number"
-              ? (Number.isFinite(d.target_rate) ? (d.target_rate | 0) : null)
-              : null,
-        }));
+        setDefs(
+          (existingDefs ?? []).map((d: any, i: number) => ({
+            ...(d as ConversionMetricDefinition),
+            position: typeof d?.position === "number" ? d.position : i,
+            targetRate:
+              typeof d?.targetRate === "number"
+                ? Number.isFinite(d.targetRate)
+                  ? d.targetRate | 0
+                  : null
+                : typeof d?.target_rate === "number"
+                  ? Number.isFinite(d.target_rate)
+                    ? d.target_rate | 0
+                    : null
+                  : null,
+          })),
+        );
 
-        setDefs(normalized);
         setErrorMessage(null);
       } catch (err) {
         console.error("[ConversionMetricDefs] Failed to load", err);
@@ -85,6 +128,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   function addDefinition() {
     if (stages.length < 2) return;
+
     const first = stages[0]?.name ?? "";
     const second = stages[1]?.name ?? "";
 
@@ -95,14 +139,18 @@ export function ConversionMetricDefinitionsSettingsClient() {
         fromStage: first,
         toStage: second,
         position: prev.length,
-        targetRate: null, // new: default empty
+        targetRate: null,
       },
     ]);
+
     setSaveState("idle");
     setErrorMessage(null);
   }
 
-  function updateDefinition(index: number, patch: Partial<ConversionMetricDefinitionWithTarget>) {
+  function updateDefinition(
+    index: number,
+    patch: Partial<ConversionMetricDefinitionWithTarget>,
+  ) {
     setDefs((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], ...patch };
@@ -114,7 +162,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   function removeDefinition(index: number) {
     setDefs((prev) =>
-      prev.filter((_, i) => i !== index).map((d, i) => ({ ...d, position: i }))
+      prev.filter((_, i) => i !== index).map((d, i) => ({ ...d, position: i })),
     );
     setSaveState("idle");
     setErrorMessage(null);
@@ -122,32 +170,28 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   async function handleSave() {
     if (!teamId) {
-      setErrorMessage("Missing team. This page must be opened from within your workspace.");
+      setErrorMessage(
+        "Missing team. This page must be opened from within your workspace.",
+      );
       return;
     }
-
-    if (defs.length === 0) {
+    if (!defs.length) {
       setErrorMessage("Add at least one conversion metric before saving.");
       return;
     }
 
-    const trimmed: ConversionMetricDefinitionWithTarget[] = defs.map((d, index) => {
+    const trimmed = defs.map((d, index) => {
+      const label = (d.label ?? "").trim();
       const raw = d.targetRate;
 
-      // Store as integer or null (conversation_metrics.target_rate is int)
-      const normalizedTarget =
+      const targetRate =
         raw == null || raw === ("" as any)
           ? null
           : Number.isFinite(Number(raw))
-          ? (Math.round(Number(raw)) | 0)
-          : null;
+            ? Math.round(Number(raw)) | 0
+            : null;
 
-      return {
-        ...d,
-        label: (d.label ?? "").trim(),
-        position: index,
-        targetRate: normalizedTarget,
-      };
+      return { ...d, label, position: index, targetRate };
     });
 
     const invalid = trimmed.some(
@@ -156,18 +200,15 @@ export function ConversionMetricDefinitionsSettingsClient() {
         !d.fromStage ||
         !d.toStage ||
         d.fromStage === "(deleted)" ||
-        d.toStage === "(deleted)"
+        d.toStage === "(deleted)",
     );
-
     if (invalid) {
       setErrorMessage("Every metric needs a name and valid from/to stages.");
       return;
     }
 
-    // Optional guard: keep it reasonable if you're treating it like a percent.
-    // If you want ANY integer allowed, delete this block.
     const invalidTarget = trimmed.some(
-      (d) => d.targetRate != null && (d.targetRate < 0 || d.targetRate > 100)
+      (d) => d.targetRate != null && (d.targetRate < 0 || d.targetRate > 100),
     );
     if (invalidTarget) {
       setErrorMessage("Target rate must be between 0 and 100.");
@@ -178,53 +219,49 @@ export function ConversionMetricDefinitionsSettingsClient() {
     setErrorMessage(null);
 
     try {
-      // Pass targetRate through. Your data layer should map it to conversation_metrics.target_rate.
-      // Using `as any` keeps this file compiling even if the shared type hasn't been extended yet.
       await saveConversionMetricDefinitions(teamId, trimmed as any);
-
       setDefs(trimmed);
       setSaveState("saved");
     } catch (err) {
       console.error("[ConversionMetricDefs] Error while saving", err);
-      setSaveState("error");
-      setErrorMessage("Saving your conversion metrics failed. Please try again.");
+      setSaveState("idle");
+      setErrorMessage(
+        "Saving your conversion metrics failed. Please try again.",
+      );
     }
   }
 
-  if (!teamId) {
+  if (!teamId && !workspaceLoading) {
     return (
       <div className="max-w-xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
         <p className="font-medium">No team available</p>
         <p className="mt-1">
-          We couldn’t determine your team. Please open this page from your workspace or contact
-          support.
+          We couldn’t determine your team. Please open this page from your
+          workspace or contact support.
         </p>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-xl rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
-        Loading your conversion metrics…
-      </div>
-    );
+  if (workspaceLoading || loading) {
+    return <LoadingState />;
   }
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Header card */}
       <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Conversion Metrics</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
+            Conversion Metrics
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Define the conversion metrics you want to track. Each metric compares how many leads move
-            from one stage of the pipeline to another.
+            Define the conversion metrics you want to track. Each metric
+            compares how many leads move from one stage of the pipeline to
+            another.
           </p>
         </div>
       </div>
 
-      {/* Errors / status */}
       {(errorMessage || saveState === "saved") && (
         <div className="space-y-2">
           {errorMessage && (
@@ -240,15 +277,18 @@ export function ConversionMetricDefinitionsSettingsClient() {
         </div>
       )}
 
-      {/* Metrics list */}
       <div className="space-y-3">
         {defs.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            <p className="font-medium text-slate-700">No conversion metrics yet.</p>
+            <p className="font-medium text-slate-700">
+              No conversion metrics yet.
+            </p>
             <p className="mt-1">
               Add metrics like{" "}
-              <span className="font-semibold">Reply rate, Booking rate, Show-up rate</span> to match
-              your process.
+              <span className="font-semibold">
+                Reply rate, Booking rate, Show-up rate
+              </span>{" "}
+              to match your process.
             </p>
           </div>
         )}
@@ -262,14 +302,18 @@ export function ConversionMetricDefinitionsSettingsClient() {
               <input
                 className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={metric.label}
-                onChange={(e) => updateDefinition(index, { label: e.target.value })}
+                onChange={(e) =>
+                  updateDefinition(index, { label: e.target.value })
+                }
                 placeholder="Metric name (e.g. Reply rate, Booking rate)"
               />
 
               <select
                 className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.fromStage}
-                onChange={(e) => updateDefinition(index, { fromStage: e.target.value })}
+                onChange={(e) =>
+                  updateDefinition(index, { fromStage: e.target.value })
+                }
               >
                 {stages.map((s) => (
                   <option key={s.name} value={s.name}>
@@ -281,7 +325,9 @@ export function ConversionMetricDefinitionsSettingsClient() {
               <select
                 className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={metric.toStage}
-                onChange={(e) => updateDefinition(index, { toStage: e.target.value })}
+                onChange={(e) =>
+                  updateDefinition(index, { toStage: e.target.value })
+                }
               >
                 {stages.map((s) => (
                   <option key={s.name} value={s.name}>
@@ -290,7 +336,6 @@ export function ConversionMetricDefinitionsSettingsClient() {
                 ))}
               </select>
 
-              {/* NEW: Target rate */}
               <div className="w-full md:w-32">
                 <input
                   type="number"
@@ -302,7 +347,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
                   onChange={(e) => {
                     const v = e.target.value;
                     updateDefinition(index, {
-                      targetRate: v === "" ? null : (Math.round(Number(v)) | 0),
+                      targetRate: v === "" ? null : Math.round(Number(v)) | 0,
                     });
                   }}
                   placeholder="Target %"
@@ -324,7 +369,6 @@ export function ConversionMetricDefinitionsSettingsClient() {
         ))}
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="button"
@@ -344,7 +388,9 @@ export function ConversionMetricDefinitionsSettingsClient() {
         </button>
 
         {saveState === "idle" && defs.length > 0 && (
-          <span className="text-xs text-slate-400">Don’t forget to save your changes.</span>
+          <span className="text-xs text-slate-400">
+            Don’t forget to save your changes.
+          </span>
         )}
       </div>
     </div>

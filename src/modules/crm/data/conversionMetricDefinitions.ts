@@ -11,54 +11,62 @@ export interface ConversionMetricDefinition {
   targetRate?: number | null;
 }
 
-export async function getConversionMetricDefinitions(
-  teamId: string | null
-): Promise<ConversionMetricDefinition[]> {
-  if (!teamId) return [];
+const ENDPOINT = "/api/crm/conversion-metrics";
 
-  const res = await fetch("/api/crm/conversion-metrics", {
+async function postCRM<T>(body: unknown): Promise<T> {
+  const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ teamId, action: "get" }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    console.error("Failed to fetch conversion metric definitions", await res.text());
+    const text = await res.text();
+    console.error("CRM conversion metrics request failed", text);
     throw new Error("Failed to fetch conversion metric definitions");
   }
 
+  return res.json() as Promise<T>;
+}
+
+function toIntOrNull(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? ((Math.round(n) | 0) as number) : null;
+}
+
+export async function getConversionMetricDefinitions(
+  teamId: string | null,
+): Promise<ConversionMetricDefinition[]> {
+  if (!teamId) return [];
+
   // Accept either { definitions } or raw array (future-proof)
-  const json = await res.json();
-  const defsRaw = Array.isArray(json) ? json : json?.definitions;
+  const json = await postCRM<unknown>({ teamId, action: "get" });
+  const raw = (
+    Array.isArray(json) ? json : (json as any)?.definitions
+  ) as any[];
 
-  const defs = (Array.isArray(defsRaw) ? defsRaw : []) as any[];
+  const defs = (Array.isArray(raw) ? raw : []).map(
+    (d): ConversionMetricDefinition => ({
+      id: d.id,
+      label: d.label,
+      fromStage: d.fromStage,
+      toStage: d.toStage,
+      position: Number(d.position ?? 0),
+      // Normalize from either targetRate (camel) or target_rate (snake)
+      targetRate: toIntOrNull(d?.targetRate ?? d?.target_rate),
+    }),
+  );
 
-  // Normalize targetRate from either targetRate (camel) or target_rate (snake)
-  const normalized: ConversionMetricDefinition[] = defs.map((d) => ({
-    id: d.id,
-    label: d.label,
-    fromStage: d.fromStage,
-    toStage: d.toStage,
-    position: Number(d.position ?? 0),
-    targetRate:
-      typeof d?.targetRate === "number"
-        ? (Number.isFinite(d.targetRate) ? (d.targetRate | 0) : null)
-        : typeof d?.target_rate === "number"
-        ? (Number.isFinite(d.target_rate) ? (d.target_rate | 0) : null)
-        : null,
-  }));
-
-  return normalized.sort((a, b) => a.position - b.position);
+  return defs.sort((a, b) => a.position - b.position);
 }
 
 export async function saveConversionMetricDefinitions(
   teamId: string,
-  defs: ConversionMetricDefinition[]
+  defs: ConversionMetricDefinition[],
 ): Promise<void> {
-  if (!teamId) {
+  if (!teamId)
     throw new Error("Missing teamId when saving conversion metric definitions");
-  }
 
   const normalized = defs.map((d, index) => ({
     id: d.id, // keep if API uses it (safe to include)
@@ -66,29 +74,12 @@ export async function saveConversionMetricDefinitions(
     fromStage: d.fromStage,
     toStage: d.toStage,
     position: index,
-
-    // ✅ THE IMPORTANT PART:
-    targetRate:
-      d.targetRate == null
-        ? null
-        : Number.isFinite(Number(d.targetRate))
-        ? (Math.round(Number(d.targetRate)) | 0)
-        : null,
+    targetRate: d.targetRate == null ? null : toIntOrNull(d.targetRate),
   }));
 
-  const res = await fetch("/api/crm/conversion-metrics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify({
-      teamId,
-      action: "save",
-      definitions: normalized,
-    }),
+  await postCRM<void>({
+    teamId,
+    action: "save",
+    definitions: normalized,
   });
-
-  if (!res.ok) {
-    console.error("Failed to save conversion metric definitions", await res.text());
-    throw new Error("Failed to save conversion metric definitions");
-  }
 }

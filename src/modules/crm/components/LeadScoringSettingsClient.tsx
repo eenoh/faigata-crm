@@ -122,11 +122,8 @@ export function LeadScoringSettingsClient() {
     let cancelled = false;
 
     (async () => {
-      // show skeleton while workspace context is still resolving
-      if (workspaceLoading) {
-        setLoading(true);
-        return;
-      }
+      // wait for workspace context to resolve
+      if (workspaceLoading) return;
 
       if (!teamId) {
         setLoading(false);
@@ -177,7 +174,7 @@ export function LeadScoringSettingsClient() {
           console.error(
             "[LeadScoring] load config failed",
             res.status,
-            text.slice(0, 400)
+            text.slice(0, 400),
           );
         }
 
@@ -221,7 +218,7 @@ export function LeadScoringSettingsClient() {
           loadedThresholds ?? {
             low: 40,
             high: 70,
-          }
+          },
         );
 
         setError(null);
@@ -242,13 +239,17 @@ export function LeadScoringSettingsClient() {
 
   function updateFieldWeight(fieldKey: string, weight: number) {
     setRules((prev) =>
-      prev.map((r) => (r.fieldKey === fieldKey ? { ...r, weight } : r))
+      prev.map((r) => (r.fieldKey === fieldKey ? { ...r, weight } : r)),
     );
     setSaveState("idle");
     setError(null);
   }
 
-  function updateOptionWeight(fieldKey: string, option: string, weight: number) {
+  function updateOptionWeight(
+    fieldKey: string,
+    option: string,
+    weight: number,
+  ) {
     setRules((prev) =>
       prev.map((r) => {
         if (r.fieldKey !== fieldKey) return r;
@@ -260,7 +261,7 @@ export function LeadScoringSettingsClient() {
             [option]: weight,
           },
         };
-      })
+      }),
     );
     setSaveState("idle");
     setError(null);
@@ -304,7 +305,7 @@ export function LeadScoringSettingsClient() {
           "[LeadScoring] Failed to save rules",
           res.status,
           ct,
-          text.slice(0, 400)
+          text.slice(0, 400),
         );
         setSaveState("error");
         setError("Saving failed. Please try again.");
@@ -317,7 +318,7 @@ export function LeadScoringSettingsClient() {
           "[LeadScoring] save API returned non-JSON",
           res.status,
           ct,
-          text.slice(0, 200)
+          text.slice(0, 200),
         );
       }
 
@@ -421,7 +422,7 @@ export function LeadScoringSettingsClient() {
                                 rule.fieldKey,
                                 e.target.value === ""
                                   ? 0
-                                  : Number(e.target.value)
+                                  : Number(e.target.value),
                               )
                             }
                           />
@@ -460,7 +461,7 @@ export function LeadScoringSettingsClient() {
                                         opt,
                                         e.target.value === ""
                                           ? 0
-                                          : Number(e.target.value)
+                                          : Number(e.target.value),
                                       )
                                     }
                                   />
@@ -511,7 +512,7 @@ export function LeadScoringSettingsClient() {
                   onChange={(e) =>
                     updateThreshold(
                       "low",
-                      e.target.value === "" ? 0 : Number(e.target.value)
+                      e.target.value === "" ? 0 : Number(e.target.value),
                     )
                   }
                 />
@@ -536,7 +537,7 @@ export function LeadScoringSettingsClient() {
                   onChange={(e) =>
                     updateThreshold(
                       "high",
-                      e.target.value === "" ? 0 : Number(e.target.value)
+                      e.target.value === "" ? 0 : Number(e.target.value),
                     )
                   }
                 />

@@ -1,18 +1,32 @@
-// src/modules/crm/scoring/types.ts (for example)
-export type ScoreThresholds = {
-  low: number;   // score < low   => "low" (red)
-  high: number;  // score >= high => "high" (green)
-                 // between low & high => "medium" (yellow)
-};
+// src/modules/crm/scoring/types.ts
 
-export type ScoringRule = {
+export type ScoreLevel = "low" | "medium" | "high";
+
+export interface ScoreThresholds {
+  /** score < low   => "low" */
+  low: number;
+
+  /** score >= high => "high" */
+  high: number;
+  /** between low & high => "medium" */
+}
+
+export interface ScoringRule {
   fieldKey: string;
   label: string;
-  weight: number;
-  optionWeights?: Record<string, number>;
-};
 
-export type LeadScoringConfig = {
+  /** Base weight added when field is considered "set" */
+  weight: number;
+
+  /**
+   * Optional per-option weights (used for select fields).
+   * If present and the value matches a key here,
+   * that weight is used instead of the base weight.
+   */
+  optionWeights?: Record<string, number>;
+}
+
+export interface LeadScoringConfig {
   rules: ScoringRule[];
   thresholds: ScoreThresholds;
-};
+}

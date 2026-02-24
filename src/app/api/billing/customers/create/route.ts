@@ -11,38 +11,35 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   const { orgId, livemode, stripeAccountId } = auth.ctx;
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const leadId = String(body.leadId ?? "").trim();
-  const name = String(body.name ?? "").trim() || null;
-  const email = String(body.email ?? "").trim() || null;
-  const phone = String(body.phone ?? "").trim() || null;
-
-  if (!leadId) {
+  if (!leadId)
     return NextResponse.json({ error: "missing_leadId" }, { status: 400 });
-  }
+
+  const s = (v: unknown) => {
+    const t = String(v ?? "").trim();
+    return t ? t : null;
+  };
+
+  const stripe = getStripe(livemode ? "live" : "test");
 
   try {
-    const stripe = getStripe(livemode ? "live" : "test");
-
-    // Create Stripe customer in the connected account
     const customer = await stripe.customers.create(
       {
-        name: name ?? undefined,
-        email: email ?? undefined,
-        phone: phone ?? undefined,
+        name: s(body.name) ?? undefined,
+        email: s(body.email) ?? undefined,
+        phone: s(body.phone) ?? undefined,
       },
-      { stripeAccount: stripeAccountId }
+      { stripeAccount: stripeAccountId },
     );
 
-    // Link to your DB mapping table
-    const sb = adminClient();
-    const { error: upsertErr } = await sb
+    const { error } = await adminClient()
       .from("organization_stripe_customers")
       .upsert(
         {
@@ -52,13 +49,13 @@ export async function POST(req: Request) {
           lead_id: leadId,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "org_id,livemode,stripe_customer_id" }
+        { onConflict: "org_id,livemode,stripe_customer_id" },
       );
 
-    if (upsertErr) {
+    if (error) {
       return NextResponse.json(
-        { error: "db_upsert_failed", details: upsertErr },
-        { status: 500 }
+        { error: "db_upsert_failed", details: error },
+        { status: 500 },
       );
     }
 
@@ -66,7 +63,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "stripe_error" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

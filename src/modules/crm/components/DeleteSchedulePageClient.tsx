@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -14,41 +14,49 @@ type BookingLinkRow = {
 
 export default function DeleteSchedulePageClient() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const id = params?.id;
-
+  const params = useParams<{ id?: string }>();
+  const id = String(params?.id ?? "");
   const { teamId } = useWorkspace();
 
+  const [row, setRow] = useState<BookingLinkRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [row, setRow] = useState<BookingLinkRow | null>(null);
 
-  const safeId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
+  async function requireUser() {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      router.replace("/login");
+      return null;
+    }
+    return data.user;
+  }
 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      try {
-        setLoading(true);
-        setErr(null);
+    async function load() {
+      setLoading(true);
+      setErr(null);
 
-        const { data: userRes, error: userErr } = await supabase.auth.getUser();
-        if (userErr || !userRes.user) {
-          router.replace("/login");
-          return;
+      const user = await requireUser();
+      if (!user) return;
+
+      if (!teamId || !id) {
+        if (!cancelled) {
+          setErr("We couldn’t determine your team or schedule page id.");
+          setLoading(false);
         }
+        return;
+      }
 
-        if (!teamId) throw new Error("missing_team");
-        if (!safeId) throw new Error("missing_id");
-
+      try {
         const { data, error } = await supabase
           .from("booking_links")
           .select("id, name, slug, deleted_at")
-          .eq("id", safeId)
+          .eq("id", id)
           .eq("team_id", teamId)
-          .eq("owner_user_id", userRes.user.id)
+          .eq("owner_user_id", user.id)
           .maybeSingle();
 
         if (error) throw error;
@@ -61,34 +69,30 @@ export default function DeleteSchedulePageClient() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
+    }
 
+    load();
     return () => {
       cancelled = true;
     };
-  }, [router, safeId, teamId]);
+  }, [id, teamId]); // router is stable; no need in deps
 
   async function onDelete() {
+    setDeleting(true);
+    setErr(null);
+
     try {
-      setDeleting(true);
-      setErr(null);
+      const user = await requireUser();
+      if (!user) return;
 
-      const { data: userRes, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userRes.user) {
-        router.replace("/login");
-        return;
-      }
+      if (!teamId || !id) throw new Error("missing_team_or_id");
 
-      if (!teamId) throw new Error("missing_team");
-      if (!safeId) throw new Error("missing_id");
-
-      // ✅ SOFT DELETE
       const { error } = await supabase
         .from("booking_links")
         .update({ deleted_at: new Date().toISOString() })
-        .eq("id", safeId)
+        .eq("id", id)
         .eq("team_id", teamId)
-        .eq("owner_user_id", userRes.user.id)
+        .eq("owner_user_id", user.id)
         .is("deleted_at", null); // idempotent
 
       if (error) throw error;

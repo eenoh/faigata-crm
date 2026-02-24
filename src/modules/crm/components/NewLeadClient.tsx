@@ -4,8 +4,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
-import { getPipelineStages, type PipelineStageDef } from "@/modules/crm/data/pipelineStages";
+import {
+  getPipelineStages,
+  type PipelineStageDef,
+} from "@/modules/crm/data/pipelineStages";
 import { supabase } from "@/lib/supabaseClient";
+import Papa from "papaparse";
 
 type CsvStatus = "idle" | "parsing" | "valid" | "invalid";
 
@@ -30,9 +34,19 @@ type LeadContactType =
   | "discord"
   | "other";
 
-type LeadSourceCategory = "inbound" | "outbound" | "referral" | "partner" | "purchased";
+type LeadSourceCategory =
+  | "inbound"
+  | "outbound"
+  | "referral"
+  | "partner"
+  | "purchased";
 
-type LeadSourceName = "instagram" | "facebook" | "reddit" | "twitter_x" | "other";
+type LeadSourceName =
+  | "instagram"
+  | "facebook"
+  | "reddit"
+  | "twitter_x"
+  | "other";
 
 /** Prevent writing system keys into custom_values */
 const RESERVED_SYSTEM_KEYS = new Set([
@@ -93,22 +107,21 @@ const SYSTEM_CSV_COLUMNS: Record<string, string> = {
 };
 
 function parseCsv(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
+  const result = Papa.parse<string[]>(text.trim(), {
+    skipEmptyLines: true,
+  });
+
+  if (result.errors?.length) {
+    throw new Error(result.errors[0].message || "Invalid CSV.");
+  }
+
+  const data = result.data as unknown as string[][];
+  if (!data.length) throw new Error("CSV file is empty.");
+
+  const headers = (data[0] ?? [])
+    .map((h) => String(h ?? "").trim())
     .filter(Boolean);
-
-  if (lines.length === 0) throw new Error("CSV file is empty.");
-
-  const headers = lines[0]
-    .split(",")
-    .map((h) => h.trim())
-    .filter(Boolean);
-
-  const rows = lines
-    .slice(1)
-    .map((line) => line.split(","))
-    .filter((cells) => cells.some((c) => c.trim() !== ""));
+  const rows = data.slice(1).map((r) => r.map((c) => String(c ?? "")));
 
   return { headers, rows };
 }
@@ -220,7 +233,9 @@ function normalizeSourceName(raw: string): "" | LeadSourceName {
  * If contact type is one of the known source_name enum options, suggest that source_name.
  * For all other contact types, keep source_name as-is.
  */
-function sourceNameFromContactType(ct: "" | LeadContactType): "" | LeadSourceName {
+function sourceNameFromContactType(
+  ct: "" | LeadContactType,
+): "" | LeadSourceName {
   if (ct === "instagram") return "instagram";
   if (ct === "facebook") return "facebook";
   if (ct === "reddit") return "reddit";
@@ -246,7 +261,10 @@ function PageLoadingState() {
             <div className="h-4 w-36 rounded bg-slate-200/70 animate-pulse" />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-10 w-full rounded bg-slate-200/60 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-10 w-full rounded bg-slate-200/60 animate-pulse"
+                />
               ))}
             </div>
             <div className="h-10 w-32 rounded bg-slate-200/70 animate-pulse" />
@@ -271,6 +289,7 @@ export function NewLeadClient() {
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
 
   // metadata
+  const [metaLoaded, setMetaLoaded] = useState(false);
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [stage, setStage] = useState("");
@@ -327,7 +346,8 @@ export function NewLeadClient() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           console.warn("[NewLead] No authenticated user", userError);
@@ -342,7 +362,11 @@ export function NewLeadClient() {
         const user = userRes.user;
         const userId = user.id;
 
-        const { data: profile, error: profileError } = await supabase.from("profiles").select("team_id").eq("id", userId).single();
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("team_id")
+          .eq("id", userId)
+          .single();
 
         if (profileError && profileError.code !== "PGRST116") {
           console.error("[NewLead] Failed to load profile", profileError);
@@ -387,7 +411,10 @@ export function NewLeadClient() {
       if (!workspaceLoaded || !teamId) return;
 
       try {
-        const [defs, stageDefs] = await Promise.all([getLeadFieldDefinitions(teamId), getPipelineStages(teamId)]);
+        const [defs, stageDefs] = await Promise.all([
+          getLeadFieldDefinitions(teamId),
+          getPipelineStages(teamId),
+        ]);
 
         if (cancelled) return;
 
@@ -395,10 +422,12 @@ export function NewLeadClient() {
         setStages(stageDefs);
 
         if (stageDefs.length > 0) {
-          setStage(stageDefs[0].name); // default first stage
+          setStage((prev) => (prev ? prev : stageDefs[0].name));
         }
       } catch (err) {
         console.error("[NewLead] Failed to load new-lead metadata", err);
+      } finally {
+        if (!cancelled) setMetaLoaded(true);
       }
     })();
 
@@ -410,7 +439,9 @@ export function NewLeadClient() {
   /* -------------------- 2.5) Auto-suggest source_name from contact_type -------------------- */
 
   useEffect(() => {
-    const suggestion = sourceNameFromContactType(systemFields.primary_contact_type);
+    const suggestion = sourceNameFromContactType(
+      systemFields.primary_contact_type,
+    );
     if (!suggestion) return;
 
     if (systemFields.source_name === "") {
@@ -445,34 +476,41 @@ export function NewLeadClient() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage,
-          systemFields: {
-            lead_name: normalizeBlankToNull(systemFields.lead_name),
+      const res = await fetch(
+        `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stage,
+            systemFields: {
+              lead_name: normalizeBlankToNull(systemFields.lead_name),
 
-            niche: normalizeBlankToNull(systemFields.niche),
-            lead_type: systemFields.lead_type || null,
-            gender: systemFields.gender || null,
+              niche: normalizeBlankToNull(systemFields.niche),
+              lead_type: systemFields.lead_type || null,
+              gender: systemFields.gender || null,
 
-            city: normalizeBlankToNull(systemFields.city),
-            region: normalizeBlankToNull(systemFields.region),
-            country: normalizeBlankToNull(systemFields.country),
-            postal_code: normalizeBlankToNull(systemFields.postal_code),
+              city: normalizeBlankToNull(systemFields.city),
+              region: normalizeBlankToNull(systemFields.region),
+              country: normalizeBlankToNull(systemFields.country),
+              postal_code: normalizeBlankToNull(systemFields.postal_code),
 
-            // ✅ always send non-null contact type to satisfy DB constraint
-            primary_contact_type: coercePrimaryContactType(systemFields.primary_contact_type),
-            primary_contact_value: normalizeBlankToNull(systemFields.primary_contact_value),
+              // ✅ always send non-null contact type to satisfy DB constraint
+              primary_contact_type: coercePrimaryContactType(
+                systemFields.primary_contact_type,
+              ),
+              primary_contact_value: normalizeBlankToNull(
+                systemFields.primary_contact_value,
+              ),
 
-            source_category: systemFields.source_category || null,
-            source_name: systemFields.source_name || null,
-          },
-          customValues,
-          prospectorId: currentUserId,
-        }),
-      });
+              source_category: systemFields.source_category || null,
+              source_name: systemFields.source_name || null,
+            },
+            customValues,
+            prospectorId: currentUserId,
+          }),
+        },
+      );
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -607,7 +645,12 @@ export function NewLeadClient() {
       alert("Please select a pipeline stage first (left side).");
       return;
     }
-    if (csvStatus !== "valid" || !csvHeaders || !csvRows || csvRows.length === 0) {
+    if (
+      csvStatus !== "valid" ||
+      !csvHeaders ||
+      !csvRows ||
+      csvRows.length === 0
+    ) {
       return;
     }
 
@@ -625,7 +668,6 @@ export function NewLeadClient() {
     for (const row of csvRows) {
       const rowCustom: Record<string, any> = {};
 
-      // build a typed system object in the same shape the API expects
       const rowSystem: Record<string, any> = {
         lead_name: null,
 
@@ -646,7 +688,6 @@ export function NewLeadClient() {
         const h = header.trim().toLowerCase();
         const raw = (row[idx] ?? "").trim();
 
-        // system column?
         const sysKey = SYSTEM_CSV_COLUMNS[h];
         if (sysKey) {
           if (raw === "") {
@@ -654,17 +695,21 @@ export function NewLeadClient() {
             return;
           }
 
-          if (sysKey === "lead_type") rowSystem.lead_type = normalizeLeadType(raw) || null;
-          else if (sysKey === "gender") rowSystem.gender = normalizeGender(raw) || null;
-          else if (sysKey === "primary_contact_type") rowSystem.primary_contact_type = normalizeContactType(raw) || null;
-          else if (sysKey === "source_category") rowSystem.source_category = normalizeSourceCategory(raw) || null;
-          else if (sysKey === "source_name") rowSystem.source_name = normalizeSourceName(raw) || null;
+          if (sysKey === "lead_type")
+            rowSystem.lead_type = normalizeLeadType(raw) || null;
+          else if (sysKey === "gender")
+            rowSystem.gender = normalizeGender(raw) || null;
+          else if (sysKey === "primary_contact_type")
+            rowSystem.primary_contact_type = normalizeContactType(raw) || null;
+          else if (sysKey === "source_category")
+            rowSystem.source_category = normalizeSourceCategory(raw) || null;
+          else if (sysKey === "source_name")
+            rowSystem.source_name = normalizeSourceName(raw) || null;
           else rowSystem[sysKey] = normalizeBlankToNull(raw);
 
           return;
         }
 
-        // custom column?
         const field = headerToField[h];
         if (!field) return;
 
@@ -680,30 +725,37 @@ export function NewLeadClient() {
           const v = raw.toLowerCase();
           rowCustom[field.key] = ["true", "yes", "y", "1"].includes(v);
         } else {
-          rowCustom[field.key] = raw;
+          if (!RESERVED_SYSTEM_KEYS.has(field.key)) {
+            rowCustom[field.key] = raw;
+          }
         }
       });
 
-      // If source_name wasn't provided, but contact_type implies one, set it
       if (!rowSystem.source_name && rowSystem.primary_contact_type) {
-        const suggestion = sourceNameFromContactType(rowSystem.primary_contact_type as any);
+        const suggestion = sourceNameFromContactType(
+          rowSystem.primary_contact_type as any,
+        );
         if (suggestion) rowSystem.source_name = suggestion;
       }
 
-      // ✅ DB requires NOT NULL on primary_contact_type
-      rowSystem.primary_contact_type = coercePrimaryContactType(rowSystem.primary_contact_type ?? "");
+      rowSystem.primary_contact_type = coercePrimaryContactType(
+        rowSystem.primary_contact_type ?? "",
+      );
 
       try {
-        const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stage,
-            systemFields: rowSystem,
-            customValues: rowCustom,
-            prospectorId: currentUserId,
-          }),
-        });
+        const res = await fetch(
+          `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              stage,
+              systemFields: rowSystem,
+              customValues: rowCustom,
+              prospectorId: currentUserId,
+            }),
+          },
+        );
 
         if (!res.ok) failed += 1;
         else success += 1;
@@ -713,7 +765,11 @@ export function NewLeadClient() {
     }
 
     setImporting(false);
-    setImportMessage(`Imported ${success} row${success !== 1 ? "s" : ""}${failed ? `, ${failed} failed.` : "."}`);
+    setImportMessage(
+      `Imported ${success} row${success !== 1 ? "s" : ""}${
+        failed ? `, ${failed} failed.` : "."
+      }`,
+    );
   }
 
   /* -------------------- Render guards -------------------- */
@@ -725,7 +781,8 @@ export function NewLeadClient() {
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a
+        workspace, or complete onboarding first.
       </div>
     );
   }
@@ -741,15 +798,22 @@ export function NewLeadClient() {
       <div className="max-w-5xl">
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-slate-900">Add Leads</h1>
-          <p className="text-sm text-slate-500">Add a single lead manually or import multiple leads from a CSV file.</p>
+          <p className="text-sm text-slate-500">
+            Add a single lead manually or import multiple leads from a CSV file.
+          </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* LEFT: Single lead form */}
-          <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          >
             {/* Stage selector */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Pipeline Stage</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Pipeline Stage
+              </label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={stage}
@@ -757,7 +821,9 @@ export function NewLeadClient() {
                 required
                 disabled={!canSubmit}
               >
-                {stages.length === 0 && <option value="">No stages defined</option>}
+                {stages.length === 0 && (
+                  <option value="">No stages defined</option>
+                )}
                 {stages.map((s) => (
                   <option key={s.name} value={s.name}>
                     {s.name}
@@ -768,37 +834,63 @@ export function NewLeadClient() {
 
             {/* Core Details */}
             <div className="border-t border-slate-100 pt-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-800">Core Details</h2>
+              <h2 className="mb-3 text-sm font-semibold text-slate-800">
+                Core Details
+              </h2>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* ✅ Lead Name */}
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Lead Name</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Lead Name
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.lead_name}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, lead_name: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        lead_name: e.target.value,
+                      }))
+                    }
                     disabled={!canSubmit}
                     placeholder="e.g. John Smith / Acme Inc."
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Niche / Industry</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Niche / Industry
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.niche}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, niche: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({ ...p, niche: e.target.value }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Lead Type</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Lead Type
+                  </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.lead_type}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, lead_type: e.target.value as any }))}
+                    onChange={(e) => {
+                      const next = e.target.value as
+                        | ""
+                        | "individual"
+                        | "business";
+                      setSystemFields((p) => ({
+                        ...p,
+                        lead_type: next,
+                        // if switching away from individual, clear gender
+                        gender: next === "individual" ? p.gender : "",
+                      }));
+                    }}
                     disabled={!canSubmit}
                   >
                     <option value="">Select…</option>
@@ -807,13 +899,27 @@ export function NewLeadClient() {
                   </select>
                 </div>
 
+                {/* ✅ FIXED: styled gender select + cursor-pointer when enabled */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Gender</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Gender
+                  </label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      !canSubmit || systemFields.lead_type !== "individual"
+                        ? "cursor-not-allowed opacity-70"
+                        : "cursor-pointer"
+                    }`}
                     value={systemFields.gender}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, gender: e.target.value as any }))}
-                    disabled={!canSubmit}
+                    disabled={
+                      !canSubmit || systemFields.lead_type !== "individual"
+                    }
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        gender: e.target.value as any,
+                      }))
+                    }
                   >
                     <option value="">—</option>
                     <option value="male">Male</option>
@@ -821,48 +927,73 @@ export function NewLeadClient() {
                   </select>
                 </div>
 
+                {/* ✅ FIXED: City input was accidentally changing lead_type before */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">City</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    City
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.city}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, city: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({ ...p, city: e.target.value }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Region</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Region
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.region}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, region: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({ ...p, region: e.target.value }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Country</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Country
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.country}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, country: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        country: e.target.value,
+                      }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Postal Code</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Postal Code
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.postal_code}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, postal_code: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        postal_code: e.target.value,
+                      }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Primary Contact Type</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Primary Contact Type
+                  </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.primary_contact_type}
@@ -871,7 +1002,10 @@ export function NewLeadClient() {
                       setSystemFields((p) => ({
                         ...p,
                         primary_contact_type: ct,
-                        source_name: p.source_name === "" ? sourceNameFromContactType(ct) || "" : p.source_name,
+                        source_name:
+                          p.source_name === ""
+                            ? sourceNameFromContactType(ct) || ""
+                            : p.source_name,
                       }));
                     }}
                     disabled={!canSubmit}
@@ -894,21 +1028,35 @@ export function NewLeadClient() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Primary Contact</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Primary Contact
+                  </label>
                   <input
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={systemFields.primary_contact_value}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, primary_contact_value: e.target.value }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        primary_contact_value: e.target.value,
+                      }))
+                    }
                     disabled={!canSubmit}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Source Category</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Source Category
+                  </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.source_category}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, source_category: e.target.value as any }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        source_category: e.target.value as any,
+                      }))
+                    }
                     disabled={!canSubmit}
                   >
                     <option value="">Select…</option>
@@ -921,11 +1069,18 @@ export function NewLeadClient() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">Source Name</label>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Source Name
+                  </label>
                   <select
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={systemFields.source_name}
-                    onChange={(e) => setSystemFields((p) => ({ ...p, source_name: e.target.value as any }))}
+                    onChange={(e) =>
+                      setSystemFields((p) => ({
+                        ...p,
+                        source_name: e.target.value as any,
+                      }))
+                    }
                     disabled={!canSubmit}
                   >
                     <option value="">Select…</option>
@@ -942,7 +1097,9 @@ export function NewLeadClient() {
             {/* Custom fields */}
             {fields.length > 0 && (
               <div className="border-t border-slate-100 pt-4">
-                <h2 className="mb-3 text-sm font-semibold text-slate-800">Additional Details</h2>
+                <h2 className="mb-3 text-sm font-semibold text-slate-800">
+                  Additional Details
+                </h2>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {fields
@@ -956,7 +1113,9 @@ export function NewLeadClient() {
                         {field.type === "text" && (
                           <input
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            onChange={(e) => handleCustomChange(field.key, e.target.value)}
+                            onChange={(e) =>
+                              handleCustomChange(field.key, e.target.value)
+                            }
                             disabled={!canSubmit}
                           />
                         )}
@@ -966,7 +1125,12 @@ export function NewLeadClient() {
                             type="number"
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             onChange={(e) =>
-                              handleCustomChange(field.key, e.target.value === "" ? null : Number(e.target.value))
+                              handleCustomChange(
+                                field.key,
+                                e.target.value === ""
+                                  ? null
+                                  : Number(e.target.value),
+                              )
                             }
                             disabled={!canSubmit}
                           />
@@ -977,7 +1141,9 @@ export function NewLeadClient() {
                             <input
                               type="checkbox"
                               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                              onChange={(e) => handleCustomChange(field.key, e.target.checked)}
+                              onChange={(e) =>
+                                handleCustomChange(field.key, e.target.checked)
+                              }
                               disabled={!canSubmit}
                             />
                             <span>Yes</span>
@@ -987,9 +1153,16 @@ export function NewLeadClient() {
                         {field.type === "select" && (
                           <select
                             className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                              canSubmit ? "cursor-pointer" : "cursor-not-allowed"
+                              canSubmit
+                                ? "cursor-pointer"
+                                : "cursor-not-allowed"
                             }`}
-                            onChange={(e) => handleCustomChange(field.key, e.target.value || null)}
+                            onChange={(e) =>
+                              handleCustomChange(
+                                field.key,
+                                e.target.value || null,
+                              )
+                            }
                             disabled={!canSubmit}
                           >
                             <option value="">Select…</option>
@@ -1006,7 +1179,9 @@ export function NewLeadClient() {
                             type="url"
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             placeholder="https://example.com"
-                            onChange={(e) => handleCustomChange(field.key, e.target.value)}
+                            onChange={(e) =>
+                              handleCustomChange(field.key, e.target.value)
+                            }
                             disabled={!canSubmit}
                           />
                         )}
@@ -1030,9 +1205,12 @@ export function NewLeadClient() {
           {/* RIGHT: CSV upload */}
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-1">
-              <h2 className="text-sm font-semibold text-slate-900">Import from CSV</h2>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Import from CSV
+              </h2>
               <p className="text-xs text-slate-500">
-                Upload a CSV whose headers match either your custom field labels or the supported core columns.
+                Upload a CSV whose headers match either your custom field labels
+                or the supported core columns.
               </p>
             </div>
 
@@ -1041,11 +1219,17 @@ export function NewLeadClient() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
-                isDragging ? "border-indigo-400 bg-indigo-50/70" : "border-slate-300 bg-slate-50"
+                isDragging
+                  ? "border-indigo-400 bg-indigo-50/70"
+                  : "border-slate-300 bg-slate-50"
               }`}
             >
-              <p className="text-sm font-medium text-slate-700">Drag &amp; drop your CSV here</p>
-              <p className="mt-1 text-xs text-slate-500">or click to choose a file</p>
+              <p className="text-sm font-medium text-slate-700">
+                Drag &amp; drop your CSV here
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                or click to choose a file
+              </p>
 
               <input
                 type="file"
@@ -1057,22 +1241,30 @@ export function NewLeadClient() {
 
               {csvFileName && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Selected file: <span className="font-semibold text-slate-700">{csvFileName}</span>
+                  Selected file:{" "}
+                  <span className="font-semibold text-slate-700">
+                    {csvFileName}
+                  </span>
                 </p>
               )}
             </div>
 
             {/* CSV status / feedback */}
             <div className="mt-2 space-y-2 text-xs">
-              {csvStatus === "parsing" && <p className="text-slate-500">Checking CSV structure…</p>}
+              {csvStatus === "parsing" && (
+                <p className="text-slate-500">Checking CSV structure…</p>
+              )}
 
               {csvStatus === "valid" && csvRowCount !== null && (
                 <div className="space-y-2">
                   <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">
                     <p className="font-medium">
-                      CSV looks good! {csvRowCount} row{csvRowCount !== 1 ? "s" : ""} ready to be imported.
+                      CSV looks good! {csvRowCount} row
+                      {csvRowCount !== 1 ? "s" : ""} ready to be imported.
                     </p>
-                    <p className="mt-1 text-[11px]">Supports both configured custom fields and core columns.</p>
+                    <p className="mt-1 text-[11px]">
+                      Supports both configured custom fields and core columns.
+                    </p>
                   </div>
 
                   <button
@@ -1081,10 +1273,18 @@ export function NewLeadClient() {
                     disabled={importing || !stage}
                     className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    {importing ? "Importing…" : `Import ${csvRowCount} row${csvRowCount !== 1 ? "s" : ""}`}
+                    {importing
+                      ? "Importing…"
+                      : `Import ${csvRowCount} row${
+                          csvRowCount !== 1 ? "s" : ""
+                        }`}
                   </button>
 
-                  {importMessage && <p className="text-[11px] text-slate-500">{importMessage}</p>}
+                  {importMessage && (
+                    <p className="text-[11px] text-slate-500">
+                      {importMessage}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1097,10 +1297,14 @@ export function NewLeadClient() {
 
               {csvStatus === "idle" && (
                 <p className="text-[11px] text-slate-400">
-                  Custom columns allowed: {fields.length > 0 ? fields.map((f) => f.label).join(", ") : "—"}
+                  Custom columns allowed:{" "}
+                  {fields.length > 0
+                    ? fields.map((f) => f.label).join(", ")
+                    : "—"}
                   <br />
-                  Core columns allowed: Lead Name, Niche / Industry, Lead Type, Gender, City, Region, Country, Postal
-                  Code, Primary Contact Type, Primary Contact, Source Category, Source Name.
+                  Core columns allowed: Lead Name, Niche / Industry, Lead Type,
+                  Gender, City, Region, Country, Postal Code, Primary Contact
+                  Type, Primary Contact, Source Category, Source Name.
                 </p>
               )}
             </div>

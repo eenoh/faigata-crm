@@ -244,7 +244,7 @@ export default function ProductFormClient({
       try {
         const res = await authedFetch(
           `/api/billing/products/${encodeURIComponent(safeProductId)}`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
         const json = await res.json().catch(() => null);
         if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
@@ -272,16 +272,16 @@ export default function ProductFormClient({
     setSaving(true);
 
     try {
-      if (!name.trim()) {
-        throw new Error("Name is required.");
-      }
+      if (!name.trim()) throw new Error("Name is required.");
 
       // ✅ CREATE: product + price
       if (mode === "create") {
         const cents = toCents(amount);
         if (cents == null) throw new Error("Price amount is required.");
 
-        const cur = String(currency ?? "usd").trim().toLowerCase();
+        const cur = String(currency ?? "usd")
+          .trim()
+          .toLowerCase();
         if (!cur) throw new Error("Currency is required.");
 
         const recurring =
@@ -315,20 +315,20 @@ export default function ProductFormClient({
 
         // ✅ Robustly extract product id
         const newId =
-          json?.stripe_product_id ?? json?.product?.id ?? json?.productId ?? json?.id;
+          json?.stripe_product_id ??
+          json?.product?.id ??
+          json?.productId ??
+          json?.id;
 
-        if (!newId || typeof newId !== "string") {
+        if (!newId || typeof newId !== "string")
           throw new Error("create_response_missing_product_id");
-        }
 
         router.push(`/billing/products/${encodeURIComponent(newId)}`);
         return;
       }
 
       // ✅ EDIT: only name/description
-      if (!safeProductId) {
-        throw new Error("missing_product_id");
-      }
+      if (!safeProductId) throw new Error("missing_product_id");
 
       const res = await authedFetch(
         `/api/billing/products/${encodeURIComponent(safeProductId)}/update`,
@@ -340,7 +340,7 @@ export default function ProductFormClient({
             // allow clearing description: send null if empty
             description: description.trim() === "" ? null : description.trim(),
           }),
-        }
+        },
       );
 
       const json = await res.json().catch(() => null);
@@ -379,7 +379,9 @@ export default function ProductFormClient({
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-700">Name</label>
+              <label className="text-xs font-semibold text-slate-700">
+                Name
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -404,9 +406,12 @@ export default function ProductFormClient({
             {/* ✅ Price section only for CREATE */}
             {mode === "create" && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm font-semibold text-slate-900">Price</div>
+                <div className="text-sm font-semibold text-slate-900">
+                  Price
+                </div>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  This will create a Stripe Price for the product. Stripe prices are usually not edited—create a new one instead.
+                  This will create a Stripe Price for the product. Stripe prices
+                  are usually not edited—create a new one instead.
                 </p>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -431,10 +436,11 @@ export default function ProductFormClient({
                       Currency
                     </label>
 
-                    {/* ✅ Dropdown of currency codes */}
                     <select
                       value={currency}
-                      onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                      onChange={(e) =>
+                        setCurrency(e.target.value as CurrencyCode)
+                      }
                       className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       {CURRENCIES.map((c) => (
@@ -455,11 +461,10 @@ export default function ProductFormClient({
                     Billing type
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {/* ✅ cursor-pointer ALWAYS, even when selected */}
                     <button
                       type="button"
                       onClick={() => setBillingType("one_time")}
-                      className={`cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold border ${
+                      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold ${
                         billingType === "one_time"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -471,7 +476,7 @@ export default function ProductFormClient({
                     <button
                       type="button"
                       onClick={() => setBillingType("recurring")}
-                      className={`cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold border ${
+                      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold ${
                         billingType === "recurring"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -490,7 +495,9 @@ export default function ProductFormClient({
                       </label>
                       <select
                         value={interval}
-                        onChange={(e) => setInterval(e.target.value as Interval)}
+                        onChange={(e) =>
+                          setInterval(e.target.value as Interval)
+                        }
                         className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="day">Daily</option>
@@ -508,7 +515,9 @@ export default function ProductFormClient({
                         type="number"
                         min={1}
                         value={intervalCount}
-                        onChange={(e) => setIntervalCount(Number(e.target.value))}
+                        onChange={(e) =>
+                          setIntervalCount(Number(e.target.value))
+                        }
                         className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                       <p className="mt-1 text-[11px] text-slate-500">
@@ -535,7 +544,11 @@ export default function ProductFormClient({
                 disabled={saving}
                 className="cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
               >
-                {saving ? "Saving…" : mode === "create" ? "Create Product" : "Save Changes"}
+                {saving
+                  ? "Saving…"
+                  : mode === "create"
+                    ? "Create Product"
+                    : "Save Changes"}
               </button>
             </div>
 

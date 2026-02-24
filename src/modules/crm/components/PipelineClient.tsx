@@ -2,15 +2,15 @@
 "use client";
 
 import {
+  useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
-  useDeferredValue,
-  useCallback,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import {
@@ -34,7 +34,6 @@ type LeadCard = {
   setter_id?: string | null;
   closer_id?: string | null;
 };
-
 
 type DragState = {
   leadId: string | null;
@@ -138,11 +137,73 @@ function FireworksOverlay({ bursts }: { bursts: Burst[] }) {
   );
 }
 
+/* ---------- helpers (kept OUTSIDE component so they don’t re-create each render) ---------- */
+
+function normalizeRoles(raw: unknown): string[] {
+  if (raw === null || raw === undefined) return [];
+  if (Array.isArray(raw))
+    return raw.map((r) => String(r).trim()).filter(Boolean);
+  // some schemas store role as a single string
+  const s = String(raw).trim();
+  if (!s) return [];
+  // also allow comma-separated strings
+  if (s.includes(","))
+    return s
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  return [s];
+}
+
+function isMeaningfulValue(v: any): boolean {
+  if (v === null || v === undefined) return false;
+
+  if (typeof v === "string") {
+    const s = v.trim();
+    return s !== "" && s !== "0";
+  }
+
+  if (typeof v === "number") return !Number.isNaN(v) && v !== 0;
+
+  if (typeof v === "boolean") return v === true;
+
+  const s = String(v).trim();
+  return s !== "" && s !== "0";
+}
+
+function asDisplay(v: any): string {
+  if (v === null || v === undefined) return "";
+  return typeof v === "string" ? v.trim() : String(v);
+}
+
+function findNameLikeCustomValue(custom: Record<string, any>) {
+  const preferredKeys = [
+    "lead_name",
+    "name",
+    "full_name",
+    "company",
+    "business",
+    "brand",
+    "client",
+    "account",
+  ];
+
+  for (const k of preferredKeys) {
+    if (k in custom && isMeaningfulValue(custom[k]))
+      return asDisplay(custom[k]);
+  }
+
+  for (const [k, v] of Object.entries(custom)) {
+    if (k.toLowerCase().includes("name") && isMeaningfulValue(v))
+      return asDisplay(v);
+  }
+
+  return "";
+}
+
 export function PipelineClient() {
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
-
-  // ✅ smoother filtering while typing
   const deferredQuery = useDeferredValue(searchQuery);
 
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -170,14 +231,13 @@ export function PipelineClient() {
 
   // fireworks bursts
   const [bursts, setBursts] = useState<Burst[]>([]);
-
   const addBurst = useCallback((x: number, y: number) => {
     const b: Burst = { id: uid(), x, y, createdAt: Date.now() };
     setBursts((prev) => [...prev, b]);
-
-    window.setTimeout(() => {
-      setBursts((prev) => prev.filter((p) => p.id !== b.id));
-    }, 850);
+    window.setTimeout(
+      () => setBursts((prev) => prev.filter((p) => p.id !== b.id)),
+      850,
+    );
   }, []);
 
   /* ---------- 1) Load workspace (teamId) + role from Supabase ---------- */
@@ -186,7 +246,8 @@ export function PipelineClient() {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           console.warn("[Pipeline] No authenticated user", userError);
@@ -195,13 +256,13 @@ export function PipelineClient() {
             setCurrentUserId(null);
             setIsManagerOrAdmin(false);
             setWorkspaceLoaded(true);
+            setLoading(false);
           }
           return;
         }
 
         const user = userRes.user;
         const userId = user.id;
-
         if (!cancelled) setCurrentUserId(userId);
 
         const { data: profile, error: profileError } = await supabase
@@ -217,12 +278,14 @@ export function PipelineClient() {
         let tId: string | null = profile?.team_id ?? null;
         if (!tId) {
           const metaTeam = (user.user_metadata as any)?.primary_team_id;
-          if (typeof metaTeam === "string" && metaTeam.length > 0) tId = metaTeam;
+          if (typeof metaTeam === "string" && metaTeam.length > 0)
+            tId = metaTeam;
         }
 
-        const roles = (profile?.role ?? []) as string[];
-        const normRoles = roles.map((r) => String(r).trim().toLowerCase());
-        const managerOrAdmin = normRoles.includes("manager") || normRoles.includes("admin");
+        const roles = normalizeRoles(profile?.role);
+        const normRoles = roles.map((r) => r.toLowerCase());
+        const managerOrAdmin =
+          normRoles.includes("manager") || normRoles.includes("admin");
 
         if (!cancelled) {
           setTeamId(tId);
@@ -236,6 +299,7 @@ export function PipelineClient() {
           setCurrentUserId(null);
           setIsManagerOrAdmin(false);
           setWorkspaceLoaded(true);
+          setLoading(false);
         }
       }
     })();
@@ -264,10 +328,16 @@ export function PipelineClient() {
           getLeadFieldDefinitions(teamId),
           getPipelineStages(teamId),
           (async () => {
-            const res = await fetch(`/api/crm/leads?teamId=${encodeURIComponent(teamId)}`);
+            const res = await fetch(
+              `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`,
+            );
             if (!res.ok) {
-              const text = await res.text();
-              console.error("[Pipeline] Failed to load leads", res.status, text.slice(0, 200));
+              const text = await res.text().catch(() => "");
+              console.error(
+                "[Pipeline] Failed to load leads",
+                res.status,
+                text.slice(0, 400),
+              );
               throw new Error("Failed to load leads");
             }
             return (await res.json()) as any[];
@@ -283,31 +353,34 @@ export function PipelineClient() {
             const ct = res.headers.get("content-type") ?? "";
             if (!ct.includes("application/json")) return null;
 
-            const json = (await res.json()) as { thresholds?: Partial<ScoreThresholds> };
+            const json = (await res.json()) as {
+              thresholds?: Partial<ScoreThresholds>;
+            };
             const low = Number(json.thresholds?.low);
             const high = Number(json.thresholds?.high);
 
-            if (!Number.isNaN(low) && !Number.isNaN(high)) return { low, high } satisfies ScoreThresholds;
+            if (!Number.isNaN(low) && !Number.isNaN(high))
+              return { low, high } satisfies ScoreThresholds;
             return null;
           })(),
         ]);
 
         if (cancelled) return;
 
+        const safeStages = Array.isArray(stageDefs) ? stageDefs : [];
         setFields(fieldDefs);
-        setStages(stageDefs || []);
+        setStages(safeStages);
         setScoreThresholds(scoringRes ?? { low: 40, high: 70 });
 
         const mapped: LeadCard[] = (leadsRes ?? []).map((l: any) => ({
-          id: l.id,
-          stage: l.stage,
+          id: String(l.id),
+          stage: String(l.stage ?? ""),
 
-          // ✅ include these
           lead_name: l.lead_name ?? null,
           primary_contact_value: l.primary_contact_value ?? null,
           niche: l.niche ?? null,
 
-          customValues: l.custom_values ?? {},
+          customValues: (l.custom_values ?? {}) as Record<string, any>,
           score: l.score ?? null,
           setter_id: l.setter_id ?? null,
           closer_id: l.closer_id ?? null,
@@ -316,7 +389,11 @@ export function PipelineClient() {
         const visible =
           isManagerOrAdmin || !currentUserId
             ? mapped
-            : mapped.filter((l) => l.setter_id === currentUserId || l.closer_id === currentUserId);
+            : mapped.filter(
+                (l) =>
+                  l.setter_id === currentUserId ||
+                  l.closer_id === currentUserId,
+              );
 
         setLeads(visible);
       } catch (err) {
@@ -339,87 +416,47 @@ export function PipelineClient() {
     const map: Record<string, LeadCard[]> = {};
     stages.forEach((s) => (map[s.name] = []));
 
+    const firstStageName = stages[0]?.name;
+
     leads.forEach((lead) => {
-      const stageName = lead.stage && map[lead.stage] ? lead.stage : stages[0]?.name ?? "new";
-      if (!map[stageName]) map[stageName] = [];
-      map[stageName].push(lead);
+      // if stage not known (or stages missing), keep lead in its stage if possible, otherwise first stage or "New"
+      const desired =
+        lead.stage && map[lead.stage]
+          ? lead.stage
+          : (firstStageName ?? lead.stage ?? "New");
+      if (!map[desired]) map[desired] = [];
+      map[desired].push(lead);
     });
 
     return map;
   }, [leads, stages]);
 
-  function isMeaningfulValue(v: any): boolean {
-  if (v === null || v === undefined) return false;
-
-  // strings
-  if (typeof v === "string") return v.trim() !== "" && v.trim() !== "0";
-
-  // numbers
-  if (typeof v === "number") return !Number.isNaN(v) && v !== 0;
-
-  // booleans (false is usually not a good title)
-  if (typeof v === "boolean") return v === true;
-
-  // everything else
-  const s = String(v).trim();
-  return s !== "" && s !== "0";
-}
-
-function asDisplay(v: any): string {
-  if (v === null || v === undefined) return "";
-  return typeof v === "string" ? v.trim() : String(v);
-}
-
-function findNameLikeCustomValue(custom: Record<string, any>) {
-  const preferredKeys = ["lead_name", "name", "full_name", "company", "business", "brand", "client", "account"];
-
-  // 1) direct preferred keys
-  for (const k of preferredKeys) {
-    if (k in custom && isMeaningfulValue(custom[k])) return asDisplay(custom[k]);
-  }
-
-  // 2) any key containing "name"
-  for (const [k, v] of Object.entries(custom)) {
-    if (k.toLowerCase().includes("name") && isMeaningfulValue(v)) return asDisplay(v);
-  }
-
-  return "";
-}
-
-
   function getLeadTitle(lead: LeadCard) {
-    // ✅ best: real DB column
     if (isMeaningfulValue(lead.lead_name)) return asDisplay(lead.lead_name);
 
-    // ✅ next: name-like custom fields
     const nameLike = findNameLikeCustomValue(lead.customValues);
     if (nameLike) return nameLike;
 
-    // ✅ then: primary configured field (but only if meaningful, so "0" won't be shown)
     if (primaryField) {
       const v = lead.customValues[primaryField.key];
       if (isMeaningfulValue(v)) return asDisplay(v);
     }
 
-    // ✅ then: contact value (often useful)
-    if (isMeaningfulValue(lead.primary_contact_value)) return asDisplay(lead.primary_contact_value);
+    if (isMeaningfulValue(lead.primary_contact_value))
+      return asDisplay(lead.primary_contact_value);
 
-    // ✅ fallback
     return `Lead ${lead.id.slice(0, 6)}…`;
   }
 
   function getLeadSubtitle(lead: LeadCard) {
-    // Prefer 2nd configured field if meaningful
     if (fields.length >= 2) {
       const secondaryField = fields[1];
       const v = lead.customValues[secondaryField.key];
       if (isMeaningfulValue(v)) return asDisplay(v);
     }
 
-    // Otherwise try niche or another “useful” system field
     if (isMeaningfulValue(lead.niche)) return asDisplay(lead.niche);
 
-    // Or any other meaningful custom value that isn't the title
     for (const [k, v] of Object.entries(lead.customValues)) {
       if (k.toLowerCase().includes("name")) continue;
       if (isMeaningfulValue(v)) return asDisplay(v);
@@ -439,13 +476,31 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
     if (subtitle.includes(needle)) return true;
 
     for (const value of Object.values(lead.customValues)) {
-      if (value !== null && value !== undefined && String(value).toLowerCase().includes(needle)) return true;
+      if (
+        value !== null &&
+        value !== undefined &&
+        String(value).toLowerCase().includes(needle)
+      )
+        return true;
     }
 
     return false;
   }
 
-  function handleDragStart(leadId: string, fromStage: string) {
+  function handleDragStart(
+    leadId: string,
+    fromStage: string,
+    e?: React.DragEvent,
+  ) {
+    // Needed for some browsers to allow drop
+    try {
+      if (e?.dataTransfer) {
+        e.dataTransfer.setData("text/plain", leadId);
+        e.dataTransfer.effectAllowed = "move";
+      }
+    } catch {
+      // ignore
+    }
     setDragState({ leadId, fromStage });
   }
 
@@ -466,11 +521,16 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
     const hi = Math.max(safeLow, safeHigh);
 
     if (score < lo) return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
-    if (score >= hi) return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+    if (score >= hi)
+      return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
     return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
   }
 
-  async function logStageChange(leadId: string, fromStage: string, toStage: string): Promise<boolean> {
+  async function logStageChange(
+    leadId: string,
+    fromStage: string,
+    toStage: string,
+  ): Promise<boolean> {
     if (!teamId) return false;
 
     try {
@@ -488,20 +548,30 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
             body: `Stage changed from "${fromStage}" to "${toStage}"`,
             sender_profile_id: senderId,
           }),
-        }
+        },
       );
 
       const ct = res.headers.get("content-type") ?? "";
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        console.error("[Pipeline] Failed to log stage change", res.status, ct, text.slice(0, 400));
+        console.error(
+          "[Pipeline] Failed to log stage change",
+          res.status,
+          ct,
+          text.slice(0, 400),
+        );
         return false;
       }
 
       if (!ct.includes("application/json")) {
         const text = await res.text().catch(() => "");
-        console.error("[Pipeline] stage-change API returned non-JSON", res.status, ct, text.slice(0, 400));
+        console.error(
+          "[Pipeline] stage-change API returned non-JSON",
+          res.status,
+          ct,
+          text.slice(0, 400),
+        );
         return false;
       }
 
@@ -512,7 +582,11 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
     }
   }
 
-  async function handleDrop(targetStage: string, targetX: number, targetY: number) {
+  async function handleDrop(
+    targetStage: string,
+    targetX: number,
+    targetY: number,
+  ) {
     if (!dragState.leadId || !teamId) return;
 
     const leadId = dragState.leadId;
@@ -522,9 +596,11 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
     if (!fromStage || fromStage === targetStage) return;
 
     // optimistic UI
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l)));
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l)),
+    );
 
-    // ✅ Fireworks on EVERY stage change
+    // fireworks on EVERY stage change
     addBurst(targetX, targetY);
 
     try {
@@ -539,24 +615,40 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
       });
 
       if (!res.ok) {
-        console.error("[Pipeline] Failed to update stage", await res.text().catch(() => ""));
+        console.error(
+          "[Pipeline] Failed to update stage",
+          await res.text().catch(() => ""),
+        );
+        // rollback on failure
+        setLeads((prev) =>
+          prev.map((l) => (l.id === leadId ? { ...l, stage: fromStage } : l)),
+        );
         return;
       }
 
       const logged = await logStageChange(leadId, fromStage, targetStage);
 
       if (logged && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("lead-message-logged", { detail: { teamId, leadId } }));
+        window.dispatchEvent(
+          new CustomEvent("lead-message-logged", {
+            detail: { teamId, leadId },
+          }),
+        );
       }
     } catch (err) {
       console.error("[Pipeline] Failed to update stage", err);
+      // rollback on error
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? { ...l, stage: fromStage } : l)),
+      );
     }
   }
 
   if (workspaceLoaded && !teamId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a
+        workspace, or complete onboarding first.
       </div>
     );
   }
@@ -567,7 +659,10 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
         <div className="h-8 w-40 rounded-lg bg-slate-200 animate-pulse" />
         <div className="grid gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse" />
+            <div
+              key={i}
+              className="h-64 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -584,24 +679,35 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
 
   const filteredByStage = (stageName: string) => {
     const allStageLeads = leadsByStage[stageName] ?? [];
-    return deferredQuery ? allStageLeads.filter((lead) => matchesSearch(lead, deferredQuery)) : allStageLeads;
+    return deferredQuery
+      ? allStageLeads.filter((lead) => matchesSearch(lead, deferredQuery))
+      : allStageLeads;
   };
 
   return (
-    <div ref={boardRef} className="relative flex h-[calc(100vh-6rem)] flex-col gap-4 overflow-hidden">
+    <div
+      ref={boardRef}
+      className="relative flex h-[calc(100vh-6rem)] flex-col gap-4 overflow-hidden"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Pipeline</h1>
-          <p className="text-sm text-slate-500">Drag leads between columns to update their stage.</p>
+          <p className="text-sm text-slate-500">
+            Drag leads between columns to update their stage.
+          </p>
         </div>
       </div>
 
       <div className="flex-1 overflow-x-auto">
-        <motion.div className="flex min-w-[960px] gap-4 pr-4" layout transition={{ duration: 0.18 }}>
+        <motion.div
+          className="flex min-w-[960px] gap-4 pr-4"
+          layout
+          transition={{ duration: 0.18 }}
+        >
           {stages.map((stage, stageIndex) => {
             const stageLeads = filteredByStage(stage.name);
-
-            const isActiveDrop = dragState.leadId !== null && dragState.fromStage !== stage.name;
+            const isActiveDrop =
+              dragState.leadId !== null && dragState.fromStage !== stage.name;
             const conversion = getStageConversion(stage);
 
             return (
@@ -609,7 +715,9 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
                 key={stage.name}
                 className={[
                   "flex w-64 flex-shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm backdrop-blur transition",
-                  isActiveDrop ? "ring-2 ring-indigo-300 ring-offset-2 ring-offset-slate-100" : "",
+                  isActiveDrop
+                    ? "ring-2 ring-indigo-300 ring-offset-2 ring-offset-slate-100"
+                    : "",
                 ].join(" ")}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -629,12 +737,17 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
                 {/* Header */}
                 <div className="mb-2 flex items-center justify-between">
                   <div>
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">{stage.name}</h2>
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {stage.name}
+                    </h2>
                     <p className="text-[11px] text-slate-400">
-                      {stageLeads.length} lead{stageLeads.length === 1 ? "" : "s"}
+                      {stageLeads.length} lead
+                      {stageLeads.length === 1 ? "" : "s"}
                     </p>
                     {conversion !== null && (
-                      <p className="mt-0.5 text-[11px] font-medium text-emerald-600">{conversion.toFixed(0)}% conversion</p>
+                      <p className="mt-0.5 text-[11px] font-medium text-emerald-600">
+                        {conversion.toFixed(0)}% conversion
+                      </p>
                     )}
                   </div>
                 </div>
@@ -656,21 +769,39 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
                     )}
 
                     {stageLeads.map((lead) => {
-                      const score = lead.score === null || lead.score === undefined ? null : Number(lead.score);
-                      const scoreBadge = score === null || Number.isNaN(score) ? null : getScoreBadgeClasses(score);
+                      const score =
+                        lead.score === null || lead.score === undefined
+                          ? null
+                          : Number(lead.score);
+                      const scoreBadge =
+                        score === null || Number.isNaN(score)
+                          ? null
+                          : getScoreBadgeClasses(score);
 
                       return (
                         <motion.button
                           key={lead.id}
+                          type="button"
                           layout="position"
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 6 }}
                           transition={{ duration: 0.14 }}
                           draggable
-                          onDragStart={() => handleDragStart(lead.id, stage.name)}
+                          onDragStart={() =>
+                            handleDragStart(lead.id, stage.name)
+                          }
+                          onDragStartCapture={(e) => {
+                            // real React.DragEvent here ✅
+                            try {
+                              e.dataTransfer.setData("text/plain", lead.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            } catch {
+                              // ignore
+                            }
+                          }}
                           onDragEnd={handleDragEnd}
-                          className="group cursor-pointer cursor-grab active:cursor-grabbing flex w-full flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition will-change-transform"
+                          className="group flex w-full cursor-grab flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition will-change-transform active:cursor-grabbing"
                           whileHover={{
                             y: -2,
                             boxShadow: "0 10px 18px rgba(15, 23, 42, 0.10)",
@@ -694,7 +825,7 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
 
                               <span
                                 className={[
-                                  "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide font-semibold transition-colors",
+                                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
                                   "bg-slate-100 text-slate-500 group-hover:text-indigo-600",
                                 ].join(" ")}
                               >
@@ -704,7 +835,9 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
                           </div>
 
                           {getLeadSubtitle(lead) && (
-                            <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{getLeadSubtitle(lead)}</p>
+                            <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">
+                              {getLeadSubtitle(lead)}
+                            </p>
                           )}
                         </motion.button>
                       );

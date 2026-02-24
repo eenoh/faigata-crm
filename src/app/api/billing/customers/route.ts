@@ -32,9 +32,8 @@ function nonEmptyString(v: unknown): string | null {
  * - null
  */
 function normalizeRoles(raw: unknown): string[] {
-  if (Array.isArray(raw)) {
+  if (Array.isArray(raw))
     return raw.map((r) => String(r).trim().toLowerCase()).filter(Boolean);
-  }
   if (typeof raw === "string") {
     const v = raw.trim().toLowerCase();
     return v ? [v] : [];
@@ -51,20 +50,19 @@ async function getUserFromBearer(req: Request) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) return { user: null, token: null };
 
-  // Create a user-scoped client and validate the JWT.
   const userClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false },
   });
 
-  // Supabase v2 supports passing the JWT directly:
-  // (This avoids relying on global headers behavior)
   const { data, error } = await userClient.auth.getUser(token);
   if (error) return { user: null, token: null };
 
   return { user: data?.user ?? null, token };
 }
 
-async function getAuthedContext(req: Request): Promise<
+async function getAuthedContext(
+  req: Request,
+): Promise<
   | { ok: true; ctx: Authed }
   | { ok: false; status: number; body: Record<string, any> }
 > {
@@ -83,7 +81,6 @@ async function getAuthedContext(req: Request): Promise<
 
   const sb = adminClient();
 
-  // Pull both team_id and company_id so we can resolve whichever you use as org_id.
   const { data: profile, error: profileErr } = await sb
     .from("profiles")
     .select("team_id, company_id, role")
@@ -116,10 +113,6 @@ async function getAuthedContext(req: Request): Promise<
     };
   }
 
-  // ✅ This is the critical part:
-  // You currently treat profiles.team_id as orgId.
-  // But your stripe account mapping table is called organization_stripe_accounts(org_id,...)
-  // and org_id might actually store company_id or organizations.id instead.
   const candidates = [
     profile.team_id ? String(profile.team_id) : null,
     profile.company_id ? String(profile.company_id) : null,
@@ -138,7 +131,6 @@ async function getAuthedContext(req: Request): Promise<
 
   const livemode = false; // test-only for now
 
-  // Try to find a connected account for any candidate workspace id.
   let stripeAccountId: string | null = null;
   let resolvedOrgId: string | null = null;
 
@@ -174,35 +166,30 @@ async function getAuthedContext(req: Request): Promise<
 
   return {
     ok: true,
-    ctx: {
-      userId: user.id,
-      orgId: resolvedOrgId,
-      livemode,
-      stripeAccountId,
-    },
+    ctx: { userId: user.id, orgId: resolvedOrgId, livemode, stripeAccountId },
   };
 }
 
 export async function GET(req: Request) {
   const authRes = await getAuthedContext(req);
-
-  if (!authRes.ok) {
-    // Return specific status so you don't confuse "no stripe account" with "unauthorized"
+  if (!authRes.ok)
     return NextResponse.json(authRes.body, { status: authRes.status });
-  }
 
   const { ctx } = authRes;
-
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
+  const limit = Math.min(
+    200,
+    Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50),
+  );
 
   const stripe = stripeClient(ctx.livemode);
   const sb = adminClient();
 
   // 1) Fetch customers from Stripe (connected acct)
   const list = await stripe.customers.list(
-    { limit: 50, ...(q.includes("@") ? { email: q } : {}) },
-    { stripeAccount: ctx.stripeAccountId }
+    { limit, ...(q.includes("@") ? { email: q } : {}) },
+    { stripeAccount: ctx.stripeAccountId },
   );
 
   const customers = list.data.map((c) => ({
@@ -257,20 +244,22 @@ export async function GET(req: Request) {
     if (leadIds.length > 0) {
       const { data: leads } = await sb
         .from("leads")
-        .select("id, custom_values, stage")
+        .select("id, lead_name, primary_contact_value, custom_values, stage")
         .in("id", leadIds);
 
       for (const l of leads ?? []) {
         const cv = (l.custom_values ?? {}) as Record<string, any>;
         const fullName = nonEmptyString(
-          `${cv.first_name ?? ""} ${cv.last_name ?? ""}`.trim()
+          `${cv.first_name ?? ""} ${cv.last_name ?? ""}`.trim(),
         );
 
         const guess =
+          nonEmptyString(l.lead_name) ??
           nonEmptyString(cv.name) ??
           nonEmptyString(cv.full_name) ??
           fullName ??
           nonEmptyString(cv.company) ??
+          nonEmptyString(l.primary_contact_value) ??
           nonEmptyString(cv.email) ??
           `Lead (${(l.stage as string | null) ?? "Pipeline"})`;
 
@@ -284,7 +273,9 @@ export async function GET(req: Request) {
 
       mappingByCustomer.set(stripe_customer_id, {
         lead_id,
-        lead_label: lead_id ? leadLabelById.get(lead_id) ?? "Linked lead" : null,
+        lead_label: lead_id
+          ? (leadLabelById.get(lead_id) ?? "Linked lead")
+          : null,
       });
     }
   }
@@ -304,5 +295,6 @@ export async function GET(req: Request) {
     stripeAccountId: ctx.stripeAccountId,
     livemode: ctx.livemode,
     q,
+    limit,
   });
 }

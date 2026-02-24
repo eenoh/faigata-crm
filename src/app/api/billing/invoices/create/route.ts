@@ -3,27 +3,49 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
+function cleanCustomerId(v: unknown) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const lower = s.toLowerCase();
+  if (lower === "undefined" || lower === "null") return null;
+
+  // Stripe customers are usually cus_...
+  // If you ever pass other ids, loosen/remove this check.
+  if (!/^cus_[A-Za-z0-9]+$/.test(s)) return null;
+
+  return s;
+}
+
+function pickCollectionMethod(
+  v: unknown,
+): "send_invoice" | "charge_automatically" {
+  const s = String(v ?? "send_invoice").toLowerCase();
+  return s === "charge_automatically" ? "charge_automatically" : "send_invoice";
+}
+
 export async function POST(req: Request) {
   const auth = await getAuthedBillingContextWithReason(req);
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  const stripe = getStripe("test");
-  const { stripeAccountId } = auth.ctx;
+  const body = await req.json().catch(() => ({}) as any);
 
-  const body = await req.json().catch(() => ({}));
-  const customerId = String(body.customerId ?? "").trim();
+  const customerId = cleanCustomerId(body.customerId);
   if (!customerId) {
-    return NextResponse.json({ error: "missing_customerId" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "invalid_customerId",
+        hint: "Expected a Stripe customer id like cus_123...",
+      },
+      { status: 400 },
+    );
   }
 
-  const collection_method = (body.collection_method ?? "send_invoice") as
-    | "send_invoice"
-    | "charge_automatically";
+  const collection_method = pickCollectionMethod(body.collection_method);
 
   const days_until_due =
     collection_method === "send_invoice"
@@ -31,18 +53,21 @@ export async function POST(req: Request) {
       : undefined;
 
   const memo = String(body.memo ?? "").trim();
+  const description =
+    memo || String(body.description ?? "").trim() || undefined;
+
+  const stripe = getStripe(auth.ctx.livemode ? "live" : "test");
 
   try {
     const inv = await stripe.invoices.create(
       {
         customer: customerId,
         collection_method,
-        days_until_due,
-        // ✅ use memo as description (so it shows in Stripe and on invoice)
-        description: memo || body.description || undefined,
-        metadata: body.metadata ?? undefined,
+        ...(collection_method === "send_invoice" ? { days_until_due } : {}),
+        ...(description ? { description } : {}),
+        ...(body.metadata ? { metadata: body.metadata } : {}),
       },
-      { stripeAccount: stripeAccountId }
+      { stripeAccount: auth.ctx.stripeAccountId },
     );
 
     return NextResponse.json({
@@ -57,7 +82,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "stripe_error" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

@@ -3,20 +3,28 @@ import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { getStripe } from "@/lib/stripeServer";
 
-type RouteContext = {
-  params: Promise<{ invoiceId: string }>;
-};
+type RouteContext = { params: Promise<{ invoiceId: string }> };
 
-function safeDecode(v: string) {
+function cleanInvoiceId(v: unknown) {
+  const raw = String(v ?? "").trim();
+  if (!raw) return null;
+
+  const lowered = raw.toLowerCase();
+  if (lowered === "undefined" || lowered === "null") return null;
+
+  let decoded = raw;
   try {
-    return decodeURIComponent(v);
-  } catch {
-    return v;
-  }
-}
+    decoded = decodeURIComponent(raw);
+  } catch {}
 
-function isValidStripeInvoiceId(id: string) {
-  return /^in_[A-Za-z0-9]+$/.test(id);
+  decoded = decoded.trim();
+  const dLower = decoded.toLowerCase();
+  if (!decoded || dLower === "undefined" || dLower === "null") return null;
+
+  // Stripe invoice ids look like: in_...
+  if (!/^in_[A-Za-z0-9]+$/.test(decoded)) return null;
+
+  return decoded;
 }
 
 export async function POST(req: Request, ctx: RouteContext) {
@@ -24,61 +32,28 @@ export async function POST(req: Request, ctx: RouteContext) {
   if (!auth.ok) {
     return NextResponse.json(
       { error: auth.reason, details: auth.details },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  const { stripeAccountId, livemode } = auth.ctx;
-
-  // ✅ Use correct Stripe environment
-  const stripe = getStripe(livemode ? "live" : "test");
-
-  // ✅ Next's type system expects params to be a Promise → await it
-  const { invoiceId: raw } = await ctx.params;
-
-  const rawStr = String(raw ?? "").trim();
-  const decoded = safeDecode(rawStr).trim();
-  const lower = decoded.toLowerCase();
-
-  // ✅ Strong guard against undefined/null/weird values
-  if (
-    !decoded ||
-    lower === "undefined" ||
-    lower === "null" ||
-    lower === "'undefined'" ||
-    lower === '"undefined"' ||
-    lower.includes("undefined")
-  ) {
-    return NextResponse.json(
-      {
-        error: "missing_invoiceId",
-        hint:
-          "Route param invoiceId was empty/undefined. Check client router.push() and API calls.",
-        received: decoded,
-      },
-      { status: 400 }
-    );
-  }
-
-  // ✅ Validate Stripe invoice id format before calling Stripe
-  if (!isValidStripeInvoiceId(decoded)) {
+  const invoiceId = cleanInvoiceId((await ctx.params).invoiceId);
+  if (!invoiceId) {
     return NextResponse.json(
       {
         error: "invalid_invoiceId",
-        hint: "invoiceId must look like in_123... (Stripe invoice id).",
-        received: decoded,
+        hint: "Route param invoiceId was missing/invalid (expected Stripe invoice id like in_123...).",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const invoiceId = decoded;
+  const stripe = getStripe(auth.ctx.livemode ? "live" : "test");
 
   try {
     const inv = await stripe.invoices.voidInvoice(
       invoiceId,
       {},
-      { stripeAccount: stripeAccountId }
+      { stripeAccount: auth.ctx.stripeAccountId },
     );
 
     return NextResponse.json({
@@ -86,13 +61,8 @@ export async function POST(req: Request, ctx: RouteContext) {
     });
   } catch (e: any) {
     return NextResponse.json(
-      {
-        error: e?.message ?? "stripe_error",
-        invoiceId,
-        stripeAccountId,
-        livemode,
-      },
-      { status: 400 }
+      { error: e?.message ?? "stripe_error" },
+      { status: 400 },
     );
   }
 }

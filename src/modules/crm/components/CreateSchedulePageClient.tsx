@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -23,9 +23,9 @@ function lighten(color: string, amount = 0.2): string {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   const adj = (c: number) => Math.min(255, Math.max(0, c + 255 * amount)) | 0;
-  return `#${adj(r).toString(16).padStart(2, "0")}${adj(g).toString(16).padStart(2, "0")}${adj(b)
+  return `#${adj(r).toString(16).padStart(2, "0")}${adj(g)
     .toString(16)
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}${adj(b).toString(16).padStart(2, "0")}`;
 }
 
 function darken(color: string, amount = 0.2): string {
@@ -35,22 +35,15 @@ function darken(color: string, amount = 0.2): string {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   const adj = (c: number) => Math.min(255, Math.max(0, c - 255 * amount)) | 0;
-  return `#${adj(r).toString(16).padStart(2, "0")}${adj(g).toString(16).padStart(2, "0")}${adj(b)
+  return `#${adj(r).toString(16).padStart(2, "0")}${adj(g)
     .toString(16)
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}${adj(b).toString(16).padStart(2, "0")}`;
 }
 
 function timeToMinutes(t: string) {
   const [hh, mm] = (t || "").split(":").map((x) => parseInt(x, 10));
   if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
   return hh * 60 + mm;
-}
-
-function minutesToTime(min: number) {
-  const m = Math.max(0, Math.min(24 * 60, min | 0));
-  const hh = String(Math.floor(m / 60)).padStart(2, "0");
-  const mm = String(m % 60).padStart(2, "0");
-  return `${hh}:${mm}`;
 }
 
 const WEEKDAYS: { id: number; label: string }[] = [
@@ -83,12 +76,75 @@ type AvailabilityMode = "business_hours" | "twenty_four_seven";
 
 const DEFAULT_PRIMARY = "#4f46e5";
 
+/* ------------------------- loading UI ------------------------- */
+
+function PageLoading() {
+  return (
+    <div className="flex flex-col gap-6 max-w-5xl animate-pulse">
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="h-7 w-64 rounded bg-slate-100" />
+        <div className="mt-2 h-4 w-full max-w-2xl rounded bg-slate-100" />
+        <div className="mt-3 h-6 w-40 rounded-full bg-slate-100" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="h-3 w-32 rounded bg-slate-100" />
+          <div className="h-10 w-full rounded-lg bg-slate-100" />
+
+          <div className="h-3 w-40 rounded bg-slate-100" />
+          <div className="h-10 w-full rounded-lg bg-slate-100" />
+
+          <div className="h-3 w-44 rounded bg-slate-100" />
+          <div className="h-24 w-full rounded-lg bg-slate-100" />
+
+          <div className="h-28 w-full rounded-xl bg-slate-100" />
+          <div className="h-28 w-full rounded-xl bg-slate-100" />
+
+          <div className="h-10 w-44 rounded-lg bg-slate-100" />
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="h-4 w-48 rounded bg-slate-100" />
+            <div className="mt-2 h-3 w-80 rounded bg-slate-100" />
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-slate-100" />
+                <div className="flex-1">
+                  <div className="h-3 w-56 rounded bg-slate-100" />
+                  <div className="mt-2 h-5 w-64 rounded bg-slate-100" />
+                </div>
+              </div>
+              <div className="mt-4 h-3 w-full max-w-md rounded bg-slate-100" />
+            </div>
+            <div className="border-t border-slate-200 p-5">
+              <div className="h-3 w-24 rounded bg-slate-100" />
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-8 rounded-lg bg-slate-100" />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-3 w-60 rounded bg-slate-100" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CreateSchedulePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { teamId } = useWorkspace();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -101,6 +157,7 @@ export default function CreateSchedulePageClient() {
   // org info (for preview header)
   const [org, setOrg] = useState<OrgInfo | null>(null);
   const [orgLogoSignedUrl, setOrgLogoSignedUrl] = useState<string | null>(null);
+  const [orgLoading, setOrgLoading] = useState(false);
 
   // closers
   const [closers, setClosers] = useState<CloserUser[]>([]);
@@ -110,14 +167,18 @@ export default function CreateSchedulePageClient() {
   const [selectedCloserId, setSelectedCloserId] = useState<string | null>(null);
 
   // group selection (multi + primary)
-  const [selectedGroupCloserIds, setSelectedGroupCloserIds] = useState<string[]>([]);
+  const [selectedGroupCloserIds, setSelectedGroupCloserIds] = useState<
+    string[]
+  >([]);
   const [primaryCloserId, setPrimaryCloserId] = useState<string | null>(null);
 
   // round robin selection (multi)
-  const [selectedRoundRobinCloserIds, setSelectedRoundRobinCloserIds] = useState<string[]>([]);
+  const [selectedRoundRobinCloserIds, setSelectedRoundRobinCloserIds] =
+    useState<string[]>([]);
 
-  const [bookingType, setBookingType] = useState<"one_on_one" | "group" | "round_robin">("one_on_one");
-
+  const [bookingType, setBookingType] = useState<
+    "one_on_one" | "group" | "round_robin"
+  >("one_on_one");
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
 
   const [bufferBefore, setBufferBefore] = useState<string>("0");
@@ -128,24 +189,33 @@ export default function CreateSchedulePageClient() {
   const [redirectMode, setRedirectMode] = useState<RedirectMode>("default");
   const [redirectUrl, setRedirectUrl] = useState("");
   const [confirmHeading, setConfirmHeading] = useState("You're booked!");
-  const [confirmSubheading, setConfirmSubheading] = useState("We’ve sent a calendar invite to your email.");
+  const [confirmSubheading, setConfirmSubheading] = useState(
+    "We’ve sent a calendar invite to your email.",
+  );
 
-  // ✅ Availability configuration (saved to booking_links)
-  const [availabilityMode, setAvailabilityMode] = useState<AvailabilityMode>("business_hours");
+  // availability config
+  const [availabilityMode, setAvailabilityMode] =
+    useState<AvailabilityMode>("business_hours");
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("17:00");
-  const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri
+  const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
 
   /* Load current user */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: userRes, error: userError } = await supabase.auth.getUser();
-      if (userError || !userRes.user) {
-        router.replace("/login");
-        return;
+      try {
+        setAuthLoading(true);
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
+        if (userError || !userRes.user) {
+          router.replace("/login");
+          return;
+        }
+        if (!cancelled) setUserId(userRes.user.id);
+      } finally {
+        if (!cancelled) setAuthLoading(false);
       }
-      if (!cancelled) setUserId(userRes.user.id);
     })();
     return () => {
       cancelled = true;
@@ -155,7 +225,8 @@ export default function CreateSchedulePageClient() {
   /* Read type from query param */
   useEffect(() => {
     const t = searchParams.get("type");
-    if (t === "group" || t === "round_robin" || t === "one_on_one") setBookingType(t);
+    if (t === "group" || t === "round_robin" || t === "one_on_one")
+      setBookingType(t);
     else setBookingType("one_on_one");
   }, [searchParams]);
 
@@ -174,47 +245,56 @@ export default function CreateSchedulePageClient() {
     let cancelled = false;
 
     (async () => {
-      const { data: profRow, error: profErr } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", userId)
-        .single();
+      try {
+        setOrgLoading(true);
 
-      if (profErr) return;
+        const { data: profRow } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", userId)
+          .single();
 
-      const companyId: string | null = profRow?.company_id ?? null;
-      if (!companyId) return;
+        const companyId: string | null = profRow?.company_id ?? null;
+        if (!companyId) return;
 
-      const { data: orgRow, error: orgErr } = await supabase
-        .from("organizations")
-        .select("id, name, primary_color, logo_url")
-        .eq("id", companyId)
-        .single();
+        const { data: orgRow } = await supabase
+          .from("organizations")
+          .select("id, name, primary_color, logo_url")
+          .eq("id", companyId)
+          .single();
 
-      if (orgErr || !orgRow || cancelled) return;
+        if (!orgRow || cancelled) return;
 
-      const orgInfo: OrgInfo = {
-        id: orgRow.id,
-        name: orgRow.name ?? null,
-        primary_color: orgRow.primary_color ?? null,
-        logo_url: orgRow.logo_url ?? null,
-      };
+        const orgInfo: OrgInfo = {
+          id: orgRow.id,
+          name: orgRow.name ?? null,
+          primary_color: orgRow.primary_color ?? null,
+          logo_url: orgRow.logo_url ?? null,
+        };
 
-      setOrg(orgInfo);
+        setOrg(orgInfo);
 
-      if (orgInfo.primary_color && orgInfo.primary_color.trim() !== "") {
-        setPrimaryColor(orgInfo.primary_color);
-      }
-
-      if (orgInfo.logo_url) {
-        if (orgInfo.logo_url.startsWith("http://") || orgInfo.logo_url.startsWith("https://")) {
-          setOrgLogoSignedUrl(orgInfo.logo_url);
-        } else {
-          const { data: signed } = await supabase.storage.from("org-logos").createSignedUrl(orgInfo.logo_url, 60 * 60 * 24);
-          if (!cancelled) setOrgLogoSignedUrl(signed?.signedUrl ?? null);
+        if (orgInfo.primary_color && orgInfo.primary_color.trim() !== "") {
+          setPrimaryColor(orgInfo.primary_color);
         }
-      } else {
-        setOrgLogoSignedUrl(null);
+
+        if (orgInfo.logo_url) {
+          if (
+            orgInfo.logo_url.startsWith("http://") ||
+            orgInfo.logo_url.startsWith("https://")
+          ) {
+            setOrgLogoSignedUrl(orgInfo.logo_url);
+          } else {
+            const { data: signed } = await supabase.storage
+              .from("org-logos")
+              .createSignedUrl(orgInfo.logo_url, 60 * 60 * 24);
+            if (!cancelled) setOrgLogoSignedUrl(signed?.signedUrl ?? null);
+          }
+        } else {
+          setOrgLogoSignedUrl(null);
+        }
+      } finally {
+        if (!cancelled) setOrgLoading(false);
       }
     })();
 
@@ -232,25 +312,26 @@ export default function CreateSchedulePageClient() {
       try {
         setLoadingClosers(true);
 
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("profiles")
           .select("id, first_name, last_name, role")
           .eq("team_id", teamId);
 
-        if (error || cancelled) return;
+        if (cancelled) return;
 
         const hasCloserRole = (role: any) => {
-          // role can be: array, string, null
-          if (Array.isArray(role)) {
-            return role.some((r) => String(r ?? "").trim().toLowerCase() === "closer");
-          }
-          if (typeof role === "string") {
+          if (Array.isArray(role))
+            return role.some(
+              (r) =>
+                String(r ?? "")
+                  .trim()
+                  .toLowerCase() === "closer",
+            );
+          if (typeof role === "string")
             return String(role).trim().toLowerCase() === "closer";
-          }
           return false;
         };
 
-        // ✅ only ONE closerUsers declaration
         const closerUsers: CloserUser[] = (data ?? [])
           .filter((p: any) => hasCloserRole(p.role))
           .map((p: any) => ({
@@ -270,10 +351,12 @@ export default function CreateSchedulePageClient() {
         setPrimaryCloserId(defaultPrimary);
 
         if (defaultPrimary) {
-          const second = closerUsers.find((c) => c.user_id !== defaultPrimary)?.user_id ?? null;
-          setSelectedGroupCloserIds(second ? [defaultPrimary, second] : [defaultPrimary]);
-
-          // ✅ default RR = all closers (or at least primary)
+          const second =
+            closerUsers.find((c) => c.user_id !== defaultPrimary)?.user_id ??
+            null;
+          setSelectedGroupCloserIds(
+            second ? [defaultPrimary, second] : [defaultPrimary],
+          );
           setSelectedRoundRobinCloserIds(closerUsers.map((c) => c.user_id));
         } else {
           setSelectedGroupCloserIds([]);
@@ -289,22 +372,18 @@ export default function CreateSchedulePageClient() {
     };
   }, [teamId, userId]);
 
-
   // Ensure primary closer stays included for group
   useEffect(() => {
     if (bookingType !== "group") return;
     if (!primaryCloserId) return;
-    setSelectedGroupCloserIds((prev) => (prev.includes(primaryCloserId) ? prev : [primaryCloserId, ...prev]));
+    setSelectedGroupCloserIds((prev) =>
+      prev.includes(primaryCloserId) ? prev : [primaryCloserId, ...prev],
+    );
   }, [bookingType, primaryCloserId]);
 
-  // ✅ If switching to 24/7, reflect it in UI defaults (optional)
+  // Validate/normalize business hours inputs when mode changes
   useEffect(() => {
-    if (availabilityMode === "twenty_four_seven") {
-      // keep the last chosen business hours in state,
-      // but the payload will ignore them when 24/7.
-      return;
-    }
-    // If business_hours and times are blank/invalid, reset
+    if (availabilityMode === "twenty_four_seven") return;
     const s = timeToMinutes(workStart);
     const e = timeToMinutes(workEnd);
     if (s == null) setWorkStart("09:00");
@@ -312,15 +391,16 @@ export default function CreateSchedulePageClient() {
   }, [availabilityMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const gradientA = useMemo(
-    () => `linear-gradient(135deg, ${lighten(primaryColor, 0.25)}, ${primaryColor})`,
-    [primaryColor]
+    () =>
+      `linear-gradient(135deg, ${lighten(primaryColor, 0.25)}, ${primaryColor})`,
+    [primaryColor],
   );
   const gradientB = useMemo(
-    () => `linear-gradient(135deg, ${primaryColor}, ${darken(primaryColor, 0.25)})`,
-    [primaryColor]
+    () =>
+      `linear-gradient(135deg, ${primaryColor}, ${darken(primaryColor, 0.25)})`,
+    [primaryColor],
   );
 
-  // preview hours (cosmetic)
   const previewHours = useMemo(() => {
     if (availabilityMode === "twenty_four_seven") return "24/7";
     return `${workStart}–${workEnd}`;
@@ -330,32 +410,22 @@ export default function CreateSchedulePageClient() {
     e.preventDefault();
     if (!teamId || !userId) return;
 
-    // clear previous error
     setError(null);
 
-    if (!name.trim()) {
-      setError("Please give your schedule page a name.");
-      return;
-    }
+    if (!name.trim()) return setError("Please give your schedule page a name.");
 
     const finalSlug = slugify(slug || name);
-    if (!finalSlug) {
-      setError("Slug can’t be empty.");
-      return;
-    }
+    if (!finalSlug) return setError("Slug can’t be empty.");
 
     const parsedDuration = parseInt(String(durationMinutes || 0), 10) || 0;
-    if (parsedDuration < 5) {
-      setError("Duration must be at least 5 minutes.");
-      return;
-    }
+    if (parsedDuration < 5)
+      return setError("Duration must be at least 5 minutes.");
 
     const parsedBufferBefore = parseInt(bufferBefore || "0", 10) || 0;
     const parsedBufferAfter = parseInt(bufferAfter || "0", 10) || 0;
     const parsedMinNotice = parseInt(minNoticeHours || "0", 10) || 0;
     const parsedMaxNotice = parseInt(maxNoticeDays || "0", 10) || 0;
 
-    // ✅ validate availability settings (ONLY on submit, NOT during render)
     let workStartMin = 0;
     let workEndMin = 24 * 60;
     let workDaysToSave: number[] = [0, 1, 2, 3, 4, 5, 6];
@@ -364,63 +434,47 @@ export default function CreateSchedulePageClient() {
       const s = timeToMinutes(workStart);
       const e2 = timeToMinutes(workEnd);
 
-      if (s == null || e2 == null) {
-        setError("Please set valid start/end times.");
-        return;
-      }
-      if (e2 <= s) {
-        setError("End time must be after start time.");
-        return;
-      }
-      if (workDays.length === 0) {
-        setError("Please select at least one day for availability.");
-        return;
-      }
+      if (s == null || e2 == null)
+        return setError("Please set valid start/end times.");
+      if (e2 <= s) return setError("End time must be after start time.");
+      if (workDays.length === 0)
+        return setError("Please select at least one day for availability.");
 
       workStartMin = s;
       workEndMin = e2;
       workDaysToSave = Array.from(new Set(workDays));
     }
 
-    // validate host selection
-    if (bookingType === "one_on_one") {
-      if (!selectedCloserId) {
-        setError("Please choose who this one-on-one is with.");
-        return;
-      }
+    if (bookingType === "one_on_one" && !selectedCloserId) {
+      return setError("Please choose who this one-on-one is with.");
     }
 
     if (bookingType === "group") {
-      if (!primaryCloserId) {
-        setError("Please choose a primary closer.");
-        return;
-      }
-      const uniq = Array.from(new Set([primaryCloserId, ...selectedGroupCloserIds])).filter(Boolean);
+      if (!primaryCloserId) return setError("Please choose a primary closer.");
+      const uniq = Array.from(
+        new Set([primaryCloserId, ...selectedGroupCloserIds]),
+      ).filter(Boolean);
       if (!uniq.includes(primaryCloserId)) uniq.unshift(primaryCloserId);
-      if (uniq.length < 2) {
-        setError("Please select at least 2 closers for a group schedule page.");
-        return;
-      }
+      if (uniq.length < 2)
+        return setError(
+          "Please select at least 2 closers for a group schedule page.",
+        );
     }
 
     if (bookingType === "round_robin") {
-      const uniq = Array.from(new Set(selectedRoundRobinCloserIds)).filter(Boolean);
-      if (uniq.length < 1) {
-        setError("Please select at least 1 closer for round robin.");
-        return;
-      }
+      const uniq = Array.from(new Set(selectedRoundRobinCloserIds)).filter(
+        Boolean,
+      );
+      if (uniq.length < 1)
+        return setError("Please select at least 1 closer for round robin.");
     }
 
-    // owner_user_id rules:
-    // - one_on_one: selected closer
-    // - group: primary closer
-    // - round_robin: creator (assignment happens at booking time)
     const ownerId =
       bookingType === "one_on_one"
         ? selectedCloserId!
         : bookingType === "group"
-        ? (primaryCloserId ?? userId)
-        : userId;
+          ? (primaryCloserId ?? userId)
+          : userId;
 
     try {
       setSaving(true);
@@ -443,11 +497,13 @@ export default function CreateSchedulePageClient() {
         timezone_mode: "invitee",
 
         post_booking_behavior: redirectMode,
-        post_booking_redirect_url: redirectMode === "external" && redirectUrl.trim() ? redirectUrl.trim() : null,
+        post_booking_redirect_url:
+          redirectMode === "external" && redirectUrl.trim()
+            ? redirectUrl.trim()
+            : null,
         confirmation_heading: confirmHeading.trim() || null,
         confirmation_subheading: confirmSubheading.trim() || null,
 
-        // ✅ NEW: availability fields stored on booking_links
         availability_mode: availabilityMode,
         work_start_minute: workStartMin,
         work_end_minute: workEndMin,
@@ -466,27 +522,51 @@ export default function CreateSchedulePageClient() {
         return;
       }
 
-      // ✅ group + round_robin => write booking_link_hosts
       if (bookingType === "group") {
-        const uniq = Array.from(new Set([ownerId, ...selectedGroupCloserIds])).filter(Boolean);
+        const uniq = Array.from(
+          new Set([ownerId, ...selectedGroupCloserIds]),
+        ).filter(Boolean);
         if (!uniq.includes(ownerId)) uniq.unshift(ownerId);
 
-        const rows = uniq.map((uid) => ({ booking_link_id: inserted.id, user_id: uid }));
-        const { error: hostsErr } = await supabase.from("booking_link_hosts").insert(rows);
+        const rows = uniq.map((uid) => ({
+          booking_link_id: inserted.id,
+          user_id: uid,
+        }));
+        const { error: hostsErr } = await supabase
+          .from("booking_link_hosts")
+          .insert(rows);
         if (hostsErr) {
-          console.error("[Schedule/new] booking_link_hosts insert error", hostsErr);
-          setError(hostsErr.message ?? "Created page, but failed to save group hosts.");
+          console.error(
+            "[Schedule/new] booking_link_hosts insert error",
+            hostsErr,
+          );
+          setError(
+            hostsErr.message ?? "Created page, but failed to save group hosts.",
+          );
           return;
         }
       }
 
       if (bookingType === "round_robin") {
-        const uniq = Array.from(new Set(selectedRoundRobinCloserIds)).filter(Boolean);
-        const rows = uniq.map((uid) => ({ booking_link_id: inserted.id, user_id: uid }));
-        const { error: hostsErr } = await supabase.from("booking_link_hosts").insert(rows);
+        const uniq = Array.from(new Set(selectedRoundRobinCloserIds)).filter(
+          Boolean,
+        );
+        const rows = uniq.map((uid) => ({
+          booking_link_id: inserted.id,
+          user_id: uid,
+        }));
+        const { error: hostsErr } = await supabase
+          .from("booking_link_hosts")
+          .insert(rows);
         if (hostsErr) {
-          console.error("[Schedule/new] booking_link_hosts insert error", hostsErr);
-          setError(hostsErr.message ?? "Created page, but failed to save round robin pool.");
+          console.error(
+            "[Schedule/new] booking_link_hosts insert error",
+            hostsErr,
+          );
+          setError(
+            hostsErr.message ??
+              "Created page, but failed to save round robin pool.",
+          );
           return;
         }
       }
@@ -500,26 +580,25 @@ export default function CreateSchedulePageClient() {
     }
   }
 
-  if (!teamId || !userId) {
-    return (
-      <div className="max-w-3xl space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-          <h1 className="text-2xl font-semibold text-slate-900">Create Schedule Page</h1>
-          <p className="mt-1 text-sm text-slate-600">You need a team and profile before creating schedule pages.</p>
-        </div>
-      </div>
-    );
-  }
+  const pageLoading =
+    authLoading || !teamId || !userId || loadingClosers || orgLoading; // you can drop orgLoading if you want the page to render without org preview
+
+  if (pageLoading) return <PageLoading />;
 
   const orgName = org?.name || "FaigataCRM";
-  const orgInitial = org?.name?.trim()?.charAt(0).toUpperCase() || (name ? name[0]?.toUpperCase() : "F");
+  const orgInitial =
+    org?.name?.trim()?.charAt(0).toUpperCase() ||
+    (name ? name[0]?.toUpperCase() : "F");
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Create Schedule Page</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Create Schedule Page
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pick a name, URL, and primary color. Choose which closers are included based on the type.
+          Pick a name, URL, and primary color. Choose which closers are included
+          based on the type.
         </p>
         <div className="mt-3 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
           {bookingType === "one_on_one" && "Type: One-on-one"}
@@ -529,9 +608,15 @@ export default function CreateSchedulePageClient() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {/* ---- form ---- */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Meeting name</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Meeting name
+            </label>
             <input
               type="text"
               value={name}
@@ -542,9 +627,13 @@ export default function CreateSchedulePageClient() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Public URL slug</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Public URL slug
+            </label>
             <div className="mt-1 flex items-center gap-1 text-sm">
-              <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">/b/</span>
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">
+                /b/
+              </span>
               <input
                 type="text"
                 value={slug}
@@ -553,11 +642,15 @@ export default function CreateSchedulePageClient() {
                 className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">This becomes the shareable link you’ll send to leads.</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              This becomes the shareable link you’ll send to leads.
+            </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Description (optional)</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Description (optional)
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -567,23 +660,31 @@ export default function CreateSchedulePageClient() {
             />
           </div>
 
+          {/* ---- host selection sections (unchanged UI) ---- */}
           {bookingType === "one_on_one" && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Host (Closer)</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Host (Closer)
+              </label>
               {closers.length === 0 ? (
                 <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                  No teammates with role <span className="font-semibold">Closer</span> found.
+                  No teammates with role{" "}
+                  <span className="font-semibold">Closer</span> found.
                 </p>
               ) : (
                 <>
                   <select
                     value={selectedCloserId ?? ""}
-                    onChange={(e) => setSelectedCloserId(e.target.value || null)}
+                    onChange={(e) =>
+                      setSelectedCloserId(e.target.value || null)
+                    }
                     disabled={loadingClosers}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                   >
                     {closers.map((c) => {
-                      const fullName = `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unnamed user";
+                      const fullName =
+                        `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() ||
+                        "Unnamed user";
                       return (
                         <option key={c.user_id} value={c.user_id}>
                           {fullName}
@@ -591,7 +692,9 @@ export default function CreateSchedulePageClient() {
                       );
                     })}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-400">Lead books directly with this closer.</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Lead books directly with this closer.
+                  </p>
                 </>
               )}
             </div>
@@ -605,7 +708,8 @@ export default function CreateSchedulePageClient() {
 
               {closers.length === 0 ? (
                 <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                  No teammates with role <span className="font-semibold">Closer</span> found.
+                  No teammates with role{" "}
+                  <span className="font-semibold">Closer</span> found.
                 </p>
               ) : (
                 <>
@@ -626,7 +730,9 @@ export default function CreateSchedulePageClient() {
                       className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                     >
                       {closers.map((c) => {
-                        const fullName = `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unnamed user";
+                        const fullName =
+                          `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() ||
+                          "Unnamed user";
                         return (
                           <option key={c.user_id} value={c.user_id}>
                             {fullName}
@@ -644,7 +750,9 @@ export default function CreateSchedulePageClient() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {closers.map((c) => {
                         const id = c.user_id;
-                        const full = `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unnamed user";
+                        const full =
+                          `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() ||
+                          "Unnamed user";
                         const checked = selectedGroupCloserIds.includes(id);
                         const isPrimary = primaryCloserId === id;
 
@@ -659,8 +767,12 @@ export default function CreateSchedulePageClient() {
                               disabled={isPrimary}
                               onChange={(e) => {
                                 const next = e.target.checked
-                                  ? Array.from(new Set([...selectedGroupCloserIds, id]))
-                                  : selectedGroupCloserIds.filter((x) => x !== id);
+                                  ? Array.from(
+                                      new Set([...selectedGroupCloserIds, id]),
+                                    )
+                                  : selectedGroupCloserIds.filter(
+                                      (x) => x !== id,
+                                    );
 
                                 const ensured = primaryCloserId
                                   ? next.includes(primaryCloserId)
@@ -671,8 +783,14 @@ export default function CreateSchedulePageClient() {
                                 setSelectedGroupCloserIds(ensured);
                               }}
                             />
-                            <span className="font-medium text-slate-900">{full}</span>
-                            {isPrimary && <span className="ml-auto text-[11px] font-semibold text-indigo-600">Primary</span>}
+                            <span className="font-medium text-slate-900">
+                              {full}
+                            </span>
+                            {isPrimary && (
+                              <span className="ml-auto text-[11px] font-semibold text-indigo-600">
+                                Primary
+                              </span>
+                            )}
                           </label>
                         );
                       })}
@@ -687,7 +805,6 @@ export default function CreateSchedulePageClient() {
             </div>
           )}
 
-          {/* ROUND ROBIN: pool selection */}
           {bookingType === "round_robin" && (
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -696,7 +813,8 @@ export default function CreateSchedulePageClient() {
 
               {closers.length === 0 ? (
                 <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                  No teammates with role <span className="font-semibold">Closer</span> found.
+                  No teammates with role{" "}
+                  <span className="font-semibold">Closer</span> found.
                 </p>
               ) : (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -707,7 +825,9 @@ export default function CreateSchedulePageClient() {
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {closers.map((c) => {
                       const id = c.user_id;
-                      const full = `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unnamed user";
+                      const full =
+                        `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() ||
+                        "Unnamed user";
                       const checked = selectedRoundRobinCloserIds.includes(id);
 
                       return (
@@ -720,20 +840,25 @@ export default function CreateSchedulePageClient() {
                             checked={checked}
                             onChange={(e) => {
                               setSelectedRoundRobinCloserIds((prev) => {
-                                if (e.target.checked) return Array.from(new Set([...prev, id]));
+                                if (e.target.checked)
+                                  return Array.from(new Set([...prev, id]));
                                 return prev.filter((x) => x !== id);
                               });
                             }}
                           />
-                          <span className="font-medium text-slate-900">{full}</span>
+                          <span className="font-medium text-slate-900">
+                            {full}
+                          </span>
                         </label>
                       );
                     })}
                   </div>
 
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Leads will see times where <span className="font-semibold">at least one</span> closer is free. At booking time, we
-                    randomly assign one of the available closers for the chosen slot.
+                    Leads will see times where{" "}
+                    <span className="font-semibold">at least one</span> closer
+                    is free. At booking time, we randomly assign one of the
+                    available closers for the chosen slot.
                   </p>
                 </div>
               )}
@@ -744,8 +869,12 @@ export default function CreateSchedulePageClient() {
           <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Duration</p>
-                <p className="text-[11px] text-slate-500">Set how long this meeting should last.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Duration
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Set how long this meeting should last.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -753,7 +882,9 @@ export default function CreateSchedulePageClient() {
                   min={5}
                   step={5}
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(parseInt(e.target.value || "0", 10) || 0)}
+                  onChange={(e) =>
+                    setDurationMinutes(parseInt(e.target.value || "0", 10) || 0)
+                  }
                   className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
                 <span className="text-[11px] text-slate-500">minutes</span>
@@ -765,7 +896,9 @@ export default function CreateSchedulePageClient() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Buffers</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Buffers
+                </p>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
                     <span className="text-[11px] text-slate-500">Before</span>
@@ -793,10 +926,14 @@ export default function CreateSchedulePageClient() {
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Booking window</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Booking window
+                </p>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">Min notice</span>
+                    <span className="text-[11px] text-slate-500">
+                      Min notice
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -807,7 +944,9 @@ export default function CreateSchedulePageClient() {
                     <span className="text-[11px] text-slate-500">hours</span>
                   </div>
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">Max notice</span>
+                    <span className="text-[11px] text-slate-500">
+                      Max notice
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -824,7 +963,9 @@ export default function CreateSchedulePageClient() {
 
           {/* Availability */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Availability</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Availability
+            </p>
 
             <div className="flex flex-col gap-2 text-[11px] text-slate-600">
               <label className="inline-flex items-center gap-2">
@@ -852,7 +993,9 @@ export default function CreateSchedulePageClient() {
               <div className="mt-2 space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-500">Start time</label>
+                    <label className="block text-[11px] font-medium text-slate-500">
+                      Start time
+                    </label>
                     <input
                       type="time"
                       value={workStart}
@@ -862,7 +1005,9 @@ export default function CreateSchedulePageClient() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-500">End time</label>
+                    <label className="block text-[11px] font-medium text-slate-500">
+                      End time
+                    </label>
                     <input
                       type="time"
                       value={workEnd}
@@ -873,7 +1018,9 @@ export default function CreateSchedulePageClient() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 cursor-pointer">Days</label>
+                  <label className="block text-[11px] font-medium text-slate-500 cursor-pointer">
+                    Days
+                  </label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {WEEKDAYS.map((d) => {
                       const active = workDays.includes(d.id);
@@ -882,11 +1029,17 @@ export default function CreateSchedulePageClient() {
                           key={d.id}
                           type="button"
                           onClick={() => {
-                            setWorkDays((prev) => (prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]));
+                            setWorkDays((prev) =>
+                              prev.includes(d.id)
+                                ? prev.filter((x) => x !== d.id)
+                                : [...prev, d.id],
+                            );
                           }}
                           className={[
                             "rounded-lg border px-3 py-1.5 text-[11px] font-semibold cursor-pointer",
-                            active ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 cursor-pointer",
+                            active
+                              ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                           ].join(" ")}
                         >
                           {d.label}
@@ -895,7 +1048,8 @@ export default function CreateSchedulePageClient() {
                     })}
                   </div>
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Availability will be limited to these days and times in the invitee’s timezone.
+                    Availability will be limited to these days and times in the
+                    invitee’s timezone.
                   </p>
                 </div>
               </div>
@@ -904,7 +1058,9 @@ export default function CreateSchedulePageClient() {
 
           {/* Primary color */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Primary color</label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Primary color
+            </label>
             <div className="mt-1 flex items-center gap-3">
               <input
                 type="color"
@@ -921,7 +1077,9 @@ export default function CreateSchedulePageClient() {
             </div>
           </div>
 
-          {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+          {error && (
+            <p className="text-xs font-medium text-rose-600">{error}</p>
+          )}
 
           <div className="pt-2">
             <button
@@ -934,18 +1092,23 @@ export default function CreateSchedulePageClient() {
           </div>
         </form>
 
-        {/* Preview */}
+        {/* ---- preview ---- */}
         <div className="space-y-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Preview schedule page</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Preview schedule page
+            </h2>
             <p className="mt-1 text-xs text-slate-500">
-              Rough preview of the public booking page. (Availability range preview:{" "}
-              <span className="font-semibold">{previewHours}</span>)
+              Rough preview of the public booking page. (Availability range
+              preview: <span className="font-semibold">{previewHours}</span>)
             </p>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950/90 shadow-lg">
-            <div className="px-6 py-5 text-white" style={{ backgroundImage: gradientA }}>
+            <div
+              className="px-6 py-5 text-white"
+              style={{ backgroundImage: gradientA }}
+            >
               <div className="flex items-center gap-3">
                 {orgLogoSignedUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -967,21 +1130,30 @@ export default function CreateSchedulePageClient() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-white/70">
                     Booking with {orgName} ·{" "}
-                    {bookingType === "one_on_one" ? "1:1" : bookingType === "group" ? "Group" : "Round robin"} ·{" "}
-                    {durationMinutes} min
+                    {bookingType === "one_on_one"
+                      ? "1:1"
+                      : bookingType === "group"
+                        ? "Group"
+                        : "Round robin"}{" "}
+                    · {durationMinutes} min
                   </p>
-                  <h3 className="text-lg font-semibold">{name || "Sales Discovery Call"}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {name || "Sales Discovery Call"}
+                  </h3>
                 </div>
               </div>
 
               <p className="mt-3 max-w-md text-xs text-white/80">
-                {description || "Choose a time that works for you. We’ll send a calendar invite after you confirm."}
+                {description ||
+                  "Choose a time that works for you. We’ll send a calendar invite after you confirm."}
               </p>
             </div>
 
             <div className="grid gap-0 border-t border-slate-800 bg-slate-950/95 text-slate-100 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <div className="border-b border-slate-800 px-5 py-4 sm:border-r">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Your details</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Your details
+                </p>
                 <div className="mt-3 space-y-2 text-[11px]">
                   <div className="rounded-lg border border-slate-800/80 bg-slate-900/60 px-3 py-2 text-slate-400">
                     First Name
@@ -993,17 +1165,23 @@ export default function CreateSchedulePageClient() {
               </div>
 
               <div className="px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pick a time</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Pick a time
+                </p>
 
-                {/* purely preview; real times come from /availability */}
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {(availabilityMode === "twenty_four_seven"
                     ? [0, 6, 12, 18, 21, 23]
                     : (() => {
                         const s = timeToMinutes(workStart) ?? 540;
                         const e = timeToMinutes(workEnd) ?? 1020;
-                        const span = Math.max(1, Math.min(6, Math.floor((e - s) / 60)));
-                        const baseHours = Array.from({ length: span }, (_, i) => Math.floor((s / 60) + i));
+                        const span = Math.max(
+                          1,
+                          Math.min(6, Math.floor((e - s) / 60)),
+                        );
+                        const baseHours = Array.from({ length: span }, (_, i) =>
+                          Math.floor(s / 60 + i),
+                        );
                         return baseHours.slice(0, 6);
                       })()
                   ).map((h) => (
@@ -1011,7 +1189,11 @@ export default function CreateSchedulePageClient() {
                       key={h}
                       type="button"
                       className="rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-[11px] font-medium text-slate-100 hover:border-indigo-400 hover:bg-slate-900"
-                      style={{ backgroundImage: gradientB, backgroundSize: "200% 200%", backgroundPosition: "0% 50%" }}
+                      style={{
+                        backgroundImage: gradientB,
+                        backgroundSize: "200% 200%",
+                        backgroundPosition: "0% 50%",
+                      }}
                     >
                       {String(h).padStart(2, "0")}:00
                     </button>
@@ -1022,7 +1204,13 @@ export default function CreateSchedulePageClient() {
                   <p className="mt-3 text-[11px] text-slate-400">
                     Days enabled:{" "}
                     <span className="font-semibold">
-                      {workDays.length ? workDays.slice().sort().map((d) => WEEKDAYS.find((x) => x.id === d)?.label).join(", ") : "None"}
+                      {workDays.length
+                        ? workDays
+                            .slice()
+                            .sort()
+                            .map((d) => WEEKDAYS.find((x) => x.id === d)?.label)
+                            .join(", ")
+                        : "None"}
                     </span>
                   </p>
                 )}

@@ -9,49 +9,93 @@ type Bucket = "day" | "week" | "month";
 type Scope = "team" | "me";
 type Role = "admin" | "manager" | "member";
 
-type TeamMemberRow = { team_id: string; user_id: string; role: string | null; joined_at: string | null };
+type TeamMemberRow = {
+  team_id: string;
+  user_id: string;
+  role: string | null;
+  joined_at: string | null;
+};
 type ProfileRow = { id: string; team_id: string | null; role: any };
 
-function jsonError(message: string, status = 500, details?: unknown) {
-  return NextResponse.json({ error: message, details }, { status });
-}
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1]?.trim() || null;
-}
-function isBucket(v: string): v is Bucket {
-  return v === "day" || v === "week" || v === "month";
-}
-function isScope(v: string): v is Scope {
-  return v === "team" || v === "me";
-}
-function normalizeRole(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+const json = (data: any, status = 200) => NextResponse.json(data, { status });
+const jsonError = (error: string, status = 500, details?: unknown) =>
+  json({ error, details }, status);
+
+const bearer = (req: Request) => {
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  return h.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null;
+};
+
+const isBucket = (v: string): v is Bucket =>
+  v === "day" || v === "week" || v === "month";
+const isScope = (v: string): v is Scope => v === "team" || v === "me";
+
+const normalizeRole = (v: unknown): Role => {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   return "member";
-}
-function normalizeRolesArray(raw: unknown): Role[] {
+};
+
+const normalizeRolesArray = (raw: unknown): Role[] => {
   if (Array.isArray(raw)) return raw.map(normalizeRole);
   if (typeof raw === "string") return [normalizeRole(raw)];
   return [];
-}
+};
+
 function supabaseAdmin() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url) throw new Error("missing_supabase_url");
   if (!serviceKey) throw new Error("missing_service_role_key");
-  return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+const isoRange = (days: number) => {
+  const to = new Date();
+  const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return { from, to, fromISO: from.toISOString(), toISO: to.toISOString() };
+};
+
+async function rpcWithFallback(admin: any, fn: string, argSets: any[]) {
+  let lastErr: any = null;
+  for (const args of argSets) {
+    const { data, error } = await admin.rpc(fn, args);
+    if (!error) return { ok: true as const, data: data ?? [] };
+    lastErr = error;
+  }
+  return { ok: false as const, error: lastErr };
 }
 
 async function resolveTeamContext(
   admin: ReturnType<typeof supabaseAdmin>,
   userId: string,
-  req: Request
+  req: Request,
 ): Promise<{ teamId: string; roles: Role[]; isManagerOrAdmin: boolean }> {
   const url = new URL(req.url);
   const teamIdParam = (url.searchParams.get("teamId") ?? "").trim() || null;
+
+  const roleInfo = (role: unknown) => {
+    const r = normalizeRole(role);
+    return {
+      roles: [r] as Role[],
+      isManagerOrAdmin: r === "admin" || r === "manager",
+    };
+  };
+
+  const isMissingTeamMembersTable = (e: any) => {
+    const msg = String(e?.message ?? "").toLowerCase();
+    const code = String(e?.code ?? "");
+    return (
+      code === "42P01" ||
+      (msg.includes("relation") && msg.includes("team_members"))
+    );
+  };
 
   try {
     if (teamIdParam) {
@@ -63,10 +107,10 @@ async function resolveTeamContext(
         .maybeSingle();
       if (error) throw error;
 
-      const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
+      const tm =
+        (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
       if (!tm?.team_id) throw new Error("not_a_member_of_team");
-      const role = normalizeRole(tm.role);
-      return { teamId: String(tm.team_id), roles: [role], isManagerOrAdmin: role === "admin" || role === "manager" };
+      return { teamId: String(tm.team_id), ...roleInfo(tm.role) };
     }
 
     const { data, error } = await admin
@@ -78,19 +122,14 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (error) throw error;
+
     const tm = (data as Pick<TeamMemberRow, "team_id" | "role"> | null) ?? null;
     if (!tm?.team_id) throw new Error("missing_team_membership");
-
-    const role = normalizeRole(tm.role);
-    return { teamId: String(tm.team_id), roles: [role], isManagerOrAdmin: role === "admin" || role === "manager" };
+    return { teamId: String(tm.team_id), ...roleInfo(tm.role) };
   } catch (e: any) {
-    const msg = String(e?.message ?? "");
-    const code = String(e?.code ?? "");
-    const isMissingTable =
-      code === "42P01" || (msg.toLowerCase().includes("relation") && msg.toLowerCase().includes("team_members"));
+    if (!isMissingTeamMembersTable(e)) throw e;
 
-    if (!isMissingTable) throw e;
-
+    // fallback for older schemas
     const { data: profile, error: profErr } = await admin
       .from("profiles")
       .select("id, team_id, role")
@@ -98,103 +137,92 @@ async function resolveTeamContext(
       .maybeSingle();
 
     if (profErr) throw new Error("profile_lookup_failed");
+
     const p = (profile as ProfileRow | null) ?? null;
     if (!p?.team_id) throw new Error("missing_team");
-    const roles = normalizeRolesArray(p.role);
-    const isManagerOrAdmin = roles.includes("admin") || roles.includes("manager");
-    return { teamId: String(p.team_id), roles: roles.length ? roles : ["member"], isManagerOrAdmin };
-  }
-}
 
-async function rpcWithFallback(admin: any, fn: string, argSets: any[]) {
-  let lastErr: any = null;
-  for (const args of argSets) {
-    const { data, error } = await admin.rpc(fn, args);
-    if (!error) return { ok: true, data: data ?? [] };
-    lastErr = error;
+    const roles = normalizeRolesArray(p.role);
+    const isManagerOrAdmin =
+      roles.includes("admin") || roles.includes("manager");
+    return {
+      teamId: String(p.team_id),
+      roles: roles.length ? roles : ["member"],
+      isManagerOrAdmin,
+    };
   }
-  return { ok: false, error: lastErr };
 }
 
 export async function GET(req: Request) {
   try {
-    const token = getBearerToken(req);
+    const token = bearer(req);
     if (!token) return jsonError("missing_auth", 401);
 
     const url = new URL(req.url);
     const bucketRaw = String(url.searchParams.get("bucket") ?? "week").trim();
-    const daysRaw = Number(url.searchParams.get("days") ?? "120");
     const scopeRaw = String(url.searchParams.get("scope") ?? "team").trim();
+    const days = Number(url.searchParams.get("days") ?? "120");
 
     if (!isBucket(bucketRaw)) return jsonError("invalid_bucket", 400);
-    if (!Number.isFinite(daysRaw) || daysRaw < 7 || daysRaw > 365) return jsonError("invalid_days", 400);
     if (!isScope(scopeRaw)) return jsonError("invalid_scope", 400);
-
-    const bucket: Bucket = bucketRaw;
-    const days = daysRaw;
-    const requestedScope: Scope = scopeRaw;
+    if (!Number.isFinite(days) || days < 7 || days > 365)
+      return jsonError("invalid_days", 400);
 
     const admin = supabaseAdmin();
 
     const { data: userRes, error: userErr } = await admin.auth.getUser(token);
-    const user = userRes?.user ?? null;
-    if (userErr || !user) return jsonError("invalid_session", 401, userErr?.message);
-    const userId = String(user.id);
+    const userId = userRes?.user?.id ? String(userRes.user.id) : null;
+    if (userErr || !userId)
+      return jsonError("invalid_session", 401, userErr?.message);
 
-    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(admin, userId, req);
+    const { teamId, roles, isManagerOrAdmin } = await resolveTeamContext(
+      admin,
+      userId,
+      req,
+    );
+    const requestedScope: Scope = scopeRaw;
     const effectiveScope: Scope = isManagerOrAdmin ? requestedScope : "me";
 
-    const now = new Date();
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const { from, to, fromISO, toISO } = isoRange(days);
 
     // Some DBs have dashboard_activity_series(p_team_id,p_user_id,p_bucket,p_from,p_to)
     // Others include p_scope. We try both.
-    const rpcRes = await rpcWithFallback(admin as any, "dashboard_activity_series", [
-      {
-        p_team_id: teamId,
-        p_user_id: userId,
-        p_bucket: bucket,
-        p_from: from.toISOString(),
-        p_to: now.toISOString(),
-        p_scope: effectiveScope,
-      },
-      {
-        p_team_id: teamId,
-        p_user_id: userId,
-        p_bucket: bucket,
-        p_from: from.toISOString(),
-        p_to: now.toISOString(),
-      },
-    ]);
+    const rpcRes = await rpcWithFallback(
+      admin as any,
+      "dashboard_activity_series",
+      [
+        {
+          p_team_id: teamId,
+          p_user_id: userId,
+          p_bucket: bucketRaw,
+          p_from: fromISO,
+          p_to: toISO,
+          p_scope: effectiveScope,
+        },
+        {
+          p_team_id: teamId,
+          p_user_id: userId,
+          p_bucket: bucketRaw,
+          p_from: fromISO,
+          p_to: toISO,
+        },
+      ],
+    );
 
-    if (!rpcRes.ok) {
-      return NextResponse.json({
-        ok: false,
-        teamId,
-        roles,
-        isManagerOrAdmin,
-        scope: effectiveScope,
-        bucket,
-        from: from.toISOString(),
-        to: now.toISOString(),
-        series: [],
-      });
-    }
-
-    return NextResponse.json({
-      ok: true,
+    const base = {
       teamId,
       roles,
       isManagerOrAdmin,
       scope: effectiveScope,
-      bucket,
+      bucket: bucketRaw as Bucket,
       from: from.toISOString(),
-      to: now.toISOString(),
-      series: rpcRes.data,
-    });
+      to: to.toISOString(),
+    };
+
+    if (!rpcRes.ok) return json({ ok: false, ...base, series: [] });
+
+    return json({ ok: true, ...base, series: rpcRes.data });
   } catch (e: any) {
-    const msg = String(e?.message ?? e);
     console.error("[dashboard-activity] unexpected:", e);
-    return jsonError("unhandled_error", 500, msg);
+    return jsonError("unhandled_error", 500, String(e?.message ?? e));
   }
 }

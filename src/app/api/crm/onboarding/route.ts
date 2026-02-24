@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     if (!userId) {
       return NextResponse.json(
         { ok: false, error: "Missing userId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,11 +54,14 @@ export async function POST(req: Request) {
     }
     const organizationId = organization.id as string;
 
-    /* 2) Create team (workspace) */
+    /* 2) Create team (workspace)
+     * ✅ IMPORTANT: set organization_id so later lookups (teams -> organizations) work
+     */
     const { data: team, error: teamError } = await supabaseAdmin
       .from("teams")
       .insert({
         name: teamName || "Sales Team",
+        organization_id: organizationId,
         onboarding_completed: true,
       })
       .select("id")
@@ -70,8 +73,9 @@ export async function POST(req: Request) {
     }
     const teamId = team.id as string;
 
-    /* 3) Upsert profile: link user → org + team */
-    // role is an ARRAY (based on previous "malformed array literal" error)
+    /* 3) Upsert profile: link user → org + team
+     * role is an ARRAY (based on previous "malformed array literal" error)
+     */
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert(
       {
         id: userId,
@@ -81,7 +85,7 @@ export async function POST(req: Request) {
         team_id: teamId,
         role: [adminRole], // ✅ array
       },
-      { onConflict: "id" } // profiles.id should be PK/unique
+      { onConflict: "id" }, // profiles.id should be PK/unique
     );
 
     if (profileError) {
@@ -89,9 +93,11 @@ export async function POST(req: Request) {
       throw profileError;
     }
 
-    /* 4) Ensure user exists in team_members */
-    // IMPORTANT: your DB currently has NO unique constraint on (team_id, user_id),
-    // so we CANNOT use upsert(onConflict: "team_id,user_id").
+    /* 4) Ensure user exists in team_members
+     * ✅ IMPORTANT:
+     * Most installs have team_members.role as TEXT (single role), not TEXT[].
+     * Store a single role string to avoid insert type errors.
+     */
     const { data: existingMember, error: memberSelectError } =
       await supabaseAdmin
         .from("team_members")
@@ -111,7 +117,7 @@ export async function POST(req: Request) {
         .insert({
           team_id: teamId,
           user_id: userId,
-          role: [adminRole], // ✅ array (matches your other code)
+          role: adminRole, // ✅ string (safe across schemas)
         });
 
       if (memberInsertError) {
@@ -123,13 +129,14 @@ export async function POST(req: Request) {
     /* 5) Create team_invites from the onboarding invites UI */
     if (Array.isArray(invites)) {
       const validInvites = invites.filter(
-        (i: any) => i?.email && String(i.email).trim() !== ""
+        (i: any) => i?.email && String(i.email).trim() !== "",
       );
 
       if (validInvites.length > 0) {
         const inviteRows = validInvites.map((i: any) => ({
           team_id: teamId,
           email: String(i.email).trim(),
+          // team_invites.role is commonly TEXT; keep it as a string.
           role: ROLE_DB_MAP[i.role] ?? "setter",
           invited_by: userId,
           token: randomUUID(),
@@ -158,25 +165,30 @@ export async function POST(req: Request) {
             .filter(Boolean);
         }
 
+        // UI "url" -> DB "text" (your DbLeadField.type set doesn't include "url")
         const dbType = f.type === "url" ? "text" : f.type;
 
         return {
           team_id: teamId,
-          key: f.key,
-          label: f.label,
+          key: String(f.key ?? "").trim(),
+          label: String(f.label ?? "").trim(),
           type: dbType,
           options: optionsArray,
           position: index,
         };
       });
 
-      const { error: fieldsError } = await supabaseAdmin
-        .from("lead_fields")
-        .insert(fieldRows);
+      const safeFieldRows = fieldRows.filter((r) => r.key && r.label);
 
-      if (fieldsError) {
-        console.error("[onboarding] lead_fields.insert", fieldsError);
-        throw fieldsError;
+      if (safeFieldRows.length > 0) {
+        const { error: fieldsError } = await supabaseAdmin
+          .from("lead_fields")
+          .insert(safeFieldRows);
+
+        if (fieldsError) {
+          console.error("[onboarding] lead_fields.insert", fieldsError);
+          throw fieldsError;
+        }
       }
     }
 
@@ -184,25 +196,29 @@ export async function POST(req: Request) {
     let stageIdByName: Record<string, string> = {};
 
     if (Array.isArray(pipelineStages) && pipelineStages.length > 0) {
-      const stageRows = pipelineStages.map((name: string, index: number) => ({
-        team_id: teamId,
-        name,
-        position: index,
-      }));
+      const stageRows = pipelineStages
+        .map((name: any, index: number) => ({
+          team_id: teamId,
+          name: String(name ?? "").trim(),
+          position: index,
+        }))
+        .filter((s) => s.name.length > 0);
 
-      const { data: insertedStages, error: stagesError } = await supabaseAdmin
-        .from("pipeline_stages")
-        .insert(stageRows)
-        .select("id, name");
+      if (stageRows.length > 0) {
+        const { data: insertedStages, error: stagesError } = await supabaseAdmin
+          .from("pipeline_stages")
+          .insert(stageRows)
+          .select("id, name");
 
-      if (stagesError) {
-        console.error("[onboarding] pipeline_stages.insert", stagesError);
-        throw stagesError;
-      }
+        if (stagesError) {
+          console.error("[onboarding] pipeline_stages.insert", stagesError);
+          throw stagesError;
+        }
 
-      stageIdByName = {};
-      for (const s of insertedStages ?? []) {
-        stageIdByName[s.name as string] = s.id as string;
+        stageIdByName = {};
+        for (const s of insertedStages ?? []) {
+          stageIdByName[String((s as any).name)] = String((s as any).id);
+        }
       }
     }
 
@@ -210,13 +226,15 @@ export async function POST(req: Request) {
     if (Array.isArray(conversionMetrics) && conversionMetrics.length > 0) {
       const metricRows = conversionMetrics
         .map((m: any, index: number) => {
-          const fromId = stageIdByName[m.fromStage];
-          const toId = stageIdByName[m.toStage];
+          const fromName = String(m?.fromStage ?? "").trim();
+          const toName = String(m?.toStage ?? "").trim();
+          const fromId = stageIdByName[fromName];
+          const toId = stageIdByName[toName];
           if (!fromId || !toId) return null;
 
           return {
             team_id: teamId,
-            label: m.label,
+            label: String(m?.label ?? "").trim() || null,
             from_stage_id: fromId,
             to_stage_id: toId,
             position: index,
@@ -242,7 +260,7 @@ export async function POST(req: Request) {
         organizationId,
         teamId,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: any) {
     console.error("Onboarding POST failed:", err);
@@ -253,7 +271,7 @@ export async function POST(req: Request) {
         error: err?.message ?? "Unknown error",
         details: err,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

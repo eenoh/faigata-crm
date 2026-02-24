@@ -6,73 +6,96 @@ export interface PipelineStageDef {
   position: number;
 }
 
-type SavePayload = {
-  stages: PipelineStageDef[];
-};
+type SavePayload = { stages: PipelineStageDef[] };
 
-async function authedFetch(input: RequestInfo | URL, init?: RequestInit) {
-  const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
-  const token = sessionRes.session?.access_token ?? null;
+const ENDPOINT = "/api/crm/pipeline-stages";
 
-  if (sessionErr || !token) {
-    throw new Error("Unauthorized: missing session token");
-  }
+async function getToken(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (error || !token) throw new Error("Unauthorized: missing session token");
+  return token;
+}
 
-  const headers = new Headers(init?.headers);
+function withTeamId(url: string, teamId?: string | null) {
+  return teamId ? `${url}?teamId=${encodeURIComponent(teamId)}` : url;
+}
+
+async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  const token = await getToken();
+
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
-
-  // Only set JSON on non-GET
-  const method = (init?.method ?? "GET").toUpperCase();
-  if (!headers.has("Content-Type") && method !== "GET") {
+  if (method !== "GET" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  return fetch(input, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  return fetch(input, { ...init, headers, cache: "no-store" });
 }
 
-export async function getPipelineStages(teamId?: string | null): Promise<PipelineStageDef[]> {
-  const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
-  const res = await authedFetch(`/api/crm/pipeline-stages${qs}`, { method: "GET" });
+/**
+ * Read an error message from an API response.
+ * Supports:
+ *  - JSON: { ok:false, error:"..." }
+ *  - JSON: { message:"..." }
+ *  - plain text
+ */
+async function readApiError(res: Response): Promise<string> {
+  const ct = (res.headers.get("content-type") ?? "").toLowerCase();
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("Failed to fetch pipeline stages", text);
-    throw new Error(text || "Failed to fetch pipeline stages");
+  if (ct.includes("application/json")) {
+    try {
+      const json: any = await res.json();
+      return (
+        (typeof json?.error === "string" && json.error.trim()) ||
+        (typeof json?.message === "string" && json.message.trim()) ||
+        "Request failed (invalid error payload)"
+      );
+    } catch {
+      // fall through
+    }
   }
 
-  const json = (await res.json()) as any;
+  return (await res.text().catch(() => "")).trim() || "Request failed";
+}
 
-  // Accept { ok, stages } OR raw array
-  const stagesRaw = Array.isArray(json) ? json : json?.stages;
-  const stages = (Array.isArray(stagesRaw) ? stagesRaw : []) as PipelineStageDef[];
+export async function getPipelineStages(
+  teamId?: string | null,
+): Promise<PipelineStageDef[]> {
+  const res = await authedFetch(withTeamId(ENDPOINT, teamId));
 
-  return [...stages].sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
+  if (!res.ok) {
+    const msg = await readApiError(res);
+    console.error("Failed to fetch pipeline stages", msg);
+    throw new Error(msg || "Failed to fetch pipeline stages");
+  }
+
+  // Accept { ok:true, stages:[...] } or raw array
+  const json: any = await res.json();
+  const stages = (Array.isArray(json) ? json : json?.stages) as unknown;
+
+  return (Array.isArray(stages) ? (stages as PipelineStageDef[]) : [])
+    .slice()
+    .sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
 }
 
 export async function savePipelineStages(
   stages: PipelineStageDef[],
-  teamId?: string | null
+  teamId?: string | null,
 ): Promise<void> {
   const normalizedStages: PipelineStageDef[] = (stages ?? [])
-    .map((s, idx) => ({
-      name: String(s?.name ?? "").trim(),
-      position: idx,
-    }))
+    .map((s, idx) => ({ name: String(s?.name ?? "").trim(), position: idx }))
     .filter((s) => s.name.length > 0);
 
-  const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
-  const res = await authedFetch(`/api/crm/pipeline-stages${qs}`, {
+  const res = await authedFetch(withTeamId(ENDPOINT, teamId), {
     method: "PUT",
     body: JSON.stringify({ stages: normalizedStages } satisfies SavePayload),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("Failed to save pipeline stages", text);
-    throw new Error(text || "Failed to save pipeline stages");
+    const msg = await readApiError(res);
+    console.error("Failed to save pipeline stages", msg);
+    throw new Error(msg || "Failed to save pipeline stages");
   }
 }

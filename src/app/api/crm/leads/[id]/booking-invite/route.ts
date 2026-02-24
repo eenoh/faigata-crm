@@ -1,3 +1,4 @@
+// src/app/api/crm/leads/[id]/booking-invite/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
@@ -18,7 +19,9 @@ function supabaseAdmin() {
 }
 
 function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  );
 }
 
 function pickParam(v: unknown): string {
@@ -34,6 +37,8 @@ function addDaysIso(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+type PostBody = { bookingLinkId?: unknown };
+
 export async function POST(req: Request, ctx: Ctx) {
   try {
     // ✅ FIX: params is a Promise in this Next version
@@ -41,14 +46,20 @@ export async function POST(req: Request, ctx: Ctx) {
     const leadId = pickParam(id);
 
     if (!leadId || !isUuid(leadId)) {
-      return NextResponse.json({ error: "invalid_lead_id", received: leadId }, { status: 400 });
+      return NextResponse.json(
+        { error: "invalid_lead_id", received: leadId },
+        { status: 400 },
+      );
     }
 
-    const body = await req.json().catch(() => ({} as any));
-    const bookingLinkId = body?.bookingLinkId ? String(body.bookingLinkId).trim() : "";
+    const body = (await req.json().catch(() => null)) as PostBody | null;
+    const bookingLinkId = String(body?.bookingLinkId ?? "").trim();
 
     if (!bookingLinkId || !isUuid(bookingLinkId)) {
-      return NextResponse.json({ error: "invalid_booking_link_id", received: bookingLinkId }, { status: 400 });
+      return NextResponse.json(
+        { error: "invalid_booking_link_id", received: bookingLinkId },
+        { status: 400 },
+      );
     }
 
     const admin = supabaseAdmin();
@@ -64,10 +75,15 @@ export async function POST(req: Request, ctx: Ctx) {
       console.error("[booking-invite] lead query error:", leadErr);
       return NextResponse.json({ error: "lead_query_failed" }, { status: 500 });
     }
-    if (!lead) return NextResponse.json({ error: "lead_not_found" }, { status: 404 });
+    if (!lead)
+      return NextResponse.json({ error: "lead_not_found" }, { status: 404 });
 
     const teamId = String((lead as any).team_id ?? "").trim();
-    if (!teamId) return NextResponse.json({ error: "lead_missing_team_id" }, { status: 500 });
+    if (!teamId)
+      return NextResponse.json(
+        { error: "lead_missing_team_id" },
+        { status: 500 },
+      );
 
     // 2) Load booking link and ensure same team
     const { data: link, error: linkErr } = await admin
@@ -78,10 +94,16 @@ export async function POST(req: Request, ctx: Ctx) {
 
     if (linkErr) {
       console.error("[booking-invite] booking link query error:", linkErr);
-      return NextResponse.json({ error: "booking_link_query_failed" }, { status: 500 });
+      return NextResponse.json(
+        { error: "booking_link_query_failed" },
+        { status: 500 },
+      );
     }
     if (!link || String((link as any).team_id) !== teamId) {
-      return NextResponse.json({ error: "booking_link_not_found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "booking_link_not_found" },
+        { status: 404 },
+      );
     }
 
     // 3) Create invite row (lead-specific) + expiry
@@ -96,7 +118,7 @@ export async function POST(req: Request, ctx: Ctx) {
         .from("booking_link_invites")
         .insert({
           team_id: teamId,
-          booking_link_id: link.id,
+          booking_link_id: (link as any).id,
           lead_id: leadId,
           token,
           expires_at,
@@ -105,39 +127,62 @@ export async function POST(req: Request, ctx: Ctx) {
         .single();
 
       if (!invErr && invite?.token) {
-        inviteToken = invite.token;
+        inviteToken = String(invite.token);
         break;
       }
 
       // token collision (extremely rare) → retry once
       if (invErr) {
         const msg = String((invErr as any)?.message ?? "");
-        if (!msg.toLowerCase().includes("duplicate")) {
+        const code = String((invErr as any)?.code ?? "");
+        const isDup =
+          code === "23505" || msg.toLowerCase().includes("duplicate");
+
+        if (!isDup) {
           console.error("[booking-invite] invite insert error:", invErr);
-          return NextResponse.json({ error: "invite_create_failed" }, { status: 500 });
+          return NextResponse.json(
+            { error: "invite_create_failed" },
+            { status: 500 },
+          );
         }
       }
     }
 
-    if (!inviteToken) return NextResponse.json({ error: "invite_create_failed" }, { status: 500 });
+    if (!inviteToken) {
+      return NextResponse.json(
+        { error: "invite_create_failed" },
+        { status: 500 },
+      );
+    }
 
-    const url = `/b/${link.slug}?t=${inviteToken}`;
+    const url = `/b/${String((link as any).slug)}?t=${inviteToken}`;
 
-    // 4) Activity log to lead_messages
-    await admin.from("lead_messages").insert({
+    // 4) Activity log to lead_messages (don't block response if it fails)
+    const logRes = await admin.from("lead_messages").insert({
       team_id: teamId,
       lead_id: leadId,
       direction: "outbound",
       channel: "pipeline",
-      body: `Sent booking link (“${(link as any).name}”): ${url}`,
-      sender_profile_id: (link as any).owner_user_id,
+      body: `Sent booking link (“${String((link as any).name ?? "Booking Link")}”): ${url}`,
+      sender_profile_id: (link as any).owner_user_id ?? null,
       sent_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     });
 
+    if (logRes.error) {
+      console.error(
+        "[booking-invite] failed to log lead_message:",
+        logRes.error,
+      );
+      // don't fail the invite creation
+    }
+
     return NextResponse.json({ ok: true, url, expires_at });
   } catch (e: any) {
     console.error("[booking-invite] unexpected:", e);
-    return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+    return NextResponse.json(
+      { error: String(e?.message ?? e) },
+      { status: 500 },
+    );
   }
 }

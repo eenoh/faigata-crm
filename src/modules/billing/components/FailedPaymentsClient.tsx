@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -14,17 +14,18 @@ type PaymentRow = {
   status: string;
 };
 
-function formatMoney(amount: number, currency: string) {
+const formatMoney = (amount: number, currency: string) => {
   const value = amount / 100;
+  const cur = currency.toUpperCase();
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: currency.toUpperCase(),
+      currency: cur,
     }).format(value);
   } catch {
-    return `${value.toFixed(2)} ${currency.toUpperCase()}`;
+    return `${value.toFixed(2)} ${cur}`;
   }
-}
+};
 
 /** Empty-state card (matches LeadsClient vibe) */
 function EmptyState({
@@ -34,77 +35,72 @@ function EmptyState({
   variant: "none" | "no_match";
   query?: string;
 }) {
-  if (variant === "no_match") {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-        <p className="font-semibold text-slate-700">No failed payments match “{query}”.</p>
-        <p className="mt-1">Try a different email, status, or payment intent id.</p>
-      </div>
-    );
-  }
-
-  return (
+  return variant === "no_match" ? (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+      <p className="font-semibold text-slate-700">
+        No failed payments match “{query}”.
+      </p>
+      <p className="mt-1">
+        Try a different email, status, or payment intent id.
+      </p>
+    </div>
+  ) : (
     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
       <p>No failed payments 🎉</p>
       <p className="mt-1">
-        When a payment fails (e.g. card declined / missing payment method), it’ll show up here.
+        When a payment fails (e.g. card declined / missing payment method),
+        it’ll show up here.
       </p>
     </div>
   );
 }
 
+async function getToken() {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 export default function FailedPaymentsClient() {
-  const searchParams = useSearchParams();
-  const q = (searchParams.get("q") ?? "").trim();
+  const q = (useSearchParams().get("q") ?? "").trim();
 
   const [items, setItems] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchFailed = useMemo(() => {
-    return async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+  async function load() {
+    const token = await getToken();
+    if (!token) {
+      setItems([]);
+      return;
+    }
 
-      if (!token) {
-        setItems([]);
-        return;
-      }
+    const params = new URLSearchParams({ status: "requires_payment_method" });
+    if (q) params.set("q", q);
 
-      const url = new URL("/api/billing/payments/list", window.location.origin);
-      url.searchParams.set("status", "requires_payment_method");
-      if (q) url.searchParams.set("q", q);
+    const res = await fetch(`/api/billing/payments/list?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        setItems([]);
-        return;
-      }
-
-      setItems((json?.items ?? []) as PaymentRow[]);
-    };
-  }, [q]);
+    const json: any = await res.json().catch(() => ({}));
+    setItems(res.ok ? ((json.items ?? []) as PaymentRow[]) : []);
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       setLoading(true);
-      await fetchFailed().catch(() => {});
+      await load().catch(() => {});
       if (!cancelled) setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [fetchFailed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
-  // Like LeadsClient: distinguish "none yet" vs "no match"
-  const totalCount = useMemo(() => items.length, [items]);
+  const totalCount = items.length;
   const visibleCount = totalCount; // API already filters by q/status
 
   return (
@@ -112,9 +108,12 @@ export default function FailedPaymentsClient() {
       <div className="rounded-2xl border border-slate-200 bg-white px-7 py-6 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Failed Payments</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Failed Payments
+            </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Payments that need action (e.g. card declined / missing payment method).
+              Payments that need action (e.g. card declined / missing payment
+              method).
             </p>
           </div>
 
@@ -132,8 +131,8 @@ export default function FailedPaymentsClient() {
           {loading
             ? "Loading…"
             : q
-            ? `Showing ${visibleCount} result(s) for “${q}”`
-            : `${totalCount} failed payment(s)`}
+              ? `Showing ${visibleCount} result(s) for “${q}”`
+              : `${totalCount} failed payment(s)`}
         </div>
 
         {loading ? (
@@ -171,7 +170,9 @@ export default function FailedPaymentsClient() {
                   </p>
                 </div>
 
-                <div className="text-xs font-semibold text-indigo-600">Open →</div>
+                <div className="text-xs font-semibold text-indigo-600">
+                  Open →
+                </div>
               </Link>
             ))}
           </div>

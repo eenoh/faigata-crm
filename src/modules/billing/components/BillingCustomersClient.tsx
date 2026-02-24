@@ -33,7 +33,11 @@ type LeadOption = {
 
 function formatDate(unixSeconds: number) {
   const d = new Date(unixSeconds * 1000);
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
 }
 
 /** Small empty-state card */
@@ -47,8 +51,12 @@ function EmptyState({
   if (variant === "no_match") {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-        <p className="font-semibold text-slate-700">No customers match “{query}”.</p>
-        <p className="mt-1">Try a different name, email, phone number, or Stripe customer id.</p>
+        <p className="font-semibold text-slate-700">
+          No customers match “{query}”.
+        </p>
+        <p className="mt-1">
+          Try a different name, email, phone number, or Stripe customer id.
+        </p>
       </div>
     );
   }
@@ -57,8 +65,8 @@ function EmptyState({
     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
       <p>No customers yet.</p>
       <p className="mt-1">
-        Click <span className="font-semibold">Refresh</span> to sync from Stripe, or remove the filter
-        in the header search.
+        Click <span className="font-semibold">Refresh</span> to sync from
+        Stripe, or remove the filter in the header search.
       </p>
     </div>
   );
@@ -72,7 +80,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
   const [err, setErr] = useState<string | null>(null);
 
   // Link existing customer -> lead
-  const [linkingCustomer, setLinkingCustomer] = useState<CustomerRow | null>(null);
+  const [linkingCustomer, setLinkingCustomer] = useState<CustomerRow | null>(
+    null,
+  );
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [leadQuery, setLeadQuery] = useState("");
@@ -91,22 +101,20 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
   const [creating, setCreating] = useState(false);
 
   const filteredLeadQuery = useMemo(() => leadQuery.trim(), [leadQuery]);
-  const filteredCreateLeadQuery = useMemo(() => createLeadQuery.trim(), [createLeadQuery]);
+  const filteredCreateLeadQuery = useMemo(
+    () => createLeadQuery.trim(),
+    [createLeadQuery],
+  );
 
-  async function authedFetch(input: RequestInfo, init?: RequestInit) {
+  async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) throw new Error("no_session");
 
-    const res = await fetch(input, {
-      ...init,
-      headers: {
-        ...(init?.headers ?? {}),
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
 
-    return res;
+    return fetch(input, { ...init, headers });
   }
 
   async function loadCustomers() {
@@ -116,10 +124,14 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
     try {
       const res = await authedFetch(
         `/api/billing/customers${qNormalized ? `?q=${encodeURIComponent(qNormalized)}` : ""}`,
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
 
-      const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(json.error ?? `something_${res.status}`);
+        return;
+      }
 
       if (!res.ok) {
         setErr(json?.error ?? `failed_${res.status}`);
@@ -141,9 +153,13 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
     try {
       const res = await authedFetch(
         `/api/billing/customers/leads${forQuery ? `?q=${encodeURIComponent(forQuery)}` : ""}`,
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
-      const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(json.error ?? `something_${res.status}`);
+        return;
+      }
       if (!res.ok) {
         setLeads([]);
         return;
@@ -200,39 +216,15 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
 
   function applyLeadPrefill(leadId: string) {
     const lead = leads.find((l) => l.id === leadId);
-
-    if (!lead) {
-      setCreateName("");
-      setCreateEmail("");
-      setCreatePhone("");
-      return;
-    }
+    if (!lead) return;
 
     setCreateName((lead.label ?? "").trim());
 
-    const t = (lead.primary_contact_type ?? "").toLowerCase().trim();
-    const v = (lead.primary_contact_value ?? "").trim();
+    const type = (lead.primary_contact_type ?? "").toLowerCase().trim();
+    const value = (lead.primary_contact_value ?? "").trim();
 
-    if (!v) {
-      setCreateEmail("");
-      setCreatePhone("");
-      return;
-    }
-
-    if (t === "email") {
-      setCreateEmail(v);
-      setCreatePhone("");
-      return;
-    }
-
-    if (t === "phone") {
-      setCreatePhone(v);
-      setCreateEmail("");
-      return;
-    }
-
-    setCreateEmail("");
-    setCreatePhone("");
+    setCreateEmail(type === "email" ? value : "");
+    setCreatePhone(type === "phone" ? value : "");
   }
 
   async function linkCustomer() {
@@ -249,7 +241,11 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
         }),
       });
 
-      const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(json.error ?? `something_${res.status}`);
+        return;
+      }
       if (!res.ok) {
         setErr(json?.error ?? `link_failed_${res.status}`);
         return;
@@ -273,7 +269,11 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
         body: JSON.stringify({ stripeCustomerId: customerId }),
       });
 
-      const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(json.error ?? `something_${res.status}`);
+        return;
+      }
       if (!res.ok) {
         setErr(json?.error ?? `unlink_failed_${res.status}`);
         return;
@@ -303,7 +303,11 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
         }),
       });
 
-      const json = await res.json().catch(() => null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(json.error ?? `something_${res.status}`);
+        return;
+      }
       if (!res.ok) {
         setErr(json?.error ?? `create_failed_${res.status}`);
         return;
@@ -316,9 +320,8 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
     }
   }
 
-  const visibleRows = useMemo(() => rows, [rows]);
-  const totalCount = visibleRows.length;
-  const visibleCount = visibleRows.length;
+  const totalCount = rows.length;
+  const visibleCount = rows.length;
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -328,13 +331,16 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Stripe customers for your connected account. Use the header search to filter by name,
-              email, phone, or ID.
+              Stripe customers for your connected account. Use the header search
+              to filter by name, email, phone, or ID.
             </p>
 
             {qNormalized ? (
               <p className="mt-2 text-xs text-slate-500">
-                Filter: <span className="font-semibold text-slate-700">“{qNormalized}”</span>
+                Filter:{" "}
+                <span className="font-semibold text-slate-700">
+                  “{qNormalized}”
+                </span>
               </p>
             ) : (
               <p className="mt-2 text-xs text-slate-500">No filter applied.</p>
@@ -348,7 +354,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
               disabled={loading}
               className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <ArrowPathIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <ArrowPathIcon
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
 
@@ -363,19 +371,25 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
           </div>
         </div>
 
-        {!!err && <p className="mt-3 text-xs font-semibold text-rose-600">Error: {err}</p>}
+        {!!err && (
+          <p className="mt-3 text-xs font-semibold text-rose-600">
+            Error: {err}
+          </p>
+        )}
       </div>
 
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-3">
-          <h2 className="text-sm font-semibold text-slate-900">Stripe customers</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Stripe customers
+          </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {loading
               ? "Loading…"
               : qNormalized
-              ? `Showing ${visibleCount} customer(s) matching your filter`
-              : `${totalCount} customer(s) shown`}
+                ? `Showing ${visibleCount} customer(s) matching your filter`
+                : `${totalCount} customer(s) shown`}
           </p>
         </div>
 
@@ -404,12 +418,14 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                   <th className="px-5 py-3 font-semibold">Created</th>
                   <th className="px-5 py-3 font-semibold">Payment method</th>
                   <th className="px-5 py-3 font-semibold">Linked lead</th>
-                  <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                  <th className="px-5 py-3 font-semibold text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
-                {visibleRows.map((c) => {
+                {rows.map((c) => {
                   const hasPm = !!c.invoice_settings?.default_payment_method;
 
                   return (
@@ -427,12 +443,16 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                             <p className="truncate text-xs text-slate-500">
                               {c.email ?? "—"} {c.phone ? `• ${c.phone}` : ""}
                             </p>
-                            <p className="truncate text-[11px] text-slate-400">{c.id}</p>
+                            <p className="truncate text-[11px] text-slate-400">
+                              {c.id}
+                            </p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-5 py-4 text-slate-700">{formatDate(c.created)}</td>
+                      <td className="px-5 py-4 text-slate-700">
+                        {formatDate(c.created)}
+                      </td>
 
                       <td className="px-5 py-4">
                         {hasPm ? (
@@ -455,7 +475,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                             </p>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-500">Not linked</span>
+                          <span className="text-xs text-slate-500">
+                            Not linked
+                          </span>
                         )}
                       </td>
 
@@ -503,10 +525,15 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
           <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Create Stripe customer</p>
-                <h3 className="mt-1 text-base font-semibold text-slate-900">New customer</h3>
+                <p className="text-xs font-semibold text-slate-500">
+                  Create Stripe customer
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-slate-900">
+                  New customer
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Create a customer in the connected Stripe account and link it to a lead.
+                  Create a customer in the connected Stripe account and link it
+                  to a lead.
                 </p>
               </div>
 
@@ -521,7 +548,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
 
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700">Find a Lead</label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Find a Lead
+                </label>
                 <input
                   value={createLeadQuery}
                   onChange={(e) => setCreateLeadQuery(e.target.value)}
@@ -534,13 +563,19 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700">Select Lead</label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Select Lead
+                </label>
 
                 <div className="mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200">
                   {loadingLeads ? (
-                    <div className="p-3 text-xs text-slate-500">Loading leads…</div>
+                    <div className="p-3 text-xs text-slate-500">
+                      Loading leads…
+                    </div>
                   ) : leads.length === 0 ? (
-                    <div className="p-3 text-xs text-slate-500">No leads found.</div>
+                    <div className="p-3 text-xs text-slate-500">
+                      No leads found.
+                    </div>
                   ) : (
                     leads.map((l) => (
                       <button
@@ -555,10 +590,14 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                         }`}
                       >
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{l.label}</p>
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {l.label}
+                          </p>
                           <p className="truncate text-[11px] text-slate-500">
                             Stage: {l.stage}
-                            {l.primary_contact_value ? ` • ${l.primary_contact_value}` : ""}
+                            {l.primary_contact_value
+                              ? ` • ${l.primary_contact_value}`
+                              : ""}
                           </p>
                         </div>
 
@@ -575,7 +614,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-semibold text-slate-700">Customer name</label>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Customer name
+                  </label>
                   <input
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
@@ -585,7 +626,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Email</label>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Email
+                  </label>
                   <input
                     value={createEmail}
                     onChange={(e) => setCreateEmail(e.target.value)}
@@ -595,7 +638,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Phone</label>
+                  <label className="text-xs font-semibold text-slate-700">
+                    Phone
+                  </label>
                   <input
                     value={createPhone}
                     onChange={(e) => setCreatePhone(e.target.value)}
@@ -634,9 +679,13 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Link customer</p>
+                <p className="text-xs font-semibold text-slate-500">
+                  Link customer
+                </p>
                 <h3 className="mt-1 text-base font-semibold text-slate-900">
-                  {linkingCustomer.name || linkingCustomer.email || linkingCustomer.id}
+                  {linkingCustomer.name ||
+                    linkingCustomer.email ||
+                    linkingCustomer.id}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   Choose a lead to link this Stripe customer to.
@@ -654,7 +703,9 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
 
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700">Search leads (optional)</label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Search leads (optional)
+                </label>
                 <input
                   value={leadQuery}
                   onChange={(e) => setLeadQuery(e.target.value)}
@@ -667,13 +718,19 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700">Select Lead</label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Select Lead
+                </label>
 
                 <div className="mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200">
                   {loadingLeads ? (
-                    <div className="p-3 text-xs text-slate-500">Loading leads…</div>
+                    <div className="p-3 text-xs text-slate-500">
+                      Loading leads…
+                    </div>
                   ) : leads.length === 0 ? (
-                    <div className="p-3 text-xs text-slate-500">No leads found.</div>
+                    <div className="p-3 text-xs text-slate-500">
+                      No leads found.
+                    </div>
                   ) : (
                     leads.map((l) => (
                       <button
@@ -685,8 +742,12 @@ export default function BillingCustomersClient({ q = "" }: { q?: string }) {
                         }`}
                       >
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{l.label}</p>
-                          <p className="truncate text-[11px] text-slate-500">Stage: {l.stage}</p>
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {l.label}
+                          </p>
+                          <p className="truncate text-[11px] text-slate-500">
+                            Stage: {l.stage}
+                          </p>
                         </div>
 
                         {selectedLeadId === l.id && (

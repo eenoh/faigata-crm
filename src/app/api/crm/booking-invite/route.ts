@@ -14,10 +14,21 @@ export const runtime = "nodejs";
  * Creates a booking_link_invites row that matches your schema.
  */
 
+function jsonError(error: string, status = 400, extra?: Record<string, any>) {
+  return NextResponse.json({ ok: false, error, ...(extra ?? {}) }, { status });
+}
+
 function supabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!url || !serviceKey) throw new Error("missing_supabase_env");
+  const url = (
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    ""
+  ).trim();
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+  if (!url || !serviceKey) {
+    throw new Error("missing_supabase_env");
+  }
 
   return createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -25,13 +36,16 @@ function supabaseAdmin() {
 }
 
 function getBearerToken(req: NextRequest | Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const h =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1]?.trim() || null;
 }
 
 function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  );
 }
 
 function makeToken() {
@@ -39,15 +53,25 @@ function makeToken() {
 }
 
 function appBaseUrl(req: NextRequest) {
-  const explicit = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  const explicit = String(process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
   if (explicit) return explicit.replace(/\/+$/, "");
 
-  const vercel = (process.env.VERCEL_URL || "").trim();
+  const vercel = String(process.env.VERCEL_URL ?? "").trim();
   if (vercel) return `https://${vercel.replace(/\/+$/, "")}`;
 
   const proto = req.headers.get("x-forwarded-proto") || "http";
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   return host ? `${proto}://${host}`.replace(/\/+$/, "") : "";
+}
+
+function isUniqueViolation(err: any) {
+  const code = String(err?.code ?? "").trim();
+  const msg = String(err?.message ?? "").toLowerCase();
+  return (
+    code === "23505" ||
+    msg.includes("duplicate key") ||
+    msg.includes("unique constraint")
+  );
 }
 
 /**
@@ -58,29 +82,37 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const token = String(searchParams.get("t") ?? "").trim();
-    if (!token) return NextResponse.json({ error: "missing_token" }, { status: 400 });
+    if (!token) return jsonError("missing_token", 400);
 
     const admin = supabaseAdmin();
+
     const { data, error } = await admin
       .from("booking_link_invites")
-      .select("id, team_id, booking_link_id, lead_id, expires_at, used_at, token, created_at")
+      .select(
+        "id, team_id, booking_link_id, lead_id, expires_at, used_at, created_at",
+      )
       .eq("token", token)
       .maybeSingle();
 
     if (error) {
       console.error("[crm-booking-invite] query error:", error);
-      return NextResponse.json({ error: "invite_query_failed" }, { status: 500 });
+      return jsonError("invite_query_failed", 500);
     }
-    if (!data) return NextResponse.json({ error: "invite_not_found" }, { status: 404 });
+    if (!data) return jsonError("invite_not_found", 404);
 
-    if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
-      return NextResponse.json({ error: "invite_expired" }, { status: 410 });
+    if (data.expires_at) {
+      const exp = new Date(String(data.expires_at));
+      if (Number.isNaN(exp.getTime()))
+        return jsonError("invite_invalid_expires_at", 500);
+      if (exp.getTime() < Date.now()) return jsonError("invite_expired", 410);
     }
 
+    // NOTE: We intentionally do NOT echo the token back.
+    // If you need it for debugging, add it back — but it’s usually safer not to.
     return NextResponse.json({ ok: true, invite: data });
   } catch (e: any) {
     console.error("[crm-booking-invite] unexpected:", e);
-    return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+    return jsonError(String(e?.message ?? e), 500);
   }
 }
 
@@ -94,27 +126,29 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const isDev = process.env.NODE_ENV !== "production";
+  const nowIso = new Date().toISOString();
 
   try {
     const authToken = getBearerToken(req);
-    if (!authToken) return NextResponse.json({ error: "missing_auth" }, { status: 401 });
+    if (!authToken) return jsonError("missing_auth", 401);
 
-    const body = await req.json().catch(() => ({} as any));
+    const body = await req.json().catch(() => ({}) as any);
     const teamId = String(body?.teamId ?? "").trim();
     const leadId = String(body?.leadId ?? "").trim();
     const bookingLinkId = String(body?.bookingLinkId ?? "").trim();
 
-    if (!isUuid(teamId)) return NextResponse.json({ error: "invalid_teamId" }, { status: 400 });
-    if (!isUuid(leadId)) return NextResponse.json({ error: "invalid_leadId" }, { status: 400 });
-    if (!isUuid(bookingLinkId)) return NextResponse.json({ error: "invalid_bookingLinkId" }, { status: 400 });
+    if (!isUuid(teamId)) return jsonError("invalid_teamId", 400);
+    if (!isUuid(leadId)) return jsonError("invalid_leadId", 400);
+    if (!isUuid(bookingLinkId)) return jsonError("invalid_bookingLinkId", 400);
 
     const admin = supabaseAdmin();
 
     // Validate caller (JWT)
-    const { data: userRes, error: userErr } = await admin.auth.getUser(authToken);
+    const { data: userRes, error: userErr } =
+      await admin.auth.getUser(authToken);
     const userId = userRes?.user?.id ? String(userRes.user.id) : null;
     if (userErr || !userId) {
-      return NextResponse.json({ error: "invalid_session" }, { status: 401 });
+      return jsonError("invalid_session", 401);
     }
 
     // Verify user is in the team (profiles.team_id)
@@ -126,47 +160,49 @@ export async function POST(req: NextRequest) {
 
     if (profErr) {
       console.error("[booking-invite] profile lookup error:", profErr);
-      return NextResponse.json({ error: "profile_lookup_failed" }, { status: 500 });
+      return jsonError("profile_lookup_failed", 500);
     }
 
     if (!profile?.team_id || String(profile.team_id) !== teamId) {
-      return NextResponse.json({ error: "not_in_team" }, { status: 403 });
+      return jsonError("not_in_team", 403);
     }
 
     // Verify lead exists in team
     const { data: lead, error: leadErr } = await admin
       .from("leads")
-      .select("id, team_id")
+      .select("id")
       .eq("id", leadId)
       .eq("team_id", teamId)
       .maybeSingle();
 
     if (leadErr) {
       console.error("[booking-invite] lead lookup error:", leadErr);
-      return NextResponse.json({ error: "lead_lookup_failed" }, { status: 500 });
+      return jsonError("lead_lookup_failed", 500);
     }
-    if (!lead) return NextResponse.json({ error: "lead_not_found" }, { status: 404 });
+    if (!lead) return jsonError("lead_not_found", 404);
 
     // Verify booking link exists in team and not deleted
     const { data: link, error: linkErr } = await admin
       .from("booking_links")
-      .select("id, team_id, slug, deleted_at")
+      .select("id, slug, deleted_at")
       .eq("id", bookingLinkId)
       .eq("team_id", teamId)
       .maybeSingle();
 
     if (linkErr) {
       console.error("[booking-invite] booking link lookup error:", linkErr);
-      return NextResponse.json({ error: "booking_link_lookup_failed" }, { status: 500 });
+      return jsonError("booking_link_lookup_failed", 500);
     }
-    if (!link) return NextResponse.json({ error: "booking_link_not_found" }, { status: 404 });
-    if ((link as any).deleted_at) return NextResponse.json({ error: "booking_link_deleted" }, { status: 410 });
+    if (!link) return jsonError("booking_link_not_found", 404);
+    if ((link as any).deleted_at) return jsonError("booking_link_deleted", 410);
 
     const slug = String((link as any).slug ?? "").trim();
-    if (!slug) return NextResponse.json({ error: "booking_link_missing_slug" }, { status: 500 });
+    if (!slug) return jsonError("booking_link_missing_slug", 500);
 
     // Create invite (token collision safe)
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAtIso = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     let inviteRow: { id: string; token: string } | null = null;
     let lastErr: any = null;
@@ -174,7 +210,6 @@ export async function POST(req: NextRequest) {
     for (let attempt = 0; attempt < 3; attempt++) {
       const inviteToken = makeToken();
 
-      // IMPORTANT: insert ONLY columns that exist in your booking_link_invites table
       const { data: invite, error: invErr } = await admin
         .from("booking_link_invites")
         .insert({
@@ -182,8 +217,10 @@ export async function POST(req: NextRequest) {
           booking_link_id: bookingLinkId,
           lead_id: leadId,
           token: inviteToken,
-          expires_at: expiresAt,
-          created_at: new Date().toISOString(),
+          expires_at: expiresAtIso,
+          created_at: nowIso,
+          // If your schema supports it, this is useful:
+          // created_by: userId,
         })
         .select("id, token")
         .single();
@@ -195,16 +232,15 @@ export async function POST(req: NextRequest) {
 
       lastErr = invErr;
 
-      const pgCode = (invErr as any)?.code;
-      const msg = String((invErr as any)?.message ?? "");
-      const isUnique = pgCode === "23505" || msg.toLowerCase().includes("duplicate key");
-      if (!isUnique) break;
+      // retry only for genuine uniqueness collisions
+      if (!isUniqueViolation(invErr)) break;
     }
 
     if (!inviteRow) {
       console.error("[booking-invite] invite insert error:", lastErr);
       return NextResponse.json(
         {
+          ok: false,
           error: "invite_create_failed",
           ...(isDev
             ? {
@@ -217,7 +253,7 @@ export async function POST(req: NextRequest) {
               }
             : {}),
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -227,8 +263,6 @@ export async function POST(req: NextRequest) {
 
     // ✅ Timeline message (non-fatal) WITH event_type + event_data (jsonb NOT NULL)
     try {
-      const nowISO = new Date().toISOString();
-
       const event_type = "booking_invite_created";
       const event_data = {
         team_id: teamId,
@@ -236,9 +270,10 @@ export async function POST(req: NextRequest) {
         booking_link_id: bookingLinkId,
         booking_link_slug: slug,
         invite_id: inviteRow.id,
+        // token is useful internally; remove if you don’t want it stored
         token: inviteRow.token,
         url,
-        expires_at: expiresAt,
+        expires_at: expiresAtIso,
         created_by: userId,
       };
 
@@ -249,25 +284,30 @@ export async function POST(req: NextRequest) {
         direction: "outbound",
         channel: "pipeline",
 
-        // keep this human-readable for your existing UI matching
         body: `Sent booking link: ${url}`,
 
         sender_profile_id: userId,
-        // only include user_id if your table actually has it; remove if not
+        // Only include user_id if your table has it; remove if not:
         user_id: userId,
 
-        sent_at: nowISO,
-        created_at: nowISO,
+        sent_at: nowIso,
+        created_at: nowIso,
 
         event_type,
         event_data,
-      });
+      } as any);
 
       if (msgErr) {
-        console.error("[booking-invite] lead_messages insert error (non-fatal):", msgErr);
+        console.error(
+          "[booking-invite] lead_messages insert error (non-fatal):",
+          msgErr,
+        );
       }
     } catch (e) {
-      console.error("[booking-invite] lead_messages insert failed (non-fatal):", e);
+      console.error(
+        "[booking-invite] lead_messages insert failed (non-fatal):",
+        e,
+      );
     }
 
     return NextResponse.json({
@@ -276,10 +316,10 @@ export async function POST(req: NextRequest) {
       token: inviteRow.token,
       slug,
       url,
-      expires_at: expiresAt,
+      expires_at: expiresAtIso,
     });
   } catch (e: any) {
     console.error("[booking-invite] unexpected:", e);
-    return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+    return jsonError(String(e?.message ?? e), 500);
   }
 }

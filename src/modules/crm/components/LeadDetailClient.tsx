@@ -39,13 +39,25 @@ interface LeadData {
     | null;
   primary_contact_value: string | null;
 
-  source_category: "inbound" | "outbound" | "referral" | "partner" | "purchased" | null;
-  source_name: "instagram" | "facebook" | "reddit" | "twitter_x" | "other" | null;
+  source_category:
+    | "inbound"
+    | "outbound"
+    | "referral"
+    | "partner"
+    | "purchased"
+    | null;
+  source_name:
+    | "instagram"
+    | "facebook"
+    | "reddit"
+    | "twitter_x"
+    | "other"
+    | null;
 
   created_at: string;
   updated_at?: string | null;
 
-  custom_values: Record<string, any>;
+  custom_values: Record<string, any> | null;
 
   prospector_id?: string | null;
   setter_id?: string | null;
@@ -75,7 +87,9 @@ const CUSTOM_KEY_ALIASES: Record<string, string> = {
   industry: "field_2",
 };
 
-function buildNormalizedCustomMap(custom: Record<string, any> | null | undefined) {
+function buildNormalizedCustomMap(
+  custom: Record<string, any> | null | undefined,
+) {
   const out: Record<string, any> = {};
   const obj = custom && typeof custom === "object" ? custom : {};
   for (const [k, v] of Object.entries(obj)) out[normalizeKey(k)] = v;
@@ -85,7 +99,7 @@ function buildNormalizedCustomMap(custom: Record<string, any> | null | undefined
 function getCustomValue(
   custom: Record<string, any> | null | undefined,
   normalizedCustom: Record<string, any>,
-  fieldKey: string
+  fieldKey: string,
 ) {
   const direct = custom?.[fieldKey];
   if (direct !== undefined) return direct;
@@ -152,10 +166,14 @@ type BookingLinkRow = {
   deleted_at?: string | null;
 };
 
-const RESERVED_CUSTOM_KEYS_NORMALIZED = new Set<string>(["lead_name"].map(normalizeKey));
+const RESERVED_CUSTOM_KEYS_NORMALIZED = new Set<string>(
+  ["lead_name"].map(normalizeKey),
+);
 
 function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v,
+  );
 }
 
 function safeDecode(v: string) {
@@ -166,17 +184,24 @@ function safeDecode(v: string) {
   }
 }
 
-
-async function fetchLead(teamId: string, leadId: string): Promise<LeadData | null> {
+async function fetchLead(
+  teamId: string,
+  leadId: string,
+): Promise<LeadData | null> {
   const res = await fetch(
     `/api/crm/leads?teamId=${encodeURIComponent(teamId)}&id=${encodeURIComponent(leadId)}`,
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 
   const ct = res.headers.get("content-type") ?? "";
   if (!res.ok || !ct.includes("application/json")) {
     const text = await res.text().catch(() => "");
-    console.error("[LeadDetail] leads API failed", res.status, ct, text.slice(0, 300));
+    console.error(
+      "[LeadDetail] leads API failed",
+      res.status,
+      ct,
+      text.slice(0, 300),
+    );
     return null;
   }
 
@@ -184,7 +209,9 @@ async function fetchLead(teamId: string, leadId: string): Promise<LeadData | nul
   return (json ?? null) as LeadData | null;
 }
 
-async function fetchScoreConfig(teamId: string): Promise<ScoreThresholds | null> {
+async function fetchScoreConfig(
+  teamId: string,
+): Promise<ScoreThresholds | null> {
   const res = await fetch("/api/crm/lead-scoring-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -194,7 +221,7 @@ async function fetchScoreConfig(teamId: string): Promise<ScoreThresholds | null>
   const ct = res.headers.get("content-type") ?? "";
   if (!res.ok || !ct.includes("application/json")) return null;
 
-  const json = await res.json().catch(() => ({} as any));
+  const json = await res.json().catch(() => ({}) as any);
   const low = Number(json.thresholds?.low);
   const high = Number(json.thresholds?.high);
   if (Number.isNaN(low) || Number.isNaN(high)) return null;
@@ -214,8 +241,10 @@ async function fetchHasCalls(teamId: string, leadId: string): Promise<boolean> {
       {
         method: "GET",
         cache: "no-store",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-      }
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : undefined,
+      },
     );
 
     const ct = res.headers.get("content-type") ?? "";
@@ -420,7 +449,11 @@ function isLeadCreatedTimelineMessage(m: LeadMessage) {
   if (!isPipeline) return false;
 
   const body = String(m.body ?? "").toLowerCase();
-  return body.startsWith("lead_created|") || body.startsWith("lead created|") || body.includes("new lead");
+  return (
+    body.startsWith("lead_created|") ||
+    body.startsWith("lead created|") ||
+    body.includes("new lead")
+  );
 }
 
 function formatLeadCreatedBody(body: string, leadLabel: string) {
@@ -440,7 +473,12 @@ function isPipelineEvent(m: LeadMessage) {
 /* -------------------- ✅ lead rejected timeline helpers -------------------- */
 
 function isLeadRejectedEvent(m: LeadMessage) {
-  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("LEAD_REJECTED|");
+  return (
+    isPipelineEvent(m) &&
+    String(m.body ?? "")
+      .toUpperCase()
+      .startsWith("LEAD_REJECTED|")
+  );
 }
 
 function parseLeadRejected(body: string) {
@@ -449,7 +487,11 @@ function parseLeadRejected(body: string) {
   const oldSetterId = String(parts[1] ?? "").trim();
   const newSetterId = String(parts[2] ?? "").trim();
   const count = Number(parts[3] ?? "0");
-  return { oldSetterId, newSetterId, count: Number.isFinite(count) ? count : 0 };
+  return {
+    oldSetterId,
+    newSetterId,
+    count: Number.isFinite(count) ? count : 0,
+  };
 }
 
 function formatLeadRejectedBody(body: string, newSetterName?: string | null) {
@@ -463,13 +505,28 @@ function formatLeadRejectedBody(body: string, newSetterName?: string | null) {
 /* -------------------- call-outcome timeline helpers (SEPARATE STATES + legacy support) -------------------- */
 
 function isCallAttendanceEvent(m: LeadMessage) {
-  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_ATTENDANCE|");
+  return (
+    isPipelineEvent(m) &&
+    String(m.body ?? "")
+      .toUpperCase()
+      .startsWith("CALL_ATTENDANCE|")
+  );
 }
 function isCallOfferMadeEvent(m: LeadMessage) {
-  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_OFFER_MADE|");
+  return (
+    isPipelineEvent(m) &&
+    String(m.body ?? "")
+      .toUpperCase()
+      .startsWith("CALL_OFFER_MADE|")
+  );
 }
 function isCallClosedEvent(m: LeadMessage) {
-  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_CLOSED_ON_CALL|");
+  return (
+    isPipelineEvent(m) &&
+    String(m.body ?? "")
+      .toUpperCase()
+      .startsWith("CALL_CLOSED_ON_CALL|")
+  );
 }
 
 /**
@@ -477,12 +534,25 @@ function isCallClosedEvent(m: LeadMessage) {
  * CALL_OUTCOME|<bookingId>|<prevStatus>|<nextStatus>|<offerMade0/1>|<closed0/1>
  */
 function isLegacyCallOutcomeEvent(m: LeadMessage) {
-  return isPipelineEvent(m) && String(m.body ?? "").toUpperCase().startsWith("CALL_OUTCOME|");
+  return (
+    isPipelineEvent(m) &&
+    String(m.body ?? "")
+      .toUpperCase()
+      .startsWith("CALL_OUTCOME|")
+  );
 }
 
 function normalizeOutcomeStatus(v: string) {
-  const s = String(v ?? "").trim().toLowerCase();
-  const allowed = new Set(["unknown", "attended", "no_show", "cancelled", "rescheduled"]);
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  const allowed = new Set([
+    "unknown",
+    "attended",
+    "no_show",
+    "cancelled",
+    "rescheduled",
+  ]);
   return allowed.has(s) ? s : "unknown";
 }
 
@@ -570,7 +640,11 @@ function formatLegacyOutcomeBody(body: string) {
 
 /* -------------------- booked call parsing helpers -------------------- */
 
-type BookedCallParse = { kind: "canonical" | "iso" | "wall"; start: DateTime; end: DateTime };
+type BookedCallParse = {
+  kind: "canonical" | "iso" | "wall";
+  start: DateTime;
+  end: DateTime;
+};
 
 function extractBookedCallRange(body: string): {
   kind: "instant" | "wall";
@@ -593,7 +667,7 @@ function extractBookedCallRange(body: string): {
   }
 
   const iso = s.match(
-    /(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))\s*(?:→|—|–|-)\s*(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))(?:\s*\(([^)]+)\))?/i
+    /(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))\s*(?:→|—|–|-)\s*(\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:z|[+-]\d{2}:\d{2}))(?:\s*\(([^)]+)\))?/i,
   );
   if (iso) {
     return {
@@ -606,7 +680,7 @@ function extractBookedCallRange(body: string): {
   }
 
   const wall = s.match(
-    /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*(?:→|—|–|-)\s*(\d{2}:\d{2})(?:\s*\(([^)]+)\))?/i
+    /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*(?:→|—|–|-)\s*(\d{2}:\d{2})(?:\s*\(([^)]+)\))?/i,
   );
   if (wall) {
     const date = wall[1];
@@ -646,11 +720,19 @@ function parseBookedCall(body: string): BookedCallParse | null {
 
     if (!s.isValid || !e.isValid) return null;
 
-    return { kind: parsed.source === "canonical" ? "canonical" : "iso", start: s, end: e };
+    return {
+      kind: parsed.source === "canonical" ? "canonical" : "iso",
+      start: s,
+      end: e,
+    };
   }
 
-  const s = DateTime.fromFormat(parsed.startRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
-  const e = DateTime.fromFormat(parsed.endRaw, "yyyy-MM-dd HH:mm", { zone: sourceZone });
+  const s = DateTime.fromFormat(parsed.startRaw, "yyyy-MM-dd HH:mm", {
+    zone: sourceZone,
+  });
+  const e = DateTime.fromFormat(parsed.endRaw, "yyyy-MM-dd HH:mm", {
+    zone: sourceZone,
+  });
   if (!s.isValid || !e.isValid) return null;
 
   return { kind: "wall", start: s, end: e };
@@ -660,7 +742,11 @@ function isBookedCallMessage(m: LeadMessage) {
   const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
   if (!isPipeline) return false;
   const body = (m.body ?? "").toLowerCase();
-  return body.includes("booked a call") || body.includes("call booked for") || body.includes("booked_call|");
+  return (
+    body.includes("booked a call") ||
+    body.includes("call booked for") ||
+    body.includes("booked_call|")
+  );
 }
 
 function formatBookedCallBody(body: string, viewerTz: string) {
@@ -671,7 +757,11 @@ function formatBookedCallBody(body: string, viewerTz: string) {
   const startLocal = parsed.start.setZone(targetZone);
   const endLocal = parsed.end.setZone(targetZone);
 
-  const dateLabel = startLocal.toLocaleString({ weekday: "short", month: "short", day: "numeric" });
+  const dateLabel = startLocal.toLocaleString({
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
   const startTime = startLocal.toLocaleString(DateTime.TIME_SIMPLE);
   const endTime = endLocal.toLocaleString(DateTime.TIME_SIMPLE);
 
@@ -684,9 +774,16 @@ function isStripeProdOrPriceId(id: string) {
   return /^prod_[a-zA-Z0-9]+$/.test(id) || /^price_[a-zA-Z0-9]+$/.test(id);
 }
 
-async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, string>> {
+async function fetchStripeProductLabels(
+  ids: string[],
+): Promise<Record<string, string>> {
   const uniq: string[] = Array.from(
-    new Set(ids.map((x) => String(x ?? "").trim()).filter(Boolean).filter(isStripeProdOrPriceId))
+    new Set(
+      ids
+        .map((x) => String(x ?? "").trim())
+        .filter(Boolean)
+        .filter(isStripeProdOrPriceId),
+    ),
   );
   if (uniq.length === 0) return {};
 
@@ -709,7 +806,12 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
     const json = await res.json().catch(() => null);
 
     if (!res.ok || !ct.includes("application/json")) {
-      console.error("[LeadDetail] /api/billing/products/labels failed", res.status, ct, json);
+      console.error(
+        "[LeadDetail] /api/billing/products/labels failed",
+        res.status,
+        ct,
+        json,
+      );
       return {};
     }
 
@@ -730,7 +832,11 @@ async function fetchStripeProductLabels(ids: string[]): Promise<Record<string, s
 
 /* -------------------- misc logging helper -------------------- */
 
-function logSupabaseError(prefix: string, error: any, extra?: Record<string, any>) {
+function logSupabaseError(
+  prefix: string,
+  error: any,
+  extra?: Record<string, any>,
+) {
   if (!error) return;
   console.error(prefix, {
     code: error?.code,
@@ -756,8 +862,8 @@ function InlineAlert({
     tone === "danger"
       ? "border-rose-200 bg-rose-50 text-rose-800"
       : tone === "info"
-      ? "border-sky-200 bg-sky-50 text-sky-900"
-      : "border-amber-200 bg-amber-50 text-amber-900";
+        ? "border-sky-200 bg-sky-50 text-sky-900"
+        : "border-amber-200 bg-amber-50 text-amber-900";
 
   const icon = tone === "danger" ? "!" : tone === "info" ? "i" : "⚠";
 
@@ -770,7 +876,9 @@ function InlineAlert({
           </div>
           <div className="min-w-0">
             {title && <div className="text-sm font-semibold">{title}</div>}
-            <div className="mt-0.5 text-xs leading-relaxed opacity-90">{message}</div>
+            <div className="mt-0.5 text-xs leading-relaxed opacity-90">
+              {message}
+            </div>
           </div>
         </div>
 
@@ -816,15 +924,15 @@ function ConfirmModal({
     tone === "danger"
       ? "bg-rose-50 text-rose-700 ring-rose-200"
       : tone === "info"
-      ? "bg-sky-50 text-sky-700 ring-sky-200"
-      : "bg-amber-50 text-amber-800 ring-amber-200";
+        ? "bg-sky-50 text-sky-700 ring-sky-200"
+        : "bg-amber-50 text-amber-800 ring-amber-200";
 
   const confirmBtn =
     tone === "danger"
       ? "bg-rose-600 hover:bg-rose-700 text-white"
       : tone === "info"
-      ? "bg-sky-600 hover:bg-sky-700 text-white"
-      : "bg-amber-600 hover:bg-amber-700 text-white";
+        ? "bg-sky-600 hover:bg-sky-700 text-white"
+        : "bg-amber-600 hover:bg-amber-700 text-white";
 
   return (
     <div
@@ -851,7 +959,9 @@ function ConfirmModal({
 
           <div className="min-w-0">
             <div className="text-sm font-semibold text-slate-900">{title}</div>
-            <div className="mt-1 text-xs leading-relaxed text-slate-600">{message}</div>
+            <div className="mt-1 text-xs leading-relaxed text-slate-600">
+              {message}
+            </div>
           </div>
         </div>
 
@@ -897,10 +1007,14 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   // ✅ Works with BOTH:
   // - old: <LeadDetailClient leadId={params.id} />
   // - current: route /leads/[id] (useParams)
-  const routeLeadId = params?.id ? String(params.id) : "";
-  const rawLeadId = String(leadId ?? "").trim().length ? String(leadId) : routeLeadId;
+  const routeLeadId = typeof params?.id === "string" ? params.id : "";
+  const rawLeadId =
+    typeof leadId === "string" && leadId.trim() ? leadId : routeLeadId;
 
-  const normalizedLeadId = useMemo(() => safeDecode(String(rawLeadId ?? "")).trim(), [rawLeadId]);
+  const normalizedLeadId = useMemo(
+    () => safeDecode(rawLeadId).trim(),
+    [rawLeadId],
+  );
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isManagerOrAdmin, setIsManagerOrAdmin] = useState(false);
@@ -934,7 +1048,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       navigator.geolocation.getCurrentPosition(
         () => refreshTz(),
         () => {},
-        { maximumAge: 60_000, timeout: 7_000 }
+        { maximumAge: 60_000, timeout: 7_000 },
       );
     }
 
@@ -946,11 +1060,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     };
   }, []);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   const hasLeadId = normalizedLeadId.length > 0;
-  const leadIdIsUuid = useMemo(() => isUuid(normalizedLeadId), [normalizedLeadId]);
+  const leadIdIsUuid = useMemo(
+    () => isUuid(normalizedLeadId),
+    [normalizedLeadId],
+  );
 
   const [teamId, setTeamId] = useState<string | null>(null);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
@@ -967,7 +1081,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
   const [bookingLinks, setBookingLinks] = useState<BookingLinkRow[]>([]);
   const [bookingLinksLoading, setBookingLinksLoading] = useState(false);
-  const [bookingLinksError, setBookingLinksError] = useState<string | null>(null);
+  const [bookingLinksError, setBookingLinksError] = useState<string | null>(
+    null,
+  );
 
   const [inviteLoadingId, setInviteLoadingId] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -984,18 +1100,28 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const [rejectError, setRejectError] = useState<string | null>(null);
 
   // productId (stripe prod_...) -> productTitle
-  const [productLabels, setProductLabels] = useState<Record<string, string>>({});
+  const [productLabels, setProductLabels] = useState<Record<string, string>>(
+    {},
+  );
 
   // profileId -> "First Last" (used for rejected events + assigned people display)
-  const [profileLabels, setProfileLabels] = useState<Record<string, string>>({});
+  const [profileLabels, setProfileLabels] = useState<Record<string, string>>(
+    {},
+  );
 
   // assigned display (setter/closer)
   const [setterName, setSetterName] = useState<string | null>(null);
   const [closerName, setCloserName] = useState<string | null>(null);
 
-  const activeBookingLinks = useMemo(() => (bookingLinks ?? []).filter((b) => !b.deleted_at), [bookingLinks]);
+  const activeBookingLinks = useMemo(
+    () => (bookingLinks ?? []).filter((b) => !b.deleted_at),
+    [bookingLinks],
+  );
 
-  const normalizedCustom = useMemo(() => buildNormalizedCustomMap(lead?.custom_values ?? {}), [lead?.custom_values]);
+  const normalizedCustom = useMemo(
+    () => buildNormalizedCustomMap(lead?.custom_values),
+    [lead?.custom_values],
+  );
 
   type RenderFieldDef = LeadFieldDefinition & { storageKey: string };
 
@@ -1062,11 +1188,13 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     router.push("/settings/booking-links");
   }
 
-
   function initialsFromSingleString(label: string) {
     const parts = label.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (parts[0]?.charAt(0).toUpperCase() || "L") + (parts[1]?.charAt(0).toUpperCase() || "");
+    return (
+      (parts[0]?.charAt(0).toUpperCase() || "L") +
+      (parts[1]?.charAt(0).toUpperCase() || "")
+    );
   }
 
   function formatChannel(c: string | null): string {
@@ -1075,12 +1203,32 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   }
 
   function getScoreGrade(score: number | null) {
-    if (score == null) return { label: "Unscored", short: "?", circle: "bg-slate-100 text-slate-500" };
-    if (!thresholds) return { label: "Scored", short: "S", circle: "bg-amber-100 text-amber-800" };
+    if (score == null)
+      return {
+        label: "Unscored",
+        short: "?",
+        circle: "bg-slate-100 text-slate-500",
+      };
+    if (!thresholds)
+      return {
+        label: "Scored",
+        short: "S",
+        circle: "bg-amber-100 text-amber-800",
+      };
     const { low, high } = thresholds;
-    if (score < low) return { label: "Low", short: "L", circle: "bg-rose-100 text-rose-800" };
-    if (score >= high) return { label: "High", short: "H", circle: "bg-emerald-100 text-emerald-800" };
-    return { label: "Medium", short: "M", circle: "bg-amber-100 text-amber-800" };
+    if (score < low)
+      return { label: "Low", short: "L", circle: "bg-rose-100 text-rose-800" };
+    if (score >= high)
+      return {
+        label: "High",
+        short: "H",
+        circle: "bg-emerald-100 text-emerald-800",
+      };
+    return {
+      label: "Medium",
+      short: "M",
+      circle: "bg-amber-100 text-amber-800",
+    };
   }
 
   function typeClasses(t: BookingType | null) {
@@ -1116,18 +1264,28 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
   async function fetchMessages(activeTeamId: string, activeLeadId: string) {
     const res = await fetch(
-      `/api/crm/lead-messages?teamId=${encodeURIComponent(activeTeamId)}&leadId=${encodeURIComponent(activeLeadId)}`
+      `/api/crm/lead-messages?teamId=${encodeURIComponent(activeTeamId)}&leadId=${encodeURIComponent(activeLeadId)}`,
     );
 
     const ct = res.headers.get("content-type") ?? "";
     if (!res.ok) {
       const text = await res.text();
-      console.error("[LeadDetail] /api/crm/lead-messages error", res.status, ct, text.slice(0, 400));
+      console.error(
+        "[LeadDetail] /api/crm/lead-messages error",
+        res.status,
+        ct,
+        text.slice(0, 400),
+      );
       throw new Error("Failed to load messages");
     }
     if (!ct.includes("application/json")) {
       const text = await res.text();
-      console.error("[LeadDetail] /api/crm/lead-messages returned non-JSON", res.status, ct, text.slice(0, 400));
+      console.error(
+        "[LeadDetail] /api/crm/lead-messages returned non-JSON",
+        res.status,
+        ct,
+        text.slice(0, 400),
+      );
       throw new Error("Messages API did not return JSON");
     }
 
@@ -1139,7 +1297,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           return { ...m, sender: { ...m.sender, avatar_url: signed } };
         }
         return m;
-      })
+      }),
     );
     return withResolvedAvatars;
   }
@@ -1148,11 +1306,17 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     const isPipeline = (m.channel ?? "").toLowerCase() === "pipeline";
     if (!isPipeline) return false;
     const body = (m.body ?? "").toLowerCase();
-    return body.includes("calendar event") || body.includes("calendar event:") || body.includes("event:");
+    return (
+      body.includes("calendar event") ||
+      body.includes("calendar event:") ||
+      body.includes("event:")
+    );
   }
 
   /* -------------------- Booking links loader -------------------- */
-  async function loadBookingLinks(activeTeamId: string): Promise<BookingLinkRow[]> {
+  async function loadBookingLinks(
+    activeTeamId: string,
+  ): Promise<BookingLinkRow[]> {
     if (!activeTeamId || !isUuid(activeTeamId)) return [];
 
     // 1) Load booking links (RLS must allow this for the current user)
@@ -1172,12 +1336,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         (links ?? [])
           .map((l: any) => String(l.owner_user_id ?? "").trim())
           .filter(Boolean)
-          .filter(isUuid)
-      )
+          .filter(isUuid),
+      ),
     );
 
     // 2) Load owners (optional; if RLS blocks profiles, we gracefully fallback)
-    let ownerMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+    let ownerMap: Record<
+      string,
+      { first_name: string | null; last_name: string | null }
+    > = {};
     if (ownerIds.length) {
       const { data: owners, error: ownersErr } = await supabase
         .from("profiles")
@@ -1190,16 +1357,22 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         ownerMap = Object.fromEntries(
           (owners ?? []).map((p: any) => [
             String(p.id),
-            { first_name: p.first_name ?? null, last_name: p.last_name ?? null },
-          ])
+            {
+              first_name: p.first_name ?? null,
+              last_name: p.last_name ?? null,
+            },
+          ]),
         );
       }
     }
 
     // 3) Shape into your UI type
     const rows: BookingLinkRow[] = (links ?? []).map((row: any) => {
-      const owner = row.owner_user_id ? ownerMap[String(row.owner_user_id)] : null;
-      const owner_name = `${owner?.first_name ?? ""} ${owner?.last_name ?? ""}`.trim();
+      const owner = row.owner_user_id
+        ? ownerMap[String(row.owner_user_id)]
+        : null;
+      const owner_name =
+        `${owner?.first_name ?? ""} ${owner?.last_name ?? ""}`.trim();
 
       return {
         id: String(row.id),
@@ -1246,13 +1419,17 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       });
 
       const ct = res.headers.get("content-type") ?? "";
-      const json = ct.includes("application/json") ? await res.json().catch(() => ({} as any)) : ({} as any);
+      const json = ct.includes("application/json")
+        ? await res.json().catch(() => ({}) as any)
+        : ({} as any);
 
       if (!res.ok) {
         const msg =
           (json as any)?.error ||
           (json as any)?.message ||
-          (ct.includes("application/json") ? `Failed to create invite (${res.status})` : await res.text());
+          (ct.includes("application/json")
+            ? `Failed to create invite (${res.status})`
+            : await res.text());
         throw new Error(msg);
       }
 
@@ -1261,12 +1438,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           (json as any)?.inviteUrl ??
           (json as any)?.data?.url ??
           (json as any)?.data?.inviteUrl ??
-          ""
+          "",
       ).trim();
 
       if (!inviteUrl) {
         throw new Error(
-          "Invite was created but no URL was returned. Update /api/crm/booking-invite to return { url }."
+          "Invite was created but no URL was returned. Update /api/crm/booking-invite to return { url }.",
         );
       }
 
@@ -1276,7 +1453,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         await navigator.clipboard.writeText(inviteUrl);
         setInviteSuccess("Booking link created and copied to clipboard.");
       } catch {
-        setInviteSuccess("Booking link created. Copy manually from the latest link box.");
+        setInviteSuccess(
+          "Booking link created. Copy manually from the latest link box.",
+        );
       }
     } catch (e: any) {
       setInviteError(String(e?.message ?? "Failed to create booking invite"));
@@ -1298,17 +1477,21 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       const accessToken = sessionData.session?.access_token ?? null;
       if (!accessToken) throw new Error("missing_session");
 
-      const res = await fetch(`/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/reject`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+      const res = await fetch(
+        `/api/crm/leads/${encodeURIComponent(normalizedLeadId)}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ teamId }),
         },
-        body: JSON.stringify({ teamId }),
-      });
+      );
 
-      const json = await res.json().catch(() => ({} as any));
-      if (!res.ok) throw new Error((json as any)?.error || `reject_failed_${res.status}`);
+      const json = await res.json().catch(() => ({}) as any);
+      if (!res.ok)
+        throw new Error((json as any)?.error || `reject_failed_${res.status}`);
 
       router.push("/leads");
     } catch (e: any) {
@@ -1325,7 +1508,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
     (async () => {
       try {
-        const { data: userRes, error: userError } = await supabase.auth.getUser();
+        const { data: userRes, error: userError } =
+          await supabase.auth.getUser();
 
         if (userError || !userRes.user) {
           if (!cancelled) {
@@ -1352,13 +1536,16 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
         if (!tId) {
           const metaTeam = (userRes.user.user_metadata as any)?.primary_team_id;
-          if (typeof metaTeam === "string" && metaTeam.length > 0) tId = metaTeam;
+          if (typeof metaTeam === "string" && metaTeam.length > 0)
+            tId = metaTeam;
         }
 
-        const roles = (((profile as any)?.role ?? []) as string[]) ?? [];
+        const rolesRaw = (profile as any)?.role;
+        const roles: string[] = Array.isArray(rolesRaw) ? rolesRaw : [];
         const normRoles = roles.map((r) => String(r).trim().toLowerCase());
 
-        const managerOrAdmin = normRoles.includes("manager") || normRoles.includes("admin");
+        const managerOrAdmin =
+          normRoles.includes("manager") || normRoles.includes("admin");
         const setter = normRoles.includes("setter");
 
         if (!cancelled) {
@@ -1430,8 +1617,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           return;
         }
 
-        const normalized = { ...leadRes, custom_values: leadRes.custom_values ?? {} };
-        setLead(normalized);
+        setLead({ ...leadRes, custom_values: leadRes.custom_values ?? {} });
 
         // prospector (creator)
         setCreator(null);
@@ -1443,7 +1629,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             .maybeSingle();
 
           if (!cancelled && !creatorError && creatorProfile) {
-            const signedAvatar = await resolveAvatarUrl((creatorProfile as any).avatar_url);
+            const signedAvatar = await resolveAvatarUrl(
+              (creatorProfile as any).avatar_url,
+            );
             if (!cancelled)
               setCreator({
                 id: (creatorProfile as any).id,
@@ -1452,7 +1640,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 avatar_url: signedAvatar,
               });
           } else if (creatorError) {
-            logSupabaseError("[LeadDetail] Failed to load creator profile", creatorError);
+            logSupabaseError(
+              "[LeadDetail] Failed to load creator profile",
+              creatorError,
+            );
           }
         }
 
@@ -1469,7 +1660,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             .in("id", idsToLoad);
 
           if (error) {
-            logSupabaseError("[LeadDetail] Failed to load assigned names", error);
+            logSupabaseError(
+              "[LeadDetail] Failed to load assigned names",
+              error,
+            );
           } else {
             const map: Record<string, string> = {};
             for (const p of (data ?? []) as any[]) {
@@ -1486,8 +1680,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               const sId = String(leadRes.setter_id ?? "").trim();
               const cId = String(leadRes.closer_id ?? "").trim();
 
-              setSetterName(sId ? merged[sId] ?? "Team member" : null);
-              setCloserName(cId ? merged[cId] ?? "Team member" : null);
+              setSetterName(sId ? (merged[sId] ?? "Team member") : null);
+              setCloserName(cId ? (merged[cId] ?? "Team member") : null);
             }
           }
         } else {
@@ -1590,7 +1784,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         const rows = await loadBookingLinks(teamId);
         if (!cancelled) setBookingLinks(rows);
       } catch (e: any) {
-        if (!cancelled) setBookingLinksError(String(e?.message ?? "Failed to load schedule pages"));
+        if (!cancelled)
+          setBookingLinksError(
+            String(e?.message ?? "Failed to load schedule pages"),
+          );
       } finally {
         if (!cancelled) setBookingLinksLoading(false);
       }
@@ -1612,24 +1809,40 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     const legacy = String((cv as any).lead_name ?? "").trim();
     if (legacy) return legacy;
 
-    const preferredKeys = ["name", "full_name", "first_name", "last_name", "company", "account", "email"];
-    const lowerEntries = Object.entries(cv).map(([k, v]) => [k.toLowerCase(), v] as const);
+    const preferredKeys = [
+      "name",
+      "full_name",
+      "first_name",
+      "last_name",
+      "company",
+      "account",
+      "email",
+    ];
+    const lowerEntries = Object.entries(cv).map(
+      ([k, v]) => [k.toLowerCase(), v] as const,
+    );
 
     for (const pref of preferredKeys) {
       const match = lowerEntries.find(
-        ([key, value]) => key.includes(pref) && value != null && String(value).trim() !== ""
+        ([key, value]) =>
+          key.includes(pref) && value != null && String(value).trim() !== "",
       );
       if (match) return String(match[1]).trim();
     }
 
-    const anyField = lowerEntries.find(([, value]) => value != null && String(value).trim() !== "");
+    const anyField = lowerEntries.find(
+      ([, value]) => value != null && String(value).trim() !== "",
+    );
     if (anyField) return String(anyField[1]).trim();
 
     const stageLabel = lead.stage || "Pipeline";
     return `Lead in “${stageLabel}” stage`;
   }, [lead]);
 
-  const leadInitials = useMemo(() => initialsFromSingleString(leadLabel), [leadLabel]);
+  const leadInitials = useMemo(
+    () => initialsFromSingleString(leadLabel),
+    [leadLabel],
+  );
 
   const bookingNameBySlug = useMemo(() => {
     const m = new Map<string, string>();
@@ -1679,7 +1892,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       });
     }
 
-    finalList.sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+    finalList.sort(
+      (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime(),
+    );
     return finalList;
   }, [messages, lead, leadLabel, creator]);
 
@@ -1745,7 +1960,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         .filter((p) => p.on && p.productId)
         .map((p) => p.productId);
 
-      const uniq = Array.from(new Set([...offerIds, ...closedIds].filter(isStripeProdOrPriceId)));
+      const uniq = Array.from(
+        new Set([...offerIds, ...closedIds].filter(isStripeProdOrPriceId)),
+      );
       if (uniq.length === 0) return;
 
       const missing = uniq.filter((id) => !productLabels[id]);
@@ -1763,36 +1980,50 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   }, [timelineMessages, productLabels]);
 
   /* ---------- early returns ---------- */
-  if (!mounted || !workspaceLoaded || loading) {
-    return <LeadDetailPageSkeleton />;
-  }
+  if (!workspaceLoaded || loading) return <LeadDetailPageSkeleton />;
 
   if (workspaceLoaded && !teamId) {
     return (
       <p className="text-sm text-slate-500">
-        You don&apos;t seem to be in any team yet. Open this page from a workspace, or complete onboarding first.
+        You don&apos;t seem to be in any team yet. Open this page from a
+        workspace, or complete onboarding first.
       </p>
     );
   }
 
   if (!hasLeadId) {
-    return <p className="text-sm text-rose-600">Missing lead id in route params (check your dynamic segment name).</p>;
+    return (
+      <p className="text-sm text-rose-600">
+        Missing lead id in route params (check your dynamic segment name).
+      </p>
+    );
   }
 
   if (!lead) return <p className="text-sm text-slate-500">Lead not found.</p>;
 
-  const createdDT = DateTime.fromISO(lead.created_at, { setZone: true }).setZone(viewerTz || "UTC");
-  const createdLabel = createdDT.isValid ? createdDT.toLocaleString(DateTime.DATETIME_SHORT) : lead.created_at;
+  const createdDT = DateTime.fromISO(lead.created_at, {
+    setZone: true,
+  }).setZone(viewerTz || "UTC");
+  const createdLabel = createdDT.isValid
+    ? createdDT.toLocaleString(DateTime.DATETIME_SHORT)
+    : lead.created_at;
 
   const updatedIso = lead.updated_at ?? null;
-  const updatedDT = updatedIso ? DateTime.fromISO(updatedIso, { setZone: true }).setZone(viewerTz || "UTC") : null;
-  const updatedLabel = updatedDT && updatedDT.isValid ? updatedDT.toLocaleString(DateTime.DATETIME_SHORT) : "—";
+  const updatedDT = updatedIso
+    ? DateTime.fromISO(updatedIso, { setZone: true }).setZone(viewerTz || "UTC")
+    : null;
+  const updatedLabel =
+    updatedDT && updatedDT.isValid
+      ? updatedDT.toLocaleString(DateTime.DATETIME_SHORT)
+      : "—";
 
   const score = lead.score ?? null;
   const gradeInfo = getScoreGrade(score);
 
   const contactValue = String(lead.primary_contact_value ?? "").trim();
-  const contactLink = contactValue ? contactHref(lead.primary_contact_type, contactValue) : null;
+  const contactLink = contactValue
+    ? contactHref(lead.primary_contact_type, contactValue)
+    : null;
 
   const postal = lead.postal_code?.trim() || "";
   const city = lead.city?.trim() || "";
@@ -1809,8 +2040,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         <div className="space-y-6 pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">{leadLabel}</h1>
-              <p className="text-sm text-slate-500">Created on {createdLabel}</p>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                {leadLabel}
+              </h1>
+              <p className="text-sm text-slate-500">
+                Created on {createdLabel}
+              </p>
               {rejectError && (
                 <div className="mt-3">
                   <InlineAlert
@@ -1829,7 +2064,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 <button
                   type="button"
                   disabled={!normalizedLeadId || callsCheckLoading}
-                  onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/calls`)}
+                  onClick={() =>
+                    router.push(
+                      `/leads/${encodeURIComponent(normalizedLeadId)}/calls`,
+                    )
+                  }
                   className={[
                     "rounded-lg px-3 py-1.5 text-xs font-semibold",
                     "border border-emerald-300",
@@ -1876,7 +2115,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               {canManageLeadActions && (
                 <button
                   type="button"
-                  onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/edit`)}
+                  onClick={() =>
+                    router.push(
+                      `/leads/${encodeURIComponent(normalizedLeadId)}/edit`,
+                    )
+                  }
                   className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700 cursor-pointer h-[28px] w-16"
                 >
                   Edit
@@ -1886,7 +2129,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               {canDeleteLead && (
                 <button
                   type="button"
-                  onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/delete`)}
+                  onClick={() =>
+                    router.push(
+                      `/leads/${encodeURIComponent(normalizedLeadId)}/delete`,
+                    )
+                  }
                   className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer h-[28px] w-16"
                 >
                   Delete
@@ -1909,7 +2156,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           {/* Score */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">Lead Score</h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              Lead Score
+            </h2>
             {score != null ? (
               <div className="flex items-center gap-3">
                 <span
@@ -1921,17 +2170,25 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   <p className="text-sm font-semibold text-slate-900">
                     {score} · {gradeInfo.label}
                   </p>
-                  {updatedLabel !== "—" && <p className="text-[11px] text-slate-500">Updated {updatedLabel}</p>}
+                  {updatedLabel !== "—" && (
+                    <p className="text-[11px] text-slate-500">
+                      Updated {updatedLabel}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-500">No score yet. Configure lead scoring in Settings → Lead scoring.</p>
+              <p className="text-xs text-slate-500">
+                No score yet. Configure lead scoring in Settings → Lead scoring.
+              </p>
             )}
           </div>
 
           {/* Stage */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">Pipeline Stage</h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              Pipeline Stage
+            </h2>
             <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
               {lead.stage || "—"}
             </span>
@@ -1939,26 +2196,43 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           {/* Assigned (closer only if not null) */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Assigned</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Assigned
+            </h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Prospector</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Prospector
+                </p>
                 <p className="text-sm text-slate-800">
-                  {creator ? `${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "Team member" : "—"}
+                  {creator
+                    ? `${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() ||
+                      "Team member"
+                    : "—"}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Setter</p>
-                <p className="text-sm text-slate-800">{lead.setter_id ? safeValue(setterName ?? "Team member") : "—"}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Setter
+                </p>
+                <p className="text-sm text-slate-800">
+                  {lead.setter_id
+                    ? safeValue(setterName ?? "Team member")
+                    : "—"}
+                </p>
               </div>
 
               {/* ✅ REQUIRED: closer only renders when closer_id is NOT null */}
               {lead.closer_id ? (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Closer</p>
-                  <p className="text-sm text-slate-800">{safeValue(closerName ?? "Team member")}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Closer
+                  </p>
+                  <p className="text-sm text-slate-800">
+                    {safeValue(closerName ?? "Team member")}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -1966,50 +2240,80 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           {/* Core details */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Core Details</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Core Details
+            </h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1 md:col-span-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Lead Name</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Lead Name
+                </p>
                 <p className="text-sm text-slate-800">{safeValue(leadLabel)}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Niche / Industry</p>
-                <p className="text-sm text-slate-800">{safeValue(lead.niche)}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Niche / Industry
+                </p>
+                <p className="text-sm text-slate-800">
+                  {safeValue(lead.niche)}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Lead Type</p>
-                <p className="text-sm text-slate-800">{labelizeEnum(lead.lead_type)}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Lead Type
+                </p>
+                <p className="text-sm text-slate-800">
+                  {labelizeEnum(lead.lead_type)}
+                </p>
               </div>
 
               {lead.lead_type === "individual" && (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Gender</p>
-                  <p className="text-sm text-slate-800">{labelizeEnum(lead.gender)}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Gender
+                  </p>
+                  <p className="text-sm text-slate-800">
+                    {labelizeEnum(lead.gender)}
+                  </p>
                 </div>
               )}
 
               <div className="space-y-1 md:col-span-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Location</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Location
+                </p>
                 <p className="text-sm text-slate-800">{locationLine || "—"}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Primary Contact Type</p>
-                <p className="text-sm text-slate-800">{labelizeEnum(lead.primary_contact_type)}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Primary Contact Type
+                </p>
+                <p className="text-sm text-slate-800">
+                  {labelizeEnum(lead.primary_contact_type)}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Primary Contact</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Primary Contact
+                </p>
 
                 {contactLink ? (
                   <a
                     href={contactLink}
-                    target={contactLink.startsWith("mailto:") || contactLink.startsWith("tel:") ? undefined : "_blank"}
+                    target={
+                      contactLink.startsWith("mailto:") ||
+                      contactLink.startsWith("tel:")
+                        ? undefined
+                        : "_blank"
+                    }
                     rel={
-                      contactLink.startsWith("mailto:") || contactLink.startsWith("tel:")
+                      contactLink.startsWith("mailto:") ||
+                      contactLink.startsWith("tel:")
                         ? undefined
                         : "noopener noreferrer"
                     }
@@ -2018,13 +2322,17 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     <span className="truncate">{contactValue || "—"}</span>
                   </a>
                 ) : (
-                  <p className="text-sm text-slate-800">{contactValue ? contactValue : "—"}</p>
+                  <p className="text-sm text-slate-800">
+                    {contactValue ? contactValue : "—"}
+                  </p>
                 )}
               </div>
 
               {/* ✅ restored Source fields */}
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Source Category</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Source Category
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {lead.source_category ? (
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
@@ -2037,7 +2345,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Source Name</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Source Name
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {lead.source_name ? (
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
@@ -2053,21 +2363,35 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           {/* ✅ restored Custom fields */}
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Additional Fields</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Additional Fields
+            </h2>
 
             {customFieldDefs.length === 0 ? (
-              <p className="text-sm text-slate-500">No custom fields configured for this workspace yet.</p>
+              <p className="text-sm text-slate-500">
+                No custom fields configured for this workspace yet.
+              </p>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {customFieldDefs.map((field) => {
-                  const value = getCustomValue(lead.custom_values, normalizedCustom, field.storageKey);
+                  const value = getCustomValue(
+                    lead.custom_values,
+                    normalizedCustom,
+                    field.storageKey,
+                  );
 
-                  if (field.type === "link" && typeof value === "string" && value.trim()) {
+                  if (
+                    field.type === "link" &&
+                    typeof value === "string" &&
+                    value.trim()
+                  ) {
                     const raw = value.trim();
                     const href = normalizeUrl(raw);
                     return (
                       <div key={field.key} className="space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{field.label}</p>
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                          {field.label}
+                        </p>
                         <a
                           href={href}
                           target="_blank"
@@ -2082,8 +2406,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   return (
                     <div key={field.key} className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{field.label}</p>
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap">{formatCustomValue(value)}</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {field.label}
+                      </p>
+                      <p className="text-sm text-slate-800 whitespace-pre-wrap">
+                        {formatCustomValue(value)}
+                      </p>
                     </div>
                   );
                 })}
@@ -2095,7 +2423,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
             <div className="mb-3">
               <h2 className="text-sm font-semibold text-slate-800">Notes</h2>
-              <p className="mt-1 text-xs text-slate-500">Internal notes about this lead. Only visible to your team.</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Internal notes about this lead. Only visible to your team.
+              </p>
             </div>
 
             <div
@@ -2109,7 +2439,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 "focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300",
               ].join(" ")}
             >
-              {String(lead.notes ?? "").trim() ? String(lead.notes) : <span className="text-slate-400">No notes yet.</span>}
+              {String(lead.notes ?? "").trim() ? (
+                String(lead.notes)
+              ) : (
+                <span className="text-slate-400">No notes yet.</span>
+              )}
             </div>
           </div>
         </div>
@@ -2118,14 +2452,22 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">Activity Timeline</h2>
-              <p className="text-xs text-slate-500">Newest activity at the top.</p>
+              <h2 className="text-sm font-semibold text-slate-800">
+                Activity Timeline
+              </h2>
+              <p className="text-xs text-slate-500">
+                Newest activity at the top.
+              </p>
             </div>
 
             {canManageLeadActions && (
               <button
                 type="button"
-                onClick={() => router.push(`/leads/${encodeURIComponent(normalizedLeadId)}/messages`)}
+                onClick={() =>
+                  router.push(
+                    `/leads/${encodeURIComponent(normalizedLeadId)}/messages`,
+                  )
+                }
                 className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-600 shadow-sm hover:border-emerald-400 hover:bg-emerald-100 cursor-pointer"
                 title="Log new message"
               >
@@ -2150,9 +2492,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   const isBookingLinkEvent =
                     isPipeline &&
-                    (bodyLower.includes("booking link") || bodyLower.includes("/b/") || bodyLower.includes("schedule page"));
+                    (bodyLower.includes("booking link") ||
+                      bodyLower.includes("/b/") ||
+                      bodyLower.includes("schedule page"));
 
-                  const isBookedCallEvent = isPipeline && isBookedCallMessage(m);
+                  const isBookedCallEvent =
+                    isPipeline && isBookedCallMessage(m);
 
                   const isLeadCreatedEvent = isLeadCreatedTimelineMessage(m);
                   const isRejectedEvent = isLeadRejectedEvent(m);
@@ -2169,17 +2514,29 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   const prospectorName = fullName || "Team member";
 
-                  const authorName = isInbound ? leadLabel : isLeadCreatedEvent ? prospectorName : fullName || "Team member";
+                  const authorName = isInbound
+                    ? leadLabel
+                    : isLeadCreatedEvent
+                      ? prospectorName
+                      : fullName || "Team member";
                   const roleLabel = isInbound ? "Lead" : "Team";
 
-                  const avatarUrl = isOutbound ? m.sender?.avatar_url ?? null : null;
-                  const initials = isOutbound ? initialsFromName(first, last) : leadInitials;
+                  const avatarUrl = isOutbound
+                    ? (m.sender?.avatar_url ?? null)
+                    : null;
+                  const initials = isOutbound
+                    ? initialsFromName(first, last)
+                    : leadInitials;
 
-                  const tsLabel = fmtMessageTimestamp(m.sent_at, viewerTz || "UTC");
+                  const tsLabel = fmtMessageTimestamp(
+                    m.sent_at,
+                    viewerTz || "UTC",
+                  );
 
                   let pipelineIcon = "/icons/stage-change.svg";
                   if (isLeadCreatedEvent) pipelineIcon = "/icons/new-lead.svg";
-                  else if (isRejectedEvent) pipelineIcon = "/icons/lead-rejected.svg";
+                  else if (isRejectedEvent)
+                    pipelineIcon = "/icons/lead-rejected.svg";
                   else if (isAttendance) {
                     const parts = String(m.body || "").split("|");
                     const next = parts[3] ?? "unknown";
@@ -2190,35 +2547,49 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     pipelineIcon = "/icons/call-closed.svg";
                   } else if (isLegacyOutcome) {
                     pipelineIcon = iconForLegacyOutcome(m.body);
-                  } else if (isBookedCallEvent) pipelineIcon = "/icons/booked-call.svg";
-                  else if (isBookingLinkEvent) pipelineIcon = "/icons/booking-link.svg";
+                  } else if (isBookedCallEvent)
+                    pipelineIcon = "/icons/booked-call.svg";
+                  else if (isBookingLinkEvent)
+                    pipelineIcon = "/icons/booking-link.svg";
 
                   const pipelineAlt = isLeadCreatedEvent
                     ? "New lead"
                     : isRejectedEvent
-                    ? "Lead rejected"
-                    : isAttendance
-                    ? "Call status"
-                    : isOfferMade
-                    ? "Offer made"
-                    : isClosed
-                    ? "Closed on call"
-                    : isLegacyOutcome
-                    ? "Call outcome update"
-                    : isBookedCallEvent
-                    ? "Call booked"
-                    : isBookingLinkEvent
-                    ? "Booking link sent"
-                    : "Pipeline activity";
+                      ? "Lead rejected"
+                      : isAttendance
+                        ? "Call status"
+                        : isOfferMade
+                          ? "Offer made"
+                          : isClosed
+                            ? "Closed on call"
+                            : isLegacyOutcome
+                              ? "Call outcome update"
+                              : isBookedCallEvent
+                                ? "Call booked"
+                                : isBookingLinkEvent
+                                  ? "Booking link sent"
+                                  : "Pipeline activity";
 
-                  const offerParsed = isOfferMade ? parseOfferMade(m.body) : null;
-                  const offerTitle = offerParsed?.productId ? productLabels[offerParsed.productId] ?? null : null;
+                  const offerParsed = isOfferMade
+                    ? parseOfferMade(m.body)
+                    : null;
+                  const offerTitle = offerParsed?.productId
+                    ? (productLabels[offerParsed.productId] ?? null)
+                    : null;
 
-                  const closedParsed = isClosed ? parseClosedOnCall(m.body) : null;
-                  const closedTitle = closedParsed?.productId ? productLabels[closedParsed.productId] ?? null : null;
+                  const closedParsed = isClosed
+                    ? parseClosedOnCall(m.body)
+                    : null;
+                  const closedTitle = closedParsed?.productId
+                    ? (productLabels[closedParsed.productId] ?? null)
+                    : null;
 
-                  const rejectedParsed = isRejectedEvent ? parseLeadRejected(m.body) : null;
-                  const newSetterName = rejectedParsed?.newSetterId ? profileLabels[rejectedParsed.newSetterId] ?? null : null;
+                  const rejectedParsed = isRejectedEvent
+                    ? parseLeadRejected(m.body)
+                    : null;
+                  const newSetterName = rejectedParsed?.newSetterId
+                    ? (profileLabels[rejectedParsed.newSetterId] ?? null)
+                    : null;
 
                   return (
                     <div key={m.id} className="flex gap-2">
@@ -2250,8 +2621,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                           <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                             <span className="flex items-center gap-1">
-                              <span className="font-semibold text-slate-700">{authorName}</span>
-                              <span className="text-slate-400">· {roleLabel} · {formatChannel(m.channel)}</span>
+                              <span className="font-semibold text-slate-700">
+                                {authorName}
+                              </span>
+                              <span className="text-slate-400">
+                                · {roleLabel} · {formatChannel(m.channel)}
+                              </span>
                             </span>
                             <span>{tsLabel}</span>
                           </div>
@@ -2260,20 +2635,25 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                             {isLeadCreatedEvent
                               ? formatLeadCreatedBody(m.body, leadLabel)
                               : isRejectedEvent
-                              ? formatLeadRejectedBody(m.body, newSetterName)
-                              : isAttendance
-                              ? formatAttendanceBody(m.body)
-                              : isOfferMade
-                              ? formatOfferMadeBody(m.body, offerTitle)
-                              : isClosed
-                              ? formatClosedBody(m.body, closedTitle)
-                              : isLegacyOutcome
-                              ? formatLegacyOutcomeBody(m.body)
-                              : isBookedCallEvent
-                              ? formatBookedCallBody(m.body, viewerTz || "UTC")
-                              : isBookingLinkEvent
-                              ? formatBookingLinkTimelineBody(m.body)
-                              : m.body}
+                                ? formatLeadRejectedBody(m.body, newSetterName)
+                                : isAttendance
+                                  ? formatAttendanceBody(m.body)
+                                  : isOfferMade
+                                    ? formatOfferMadeBody(m.body, offerTitle)
+                                    : isClosed
+                                      ? formatClosedBody(m.body, closedTitle)
+                                      : isLegacyOutcome
+                                        ? formatLegacyOutcomeBody(m.body)
+                                        : isBookedCallEvent
+                                          ? formatBookedCallBody(
+                                              m.body,
+                                              viewerTz || "UTC",
+                                            )
+                                          : isBookingLinkEvent
+                                            ? formatBookingLinkTimelineBody(
+                                                m.body,
+                                              )
+                                            : m.body}
                           </p>
                         </div>
                       </div>
@@ -2289,7 +2669,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       {/* Booking modal */}
       {isBookingModalOpen && canManageLeadActions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="absolute inset-0" onClick={() => setIsBookingModalOpen(false)} />
+          <div
+            className="absolute inset-0"
+            onClick={() => setIsBookingModalOpen(false)}
+          />
 
           <div
             role="dialog"
@@ -2301,7 +2684,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               <div>
                 <h2 className="text-lg font-semibold">Create booking link</h2>
                 <p className="mt-1 text-xs text-indigo-100">
-                  Choose a schedule page below. We’ll generate a unique invite for this lead and log it in the timeline.
+                  Choose a schedule page below. We’ll generate a unique invite
+                  for this lead and log it in the timeline.
                 </p>
               </div>
 
@@ -2336,8 +2720,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Latest link</div>
-                      <div className="mt-1 truncate text-xs font-medium text-slate-800">{lastInviteUrl}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Latest link
+                      </div>
+                      <div className="mt-1 truncate text-xs font-medium text-slate-800">
+                        {lastInviteUrl}
+                      </div>
                     </div>
 
                     <button
@@ -2348,7 +2736,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           await navigator.clipboard.writeText(lastInviteUrl);
                           setInviteSuccess("Booking link copied to clipboard.");
                         } catch {
-                          setInviteSuccess("Copy failed — copy manually from the link.");
+                          setInviteSuccess(
+                            "Copy failed — copy manually from the link.",
+                          );
                         }
                       }}
                     >
@@ -2359,7 +2749,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               )}
 
               {bookingLinksLoading ? (
-                <p className="text-sm text-slate-500">Loading schedule pages…</p>
+                <p className="text-sm text-slate-500">
+                  Loading schedule pages…
+                </p>
               ) : activeBookingLinks.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6">
                   <div className="flex items-start gap-3">
@@ -2370,9 +2762,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     />
 
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">No schedule pages yet</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        No schedule pages yet
+                      </p>
                       <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                        Create a schedule page first so you can generate a booking link for this lead.
+                        Create a schedule page first so you can generate a
+                        booking link for this lead.
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -2404,9 +2799,15 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
                             Schedule page
                           </th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Type</th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Host</th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">Action</th>
+                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                            Type
+                          </th>
+                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                            Host
+                          </th>
+                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                            Action
+                          </th>
                         </tr>
                       </thead>
 
@@ -2415,11 +2816,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           const isBusy = inviteLoadingId === link.id;
 
                           return (
-                            <tr key={link.id} className="group border-b border-slate-100 hover:bg-slate-50/70">
+                            <tr
+                              key={link.id}
+                              className="group border-b border-slate-100 hover:bg-slate-50/70"
+                            >
                               <td className="px-4 py-3">
                                 <div className="min-w-0">
-                                  <div className="truncate font-semibold text-slate-900">{link.name}</div>
-                                  <div className="mt-0.5 text-[11px] text-slate-500">/b/{link.slug}</div>
+                                  <div className="truncate font-semibold text-slate-900">
+                                    {link.name}
+                                  </div>
+                                  <div className="mt-0.5 text-[11px] text-slate-500">
+                                    /b/{link.slug}
+                                  </div>
                                 </div>
                               </td>
 
@@ -2435,7 +2843,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                               </td>
 
                               <td className="px-4 py-3">
-                                <span className="text-sm text-slate-700">{hostLabelForLink(link)}</span>
+                                <span className="text-sm text-slate-700">
+                                  {hostLabelForLink(link)}
+                                </span>
                               </td>
 
                               <td className="px-4 py-3">
@@ -2444,7 +2854,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                                   disabled={isBusy || !teamId || !leadIdIsUuid}
                                   onClick={() => createBookingInvite(link.id)}
                                   className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                                  title={!leadIdIsUuid ? "Lead id must be a UUID to create an invite." : undefined}
+                                  title={
+                                    !leadIdIsUuid
+                                      ? "Lead id must be a UUID to create an invite."
+                                      : undefined
+                                  }
                                 >
                                   {isBusy ? "Creating…" : "Create & copy"}
                                 </button>

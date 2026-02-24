@@ -15,6 +15,30 @@ function lighten(color: string, amount = 0.2): string {
     .padStart(2, "0")}${adj(b).toString(16).padStart(2, "0")}`;
 }
 
+/**
+ * Only allow "go back" to URLs on the same origin (prevents open redirects).
+ * If it’s not safe, we return null and the UI falls back to baseHref.
+ */
+function safeSameOriginHref(candidate: string | null): string | null {
+  if (!candidate) return null;
+
+  const raw = candidate.trim();
+  if (!raw) return null;
+
+  try {
+    // Accept relative paths like "/dashboard"
+    if (raw.startsWith("/")) return raw;
+
+    // Absolute URL: only accept if same origin
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}
+
 export default function PublicBookingErrorPage({
   title = "Booking link not found",
   message = "This booking link doesn’t exist, has expired, or is no longer available.",
@@ -35,9 +59,12 @@ export default function PublicBookingErrorPage({
         localStorage.getItem("faigata:lastReferrer") ||
         localStorage.getItem("faigata:lastVisitedUrl");
 
-      setBackHref(ref || null);
+      const safe = safeSameOriginHref(ref);
+      setBackHref(safe);
     } catch {
-      setBackHref(document.referrer || null);
+      // if localStorage access fails, still try referrer (then sanitize)
+      const safe = safeSameOriginHref(document.referrer || null);
+      setBackHref(safe);
     }
   }, []);
 
@@ -52,15 +79,23 @@ export default function PublicBookingErrorPage({
 
   const headerGradient = useMemo(
     () => `linear-gradient(135deg, ${lighten(primary, 0.25)}, ${primary})`,
-    [primary]
+    [primary],
   );
 
+  const buttonClass =
+    "inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white " +
+    "cursor-pointer transition " +
+    "hover:opacity-95 " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2";
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
         {/* Header */}
-        <div className="px-6 py-6 text-white" style={{ backgroundImage: headerGradient }}>
+        <div
+          className="px-6 py-6 text-white"
+          style={{ backgroundImage: headerGradient }}
+        >
           <p className="text-xs uppercase tracking-wide text-white/70">
             Faigata Scheduling
           </p>
@@ -77,8 +112,13 @@ export default function PublicBookingErrorPage({
             </p>
             <ul className="mt-2 list-disc pl-5 text-[12px] leading-relaxed text-slate-600">
               <li>The link may have been deleted or the slug was changed.</li>
-              <li>You might be on a different environment (local vs production).</li>
-              <li>Access may be restricted (e.g. database policies block public viewing).</li>
+              <li>
+                You might be on a different environment (local vs production).
+              </li>
+              <li>
+                Access may be restricted (e.g. database policies block public
+                viewing).
+              </li>
               <li>The URL may be incomplete or copied with a typo.</li>
             </ul>
           </div>
@@ -88,7 +128,7 @@ export default function PublicBookingErrorPage({
             {backHref ? (
               <a
                 href={backHref}
-                className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                className={buttonClass}
                 style={{ backgroundColor: primary }}
               >
                 Go back
@@ -96,7 +136,7 @@ export default function PublicBookingErrorPage({
             ) : (
               <Link
                 href={baseHref}
-                className="inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                className={buttonClass}
                 style={{ backgroundColor: primary }}
               >
                 Go back
@@ -105,7 +145,8 @@ export default function PublicBookingErrorPage({
           </div>
 
           <p className="mt-4 text-[11px] text-slate-400">
-            If you think this is a mistake, ask the sender to share the link again.
+            If you think this is a mistake, ask the sender to share the link
+            again.
           </p>
         </div>
 

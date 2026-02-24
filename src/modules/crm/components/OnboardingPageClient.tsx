@@ -18,7 +18,6 @@ interface CustomFieldRow {
   options?: string;
 }
 
-
 interface ConversionMetricRow {
   label: string;
   fromStage: string;
@@ -105,7 +104,6 @@ export function OnboardingPageClient() {
 
       if (error || !data.user) {
         alert("You need to be logged in to finish onboarding.");
-        // Optional: redirect to login
         window.location.href = "/login";
         return;
       }
@@ -156,7 +154,6 @@ export function OnboardingPageClient() {
       alert("Something went wrong. Please try again.");
     }
   }
-
 
   // Helpers
   function updateInvite(index: number, patch: Partial<InviteRow>) {
@@ -282,7 +279,11 @@ export function OnboardingPageClient() {
             type="button"
             onClick={back}
             disabled={stepIndex === 0}
-            className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-40 cursor-pointer"
+            className={`text-sm text-slate-500 hover:text-slate-700 ${
+              stepIndex === 0
+                ? "opacity-40 cursor-not-allowed"
+                : "cursor-pointer"
+            }`}
           >
             ← Back
           </button>
@@ -310,7 +311,7 @@ export function OnboardingPageClient() {
   );
 }
 
-/* ---------- Step components (same UI as before) ---------- */
+/* ---------- Step components ---------- */
 
 function StepTeamSetup(props: {
   companyName: string;
@@ -391,8 +392,8 @@ function StepInvites(props: {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Invite the people who will use Lumo with you. You can always add
-        more later.
+        Invite the people who will use Lumo with you. You can always add more
+        later.
       </p>
 
       <div className="space-y-3">
@@ -416,7 +417,9 @@ function StepInvites(props: {
               }
             >
               {ROLES.map((r) => (
-                <option className="cursor-pointer" key={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </select>
           </div>
@@ -504,7 +507,7 @@ function StepCustomFields(props: {
                 placeholder="Field label (e.g. Industry)"
               />
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer cursor-pointer"
+                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 value={field.type}
                 onChange={(e) =>
                   updateField(index, {
@@ -589,7 +592,7 @@ function StepImportLeads(props: {
 
         <button
           type="button"
-          className="text-xs text-indigo-600 font-medium hover:underline"
+          className="text-xs text-indigo-600 font-medium hover:underline cursor-pointer"
         >
           Download sample template
         </button>
@@ -641,7 +644,11 @@ function StepPipeline(props: {
             <button
               type="button"
               onClick={() => removeStage(index)}
-              className="text-xs text-slate-500 hover:text-red-500 cursor-pointer"
+              className={`text-xs text-slate-500 hover:text-red-500 ${
+                stages.length <= 2
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer"
+              }`}
               disabled={stages.length <= 2}
             >
               Remove
@@ -684,7 +691,7 @@ function StepConversionMetrics(props: {
     if (!metrics[index]) return;
 
     const updated = metrics.map((metric, i) =>
-      i === index ? { ...metric, ...patch } : metric
+      i === index ? { ...metric, ...patch } : metric,
     );
     setMetrics(updated);
   }
@@ -697,8 +704,8 @@ function StepConversionMetrics(props: {
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
         Give names to the conversion rates you care about. Each metric compares
-        how many leads move from one stage of the pipeline to another (e.g.
-        “New → Contacted” or “Qualified → Booked call”).
+        how many leads move from one stage of the pipeline to another (e.g. “New
+        → Contacted” or “Qualified → Booked call”).
       </p>
 
       <div className="space-y-3">
@@ -711,9 +718,7 @@ function StepConversionMetrics(props: {
               <input
                 className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={metric.label}
-                onChange={(e) =>
-                  updateMetric(index, { label: e.target.value })
-                }
+                onChange={(e) => updateMetric(index, { label: e.target.value })}
                 placeholder="Metric name (e.g. Reply rate, Booking rate)"
               />
 

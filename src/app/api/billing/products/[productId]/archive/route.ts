@@ -7,10 +7,26 @@ import { getAuthedBillingContext } from "@/app/api/utils/authedBilling";
 
 export const runtime = "nodejs";
 
+type RouteCtx = { params: Promise<{ productId: string }> };
+
 type Role = "admin" | "manager" | "closer" | "member";
 
+function safeDecode(v: string) {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
+function isStripeProductId(id: string) {
+  return /^prod_[A-Za-z0-9]+$/.test(id);
+}
+
 function normalizeRoleOne(v: unknown): Role {
-  const s = String(v ?? "").trim().toLowerCase();
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
   if (s === "admin") return "admin";
   if (s === "manager") return "manager";
   if (s === "closer") return "closer";
@@ -34,7 +50,6 @@ function normalizeRole(v: unknown): Role {
     set.add(normalizeRoleOne(v));
   }
 
-  // default
   if (set.size === 0) return "member";
 
   // pick highest
@@ -44,13 +59,26 @@ function normalizeRole(v: unknown): Role {
   return "member";
 }
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
+export async function POST(req: NextRequest, ctx: RouteCtx) {
   // ✅ Next.js: params is a Promise
-  const { productId } = await ctx.params;
-  const pid = String(productId ?? "").trim();
+  const { productId: raw } = await ctx.params;
+  const pid = safeDecode(String(raw ?? "")).trim();
+  const lower = pid.toLowerCase();
 
-  if (!pid || pid === "undefined") {
+  if (!pid || lower === "undefined" || lower === "null") {
     return NextResponse.json({ error: "missing_product_id" }, { status: 400 });
+  }
+
+  // Optional but very helpful guard (avoids calling Stripe with garbage)
+  if (!isStripeProductId(pid)) {
+    return NextResponse.json(
+      {
+        error: "invalid_product_id",
+        hint: "Expected Stripe Product ID like prod_123...",
+        received: pid,
+      },
+      { status: 400 },
+    );
   }
 
   const billingCtx = await getAuthedBillingContext(req);
@@ -68,13 +96,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ productId:
         message: "You do not have permission to archive products.",
         role,
       },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
   const sb = adminClient();
 
-  // Optional safety: verify product belongs to org (prevents cross-org updates)
+  // Safety: verify product belongs to org (prevents cross-org updates)
   const { data: productRow, error: prodLookupErr } = await sb
     .from("organization_stripe_products")
     .select("stripe_product_id")
@@ -84,7 +112,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ productId:
     .maybeSingle();
 
   if (prodLookupErr) {
-    return NextResponse.json({ error: "db_error", details: prodLookupErr }, { status: 500 });
+    return NextResponse.json(
+      { error: "db_error", detail: prodLookupErr.message },
+      { status: 500 },
+    );
   }
 
   if (!productRow) {
@@ -98,7 +129,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ productId:
     const updated = await stripe.products.update(
       pid,
       { active: false },
-      { stripeAccount: billingCtx.stripeAccountId }
+      { stripeAccount: billingCtx.stripeAccountId },
     );
 
     // ✅ Mirror to DB
@@ -114,20 +145,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ productId:
       .eq("stripe_product_id", pid);
 
     if (updErr) {
-      return NextResponse.json({ error: "db_update_failed", details: updErr }, { status: 500 });
+      return NextResponse.json(
+        { error: "db_update_failed", detail: updErr.message },
+        { status: 500 },
+      );
     }
 
     // ✅ Activity log (best-effort; don’t fail request if this insert fails)
-    await sb.from("organization_stripe_catalog_activity").insert({
-      org_id: billingCtx.orgId,
-      livemode: billingCtx.livemode,
-      stripe_product_id: pid,
-      stripe_price_id: null,
-      actor_user_id: billingCtx.userId ?? null,
-      type: "product_archived",
-      payload: { stripe_active: updated.active },
-      created_at: new Date().toISOString(),
-    });
+    try {
+      await sb.from("organization_stripe_catalog_activity").insert({
+        org_id: billingCtx.orgId,
+        livemode: billingCtx.livemode,
+        stripe_product_id: pid,
+        stripe_price_id: null,
+        actor_user_id: billingCtx.userId ?? null,
+        type: "product_archived",
+        payload: { stripe_active: updated.active },
+      });
+    } catch {
+      // intentionally ignore logging failures
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
@@ -136,7 +173,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ productId:
         error: "stripe_update_failed",
         message: String(e?.message ?? e),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

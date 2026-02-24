@@ -1,60 +1,56 @@
 // src/modules/crm/components/InviteTeamMemberClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
-const AVAILABLE_ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
+const AVAILABLE_ROLES = [
+  "Prospector",
+  "Setter",
+  "Closer",
+  "Manager",
+  "Admin",
+] as const;
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
 
-const ROLE_CANONICAL: Record<string, TeamRole> = {
-  prospector: "Prospector",
-  setter: "Setter",
-  closer: "Closer",
-  manager: "Manager",
-  admin: "Admin",
-
-  Prospector: "Prospector",
-  Setter: "Setter",
-  Closer: "Closer",
-  Manager: "Manager",
-  Admin: "Admin",
-};
-
-function uniq<T>(arr: T[]) {
-  return Array.from(new Set(arr));
-}
-
-function toTeamRole(v: unknown): TeamRole | null {
-  if (v === null || v === undefined) return null;
-  const s = String(v).trim();
-  if (!s) return null;
-  return ROLE_CANONICAL[s] ?? ROLE_CANONICAL[s.toLowerCase()] ?? null;
-}
-
 function normalizeRoles(raw: unknown): TeamRole[] {
-  if (Array.isArray(raw)) return uniq(raw.map(toTeamRole).filter((r): r is TeamRole => Boolean(r)));
-  const single = toTeamRole(raw);
-  return single ? [single] : [];
+  const allowed = new Set<string>(AVAILABLE_ROLES);
+
+  const toRole = (v: unknown): TeamRole | null => {
+    const s = String(v ?? "").trim();
+    if (!s) return null;
+
+    const canonical = s[0]?.toUpperCase() + s.slice(1).toLowerCase(); // "admin" -> "Admin"
+    return allowed.has(canonical) ? (canonical as TeamRole) : null;
+  };
+
+  const roles = Array.isArray(raw) ? raw : [raw];
+  return Array.from(new Set(roles.map(toRole).filter(Boolean) as TeamRole[]));
 }
 
 export function InviteTeamMemberClient() {
   const router = useRouter();
-  const { loading: workspaceLoading } = useWorkspace(); // teamId not needed on client for the invite itself
+  const { loading: workspaceLoading } = useWorkspace();
 
-  const [currentRoles, setCurrentRoles] = useState<TeamRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [currentRoles, setCurrentRoles] = useState<TeamRole[]>([]);
 
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState<TeamRole[]>(["Setter"]);
-  const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const isAdmin = useMemo(() => currentRoles.includes("Admin"), [currentRoles]);
+  const isManager = useMemo(
+    () => currentRoles.includes("Manager") || isAdmin,
+    [currentRoles, isAdmin],
+  );
 
   useEffect(() => {
     if (workspaceLoading) return;
@@ -63,6 +59,9 @@ export function InviteTeamMemberClient() {
 
     (async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const { data: userRes } = await supabase.auth.getUser();
         if (!userRes.user) {
           router.replace("/login");
@@ -78,27 +77,20 @@ export function InviteTeamMemberClient() {
         if (cancelled) return;
 
         if (profErr) {
-          console.error("[InviteTeamMember] Failed to load profile roles", profErr);
+          console.error("[InviteTeamMember] profile load failed", profErr);
+          setError("Failed to load permissions. Please refresh.");
           setCurrentRoles([]);
           setCompanyId(null);
-          setError("Failed to load permissions. Please refresh.");
-          setLoading(false);
           return;
         }
 
-        // ✅ normalize roles regardless of casing/type in DB
         setCurrentRoles(normalizeRoles(data?.role));
-
-        if (data?.company_id) setCompanyId(String(data.company_id));
-        setLoading(false);
+        setCompanyId(data?.company_id ? String(data.company_id) : null);
       } catch (e) {
         console.error("[InviteTeamMember] Unexpected load error", e);
-        if (!cancelled) {
-          setCurrentRoles([]);
-          setCompanyId(null);
-          setError("Failed to load permissions. Please refresh.");
-          setLoading(false);
-        }
+        if (!cancelled) setError("Failed to load permissions. Please refresh.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -108,11 +100,12 @@ export function InviteTeamMemberClient() {
   }, [router, workspaceLoading]);
 
   if (workspaceLoading || loading) {
-    return <p className="text-sm text-slate-500">Loading workspace and permissions…</p>;
+    return (
+      <p className="text-sm text-slate-500">
+        Loading workspace and permissions…
+      </p>
+    );
   }
-
-  const isAdmin = currentRoles.includes("Admin");
-  const isManager = currentRoles.includes("Manager") || isAdmin;
 
   if (!isManager) {
     return (
@@ -123,7 +116,9 @@ export function InviteTeamMemberClient() {
   }
 
   function toggleRole(role: TeamRole) {
-    setRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+    setRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -131,21 +126,19 @@ export function InviteTeamMemberClient() {
     setError(null);
     setSuccess(null);
 
-    if (!email.trim() || roles.length === 0) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || roles.length === 0) {
       setError("Email and at least one role are required.");
       return;
     }
 
-    // Managers can’t assign Admin
     const safeRoles = isAdmin ? roles : roles.filter((r) => r !== "Admin");
 
     setSaving(true);
     try {
       const { data: sessionRes } = await supabase.auth.getSession();
       const token = sessionRes.session?.access_token;
-
       if (!token) {
-        setError("You are not logged in. Please log in again.");
         router.replace("/login");
         return;
       }
@@ -157,22 +150,16 @@ export function InviteTeamMemberClient() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: email.trim(),
+          email: trimmedEmail,
           roles: safeRoles,
           companyId,
         }),
       });
 
-      const text = await res.text();
-      let json: any = null;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        json = null;
-      }
+      const json = await res.json().catch(() => null);
 
       if (!res.ok || !json?.ok) {
-        console.error("[team-invites] failed", json ?? text);
+        console.error("[team-invites] failed", json);
         setError(json?.error ?? "Failed to send invite.");
         return;
       }
@@ -192,8 +179,12 @@ export function InviteTeamMemberClient() {
   return (
     <div className="max-w-2xl space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Invite team members</h1>
-        <p className="mt-1 text-sm text-slate-600">Send an invitation and choose one or more roles.</p>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Invite team members
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Send an invitation and choose one or more roles.
+        </p>
         {!isAdmin && (
           <p className="mt-1 text-xs text-slate-500">
             You are a Manager – you can’t grant Admin, only Admins can.
@@ -201,9 +192,14 @@ export function InviteTeamMemberClient() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
         <div className="space-y-1">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Email
+          </label>
           <input
             type="email"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -214,20 +210,25 @@ export function InviteTeamMemberClient() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Roles</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Roles
+          </p>
           <div className="flex flex-wrap gap-3">
             {AVAILABLE_ROLES.map((role) => {
               const disabled = role === "Admin" && !isAdmin;
+
               return (
                 <label
                   key={role}
                   className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 ${
-                    disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-indigo-300"
+                    disabled
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer hover:border-indigo-300"
                   }`}
                 >
                   <input
                     type="checkbox"
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     disabled={disabled}
                     checked={roles.includes(role)}
                     onChange={() => !disabled && toggleRole(role)}
@@ -240,13 +241,15 @@ export function InviteTeamMemberClient() {
         </div>
 
         {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
-        {success && <p className="text-xs font-medium text-emerald-600">{success}</p>}
+        {success && (
+          <p className="text-xs font-medium text-emerald-600">{success}</p>
+        )}
 
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Sending…" : "Send Invite"}
           </button>

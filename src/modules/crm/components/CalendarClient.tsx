@@ -21,13 +21,16 @@ type ApiEvent = {
   location?: string | null;
 };
 
+const HOUR_START = 0;
+const HOUR_END = 23;
+const ROW_HEIGHT_CLASS = "h-10";
+
 function getLocalTz() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 function startOfWeek(dt: DateTime) {
-  const weekday = dt.weekday; // Mon=1..Sun=7
-  return dt.minus({ days: weekday - 1 }).startOf("day");
+  return dt.minus({ days: dt.weekday - 1 }).startOf("day"); // Mon start
 }
 
 function clamp(dt: DateTime, min: DateTime, max: DateTime) {
@@ -46,7 +49,6 @@ function LoadingSkeleton({ rows = 10 }: { rows?: number }) {
         </div>
 
         <div className="mt-4 grid grid-cols-[72px_repeat(7,minmax(0,1fr))] gap-0 overflow-hidden rounded-xl border border-slate-100">
-          {/* header row */}
           <div className="h-10 border-b border-r border-slate-100 bg-slate-50" />
           {Array.from({ length: 7 }).map((_, i) => (
             <div
@@ -55,7 +57,6 @@ function LoadingSkeleton({ rows = 10 }: { rows?: number }) {
             />
           ))}
 
-          {/* all-day row */}
           <div className="h-10 border-b border-r border-slate-100 bg-white" />
           {Array.from({ length: 7 }).map((_, i) => (
             <div
@@ -64,7 +65,6 @@ function LoadingSkeleton({ rows = 10 }: { rows?: number }) {
             />
           ))}
 
-          {/* grid rows */}
           {Array.from({ length: rows }).map((_, r) => (
             <div key={`r-${r}`} className="contents">
               <div className="h-10 border-b border-r border-slate-100 bg-white px-3 py-2">
@@ -94,32 +94,27 @@ export default function CalendarClient() {
   const [err, setErr] = useState<string | null>(null);
 
   const [weekAnchor, setWeekAnchor] = useState(() =>
-    DateTime.now().startOf("day")
+    DateTime.now().startOf("day"),
   );
 
-  useEffect(() => {
-    setTz(getLocalTz());
-  }, []);
+  useEffect(() => setTz(getLocalTz()), []);
 
   const weekStart = useMemo(
     () => startOfWeek(weekAnchor.setZone(tz)),
-    [weekAnchor, tz]
+    [weekAnchor, tz],
   );
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })),
-    [weekStart]
+    [weekStart],
   );
 
-  // ✅ FULL DAY view (00:00–24:00)
-  const hourStart = 0;
-  const hourEnd = 23;
-
-  // ✅ Smaller rows
-  const rowHeightClass = "h-10";
   const hours = useMemo(
     () =>
-      Array.from({ length: hourEnd - hourStart + 1 }, (_, i) => hourStart + i),
-    []
+      Array.from(
+        { length: HOUR_END - HOUR_START + 1 },
+        (_, i) => HOUR_START + i,
+      ),
+    [],
   );
 
   useEffect(() => {
@@ -134,15 +129,15 @@ export default function CalendarClient() {
         const from = weekStart.toUTC().toISO();
         const to = weekStart.plus({ days: 7 }).toUTC().toISO();
 
-        const url = `/api/crm/calendar/freebusy?tz=${encodeURIComponent(
-          tz
-        )}&from=${encodeURIComponent(from!)}&to=${encodeURIComponent(to!)}`;
-
         const { data: sessionRes, error: sessionErr } =
           await supabase.auth.getSession();
         const token = sessionRes.session?.access_token;
-
         if (sessionErr || !token) throw new Error("unauthorized");
+
+        const url =
+          `/api/crm/calendar/freebusy?tz=${encodeURIComponent(tz)}` +
+          `&from=${encodeURIComponent(from!)}` +
+          `&to=${encodeURIComponent(to!)}`;
 
         const res = await fetch(url, {
           cache: "no-store",
@@ -151,7 +146,7 @@ export default function CalendarClient() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const json = await res.json().catch(() => ({}));
+        const json = (await res.json().catch(() => ({}))) as any;
         if (!res.ok) throw new Error(json?.error || `failed_${res.status}`);
 
         if (!cancelled) {
@@ -171,24 +166,28 @@ export default function CalendarClient() {
     };
   }, [tz, weekStart]);
 
-  const busyInWeek = useMemo(() => {
-    return busy
-      .map((b) => ({
-        start: DateTime.fromISO(b.start, { setZone: true }).setZone(tz),
-        end: DateTime.fromISO(b.end, { setZone: true }).setZone(tz),
-      }))
-      .filter((b) => b.start.isValid && b.end.isValid);
-  }, [busy, tz]);
+  const busyInWeek = useMemo(
+    () =>
+      busy
+        .map((b) => ({
+          start: DateTime.fromISO(b.start, { setZone: true }).setZone(tz),
+          end: DateTime.fromISO(b.end, { setZone: true }).setZone(tz),
+        }))
+        .filter((b) => b.start.isValid && b.end.isValid),
+    [busy, tz],
+  );
 
-  const eventsInWeek = useMemo(() => {
-    return events
-      .map((e) => ({
-        ...e,
-        startDT: DateTime.fromISO(e.start, { setZone: true }).setZone(tz),
-        endDT: DateTime.fromISO(e.end, { setZone: true }).setZone(tz),
-      }))
-      .filter((e) => e.startDT.isValid && e.endDT.isValid);
-  }, [events, tz]);
+  const eventsInWeek = useMemo(
+    () =>
+      events
+        .map((e) => ({
+          ...e,
+          startDT: DateTime.fromISO(e.start, { setZone: true }).setZone(tz),
+          endDT: DateTime.fromISO(e.end, { setZone: true }).setZone(tz),
+        }))
+        .filter((e) => e.startDT.isValid && e.endDT.isValid),
+    [events, tz],
+  );
 
   const allDayEventsByDay = useMemo(() => {
     const map = new Map<string, ApiEvent[]>();
@@ -198,12 +197,13 @@ export default function CalendarClient() {
       if (!ev.allDay) continue;
 
       const startDay = ev.startDT.startOf("day");
-      const endDay = ev.endDT.startOf("day"); // Google end is exclusive for all-day
+      const endDay = ev.endDT.startOf("day"); // end exclusive for all-day
 
       for (let cur = startDay; cur < endDay; cur = cur.plus({ days: 1 })) {
         const key = cur.toISODate()!;
-        if (map.has(key)) {
-          map.get(key)!.push({
+        const list = map.get(key);
+        if (list) {
+          list.push({
             id: ev.id,
             title: ev.title,
             start: ev.start,
@@ -223,40 +223,37 @@ export default function CalendarClient() {
     return map;
   }, [eventsInWeek, days]);
 
-  // Convert time to vertical position
+  const spanMins = (HOUR_END - HOUR_START + 1) * 60;
+
   function topFor(dt: DateTime) {
-    const mins = dt.hour * 60 + dt.minute;
-    const base = hourStart * 60;
-    const span = (hourEnd - hourStart + 1) * 60;
-    return ((mins - base) / span) * 100;
+    const mins = dt.hour * 60 + dt.minute - HOUR_START * 60;
+    return (mins / spanMins) * 100;
   }
 
   function heightFor(start: DateTime, end: DateTime) {
     const dur = Math.max(0, end.diff(start, "minutes").minutes);
-    const span = (hourEnd - hourStart + 1) * 60;
-    return (dur / span) * 100;
+    return (dur / spanMins) * 100;
   }
 
-  // Overlap layout
   function layoutDayEvents(day: DateTime) {
     const dayStart = day.startOf("day");
     const dayEnd = day.endOf("day");
 
-    const visibleStart = dayStart.plus({ hours: hourStart });
-    const visibleEnd = dayStart.plus({ hours: hourEnd + 1 });
+    const visibleStart = dayStart.plus({ hours: HOUR_START });
+    const visibleEnd = dayStart.plus({ hours: HOUR_END + 1 });
 
     const timed = eventsInWeek
       .filter((e) => !e.allDay)
       .filter((e) => e.endDT > dayStart && e.startDT < dayEnd)
-      .map((e) => {
-        const s = clamp(e.startDT, visibleStart, visibleEnd);
-        const en = clamp(e.endDT, visibleStart, visibleEnd);
-        return { ...e, s, en };
-      })
+      .map((e) => ({
+        ...e,
+        s: clamp(e.startDT, visibleStart, visibleEnd),
+        en: clamp(e.endDT, visibleStart, visibleEnd),
+      }))
       .filter((e) => e.en > e.s)
       .sort((a, b) => a.s.toMillis() - b.s.toMillis());
 
-    type LaidOut = typeof timed[number] & { col: number; cols: number };
+    type LaidOut = (typeof timed)[number] & { col: number; cols: number };
 
     const active: LaidOut[] = [];
     const out: LaidOut[] = [];
@@ -281,15 +278,11 @@ export default function CalendarClient() {
     return out;
   }
 
-  const titleRange = `${weekStart.toFormat("MMM d")} – ${weekStart
-    .plus({ days: 6 })
-    .toFormat("MMM d, yyyy")}`;
-
+  const titleRange = `${weekStart.toFormat("MMM d")} – ${weekStart.plus({ days: 6 }).toFormat("MMM d, yyyy")}`;
   const now = DateTime.now().setZone(tz);
 
   return (
     <div className="p-6">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
@@ -327,10 +320,11 @@ export default function CalendarClient() {
         </div>
       </div>
 
-      {/* Card */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-          <div className="text-sm font-semibold text-slate-800">{titleRange}</div>
+          <div className="text-sm font-semibold text-slate-800">
+            {titleRange}
+          </div>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <ClockIcon className="h-4 w-4" />
             Times shown in {tz}
@@ -348,17 +342,15 @@ export default function CalendarClient() {
             {err === "unauthorized"
               ? "You’re not signed in (or your session expired). Please log in again."
               : err === "host_calendar_not_connected"
-              ? "Your Google Calendar isn’t connected yet."
-              : err === "host_calendar_reconnect_required"
-              ? "Please reconnect Google Calendar in Settings."
-              : err}
+                ? "Your Google Calendar isn’t connected yet."
+                : err === "host_calendar_reconnect_required"
+                  ? "Please reconnect Google Calendar in Settings."
+                  : err}
           </div>
         ) : loading ? (
-          // ✅ Better loading state than plain text
           <LoadingSkeleton rows={12} />
         ) : (
           <div className="grid grid-rows-[auto_auto_1fr]">
-            {/* Day headers */}
             <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-slate-100">
               <div className="px-3 py-3 text-[11px] font-semibold text-slate-500">
                 Time
@@ -375,11 +367,7 @@ export default function CalendarClient() {
                         {d.toFormat("ccc")}
                       </div>
                       <div
-                        className={`text-[11px] ${
-                          isToday
-                            ? "text-indigo-600 font-semibold"
-                            : "text-slate-500"
-                        }`}
+                        className={`text-[11px] ${isToday ? "text-indigo-600 font-semibold" : "text-slate-500"}`}
                       >
                         {d.toFormat("MMM d")}
                       </div>
@@ -395,7 +383,6 @@ export default function CalendarClient() {
               })}
             </div>
 
-            {/* All-day row */}
             <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-slate-100 bg-slate-50/40">
               <div className="px-3 py-2 text-[10px] font-semibold text-slate-500">
                 All-day
@@ -432,29 +419,25 @@ export default function CalendarClient() {
               })}
             </div>
 
-            {/* Main grid */}
             <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))]">
-              {/* Hour labels */}
               <div className="border-r border-slate-100 bg-white">
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className={`${rowHeightClass} border-b border-slate-50 px-3 py-1 text-[11px] text-slate-500`}
+                    className={`${ROW_HEIGHT_CLASS} border-b border-slate-50 px-3 py-1 text-[11px] text-slate-500`}
                   >
                     {DateTime.fromObject({ hour: h }).toFormat("ha")}
                   </div>
                 ))}
               </div>
 
-              {/* Days */}
               {days.map((day) => {
                 const dayStart = day.startOf("day");
                 const dayEnd = day.endOf("day");
 
                 const dayBusy = busyInWeek.filter(
-                  (b) => b.end > dayStart && b.start < dayEnd
+                  (b) => b.end > dayStart && b.start < dayEnd,
                 );
-
                 const laid = layoutDayEvents(day);
 
                 const showNow = day.hasSame(now, "day");
@@ -466,37 +449,37 @@ export default function CalendarClient() {
                     className="relative border-r border-slate-100 last:border-r-0"
                   >
                     <div className="relative">
-                      {/* grid lines */}
                       {hours.map((h) => (
                         <div
                           key={h}
-                          className={`${rowHeightClass} border-b border-slate-50`}
+                          className={`${ROW_HEIGHT_CLASS} border-b border-slate-50`}
                         />
                       ))}
 
-                      {/* hour lines across day */}
                       {hours.map((h) => (
                         <div
                           key={`line-${h}`}
                           className="absolute left-0 right-0 border-t"
                           style={{
-                            top: `${
-                              ((h - hourStart) / (hourEnd - hourStart + 1)) * 100
-                            }%`,
+                            top: `${((h - HOUR_START) / (HOUR_END - HOUR_START + 1)) * 100}%`,
                             borderColor: "rgba(148,163,184,0.18)",
                           }}
                         />
                       ))}
 
-                      {/* busy overlays */}
                       {dayBusy.map((b, idx) => {
-                        const visibleStart = dayStart.plus({ hours: hourStart });
-                        const visibleEnd = dayStart.plus({ hours: hourEnd + 1 });
+                        const visibleStart = dayStart.plus({
+                          hours: HOUR_START,
+                        });
+                        const visibleEnd = dayStart.plus({
+                          hours: HOUR_END + 1,
+                        });
 
                         if (b.end <= visibleStart || b.start >= visibleEnd)
                           return null;
 
-                        const s = b.start < visibleStart ? visibleStart : b.start;
+                        const s =
+                          b.start < visibleStart ? visibleStart : b.start;
                         const e = b.end > visibleEnd ? visibleEnd : b.end;
 
                         const top = topFor(s);
@@ -515,7 +498,6 @@ export default function CalendarClient() {
                         );
                       })}
 
-                      {/* Now line */}
                       {showNow && (
                         <div
                           className="absolute left-0 right-0 z-20 flex items-center"
@@ -526,7 +508,6 @@ export default function CalendarClient() {
                         </div>
                       )}
 
-                      {/* events */}
                       {laid.map((ev) => {
                         const top = topFor(ev.s);
                         const height = Math.max(1.8, heightFor(ev.s, ev.en));
@@ -538,11 +519,7 @@ export default function CalendarClient() {
                         const left = colW * ev.col + gutter / 2;
                         const width = colW - 1.2;
 
-                        const timeLabel = `${ev.s.toFormat(
-                          "HH:mm"
-                        )} – ${ev.en.toFormat("HH:mm")}`;
-                        const titleWithTime = `${ev.title}, ${timeLabel}`;
-
+                        const timeLabel = `${ev.s.toFormat("HH:mm")} – ${ev.en.toFormat("HH:mm")}`;
                         const showSecondLine = height > 10;
 
                         return (
@@ -558,12 +535,10 @@ export default function CalendarClient() {
                               backgroundColor: "rgba(79,70,229,0.12)",
                               color: "#1e1b4b",
                             }}
-                            title={`${ev.title} · ${timeLabel}${
-                              ev.location ? ` · ${ev.location}` : ""
-                            }`}
+                            title={`${ev.title} · ${timeLabel}${ev.location ? ` · ${ev.location}` : ""}`}
                           >
                             <div className="truncate text-[10px] font-semibold">
-                              {titleWithTime}
+                              {ev.title}, {timeLabel}
                             </div>
 
                             {showSecondLine && ev.location && (
@@ -584,7 +559,8 @@ export default function CalendarClient() {
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        Showing every hour (00:00 – 24:00). Event labels include “, HH:mm – HH:mm”.
+        Showing every hour (00:00 – 24:00). Event labels include “, HH:mm –
+        HH:mm”.
       </p>
     </div>
   );

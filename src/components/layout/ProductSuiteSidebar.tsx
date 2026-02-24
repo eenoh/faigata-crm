@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,50 +12,44 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
-  {
-    href: "/crm",
-    label: "Lumo",
-    iconSrc: "/icons/icon-crm.svg",
-  },
+  { href: "/crm", label: "Lumo", iconSrc: "/icons/icon-crm.svg" },
 ];
 
 export function ProductSuiteSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { collapsed, toggle } = useSidebar();
-  const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Hydration-safe render
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const widthClass = collapsed ? "w-16" : "w-64";
+  const brandRevealClass = collapsed ? "w-0 opacity-0" : "w-36 opacity-100";
+  const brandSlideClass = collapsed ? "-translate-x-3" : "translate-x-0";
+  const logoutRevealClass = collapsed
+    ? "w-0 opacity-0"
+    : "w-[60px] opacity-100";
+
+  const isActive = useMemo(
+    () => (href: string) =>
+      pathname === href || pathname.startsWith(href + "/"),
+    [pathname],
+  );
 
   async function handleLogout() {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
       await supabase.auth.signOut();
-      router.replace("/login");
     } catch (err) {
       console.error("[ProductSuiteSidebar] logout failed", err);
-      router.replace("/login");
     } finally {
+      router.replace("/login");
       setLoggingOut(false);
     }
   }
 
-  if (!mounted) {
-    return (
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r border-slate-200 bg-white shadow-sm" />
-    );
-  }
-
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${
-        collapsed ? "w-16" : "w-64"
-      }`}
+      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${widthClass}`}
     >
       {/* Brand row */}
       <div className="flex items-center px-3 pt-4 pb-6">
@@ -70,14 +64,10 @@ export function ProductSuiteSidebar() {
           />
 
           <div
-            className={`overflow-hidden transition-all duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-36 opacity-100"
-            }`}
+            className={`overflow-hidden transition-all duration-300 ${brandRevealClass}`}
           >
             <span
-              className={`block truncate text-lg font-semibold text-slate-900 transform transition-transform duration-300 ${
-                collapsed ? "-translate-x-3" : "translate-x-0"
-              }`}
+              className={`block truncate text-lg font-semibold text-slate-900 transform transition-transform duration-300 ${brandSlideClass}`}
             >
               Faigata
             </span>
@@ -88,19 +78,18 @@ export function ProductSuiteSidebar() {
       {/* Nav items */}
       <nav className="flex-1 space-y-1 px-2">
         {navItems.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = isActive(item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              title={collapsed ? item.label : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-indigo-50 text-indigo-600"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
-              title={collapsed ? item.label : undefined}
             >
               <Image
                 src={item.iconSrc}
@@ -115,21 +104,18 @@ export function ProductSuiteSidebar() {
         })}
       </nav>
 
-      {/* Logout button at bottom */}
+      {/* Logout button */}
       <div className="px-2 pb-3 pt-2 border-t border-slate-100">
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
           title={collapsed ? "Log out" : undefined}
+          className="flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
         >
           <ArrowRightOnRectangleIcon className="h-4 w-4 flex-shrink-0" />
 
-          {/* Smooth text reveal/hide, icon stays fixed */}
           <div
-            className={`ml-1 overflow-hidden transition-[width,opacity] duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-[60px] opacity-100"
-            }`}
+            className={`ml-1 overflow-hidden transition-[width,opacity] duration-300 ${logoutRevealClass}`}
           >
             <span className="whitespace-nowrap">
               {loggingOut ? "Logging out…" : "Log out"}

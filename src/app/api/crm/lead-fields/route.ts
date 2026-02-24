@@ -13,71 +13,77 @@ type DbLeadField = {
   position: number | null;
 };
 
-type Body =
-  | {
-      teamId?: string;
-      fields?: {
-        key: string;
-        label: string;
-        type: DbLeadField["type"];
-        options?: string[];
-      }[];
-    }
-  | null;
+type Body = {
+  teamId?: string;
+  fields?: {
+    key: string;
+    label: string;
+    type: DbLeadField["type"];
+    options?: string[];
+  }[];
+} | null;
+
+const json = (data: any, status = 200) => NextResponse.json(data, { status });
 
 /** POST = load OR save, depending on whether `fields` is present */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as Body;
-  const teamId = body?.teamId;
+  const teamId = typeof body?.teamId === "string" ? body.teamId.trim() : "";
 
-  if (!teamId) {
-    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
-  }
+  if (!teamId) return json({ error: "Missing teamId" }, 400);
 
   // ----- SAVE mode: body.fields present -----
   if (Array.isArray(body?.fields)) {
-    const fields = body.fields;
+    const input = body.fields;
 
     try {
-      // 1) delete existing
       const { error: delErr } = await supabaseAdmin
         .from("lead_fields")
         .delete()
         .eq("team_id", teamId);
-
       if (delErr) {
         console.error("[lead-fields] delete error", delErr);
-        return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
+        return json({ error: "Failed to save lead fields" }, 500);
       }
 
-      // 2) insert new
-      const rows = fields
-        .map((f, index) => ({
-          team_id: teamId,
-          key: String(f.key ?? "").trim(),
-          label: String(f.label ?? "").trim(),
-          type: f.type,
-          options:
-            f.type === "select" && Array.isArray(f.options)
+      const rows = input
+        .map((f, index) => {
+          const key = String(f?.key ?? "").trim();
+          const label = String(f?.label ?? "").trim();
+          const type = f?.type;
+
+          if (!key || !label) return null;
+
+          const options =
+            type === "select" && Array.isArray(f?.options)
               ? f.options.map((x) => String(x ?? "").trim()).filter(Boolean)
-              : [],
-          position: index,
-        }))
-        .filter((r) => r.key.length > 0 && r.label.length > 0);
+              : null; // ✅ store null for non-select to match DbLeadField.options
 
-      if (rows.length > 0) {
-        const { error: insErr } = await supabaseAdmin.from("lead_fields").insert(rows);
+          return {
+            team_id: teamId,
+            key,
+            label,
+            type,
+            options,
+            position: index,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => Boolean(x));
 
+      if (rows.length) {
+        const { error: insErr } = await supabaseAdmin
+          .from("lead_fields")
+          .insert(rows);
         if (insErr) {
           console.error("[lead-fields] insert error", insErr);
-          return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
+          return json({ error: "Failed to save lead fields" }, 500);
         }
       }
 
-      return NextResponse.json({ ok: true, count: rows.length });
+      return json({ ok: true, count: rows.length });
     } catch (err) {
       console.error("[lead-fields] save error", err);
-      return NextResponse.json({ error: "Failed to save lead fields" }, { status: 500 });
+      return json({ error: "Failed to save lead fields" }, 500);
     }
   }
 
@@ -91,25 +97,26 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("[lead-fields] fetch error", error);
-      return NextResponse.json({ error: "Failed to fetch lead fields" }, { status: 500 });
+      return json({ error: "Failed to fetch lead fields" }, 500);
     }
 
-    const rows = (data ?? []) as DbLeadField[];
+    const rows = (Array.isArray(data) ? data : []) as DbLeadField[];
 
-    // ✅ Return full LeadFieldDefinition objects (matches your type)
+    // ✅ Return full LeadFieldDefinition objects
     const fields: LeadFieldDefinition[] = rows.map((f) => ({
-      id: f.id,
-      team_id: f.team_id,
-      key: f.key,
-      label: f.label,
+      id: String(f.id),
+      team_id: String(f.team_id),
+      key: String(f.key),
+      label: String(f.label),
       type: f.type,
-      options: f.type === "select" ? (f.options ?? []) : [],
+      options:
+        f.type === "select" ? (Array.isArray(f.options) ? f.options : []) : [],
       position: typeof f.position === "number" ? f.position : undefined,
     }));
 
-    return NextResponse.json(fields);
+    return json(fields);
   } catch (err) {
     console.error("[lead-fields] fetch error", err);
-    return NextResponse.json({ error: "Failed to fetch lead fields" }, { status: 500 });
+    return json({ error: "Failed to fetch lead fields" }, 500);
   }
 }
