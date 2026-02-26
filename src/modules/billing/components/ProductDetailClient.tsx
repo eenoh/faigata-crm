@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
@@ -230,72 +231,6 @@ const prettyEvent = (type: string) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
 
-/* -------------------- Loading skeleton -------------------- */
-
-function LoadingState() {
-  return (
-    <div className="max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="h-6 w-64 rounded bg-slate-200/70 animate-pulse" />
-        <div className="mt-2 h-4 w-80 rounded bg-slate-200/60 animate-pulse" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
-        <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm"
-            >
-              <div className="h-4 w-28 rounded bg-slate-200/60 animate-pulse" />
-              <div className="mt-3 h-4 w-64 rounded bg-slate-200/60 animate-pulse" />
-              <div className="mt-2 h-4 w-48 rounded bg-slate-200/60 animate-pulse" />
-            </div>
-          ))}
-
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="h-4 w-24 rounded bg-slate-200/60 animate-pulse" />
-                <div className="mt-2 h-3 w-80 rounded bg-slate-200/50 animate-pulse" />
-              </div>
-              <div className="h-8 w-28 rounded bg-slate-200/60 animate-pulse" />
-            </div>
-
-            <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-              <div className="h-10 bg-slate-100" />
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-12 border-t border-slate-100 bg-white"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <div className="h-4 w-40 rounded bg-slate-200/60 animate-pulse" />
-            <div className="mt-2 h-3 w-56 rounded bg-slate-200/50 animate-pulse" />
-          </div>
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-              >
-                <div className="h-3 w-48 rounded bg-slate-200/60 animate-pulse" />
-                <div className="mt-2 h-3 w-64 rounded bg-slate-200/50 animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* -------------------- Activity timeline helpers -------------------- */
 
 const isRecurringPayload = (a: Activity) => !!a.payload?.recurring?.interval;
@@ -383,7 +318,7 @@ function activityText(a: Activity, productName: string) {
   return prettyEvent(a.type);
 }
 
-/* -------------------- Component -------------------- */
+/* -------------------- Component helpers -------------------- */
 
 function mapProduct(pRaw: any, fallbackId: string): StripeProduct | null {
   if (!pRaw) return null;
@@ -419,12 +354,144 @@ function mapActivity(actRaw: any[]): Activity[] {
   }));
 }
 
+/* -------------------- Loading skeleton (theme-aware) -------------------- */
+
+function LoadingState({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const pulse = isDark ? "bg-slate-800" : "bg-slate-200/70";
+  const subBorder = isDark ? "border-slate-800" : "border-slate-100";
+  const soft = isDark ? "bg-slate-900/30" : "bg-slate-50";
+
+  return (
+    <div className="max-w-6xl space-y-6">
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <div className={`h-6 w-64 rounded animate-pulse ${pulse}`} />
+        <div className={`mt-2 h-4 w-80 rounded animate-pulse ${pulse}`} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className={`rounded-2xl border px-4 py-4 shadow-sm ${card} ${subBorder}`}
+            >
+              <div className={`h-4 w-28 rounded animate-pulse ${pulse}`} />
+              <div className={`mt-3 h-4 w-64 rounded animate-pulse ${pulse}`} />
+              <div className={`mt-2 h-4 w-48 rounded animate-pulse ${pulse}`} />
+            </div>
+          ))}
+
+          <div
+            className={`rounded-2xl border px-4 py-4 shadow-sm ${card} ${subBorder}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className={`h-4 w-24 rounded animate-pulse ${pulse}`} />
+                <div
+                  className={`mt-2 h-3 w-80 rounded animate-pulse ${pulse}`}
+                />
+              </div>
+              <div className={`h-8 w-28 rounded animate-pulse ${pulse}`} />
+            </div>
+
+            <div
+              className={`mt-4 overflow-hidden rounded-xl border ${isDark ? "border-slate-800" : "border-slate-200"}`}
+            >
+              <div className={`h-10 ${soft}`} />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-12 border-t ${isDark ? "border-slate-800" : "border-slate-100"} ${card}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`overflow-hidden rounded-2xl border shadow-sm ${card} ${subBorder}`}
+        >
+          <div
+            className={`border-b px-4 py-3 ${isDark ? "border-slate-800" : "border-slate-100"}`}
+          >
+            <div className={`h-4 w-40 rounded animate-pulse ${pulse}`} />
+            <div className={`mt-2 h-3 w-56 rounded animate-pulse ${pulse}`} />
+          </div>
+          <div className="space-y-3 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className={[
+                  "rounded-xl border px-3 py-2",
+                  isDark
+                    ? "border-slate-800 bg-slate-900/30"
+                    : "border-slate-100 bg-slate-50",
+                ].join(" ")}
+              >
+                <div className={`h-3 w-48 rounded animate-pulse ${pulse}`} />
+                <div
+                  className={`mt-2 h-3 w-64 rounded animate-pulse ${pulse}`}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductDetailClient({
   productId,
 }: {
   productId: string;
 }) {
   const router = useRouter();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens (match invoices/customers)
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-600";
+  const mutedText2 = isDark ? "text-slate-500" : "text-slate-500";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+  const divider = isDark ? "divide-slate-800" : "divide-slate-100";
+  const rowHover = isDark ? "hover:bg-slate-900/30" : "hover:bg-slate-50/50";
+  const theadBg = isDark ? "bg-slate-900/40" : "bg-slate-50";
+  const actionStickyBg = isDark ? "bg-slate-950" : "bg-white";
+  const modalOverlay = isDark ? "bg-black/60" : "bg-slate-900/40";
+
+  const clsBtn =
+    "inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+  const clsBtnSecondary = [
+    clsBtn,
+    isDark
+      ? "border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  ].join(" ");
+  const clsBtnPrimary = `${clsBtn} bg-indigo-600 text-white hover:bg-indigo-700`;
+  const clsBtnDangerSoft = [
+    clsBtn,
+    isDark
+      ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+      : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+  ].join(" ");
+
+  const inputBase = [
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+      : "border-slate-200 bg-white text-slate-700 focus:ring-indigo-500",
+  ].join(" ");
 
   const [product, setProduct] = useState<StripeProduct | null>(null);
   const [prices, setPrices] = useState<StripePrice[]>([]);
@@ -500,8 +567,9 @@ export default function ProductDetailClient({
 
     try {
       const unit_amount = Number(amountCents);
-      if (!Number.isFinite(unit_amount) || unit_amount <= 0)
+      if (!Number.isFinite(unit_amount) || unit_amount <= 0) {
         throw new Error("Invalid amount (cents).");
+      }
 
       const cur = String(currency || "usd")
         .trim()
@@ -510,11 +578,12 @@ export default function ProductDetailClient({
 
       const payload: any = { currency: cur, unit_amount };
 
-      if (isRecurring)
+      if (isRecurring) {
         payload.recurring = {
           interval,
           interval_count: Number(intervalCount) || 1,
         };
+      }
 
       const res = await authedFetch(
         `/api/billing/products/${encodeURIComponent(productId)}/prices/create`,
@@ -552,15 +621,30 @@ export default function ProductDetailClient({
     }
   }
 
-  if (loading) return <LoadingState />;
+  if (loading) return <LoadingState isDark={isDark} />;
 
   if (!product) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-        Product not found.
+      <div className={`rounded-2xl border p-6 text-sm shadow-sm ${card}`}>
+        <div className={mutedText}>Product not found.</div>
         {!!err && (
-          <div className="mt-2 text-xs font-semibold text-rose-600">
-            Error: {err}
+          <div
+            className={[
+              "mt-3 rounded-xl border px-3 py-2 text-xs",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10"
+                : "border-rose-200 bg-rose-50",
+            ].join(" ")}
+          >
+            <div
+              className={
+                isDark
+                  ? "font-semibold text-rose-200"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              Error: {err}
+            </div>
           </div>
         )}
       </div>
@@ -572,94 +656,131 @@ export default function ProductDetailClient({
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         {/* LEFT */}
         <div className="space-y-6 pb-6">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold text-slate-900">
-                {displayName}
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Stripe ID:{" "}
-                <span className="font-mono text-xs">{product.id}</span>
-              </p>
-              {!!err && (
-                <p className="mt-2 text-xs font-semibold text-rose-600">
-                  Error: {err}
+          {/* Header card */}
+          <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h1 className={`truncate text-2xl font-semibold ${headText}`}>
+                  {displayName}
+                </h1>
+                <p className={`mt-1 text-sm ${mutedText}`}>
+                  Stripe ID:{" "}
+                  <span className="font-mono text-xs">{product.id}</span>
                 </p>
-              )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={syncAll}
-                title="Sync catalog from Stripe"
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                <span className="inline-flex items-center gap-2">
+                {!!err && (
+                  <div
+                    className={[
+                      "mt-3 rounded-xl border px-3 py-2 text-xs",
+                      isDark
+                        ? "border-rose-500/30 bg-rose-500/10"
+                        : "border-rose-200 bg-rose-50",
+                    ].join(" ")}
+                  >
+                    <div
+                      className={
+                        isDark
+                          ? "font-semibold text-rose-200"
+                          : "font-semibold text-rose-700"
+                      }
+                    >
+                      Error: {err}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={syncAll}
+                  className={clsBtnSecondary}
+                  title="Sync catalog from Stripe"
+                >
                   <ArrowPathIcon className="h-4 w-4" />
                   Sync
-                </span>
-              </button>
+                </button>
 
-              <Link
-                href={`/billing/products/${encodeURIComponent(productId)}/edit`}
-                className="inline-flex h-[28px] w-16 cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700"
-              >
-                Edit
-              </Link>
+                <Link
+                  href={`/billing/products/${encodeURIComponent(productId)}/edit`}
+                  className={clsBtnPrimary}
+                >
+                  Edit
+                </Link>
 
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(
-                    `/billing/products/${encodeURIComponent(productId)}/delete`,
-                  )
-                }
-                className="inline-flex h-[28px] w-16 cursor-pointer items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100"
-              >
-                Archive
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      `/billing/products/${encodeURIComponent(productId)}/delete`,
+                    )
+                  }
+                  className={clsBtnDangerSoft}
+                >
+                  Archive
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Status */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">
-              Status
-            </h2>
+          <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+            <h2 className={`mb-2 text-sm font-semibold ${headText}`}>Status</h2>
+
             {product.active ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <span
+                className={[
+                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                  isDark
+                    ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/30"
+                    : "bg-emerald-50 text-emerald-700",
+                ].join(" ")}
+              >
                 Active
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+              <span
+                className={[
+                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                  isDark
+                    ? "bg-slate-500/15 text-slate-200 ring-1 ring-slate-400/25"
+                    : "bg-slate-100 text-slate-600",
+                ].join(" ")}
+              >
                 Archived
               </span>
             )}
-            <p className="mt-2 text-xs text-slate-500">
+
+            <p className={`mt-2 text-xs ${mutedText2}`}>
               Created: {fmtUnix(product.created)}
             </p>
           </div>
 
           {/* Details */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+            <h2 className={`mb-3 text-sm font-semibold ${headText}`}>
               Details
             </h2>
+
             <div className="space-y-2">
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <div
+                  className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                >
                   Name
                 </div>
-                <div className="text-sm text-slate-800">
+                <div className={`text-sm ${headText}`}>
                   {product.name ?? "—"}
                 </div>
               </div>
+
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <div
+                  className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                >
                   Description
                 </div>
-                <div className="whitespace-pre-wrap text-sm text-slate-800">
+                <div className={`whitespace-pre-wrap text-sm ${headText}`}>
                   {product.description ?? "—"}
                 </div>
               </div>
@@ -667,11 +788,11 @@ export default function ProductDetailClient({
           </div>
 
           {/* Prices */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
+          <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+            <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-800">Prices</h2>
-                <p className="text-xs text-slate-500">
+                <h2 className={`text-sm font-semibold ${headText}`}>Prices</h2>
+                <p className={`mt-0.5 text-xs ${mutedText2}`}>
                   Stripe prices are effectively immutable — create a new price
                   and archive the old one.
                 </p>
@@ -680,29 +801,48 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={() => setPriceModalOpen(true)}
-                className="cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                className={clsBtnPrimary}
               >
                 + New price
               </button>
             </div>
 
             {prices.length === 0 ? (
-              <p className="text-sm text-slate-500">No prices yet.</p>
+              <p className={`text-sm ${mutedText}`}>No prices yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <div className={`overflow-x-auto rounded-xl border ${border}`}>
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-xs text-slate-500">
+                  <thead className={`${theadBg}`}>
                     <tr>
-                      <th className="px-4 py-2 font-semibold">Amount</th>
-                      <th className="px-4 py-2 font-semibold">Type</th>
-                      <th className="px-4 py-2 font-semibold">Status</th>
-                      <th className="px-4 py-2 font-semibold">Created</th>
-                      <th className="px-4 py-2 font-semibold text-right">
+                      <th
+                        className={`px-4 py-2 text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        Amount
+                      </th>
+                      <th
+                        className={`px-4 py-2 text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        Type
+                      </th>
+                      <th
+                        className={`px-4 py-2 text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        Status
+                      </th>
+                      <th
+                        className={`px-4 py-2 text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        Created
+                      </th>
+                      <th
+                        className={`px-4 py-2 text-right text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+
+                  <tbody className={`divide-y ${divider}`}>
                     {prices.map((pr) => {
                       const amount = fmtMoney(pr.currency, pr.unit_amount);
                       const recurringLabel = pr.recurring?.interval
@@ -713,25 +853,43 @@ export default function ProductDetailClient({
                         : "One-time";
 
                       return (
-                        <tr key={pr.id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-2 font-semibold text-slate-900">
+                        <tr key={pr.id} className={rowHover}>
+                          <td className={`px-4 py-2 font-semibold ${headText}`}>
                             {amount}
                           </td>
-                          <td className="px-4 py-2 text-slate-700">
+                          <td
+                            className={`px-4 py-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                          >
                             {typeLabel}
                           </td>
                           <td className="px-4 py-2">
                             {pr.active ? (
-                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                              <span
+                                className={[
+                                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                                  isDark
+                                    ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/30"
+                                    : "bg-emerald-50 text-emerald-700",
+                                ].join(" ")}
+                              >
                                 Active
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                              <span
+                                className={[
+                                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                                  isDark
+                                    ? "bg-slate-500/15 text-slate-200 ring-1 ring-slate-400/25"
+                                    : "bg-slate-100 text-slate-600",
+                                ].join(" ")}
+                              >
                                 Archived
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-slate-700">
+                          <td
+                            className={`px-4 py-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                          >
                             {fmtUnix(pr.created)}
                           </td>
                           <td className="px-4 py-2 text-right">
@@ -739,12 +897,16 @@ export default function ProductDetailClient({
                               <button
                                 type="button"
                                 onClick={() => archivePrice(pr.id)}
-                                className="cursor-pointer rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                                className={clsBtnDangerSoft}
                               >
                                 Archive
                               </button>
                             ) : (
-                              <span className="text-xs text-slate-300">—</span>
+                              <span
+                                className={`text-xs ${isDark ? "text-slate-600" : "text-slate-300"}`}
+                              >
+                                —
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -758,19 +920,21 @@ export default function ProductDetailClient({
         </div>
 
         {/* RIGHT: Activity timeline */}
-        <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-slate-800">
+        <div
+          className={`flex h-full flex-col rounded-2xl border shadow-sm ${card}`}
+        >
+          <div className={`border-b px-6 py-5 ${border}`}>
+            <h2 className={`text-sm font-semibold ${headText}`}>
               Activity Timeline
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className={`mt-0.5 text-xs ${mutedText2}`}>
               Product updates and price changes.
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-3">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
             {activity.length === 0 ? (
-              <p className="text-xs text-slate-500">No activity yet.</p>
+              <p className={`text-xs ${mutedText2}`}>No activity yet.</p>
             ) : (
               <div className="space-y-3 text-xs">
                 {activity.map((a) => {
@@ -785,20 +949,36 @@ export default function ProductDetailClient({
                         <img
                           src={iconSrc}
                           alt={label}
-                          className="h-8 w-8 rounded-full border border-slate-200 object-cover"
+                          className={[
+                            "h-8 w-8 rounded-full border object-cover",
+                            isDark ? "border-slate-800" : "border-slate-200",
+                          ].join(" ")}
                         />
                       </div>
 
                       <div className="flex-1">
-                        <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                          <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                            <span className="font-semibold text-slate-700">
+                        <div
+                          className={[
+                            "rounded-xl border px-3 py-2",
+                            isDark
+                              ? "border-slate-800 bg-slate-900/30"
+                              : "border-slate-100 bg-slate-50",
+                          ].join(" ")}
+                        >
+                          <div
+                            className={`mb-1 flex items-center justify-between gap-2 text-[11px] ${mutedText2}`}
+                          >
+                            <span
+                              className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+                            >
                               {label}
                             </span>
                             <span>{fmtIso(a.created_at)}</span>
                           </div>
 
-                          <div className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          <div
+                            className={`whitespace-pre-wrap text-[11px] ${headText}`}
+                          >
                             {text}
                           </div>
                         </div>
@@ -814,13 +994,17 @@ export default function ProductDetailClient({
 
       {/* Price modal */}
       {priceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <h3 className="text-base font-semibold text-slate-900">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${modalOverlay}`}
+        >
+          <div
+            className={`w-full max-w-lg rounded-2xl border shadow-xl ${card}`}
+          >
+            <div className={`border-b px-5 py-4 ${border}`}>
+              <h3 className={`text-base font-semibold ${headText}`}>
                 Create price
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className={`mt-1 text-xs ${mutedText2}`}>
                 Amount is in cents (e.g. 1000 = $10.00).
               </p>
             </div>
@@ -828,13 +1012,16 @@ export default function ProductDetailClient({
             <div className="space-y-4 px-5 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label
+                    className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                  >
                     Currency
                   </label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                    className={inputBase}
+                    disabled={savingPrice}
                   >
                     {CURRENCIES.map((c) => (
                       <option key={c} value={c}>
@@ -842,20 +1029,23 @@ export default function ProductDetailClient({
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-500">
+                  <p className={`mt-1 text-[11px] ${mutedText2}`}>
                     Pick a currency supported by your Stripe account.
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label
+                    className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                  >
                     Amount (cents)
                   </label>
                   <input
                     value={amountCents}
                     onChange={(e) => setAmountCents(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className={inputBase}
                     inputMode="numeric"
+                    disabled={savingPrice}
                   />
                 </div>
               </div>
@@ -867,10 +1057,11 @@ export default function ProductDetailClient({
                   checked={isRecurring}
                   onChange={(e) => setIsRecurring(e.target.checked)}
                   className="cursor-pointer"
+                  disabled={savingPrice}
                 />
                 <label
                   htmlFor="recurring"
-                  className="cursor-pointer text-sm text-slate-700"
+                  className={`cursor-pointer text-sm ${isDark ? "text-slate-200" : "text-slate-700"}`}
                 >
                   Recurring
                 </label>
@@ -879,13 +1070,16 @@ export default function ProductDetailClient({
               {isRecurring && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label
+                      className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                    >
                       Interval
                     </label>
                     <select
                       value={interval}
                       onChange={(e) => setInterval(e.target.value as any)}
-                      className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      className={inputBase}
+                      disabled={savingPrice}
                     >
                       <option value="day">day</option>
                       <option value="week">week</option>
@@ -893,26 +1087,33 @@ export default function ProductDetailClient({
                       <option value="year">year</option>
                     </select>
                   </div>
+
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label
+                      className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                    >
                       Interval count
                     </label>
                     <input
                       value={intervalCount}
                       onChange={(e) => setIntervalCount(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      className={inputBase}
                       inputMode="numeric"
+                      disabled={savingPrice}
                     />
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
+            <div
+              className={`flex items-center justify-end gap-2 border-t px-5 py-4 ${border}`}
+            >
               <button
                 type="button"
                 onClick={() => setPriceModalOpen(false)}
-                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className={clsBtnSecondary}
+                disabled={savingPrice}
               >
                 Cancel
               </button>
@@ -921,7 +1122,7 @@ export default function ProductDetailClient({
                 type="button"
                 onClick={createPrice}
                 disabled={savingPrice}
-                className="cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className={clsBtnPrimary}
               >
                 {savingPrice ? "Creating…" : "Create price"}
               </button>

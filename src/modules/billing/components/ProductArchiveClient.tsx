@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
@@ -32,6 +33,35 @@ export default function ProductArchiveClient({
 }) {
   const router = useRouter();
 
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens (match invoices/customers)
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-600";
+  const mutedText2 = isDark ? "text-slate-500" : "text-slate-500";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+
+  const btnBase =
+    "cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+
+  const btnSecondary = [
+    btnBase,
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  ].join(" ");
+
+  const btnDangerSolid = [
+    "cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed",
+    isDark ? "bg-rose-600 hover:bg-rose-700" : "bg-rose-600 hover:bg-rose-700",
+  ].join(" ");
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -53,19 +83,15 @@ export default function ProductArchiveClient({
       try {
         const res = await authedFetch(
           `/api/billing/products/${encodeURIComponent(productId)}`,
-          {
-            cache: "no-store",
-          },
+          { cache: "no-store" },
         );
         const json: any = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          console.error(
-            "[ProductArchive] Failed to load product",
-            res.status,
-            json,
-          );
-          if (!cancelled) setProduct(null);
+          if (!cancelled) {
+            setProduct(null);
+            setErr(json?.error ?? `failed_${res.status}`);
+          }
           return;
         }
 
@@ -83,9 +109,11 @@ export default function ProductArchiveClient({
               : null,
           );
         }
-      } catch (e) {
-        console.error("[ProductArchive] Unexpected product load error", e);
-        if (!cancelled) setProduct(null);
+      } catch (e: any) {
+        if (!cancelled) {
+          setProduct(null);
+          setErr(String(e?.message ?? "load_failed"));
+        }
       } finally {
         if (!cancelled) setLoadingProduct(false);
       }
@@ -103,9 +131,7 @@ export default function ProductArchiveClient({
     try {
       const res = await authedFetch(
         `/api/billing/products/${encodeURIComponent(productId)}/archive`,
-        {
-          method: "POST",
-        },
+        { method: "POST" },
       );
       const json: any = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
@@ -119,37 +145,57 @@ export default function ProductArchiveClient({
 
   return (
     <div className="max-w-xl space-y-4">
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-5 shadow-sm">
-        <h1 className="text-xl font-semibold text-rose-800">Archive product</h1>
-        <p className="mt-1 text-sm text-rose-700">
+      {/* Warning header card (match invoices error style) */}
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <h1 className={`text-xl font-semibold ${headText}`}>Archive product</h1>
+        <p className={`mt-1 text-sm ${mutedText}`}>
           This sets <span className="font-semibold">active=false</span> in
           Stripe. Existing invoices are unaffected.
         </p>
+
         {!!err && (
-          <p className="mt-3 text-xs font-semibold text-rose-700">
-            Error: {err}
-          </p>
+          <div
+            className={[
+              "mt-3 rounded-xl border px-3 py-2 text-xs",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10"
+                : "border-rose-200 bg-rose-50",
+            ].join(" ")}
+          >
+            <div
+              className={
+                isDark
+                  ? "font-semibold text-rose-200"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              Error: {err}
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <p className="text-sm text-slate-700">
+      {/* Confirmation card */}
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <p className={`text-sm ${mutedText}`}>
           Are you sure you want to archive{" "}
-          <span className="font-semibold text-slate-900">
+          <span className={`font-semibold ${headText}`}>
             {loadingProduct ? "…" : productName}
           </span>
           ?
         </p>
 
-        <p className="mt-2 text-xs text-slate-500">
+        <p className={`mt-2 text-xs ${mutedText2}`}>
           Stripe ID: <span className="font-mono">{productId}</span>
         </p>
 
-        <div className="mt-5 flex items-center justify-end gap-2">
+        <div
+          className={`mt-5 flex items-center justify-end gap-2 border-t pt-4 ${border}`}
+        >
           <button
             type="button"
             onClick={() => router.back()}
-            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className={btnSecondary}
             disabled={saving}
           >
             Cancel
@@ -159,7 +205,7 @@ export default function ProductArchiveClient({
             type="button"
             onClick={archive}
             disabled={saving}
-            className="cursor-pointer rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+            className={btnDangerSolid}
           >
             {saving ? "Archiving…" : "Archive"}
           </button>

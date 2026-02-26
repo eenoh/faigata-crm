@@ -15,6 +15,7 @@ import {
   TrashIcon,
   PlusCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 type ScoreThresholds = {
   low: number;
@@ -56,12 +57,8 @@ type LeadSourceName =
 interface LeadRow {
   id: string;
   stage: string;
-
-  // ✅ NEW: real DB column from API
   lead_name?: string | null;
-
   customValues: Record<string, any>;
-
   score?: number | null;
 
   niche?: string | null;
@@ -82,80 +79,6 @@ interface LeadRow {
   prospector_id?: string | null;
   setter_id?: string | null;
   closer_id?: string | null;
-}
-
-/* -------------------- loading state -------------------- */
-
-function LeadsLoadingState({ colCount = 7 }: { colCount?: number }) {
-  const rows = Array.from({ length: 10 });
-
-  return (
-    <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="max-h-[800px] overflow-hidden rounded-xl">
-        <div className="border-b border-slate-200 bg-slate-100 px-4 py-2">
-          <div
-            className="grid gap-4"
-            style={{
-              gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
-            }}
-          >
-            {Array.from({ length: Math.max(0, colCount - 1) }).map((_, i) => (
-              <div
-                key={i}
-                className="h-4 w-24 rounded bg-slate-200/80 animate-pulse"
-              />
-            ))}
-            <div className="ml-auto h-4 w-16 rounded bg-slate-200/80 animate-pulse" />
-          </div>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {rows.map((_, rIdx) => (
-            <div key={rIdx} className="px-4 py-3">
-              <div
-                className="grid items-center gap-4"
-                style={{
-                  gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
-                }}
-              >
-                <div>
-                  <div className="h-5 w-10 rounded-full bg-slate-200/80 animate-pulse" />
-                </div>
-
-                {Array.from({ length: Math.max(0, colCount - 3) }).map(
-                  (_, cIdx) => (
-                    <div
-                      key={cIdx}
-                      className="h-4 w-full max-w-[220px] rounded bg-slate-200/70 animate-pulse"
-                    />
-                  ),
-                )}
-
-                <div className="justify-self-start">
-                  <div className="h-6 w-20 rounded-full bg-slate-200/80 animate-pulse" />
-                </div>
-
-                <div className="justify-self-end">
-                  <div className="grid grid-cols-3 gap-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-6 w-6 rounded bg-slate-200/80 animate-pulse"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-slate-100 bg-white px-4 py-2">
-          <div className="h-3 w-40 rounded bg-slate-200/60 animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /* -------------------- helpers -------------------- */
@@ -195,7 +118,6 @@ function contactHref(type: LeadContactType, value: string) {
   return null;
 }
 
-// ✅ FIX: prefer real DB column lead_name first, then custom_values fallbacks
 function deriveLeadName(
   leadNameCol: string | null | undefined,
   customValues: Record<string, any>,
@@ -246,7 +168,6 @@ const RESERVED_SYSTEM_KEYS = new Set<string>([
   "__score",
   "__lead_name",
   "__stage",
-
   "niche",
   "lead_type",
   "gender",
@@ -268,19 +189,25 @@ function normalizeKey(s: unknown) {
     .replace(/[^a-z0-9_]/g, "");
 }
 
-/* -------------------- pill UI -------------------- */
+/* -------------------- pills -------------------- */
 
 function GrayPill({
   children,
   title,
+  isDark,
 }: {
   children: React.ReactNode;
   title?: string;
+  isDark: boolean;
 }) {
+  const cls = isDark
+    ? "border-slate-800 bg-slate-900/60 text-slate-100"
+    : "border-slate-200 bg-slate-100 text-slate-900";
+
   return (
     <span
       title={title}
-      className="inline-flex max-w-[240px] items-center truncate rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-900"
+      className={`inline-flex max-w-[240px] items-center truncate rounded-full border px-2.5 py-1 text-xs font-medium ${cls}`}
     >
       {children}
     </span>
@@ -300,9 +227,116 @@ function GenderPill({ gender }: { gender: "male" | "female" }) {
   );
 }
 
+/* -------------------- loading state -------------------- */
+
+function LeadsLoadingState({
+  colCount = 7,
+  isDark,
+}: {
+  colCount?: number;
+  isDark: boolean;
+}) {
+  const rows = Array.from({ length: 10 });
+
+  const shell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const head = isDark
+    ? "border-slate-800 bg-slate-900/40"
+    : "border-slate-200 bg-slate-100";
+  const rowDivider = isDark ? "divide-slate-900" : "divide-slate-100";
+  const foot = isDark
+    ? "border-slate-900 bg-slate-950"
+    : "border-slate-100 bg-white";
+
+  const skelStrong = isDark ? "bg-slate-800/80" : "bg-slate-200/80";
+  const skel = isDark ? "bg-slate-800/70" : "bg-slate-200/70";
+  const skelSoft = isDark ? "bg-slate-800/60" : "bg-slate-200/60";
+
+  return (
+    <div className={`flex-1 rounded-xl border shadow-sm ${shell}`}>
+      <div className="max-h-[800px] overflow-hidden rounded-xl">
+        <div className={`border-b px-4 py-2 ${head}`}>
+          <div
+            className="grid gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
+            }}
+          >
+            {Array.from({ length: Math.max(0, colCount - 1) }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-4 w-24 rounded animate-pulse ${skelStrong}`}
+              />
+            ))}
+            <div
+              className={`ml-auto h-4 w-16 rounded animate-pulse ${skelStrong}`}
+            />
+          </div>
+        </div>
+
+        <div className={`divide-y ${rowDivider}`}>
+          {rows.map((_, rIdx) => (
+            <div key={rIdx} className="px-4 py-3">
+              <div
+                className="grid items-center gap-4"
+                style={{
+                  gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
+                }}
+              >
+                <div>
+                  <div
+                    className={`h-5 w-10 rounded-full animate-pulse ${skelStrong}`}
+                  />
+                </div>
+
+                {Array.from({ length: Math.max(0, colCount - 3) }).map(
+                  (_, cIdx) => (
+                    <div
+                      key={cIdx}
+                      className={`h-4 w-full max-w-[220px] rounded animate-pulse ${skel}`}
+                    />
+                  ),
+                )}
+
+                <div className="justify-self-start">
+                  <div
+                    className={`h-6 w-20 rounded-full animate-pulse ${skelStrong}`}
+                  />
+                </div>
+
+                <div className="justify-self-end">
+                  <div className="grid grid-cols-3 gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-6 w-6 rounded animate-pulse ${skelStrong}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className={`border-t px-4 py-2 ${foot}`}>
+          <div className={`h-3 w-40 rounded animate-pulse ${skelSoft}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- component -------------------- */
 
 export function LeadsClient() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
   const [teamId, setTeamId] = useState<string | null>(null);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
 
@@ -491,10 +525,7 @@ export function LeadsClient() {
             return {
               id: l.id,
               stage: l.stage,
-
-              // ✅ map real column from API
               lead_name: l.lead_name ?? null,
-
               customValues: cv,
               score: l.score ?? null,
 
@@ -578,17 +609,14 @@ export function LeadsClient() {
   const columns: TableCol[] = useMemo(() => {
     const core: TableCol[] = [
       { kind: "score", key: "__score", label: "Score" },
-
       { kind: "core", key: "__lead_name", label: "Lead Name" },
       { kind: "core", key: "niche", label: "Niche / Industry" },
       { kind: "core", key: "lead_type", label: "Lead Type" },
       { kind: "core", key: "gender", label: "Gender" },
-
       { kind: "core", key: "city", label: "City" },
       { kind: "core", key: "region", label: "Region" },
       { kind: "core", key: "country", label: "Country" },
       { kind: "core", key: "postal_code", label: "Postal Code" },
-
       {
         kind: "core",
         key: "primary_contact_type",
@@ -597,7 +625,6 @@ export function LeadsClient() {
       { kind: "core", key: "primary_contact_value", label: "Primary Contact" },
       { kind: "core", key: "source_category", label: "Source Category" },
       { kind: "core", key: "source_name", label: "Source Name" },
-
       { kind: "stage", key: "__stage", label: "Stage" },
     ];
 
@@ -686,45 +713,79 @@ export function LeadsClient() {
   const totalCount = visibleLeads.length;
   const visibleCount = filteredLeads.length;
 
-  /* ---------- actions: ALWAYS visible on the right ---------- */
+  /* ---------- actions col ---------- */
 
   const showLogAlways = true;
   const showViewAlways = true;
   const showEditAlways = true;
   const showDeleteAlways = true;
 
-  // widths match the sticky right offsets
   const ACTION_COL_W = 64;
 
-  const actionThClass =
-    "border-b border-slate-200 px-2 py-2 font-semibold text-slate-700 text-center w-16 whitespace-nowrap";
-  const actionTdClass =
-    "border-b border-slate-100 px-2 py-2 align-top text-center w-16";
+  // theme-driven base table colors
+  const tableShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
 
-  // add a clear divider between data and actions
-  const actionDividerThClass = "border-l-2 border-slate-200";
-  const actionDividerTdClass = "border-l-2 border-slate-200";
+  const theadBg = isDark ? "bg-slate-950" : "bg-slate-100";
+  const headBorder = isDark ? "border-slate-800" : "border-slate-200";
+  const rowBorder = isDark ? "border-slate-900" : "border-slate-100";
+  const rowHover = isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50";
+  const cellText = isDark ? "text-slate-200" : "text-slate-800";
+  const headText = isDark ? "text-slate-200" : "text-slate-700";
+  const muted = isDark ? "text-slate-500" : "text-slate-400";
+  const mutedDash = isDark ? "text-slate-600" : "text-slate-300";
+
+  const stickyCellBg = isDark ? "bg-slate-950" : "bg-white";
+  const stickyHeadBg = isDark ? "bg-slate-950" : "bg-slate-100";
+
+  const dividerBorder = isDark ? "border-slate-800" : "border-slate-200";
+
+  const actionThClass = `border-b px-2 py-2 font-semibold text-center w-16 whitespace-nowrap ${headBorder} ${headText}`;
+  const actionTdClass = `border-b px-2 py-2 align-top text-center w-16 ${rowBorder}`;
+
+  const actionDividerThClass = `border-l-2 ${dividerBorder}`;
+  const actionDividerTdClass = `border-l-2 ${dividerBorder}`;
 
   function getScoreBadgeClasses(score: number | null): string {
-    if (score == null) return "bg-slate-100 text-slate-400";
-    if (!thresholds) return "bg-amber-50 text-amber-700";
+    // keep your existing light colors; add dark variants
+    if (score == null)
+      return isDark
+        ? "bg-slate-900/60 text-slate-500"
+        : "bg-slate-100 text-slate-400";
+    if (!thresholds)
+      return isDark
+        ? "bg-amber-500/10 text-amber-200"
+        : "bg-amber-50 text-amber-700";
 
     const { low, high } = thresholds;
-    if (score < low) return "bg-rose-50 text-rose-700";
-    if (score >= high) return "bg-emerald-50 text-emerald-700";
-    return "bg-amber-50 text-amber-700";
+    if (score < low)
+      return isDark
+        ? "bg-rose-500/10 text-rose-200"
+        : "bg-rose-50 text-rose-700";
+    if (score >= high)
+      return isDark
+        ? "bg-emerald-500/10 text-emerald-200"
+        : "bg-emerald-50 text-emerald-700";
+    return isDark
+      ? "bg-amber-500/10 text-amber-200"
+      : "bg-amber-50 text-amber-700";
   }
 
   if (workspaceLoaded && !teamId) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div
+        className={`rounded-xl border p-6 text-sm shadow-sm ${
+          isDark
+            ? "border-slate-800 bg-slate-950 text-slate-300"
+            : "border-slate-200 bg-white text-slate-600"
+        }`}
+      >
         You don&apos;t seem to be in any team yet. Open this page from a
         workspace, or complete onboarding first.
       </div>
     );
   }
-
-  /* ---------- render helpers for pills ---------- */
 
   const CORE_PILL_KEYS = new Set([
     "niche",
@@ -734,14 +795,18 @@ export function LeadsClient() {
     "source_name",
   ]);
 
-  /* ---------- render ---------- */
-
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-[#F1F5F9] pb-2 pt-1">
+      <div className="sticky top-0 z-10 flex items-center justify-between bg-inherit pb-2 pt-1">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Leads</h1>
-          <p className="text-sm text-slate-500">
+          <h1
+            className={`text-2xl font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+          >
+            Leads
+          </h1>
+          <p
+            className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}
+          >
             {loading
               ? "Loading your leads…"
               : query
@@ -761,9 +826,18 @@ export function LeadsClient() {
       </div>
 
       {loading ? (
-        <LeadsLoadingState colCount={Math.max(6, columns.length + 4)} />
+        <LeadsLoadingState
+          colCount={Math.max(6, columns.length + 4)}
+          isDark={isDark}
+        />
       ) : totalCount === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+        <div
+          className={`rounded-xl border border-dashed p-6 text-sm ${
+            isDark
+              ? "border-slate-800 bg-slate-950 text-slate-400"
+              : "border-slate-300 bg-slate-50 text-slate-500"
+          }`}
+        >
           <p>No leads yet (or none you can access).</p>
           {canAddLeads && (
             <p className="mt-1">
@@ -773,8 +847,16 @@ export function LeadsClient() {
           )}
         </div>
       ) : visibleCount === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          <p className="font-semibold text-slate-700">
+        <div
+          className={`rounded-xl border p-6 text-sm ${
+            isDark
+              ? "border-slate-800 bg-slate-950 text-slate-400"
+              : "border-slate-200 bg-white text-slate-500"
+          }`}
+        >
+          <p
+            className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+          >
             No leads match “{query}”.
           </p>
           <p className="mt-1">
@@ -782,27 +864,26 @@ export function LeadsClient() {
           </p>
         </div>
       ) : (
-        <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className={`flex-1 rounded-xl border shadow-sm ${tableShell}`}>
           <div
             className="relative overflow-auto rounded-xl"
             style={{ maxHeight: TABLE_BODY_MAX_HEIGHT }}
           >
             <table className="min-w-max w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-20 bg-slate-100">
+              <thead className={`sticky top-0 z-20 ${theadBg}`}>
                 <tr className="text-left">
                   {columns.map((col) => (
                     <th
                       key={`${col.kind}:${col.key}`}
-                      className="border-b border-slate-200 px-5 py-2 font-semibold text-slate-700 whitespace-nowrap"
+                      className={`border-b px-5 py-2 font-semibold whitespace-nowrap ${headBorder} ${headText}`}
                     >
                       {col.label}
                     </th>
                   ))}
 
-                  {/* Sticky right action headers */}
                   {showLogAlways && (
                     <th
-                      className={`${actionThClass} ${actionDividerThClass} sticky z-30 bg-slate-100`}
+                      className={`${actionThClass} ${actionDividerThClass} sticky z-30 ${stickyHeadBg}`}
                       style={{ right: ACTION_COL_W * 3 }}
                     >
                       Log
@@ -810,7 +891,7 @@ export function LeadsClient() {
                   )}
                   {showViewAlways && (
                     <th
-                      className={`${actionThClass} sticky z-30 bg-slate-100`}
+                      className={`${actionThClass} sticky z-30 ${stickyHeadBg}`}
                       style={{ right: ACTION_COL_W * 2 }}
                     >
                       View
@@ -818,7 +899,7 @@ export function LeadsClient() {
                   )}
                   {showEditAlways && (
                     <th
-                      className={`${actionThClass} sticky z-30 bg-slate-100`}
+                      className={`${actionThClass} sticky z-30 ${stickyHeadBg}`}
                       style={{ right: ACTION_COL_W * 1 }}
                     >
                       Edit
@@ -826,7 +907,7 @@ export function LeadsClient() {
                   )}
                   {showDeleteAlways && (
                     <th
-                      className={`${actionThClass} sticky right-0 z-30 bg-slate-100`}
+                      className={`${actionThClass} sticky right-0 z-30 ${stickyHeadBg}`}
                     >
                       Delete
                     </th>
@@ -846,7 +927,6 @@ export function LeadsClient() {
                   const canEditLeadForLead =
                     isManagerOrAdmin || isAssignedToLead;
 
-                  // ✅ FIX: use lead.lead_name first
                   const leadName = deriveLeadName(
                     lead.lead_name,
                     lead.customValues ?? {},
@@ -854,11 +934,10 @@ export function LeadsClient() {
                   );
 
                   return (
-                    <tr key={lead.id} className="hover:bg-slate-50">
+                    <tr key={lead.id} className={rowHover}>
                       {columns.map((col) => {
                         const cellKey = `${col.kind}:${col.key}`;
 
-                        // Score
                         if (col.kind === "score") {
                           const score = lead.score ?? null;
                           const classes = getScoreBadgeClasses(score);
@@ -866,7 +945,7 @@ export function LeadsClient() {
                           return (
                             <td
                               key={cellKey}
-                              className="border-b border-slate-100 px-5 py-2.5 align-top"
+                              className={`border-b px-5 py-2.5 align-top ${rowBorder}`}
                             >
                               {score != null ? (
                                 <span
@@ -875,35 +954,37 @@ export function LeadsClient() {
                                   {score}
                                 </span>
                               ) : (
-                                <span className="text-xs text-slate-400">
-                                  —
-                                </span>
+                                <span className={`text-xs ${muted}`}>—</span>
                               )}
                             </td>
                           );
                         }
 
-                        // Stage
                         if (col.kind === "stage") {
                           return (
                             <td
                               key={cellKey}
-                              className="border-b border-slate-100 px-5 py-2.5 align-top"
+                              className={`border-b px-5 py-2.5 align-top ${rowBorder}`}
                             >
-                              <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                                  isDark
+                                    ? "bg-indigo-500/15 text-indigo-200"
+                                    : "bg-indigo-50 text-indigo-700"
+                                }`}
+                              >
                                 {lead.stage || "—"}
                               </span>
                             </td>
                           );
                         }
 
-                        // Core
                         if (col.kind === "core") {
                           if (col.key === "__lead_name") {
                             return (
                               <td
                                 key={cellKey}
-                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                                className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                               >
                                 {safeValue(leadName)}
                               </td>
@@ -924,7 +1005,7 @@ export function LeadsClient() {
                             return (
                               <td
                                 key={cellKey}
-                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                                className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                               >
                                 {href ? (
                                   <a
@@ -941,7 +1022,11 @@ export function LeadsClient() {
                                         ? undefined
                                         : "noopener noreferrer"
                                     }
-                                    className="inline-flex max-w-[240px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
+                                    className={`inline-flex max-w-[240px] items-center gap-1 truncate hover:underline ${
+                                      isDark
+                                        ? "text-indigo-300 hover:text-indigo-200"
+                                        : "text-indigo-600 hover:text-indigo-700"
+                                    }`}
                                   >
                                     <span className="truncate">{raw}</span>
                                   </a>
@@ -957,17 +1042,16 @@ export function LeadsClient() {
                               lead.lead_type === "individual"
                                 ? lead.gender
                                 : null;
+
                             return (
                               <td
                                 key={cellKey}
-                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                                className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                               >
                                 {show ? (
                                   <GenderPill gender={show} />
                                 ) : (
-                                  <span className="text-xs text-slate-400">
-                                    —
-                                  </span>
+                                  <span className={`text-xs ${muted}`}>—</span>
                                 )}
                               </td>
                             );
@@ -975,23 +1059,24 @@ export function LeadsClient() {
 
                           const v = (lead as any)[col.key];
 
-                          // requested core fields get unified gray pill
                           if (CORE_PILL_KEYS.has(col.key)) {
                             const label =
                               col.key === "niche"
                                 ? safeValue(v ?? null)
                                 : labelizeEnum(v ?? null);
+
                             return (
                               <td
                                 key={cellKey}
-                                className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                                className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                               >
                                 {label === "—" ? (
-                                  <span className="text-xs text-slate-400">
-                                    —
-                                  </span>
+                                  <span className={`text-xs ${muted}`}>—</span>
                                 ) : (
-                                  <GrayPill title={String(label)}>
+                                  <GrayPill
+                                    title={String(label)}
+                                    isDark={isDark}
+                                  >
                                     {label}
                                   </GrayPill>
                                 )}
@@ -999,35 +1084,30 @@ export function LeadsClient() {
                             );
                           }
 
-                          // everything else normal
                           return (
                             <td
                               key={cellKey}
-                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                             >
                               {safeValue(v ?? null)}
                             </td>
                           );
                         }
 
-                        // Custom
                         const value =
                           normalizedCustomValues[lead.id]?.[col.key];
 
-                        // dropdown custom fields -> gray pill
                         if (col.kind === "custom" && col.type === "select") {
                           const label = safeValue(value);
                           return (
                             <td
                               key={cellKey}
-                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                             >
                               {label === "—" ? (
-                                <span className="text-xs text-slate-400">
-                                  —
-                                </span>
+                                <span className={`text-xs ${muted}`}>—</span>
                               ) : (
-                                <GrayPill title={String(label)}>
+                                <GrayPill title={String(label)} isDark={isDark}>
                                   {String(label)}
                                 </GrayPill>
                               )}
@@ -1035,7 +1115,6 @@ export function LeadsClient() {
                           );
                         }
 
-                        // link custom fields
                         if (
                           col.kind === "custom" &&
                           col.type === "link" &&
@@ -1050,13 +1129,17 @@ export function LeadsClient() {
                           return (
                             <td
                               key={cellKey}
-                              className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                              className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                             >
                               <a
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex max-w-[240px] items-center gap-1 truncate text-indigo-600 hover:text-indigo-700 hover:underline"
+                                className={`inline-flex max-w-[240px] items-center gap-1 truncate hover:underline ${
+                                  isDark
+                                    ? "text-indigo-300 hover:text-indigo-200"
+                                    : "text-indigo-600 hover:text-indigo-700"
+                                }`}
                               >
                                 <span className="truncate">{raw}</span>
                               </a>
@@ -1067,7 +1150,7 @@ export function LeadsClient() {
                         return (
                           <td
                             key={cellKey}
-                            className="border-b border-slate-100 px-5 py-2.5 align-top text-slate-800"
+                            className={`border-b px-5 py-2.5 align-top ${rowBorder} ${cellText}`}
                           >
                             {value !== null &&
                             value !== undefined &&
@@ -1078,34 +1161,41 @@ export function LeadsClient() {
                         );
                       })}
 
-                      {/* Sticky right action cells */}
                       {showLogAlways && (
                         <td
-                          className={`${actionTdClass} ${actionDividerTdClass} sticky bg-white`}
+                          className={`${actionTdClass} ${actionDividerTdClass} sticky ${stickyCellBg}`}
                           style={{ right: ACTION_COL_W * 3 }}
                         >
                           {canLogMessagesForLead ? (
                             <Link
                               href={`/leads/${lead.id}/messages`}
-                              className="inline-flex p-1 !text-emerald-600 hover:!text-emerald-700 transition-colors"
+                              className={`inline-flex p-1 transition-colors ${
+                                isDark
+                                  ? "!text-emerald-300 hover:!text-emerald-200"
+                                  : "!text-emerald-600 hover:!text-emerald-700"
+                              }`}
                               title="Log outbound / inbound messages"
                             >
                               <PlusCircleIcon className="h-5 w-5" />
                             </Link>
                           ) : (
-                            <span className="text-xs text-slate-300">—</span>
+                            <span className={`text-xs ${mutedDash}`}>—</span>
                           )}
                         </td>
                       )}
 
                       {showViewAlways && (
                         <td
-                          className={`${actionTdClass} sticky bg-white`}
+                          className={`${actionTdClass} sticky ${stickyCellBg}`}
                           style={{ right: ACTION_COL_W * 2 }}
                         >
                           <Link
                             href={`/leads/${lead.id}`}
-                            className="inline-flex p-1 !text-slate-600 hover:!text-slate-900 transition-colors"
+                            className={`inline-flex p-1 transition-colors ${
+                              isDark
+                                ? "!text-slate-300 hover:!text-slate-100"
+                                : "!text-slate-600 hover:!text-slate-900"
+                            }`}
                             title="View Details"
                           >
                             <EyeIcon className="h-5 w-5" />
@@ -1115,37 +1205,45 @@ export function LeadsClient() {
 
                       {showEditAlways && (
                         <td
-                          className={`${actionTdClass} sticky bg-white`}
+                          className={`${actionTdClass} sticky ${stickyCellBg}`}
                           style={{ right: ACTION_COL_W * 1 }}
                         >
                           {canEditLeadForLead ? (
                             <Link
                               href={`/leads/${lead.id}/edit`}
-                              className="inline-flex p-1 !text-indigo-600 hover:!text-indigo-700 transition-colors"
+                              className={`inline-flex p-1 transition-colors ${
+                                isDark
+                                  ? "!text-indigo-300 hover:!text-indigo-200"
+                                  : "!text-indigo-600 hover:!text-indigo-700"
+                              }`}
                               title="Edit Lead"
                             >
                               <PencilSquareIcon className="h-5 w-5" />
                             </Link>
                           ) : (
-                            <span className="text-xs text-slate-300">—</span>
+                            <span className={`text-xs ${mutedDash}`}>—</span>
                           )}
                         </td>
                       )}
 
                       {showDeleteAlways && (
                         <td
-                          className={`${actionTdClass} sticky right-0 bg-white`}
+                          className={`${actionTdClass} sticky right-0 ${stickyCellBg}`}
                         >
                           {canDeleteLeads ? (
                             <Link
                               href={`/leads/${lead.id}/delete`}
-                              className="inline-flex p-1 !text-rose-500 hover:!text-rose-600 transition-colors"
+                              className={`inline-flex p-1 transition-colors ${
+                                isDark
+                                  ? "!text-rose-300 hover:!text-rose-200"
+                                  : "!text-rose-500 hover:!text-rose-600"
+                              }`}
                               title="Delete Lead"
                             >
                               <TrashIcon className="h-5 w-5" />
                             </Link>
                           ) : (
-                            <span className="text-xs text-slate-300">—</span>
+                            <span className={`text-xs ${mutedDash}`}>—</span>
                           )}
                         </td>
                       )}

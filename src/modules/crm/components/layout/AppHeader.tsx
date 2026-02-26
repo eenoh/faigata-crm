@@ -17,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useSidebar } from "@/context/SidebarContext";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 function getSectionName(pathname: string): string {
   if (pathname.startsWith("/leads")) return "Leads";
@@ -205,6 +206,11 @@ export function AppHeader() {
   const searchParams = useSearchParams();
   const { collapsed } = useSidebar();
 
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
   const section = getSectionName(pathname);
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [user, setUser] = useState<HeaderUser | null>(null);
@@ -388,14 +394,11 @@ export function AppHeader() {
     function handleClickOutsideSearch(e: MouseEvent) {
       if (!searchRef.current) return;
 
-      // If click is inside search container, do nothing
       if (searchRef.current.contains(e.target as Node)) return;
 
-      // Clicked outside: clear search
       if (search !== "") {
         setSearch("");
 
-        // keep URL in sync on pages where q applies
         if (
           pathname.startsWith("/leads") ||
           pathname.startsWith("/pipeline") ||
@@ -411,7 +414,6 @@ export function AppHeader() {
       setSearchFocused(false);
     }
 
-    // Only listen while the user is interacting with search / or it has value
     if (searchFocused || search.trim().length > 0) {
       document.addEventListener("mousedown", handleClickOutsideSearch);
     }
@@ -440,7 +442,6 @@ export function AppHeader() {
 
     const params = new URLSearchParams(searchParams.toString());
 
-    // allow spaces while typing; only treat as empty if it's ALL whitespace
     if (value.trim().length > 0) params.set("q", value);
     else params.delete("q");
 
@@ -707,33 +708,79 @@ export function AppHeader() {
 
   const unreadCount = reminders.length;
 
+  // ---------- theme-driven styles (same pattern as sidebar) ----------
+  const headerShell = isDark
+    ? "border-slate-800 bg-slate-950/80"
+    : "border-slate-200 bg-white/80";
+
+  const brandKicker = isDark ? "text-slate-500" : "text-slate-400";
+  const sectionText = isDark ? "text-slate-100" : "text-slate-900";
+
+  const inputWrap = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-400 focus-within:ring-indigo-500"
+    : "border-slate-200 bg-white text-slate-400 focus-within:ring-indigo-500";
+
+  const inputText = isDark
+    ? "text-slate-200 placeholder:text-slate-500"
+    : "text-slate-700 placeholder:text-slate-400";
+
+  const iconBtn = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800";
+
+  const popoverShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const popoverHeaderBorder = isDark ? "border-slate-900" : "border-slate-100";
+  const popoverTitle = isDark ? "text-slate-100" : "text-slate-800";
+  const popoverMeta = isDark ? "text-slate-500" : "text-slate-400";
+
+  const reminderItemHover = isDark
+    ? "hover:bg-slate-900/60"
+    : "hover:bg-slate-50";
+  const reminderLead = isDark ? "text-slate-100" : "text-slate-800";
+  const reminderText = isDark ? "text-slate-300" : "text-slate-600";
+
+  const profileName = isDark ? "text-slate-100" : "text-slate-900";
+  const profileRole = isDark ? "text-slate-500" : "text-slate-400";
+
+  const profileMenuMeta = isDark ? "text-slate-400" : "text-slate-500";
+  const profileMenuBorder = isDark ? "border-slate-900" : "border-slate-100";
+
+  const logoutBtn = isDark
+    ? "bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
+    : "bg-rose-50 text-rose-600 hover:bg-rose-100";
+
   return (
     <header
       className={`fixed top-0 right-0 ${leftClass}
         z-20 flex items-center justify-between
-        border-b border-slate-200
-        bg-white/80 px-6 py-3
-        backdrop-blur transition-all duration-300`}
+        border-b px-6 py-3
+        backdrop-blur transition-all duration-300 ${headerShell}`}
     >
       <div className="flex flex-col">
-        <span className="text-[11px] uppercase tracking-wide text-slate-400">
+        <span className={`text-[11px] uppercase tracking-wide ${brandKicker}`}>
           Lumo
         </span>
-        <span className="text-sm font-semibold text-slate-900">{section}</span>
+        <span className={`text-sm font-semibold ${sectionText}`}>
+          {section}
+        </span>
       </div>
 
       <div className="flex items-center gap-4">
         <div
           ref={searchRef}
-          className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-400 focus-within:ring-2 focus-within:ring-indigo-500"
+          className={`hidden md:flex items-center gap-2 rounded-full border px-3 py-1 text-xs focus-within:ring-2 ${inputWrap}`}
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
           <input
             type="text"
             placeholder="Search leads, companies…"
-            className="w-40 bg-transparent text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none"
+            className={`w-40 bg-transparent text-xs focus:outline-none ${inputText}`}
             value={search}
             onChange={handleSearchChange}
+            onFocus={() => setSearchFocused(true)}
           />
         </div>
 
@@ -741,7 +788,12 @@ export function AppHeader() {
           <button
             type="button"
             onClick={handleGoogleReconnect}
-            className="hidden sm:inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
+            className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer
+              ${
+                isDark
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
+                  : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+              }`}
             title="Reconnect Google Calendar to keep booking links working"
           >
             <ClockIcon className="h-4 w-4" />
@@ -753,7 +805,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => setNotificationsOpen((open) => !open)}
-            className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition cursor-pointer"
+            className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full border transition cursor-pointer ${iconBtn}`}
             aria-label="Notifications"
           >
             <BellIcon className="h-4 w-4" />
@@ -770,19 +822,21 @@ export function AppHeader() {
           </button>
 
           <div
-            className={`absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg text-xs 
-              transition-all duration-150 ease-out origin-top-right ${
+            className={`absolute right-0 mt-2 w-72 rounded-xl border shadow-lg text-xs
+              transition-all duration-150 ease-out origin-top-right ${popoverShell} ${
                 notificationsOpen
                   ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                   : "opacity-0 translate-y-1 scale-95 pointer-events-none"
               }`}
           >
-            <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-              <span className="font-semibold text-slate-800">Reminders</span>
+            <div
+              className={`px-3 py-2 border-b flex items-center justify-between ${popoverHeaderBorder}`}
+            >
+              <span className={`font-semibold ${popoverTitle}`}>Reminders</span>
               {loadingReminders ? (
-                <span className="text-[11px] text-slate-400">Checking…</span>
+                <span className={`text-[11px] ${popoverMeta}`}>Checking…</span>
               ) : (
-                <span className="text-[11px] text-slate-400">
+                <span className={`text-[11px] ${popoverMeta}`}>
                   {unreadCount} open
                 </span>
               )}
@@ -790,7 +844,9 @@ export function AppHeader() {
 
             <div className="max-h-80 overflow-y-auto">
               {unreadCount === 0 ? (
-                <p className="px-3 py-3 text-[11px] text-slate-500">
+                <p
+                  className={`px-3 py-3 text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                >
                   No follow-ups due right now.
                 </p>
               ) : (
@@ -805,7 +861,7 @@ export function AppHeader() {
                         )}`,
                       )
                     }
-                    className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 cursor-pointer"
+                    className={`flex w-full items-start gap-2 px-3 py-2 text-left cursor-pointer ${reminderItemHover}`}
                   >
                     <span
                       className={`mt-1 h-1.5 w-1.5 rounded-full ${
@@ -815,10 +871,12 @@ export function AppHeader() {
                       }`}
                     />
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-800">
+                      <p
+                        className={`text-[11px] font-semibold ${reminderLead}`}
+                      >
                         {r.leadName}
                       </p>
-                      <p className="text-[11px] text-slate-600">{r.text}</p>
+                      <p className={`text-[11px] ${reminderText}`}>{r.text}</p>
                     </div>
                   </button>
                 ))
@@ -834,7 +892,9 @@ export function AppHeader() {
             className="flex items-center gap-2 cursor-pointer"
           >
             {loadingUser ? (
-              <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
+              <div
+                className={`h-8 w-8 animate-pulse rounded-full ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+              />
             ) : avatarUrl ? (
               <Image
                 src={avatarUrl}
@@ -851,10 +911,12 @@ export function AppHeader() {
             )}
 
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-medium text-slate-900 cursor-pointer">
+              <span
+                className={`text-xs font-medium cursor-pointer ${profileName}`}
+              >
                 {displayName}
               </span>
-              <span className="text-[11px] text-slate-400 cursor-pointer">
+              <span className={`text-[11px] cursor-pointer ${profileRole}`}>
                 {displayRole}
               </span>
             </div>
@@ -862,23 +924,22 @@ export function AppHeader() {
 
           {!loadingUser && (
             <div
-              className={`absolute right-0 top-9 mt-2 w-44
-                rounded-xl border border-slate-200 bg-white shadow-lg
-                transition-all duration-150 ease-out origin-top-right ${
+              className={`absolute right-0 top-9 mt-2 w-44 rounded-xl border shadow-lg
+                transition-all duration-150 ease-out origin-top-right ${popoverShell} ${
                   profileOpen
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "opacity-0 translate-y-1 scale-95 pointer-events-none"
                 }`}
             >
-              <div className="px-3 pt-2 pb-1 text-xs text-slate-500">
-                <p className="font-medium text-slate-900">{displayName}</p>
-                <p className="text-[11px] text-slate-400">{displayRole}</p>
+              <div className={`px-3 pt-2 pb-1 text-xs ${profileMenuMeta}`}>
+                <p className={`font-medium ${profileName}`}>{displayName}</p>
+                <p className={`text-[11px] ${profileRole}`}>{displayRole}</p>
               </div>
-              <div className="border-t border-slate-100 px-3 py-2">
+              <div className={`border-t px-3 py-2 ${profileMenuBorder}`}>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                  className={`w-full rounded-lg px-2 py-1.5 text-xs font-semibold transition cursor-pointer ${logoutBtn}`}
                 >
                   Log out
                 </button>

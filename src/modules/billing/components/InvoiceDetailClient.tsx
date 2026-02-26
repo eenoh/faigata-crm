@@ -11,6 +11,7 @@ import {
   XCircleIcon,
   PlusCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 type StripeInvoice = {
   id: string;
@@ -85,7 +86,7 @@ function fmtMoney(currency: string | null, amountSmallest: number | null) {
   }
 }
 
-/** Build a nice dropdown list: "EUR — Euro", etc. */
+/** Build dropdown list: "EUR — Euro", etc. */
 const CURRENCIES: Array<{ code: string; name: string }> = [
   { code: "aed", name: "UAE Dirham" },
   { code: "afn", name: "Afghan Afghani" },
@@ -228,18 +229,30 @@ const CURRENCIES: Array<{ code: string; name: string }> = [
   { code: "zmw", name: "Zambian Kwacha" },
 ].sort((a, b) => a.code.localeCompare(b.code));
 
-function StatusPill({ status }: { status: string | null }) {
+function StatusPill({
+  status,
+  isDark,
+}: {
+  status: string | null;
+  isDark: boolean;
+}) {
   const s = String(status ?? "").toLowerCase();
 
   const cls =
     s === "paid"
-      ? "bg-emerald-50 text-emerald-700"
+      ? isDark
+        ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/30"
+        : "bg-emerald-50 text-emerald-700"
       : s === "open"
-        ? "bg-indigo-50 text-indigo-700"
-        : s === "draft"
-          ? "bg-slate-100 text-slate-600"
-          : s === "void"
-            ? "bg-rose-50 text-rose-700"
+        ? isDark
+          ? "bg-indigo-500/15 text-indigo-200 ring-1 ring-indigo-400/30"
+          : "bg-indigo-50 text-indigo-700"
+        : s === "void"
+          ? isDark
+            ? "bg-rose-500/15 text-rose-200 ring-1 ring-rose-400/30"
+            : "bg-rose-50 text-rose-700"
+          : isDark
+            ? "bg-slate-500/15 text-slate-200 ring-1 ring-slate-400/25"
             : "bg-slate-100 text-slate-600";
 
   const label =
@@ -264,30 +277,34 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-function LoadingState() {
+function LoadingState({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const pulse = isDark ? "bg-slate-800" : "bg-slate-200/70";
   return (
     <div className="max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="h-6 w-64 rounded bg-slate-200/70 animate-pulse" />
-        <div className="mt-2 h-4 w-80 rounded bg-slate-200/60 animate-pulse" />
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <div className={`h-6 w-64 rounded animate-pulse ${pulse}`} />
+        <div
+          className={`mt-2 h-4 w-80 rounded animate-pulse ${isDark ? "bg-slate-800/80" : "bg-slate-200/60"}`}
+        />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="h-4 w-40 rounded bg-slate-200/60 animate-pulse" />
-        <div className="mt-3 h-10 w-full rounded bg-slate-200/50 animate-pulse" />
-        <div className="mt-2 h-10 w-full rounded bg-slate-200/50 animate-pulse" />
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <div
+          className={`h-4 w-40 rounded animate-pulse ${isDark ? "bg-slate-800/80" : "bg-slate-200/60"}`}
+        />
+        <div
+          className={`mt-3 h-10 w-full rounded animate-pulse ${isDark ? "bg-slate-800/60" : "bg-slate-200/50"}`}
+        />
+        <div
+          className={`mt-2 h-10 w-full rounded animate-pulse ${isDark ? "bg-slate-800/60" : "bg-slate-200/50"}`}
+        />
       </div>
     </div>
   );
 }
-
-const clsBtn =
-  "inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
-
-const clsBtnSecondary = `${clsBtn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
-const clsBtnPrimary = `${clsBtn} bg-indigo-600 text-white hover:bg-indigo-700`;
-const clsBtnDanger = `${clsBtn} border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`;
-const clsBtnSuccess = `${clsBtn} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
 
 function parseAmountToSmallestUnits(cur: string, display: string) {
   const currencyCode = (cur || "usd").toUpperCase();
@@ -303,9 +320,7 @@ function parseAmountToSmallestUnits(cur: string, display: string) {
 async function postInvoiceAction(invoiceId: string, action: string) {
   const res = await authedFetch(
     `/api/billing/invoices/${encodeURIComponent(invoiceId)}/${action}`,
-    {
-      method: "POST",
-    },
+    { method: "POST" },
   );
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
@@ -320,6 +335,62 @@ export default function InvoiceDetailClient({
     () => decodeURIComponent(invoiceId),
     [invoiceId],
   );
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens (match BillingCustomersClient)
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-600";
+  const mutedText2 = isDark ? "text-slate-500" : "text-slate-500";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+  const divider = isDark ? "divide-slate-800" : "divide-slate-100";
+  const rowHover = isDark ? "hover:bg-slate-900/30" : "hover:bg-slate-50/50";
+  const theadBg = isDark
+    ? "bg-slate-900/40 text-slate-400"
+    : "bg-slate-50 text-slate-500";
+  const subHeadBorder = isDark ? "border-slate-800" : "border-slate-100";
+
+  const inputBase = [
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+      : "border-slate-200 bg-white text-slate-700 focus:ring-indigo-500",
+  ].join(" ");
+
+  const btnBase =
+    "inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+
+  const btnSecondary = [
+    btnBase,
+    "border",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  ].join(" ");
+
+  const btnPrimary = `${btnBase} bg-indigo-600 text-white hover:bg-indigo-700`;
+
+  const btnDanger = [
+    btnBase,
+    "border",
+    isDark
+      ? "border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+      : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+  ].join(" ");
+
+  const btnSuccess = [
+    btnBase,
+    "border",
+    isDark
+      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15"
+      : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+  ].join(" ");
 
   const [invoice, setInvoice] = useState<StripeInvoice | null>(null);
   const [items, setItems] = useState<StripeInvoiceItem[]>([]);
@@ -351,9 +422,7 @@ export default function InvoiceDetailClient({
     try {
       const res = await authedFetch(
         `/api/billing/invoices/${encodeURIComponent(decodedInvoiceId)}`,
-        {
-          cache: "no-store",
-        },
+        { cache: "no-store" },
       );
       const json: any = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? `failed_${res.status}`);
@@ -454,15 +523,31 @@ export default function InvoiceDetailClient({
     }
   }
 
-  if (loading) return <LoadingState />;
+  if (loading) return <LoadingState isDark={isDark} />;
 
   if (!invoice) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-        Invoice not found.
+      <div className={`rounded-2xl border p-6 text-sm shadow-sm ${card}`}>
+        <p className={mutedText}>Invoice not found.</p>
+
         {!!err && (
-          <div className="mt-2 text-xs font-semibold text-rose-600">
-            Error: {err}
+          <div
+            className={[
+              "mt-3 rounded-xl border px-3 py-2 text-xs",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10"
+                : "border-rose-200 bg-rose-50",
+            ].join(" ")}
+          >
+            <div
+              className={
+                isDark
+                  ? "font-semibold text-rose-200"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              Error: {err}
+            </div>
           </div>
         )}
       </div>
@@ -488,30 +573,54 @@ export default function InvoiceDetailClient({
     <div className="h-full overflow-y-auto">
       <div className="grid max-w-6xl grid-cols-1 gap-6">
         {/* Header card */}
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-slate-900">
+              <h1 className={`text-2xl font-semibold ${headText}`}>
                 Invoice Details
               </h1>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
+              <div
+                className={`mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] ${mutedText2}`}
+              >
                 {numberLabel && (
-                  <span className="font-semibold text-slate-700">
+                  <span
+                    className={
+                      isDark
+                        ? "font-semibold text-slate-200"
+                        : "font-semibold text-slate-700"
+                    }
+                  >
                     {numberLabel}
                   </span>
                 )}
-                <span className="text-slate-300">•</span>
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className={isDark ? "text-slate-700" : "text-slate-300"}>
+                  •
+                </span>
+                <span
+                  className={
+                    isDark
+                      ? "font-mono text-[11px] text-slate-500"
+                      : "font-mono text-[11px] text-slate-500"
+                  }
+                >
                   {smallId}
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <StatusPill status={invoice.status} />
+              <div
+                className={`mt-3 flex flex-wrap items-center gap-2 text-xs ${mutedText2}`}
+              >
+                <StatusPill status={invoice.status} isDark={isDark} />
                 <span>
                   Total:{" "}
-                  <span className="font-semibold text-slate-900">
+                  <span
+                    className={
+                      isDark
+                        ? "font-semibold text-slate-100"
+                        : "font-semibold text-slate-900"
+                    }
+                  >
                     {fmtMoney(invoice.currency, invoice.total)}
                   </span>
                 </span>
@@ -519,17 +628,38 @@ export default function InvoiceDetailClient({
                 <span>Due: {fmtUnix(invoice.due_date)}</span>
               </div>
 
-              <p className="mt-3 text-sm text-slate-600">
+              <p className={`mt-3 text-sm ${mutedText}`}>
                 Customer:{" "}
-                <span className="font-semibold text-slate-900">
+                <span
+                  className={
+                    isDark
+                      ? "font-semibold text-slate-100"
+                      : "font-semibold text-slate-900"
+                  }
+                >
                   {customerLabel}
                 </span>
               </p>
 
               {!!err && (
-                <p className="mt-3 text-xs font-semibold text-rose-600">
-                  Error: {err}
-                </p>
+                <div
+                  className={[
+                    "mt-3 rounded-xl border px-3 py-2 text-xs",
+                    isDark
+                      ? "border-rose-500/30 bg-rose-500/10"
+                      : "border-rose-200 bg-rose-50",
+                  ].join(" ")}
+                >
+                  <div
+                    className={
+                      isDark
+                        ? "font-semibold text-rose-200"
+                        : "font-semibold text-rose-700"
+                    }
+                  >
+                    Error: {err}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -538,7 +668,7 @@ export default function InvoiceDetailClient({
                 type="button"
                 onClick={load}
                 disabled={saving}
-                className={clsBtnSecondary}
+                className={btnSecondary}
                 title="Refresh invoice"
               >
                 <ArrowPathIcon
@@ -551,7 +681,7 @@ export default function InvoiceDetailClient({
                 type="button"
                 onClick={() => setItemModalOpen(true)}
                 disabled={saving || isPaid || isVoid}
-                className={clsBtnPrimary}
+                className={btnPrimary}
                 title={
                   isPaid || isVoid
                     ? "Can't add items to a closed invoice"
@@ -567,7 +697,7 @@ export default function InvoiceDetailClient({
                   type="button"
                   onClick={() => runAction("finalize")}
                   disabled={saving}
-                  className={clsBtnSuccess}
+                  className={btnSuccess}
                 >
                   <CheckCircleIcon className="h-4 w-4" />
                   Finalize
@@ -579,7 +709,7 @@ export default function InvoiceDetailClient({
                   type="button"
                   onClick={() => runAction("send")}
                   disabled={saving}
-                  className={clsBtnSecondary}
+                  className={btnSecondary}
                 >
                   <PaperAirplaneIcon className="h-4 w-4" />
                   Send
@@ -591,7 +721,7 @@ export default function InvoiceDetailClient({
                   type="button"
                   onClick={() => runAction("void")}
                   disabled={saving}
-                  className={clsBtnDanger}
+                  className={btnDanger}
                 >
                   <XCircleIcon className="h-4 w-4" />
                   Void
@@ -602,19 +732,19 @@ export default function InvoiceDetailClient({
         </div>
 
         {/* Links */}
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {invoice.hosted_invoice_url ? (
               <a
                 href={invoice.hosted_invoice_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={clsBtnSecondary}
+                className={btnSecondary}
               >
                 Open Hosted Invoice →
               </a>
             ) : (
-              <span className="text-slate-400">
+              <span className={isDark ? "text-slate-500" : "text-slate-400"}>
                 Hosted invoice not available yet.
               </span>
             )}
@@ -624,17 +754,19 @@ export default function InvoiceDetailClient({
                 href={invoice.invoice_pdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={clsBtnSecondary}
+                className={btnSecondary}
               >
                 Download PDF →
               </a>
             ) : (
-              <span className="text-slate-400">PDF not available yet.</span>
+              <span className={isDark ? "text-slate-500" : "text-slate-400"}>
+                PDF not available yet.
+              </span>
             )}
 
             <Link
               href="/billing/invoices"
-              className={`${clsBtnSecondary} ml-auto`}
+              className={`${btnSecondary} ml-auto`}
             >
               Back to Invoices
             </Link>
@@ -642,47 +774,71 @@ export default function InvoiceDetailClient({
         </div>
 
         {/* Items */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-3">
-            <h2 className="text-sm font-semibold text-slate-900">Line items</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+        <div className={`overflow-hidden rounded-2xl border shadow-sm ${card}`}>
+          <div className={`border-b px-5 py-3 ${subHeadBorder}`}>
+            <h2 className={`text-sm font-semibold ${headText}`}>Line items</h2>
+            <p className={`mt-0.5 text-xs ${mutedText2}`}>
               Add items, then finalize and send. Items are locked after payment
               or voiding.
             </p>
           </div>
 
           {items.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">
+            <div className={`p-5 text-sm ${mutedText}`}>
               No line items yet. Click{" "}
-              <span className="font-semibold">Add item</span> to create the
-              first one.
+              <span
+                className={
+                  isDark ? "font-semibold text-slate-200" : "font-semibold"
+                }
+              >
+                Add item
+              </span>{" "}
+              to create the first one.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className={theadBg}>
                   <tr>
-                    <th className="px-5 py-3 font-semibold">Description</th>
-                    <th className="px-5 py-3 font-semibold">Qty</th>
-                    <th className="px-5 py-3 font-semibold">Amount</th>
+                    <th className="px-5 py-3 text-xs font-semibold">
+                      Description
+                    </th>
+                    <th className="px-5 py-3 text-xs font-semibold">Qty</th>
+                    <th className="px-5 py-3 text-xs font-semibold">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className={`divide-y ${divider}`}>
                   {items.map((it) => (
-                    <tr key={it.id} className="hover:bg-slate-50/50">
+                    <tr
+                      key={it.id}
+                      className={[
+                        rowHover,
+                        isDark ? "bg-slate-950" : "bg-white",
+                      ].join(" ")}
+                    >
                       <td className="px-5 py-3">
-                        <div className="text-sm font-semibold text-slate-900">
+                        <div className={`text-sm font-semibold ${headText}`}>
                           {it.description?.trim() || "Invoice item"}
                         </div>
-                        <div className="mt-0.5 font-mono text-[11px] text-slate-400">
+                        <div
+                          className={
+                            isDark
+                              ? "mt-0.5 font-mono text-[11px] text-slate-500"
+                              : "mt-0.5 font-mono text-[11px] text-slate-400"
+                          }
+                        >
                           {it.id}
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-slate-700">
+                      <td
+                        className={`px-5 py-3 ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         {it.quantity ?? 1}
                       </td>
-                      <td className="px-5 py-3 text-slate-700">
-                        <span className="font-semibold text-slate-900">
+                      <td
+                        className={`px-5 py-3 ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
+                        <span className={`font-semibold ${headText}`}>
                           {fmtMoney(it.currency ?? invoice.currency, it.amount)}
                         </span>
                       </td>
@@ -697,13 +853,20 @@ export default function InvoiceDetailClient({
 
       {/* Add item modal */}
       {itemModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <h3 className="text-base font-semibold text-slate-900">
+        <div
+          className={[
+            "fixed inset-0 z-50 flex items-center justify-center p-4",
+            isDark ? "bg-black/60" : "bg-slate-900/40",
+          ].join(" ")}
+        >
+          <div
+            className={`w-full max-w-lg rounded-2xl border shadow-xl ${card}`}
+          >
+            <div className={`border-b px-5 py-4 ${subHeadBorder}`}>
+              <h3 className={`text-base font-semibold ${headText}`}>
                 Add line item
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className={`mt-1 text-xs ${mutedText2}`}>
                 Use a Stripe Price (recurring/one-time), or add a custom amount
                 without thinking in cents.
               </p>
@@ -711,13 +874,15 @@ export default function InvoiceDetailClient({
 
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700">
+                <label
+                  className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                >
                   Mode
                 </label>
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as any)}
-                  className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  className={[inputBase, "cursor-pointer"].join(" ")}
                   disabled={savingItem}
                 >
                   <option value="custom">Custom amount</option>
@@ -728,31 +893,41 @@ export default function InvoiceDetailClient({
               {mode === "price" ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label
+                      className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                    >
                       Price ID
                     </label>
                     <input
                       value={priceId}
                       onChange={(e) => setPriceId(e.target.value)}
                       placeholder="price_..."
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                      className={inputBase}
                       disabled={savingItem}
                     />
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p
+                      className={
+                        isDark
+                          ? "mt-1 text-[11px] text-slate-500"
+                          : "mt-1 text-[11px] text-slate-400"
+                      }
+                    >
                       Paste a Stripe Price ID. (Later you can build a “pick
                       product/price” UI.)
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label
+                      className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                    >
                       Quantity
                     </label>
                     <input
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       inputMode="numeric"
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                      className={inputBase}
                       disabled={savingItem}
                     />
                   </div>
@@ -761,13 +936,15 @@ export default function InvoiceDetailClient({
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs font-semibold text-slate-700">
+                      <label
+                        className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         Currency
                       </label>
                       <select
                         value={currency}
                         onChange={(e) => setCurrency(e.target.value)}
-                        className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        className={[inputBase, "cursor-pointer"].join(" ")}
                         disabled={savingItem}
                       >
                         {CURRENCIES.map((c) => (
@@ -776,14 +953,22 @@ export default function InvoiceDetailClient({
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-[11px] text-slate-400">
+                      <p
+                        className={
+                          isDark
+                            ? "mt-1 text-[11px] text-slate-500"
+                            : "mt-1 text-[11px] text-slate-400"
+                        }
+                      >
                         Tip: Stripe will store the amount in the smallest unit
                         automatically.
                       </p>
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-700">
+                      <label
+                        className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         Amount
                       </label>
                       <input
@@ -791,10 +976,16 @@ export default function InvoiceDetailClient({
                         onChange={(e) => setAmountDisplay(e.target.value)}
                         inputMode="decimal"
                         placeholder="e.g. 99.00"
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        className={inputBase}
                         disabled={savingItem}
                       />
-                      <p className="mt-1 text-[11px] text-slate-400">
+                      <p
+                        className={
+                          isDark
+                            ? "mt-1 text-[11px] text-slate-500"
+                            : "mt-1 text-[11px] text-slate-400"
+                        }
+                      >
                         Enter the normal amount (e.g. 10.50).
                       </p>
                     </div>
@@ -802,26 +993,30 @@ export default function InvoiceDetailClient({
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs font-semibold text-slate-700">
+                      <label
+                        className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         Quantity
                       </label>
                       <input
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
                         inputMode="numeric"
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        className={inputBase}
                         disabled={savingItem}
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-700">
+                      <label
+                        className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+                      >
                         Description (optional)
                       </label>
                       <input
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        className={inputBase}
                         disabled={savingItem}
                       />
                     </div>
@@ -830,11 +1025,13 @@ export default function InvoiceDetailClient({
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
+            <div
+              className={`flex items-center justify-end gap-2 border-t px-5 py-4 ${border}`}
+            >
               <button
                 type="button"
                 onClick={() => setItemModalOpen(false)}
-                className={clsBtnSecondary}
+                className={btnSecondary}
                 disabled={savingItem}
               >
                 Cancel
@@ -844,7 +1041,7 @@ export default function InvoiceDetailClient({
                 type="button"
                 onClick={addItem}
                 disabled={savingItem || isPaid || isVoid}
-                className={clsBtnPrimary}
+                className={btnPrimary}
               >
                 {savingItem ? (
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />

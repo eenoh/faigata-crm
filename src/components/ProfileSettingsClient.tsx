@@ -1,20 +1,12 @@
 // src/app/(app)/settings/profile/ProfileSettingsClient.tsx
 "use client";
 
-/**
- * Simplifications made:
- * • Replaced duplicated “signed URL” logic with one helper: resolveSignedUrl(bucket, value)
- * • Centralized “load user + profile” into one async function to reduce nested try/catch
- * • Centralized admin detection via normalizedRoles(profile.rolesDisplay)
- * • Removed repeated early returns that duplicated state-setting; kept identical outcomes
- * • Kept behavior: roles display unchanged (original strings), admin check case-insensitive,
- *   avatar/org logo upload flows, password/email update flows, organization form admin-only
- */
-
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { PuzzlePieceIcon } from "@heroicons/react/24/outline";
+import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "next-themes";
 
 type ProfileState = {
   first_name: string;
@@ -33,6 +25,10 @@ type OrgState = {
 type Status = "idle" | "loading" | "saving" | "saved" | "error";
 
 const DEFAULT_PRIMARY_COLOR = "#4f46e5";
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function normalizeRole(v: unknown): string | null {
   const s = String(v ?? "")
@@ -63,6 +59,7 @@ async function resolveSignedUrl(
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(v, 60 * 60 * 24);
+
   if (error) {
     console.error(`[${bucket}] createSignedUrl error`, error);
     return null;
@@ -71,6 +68,13 @@ async function resolveSignedUrl(
 }
 
 export default function ProfileSettingsClient() {
+  const { resolvedTheme } = useTheme();
+
+  // ✅ prevent theme flash / mismatched classes on first paint
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = resolvedTheme === "dark";
+
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +104,38 @@ export default function ProfileSettingsClient() {
   const isAdmin = useMemo(() => {
     return normalizeRoles(profile?.roles ?? []).includes("admin");
   }, [profile?.roles]);
+
+  // --- shared theme tokens ---
+  const cardBase = cn(
+    "rounded-2xl border shadow-sm",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+  );
+
+  const softCard = cn(
+    "rounded-xl border",
+    isDark
+      ? "border-slate-800 bg-slate-900/30"
+      : "border-slate-200 bg-slate-50",
+  );
+
+  const labelClass = cn(
+    "mb-1 block text-xs font-medium uppercase tracking-wide",
+    isDark ? "text-slate-400" : "text-slate-600",
+  );
+
+  const inputClass = cn(
+    "w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
+  const buttonOutline = cn(
+    "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm transition",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/30"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  );
 
   // ---------- LOAD ----------
   useEffect(() => {
@@ -217,7 +253,6 @@ export default function ProfileSettingsClient() {
   }, []);
 
   // ---------- AVATAR UPLOAD / PROFILE SAVE ----------
-
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -349,7 +384,6 @@ export default function ProfileSettingsClient() {
   }
 
   // ---------- ADMIN-ONLY ORGANIZATION SAVE / LOGO UPLOAD ----------
-
   async function handleSaveOrganization(e: React.FormEvent) {
     e.preventDefault();
     if (!org || !orgId) return;
@@ -448,336 +482,436 @@ export default function ProfileSettingsClient() {
     }
   }
 
-  // ---------- RENDER ----------
+  // ✅ wait until theme is known (prevents flash)
+  if (!mounted) return null;
 
+  // ---------- RENDER ----------
   if (status === "loading" || !profile) {
     return (
-      <div className="max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-500">
-        Loading your profile…
+      <div className="min-h-screen w-full bg-[var(--background)]">
+        <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4">
+          <div
+            className={cn(
+              "max-w-xl rounded-2xl border p-6 shadow-sm text-sm",
+              isDark
+                ? "border-slate-800 bg-slate-950 text-slate-400"
+                : "border-slate-200 bg-white text-slate-500",
+            )}
+          >
+            Loading your profile…
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4 space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">
-              Profile &amp; Organization
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Update your personal account settings and manage your company
-              branding.
-            </p>
-          </div>
-
-          <Link
-            href="/profile/integrations"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-            title="Manage integrations"
-          >
-            <PuzzlePieceIcon className="h-4 w-4" />
-            Integrations
-          </Link>
-        </div>
-      </div>
-
-      {error && (
-        <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-700">
-          {error}
-        </div>
-      )}
-      {status === "saved" && !error && (
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
-          ✅ Account updated
-        </div>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.7fr)]">
-        {/* LEFT: organization (Admin only) */}
-        <div className="space-y-3 flex flex-col h-full">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Organization
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Update your company name, logo, and primary colour used across
-              Faigata.
-            </p>
-
-            {!isAdmin && (
-              <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                Only <span className="font-semibold">Admins</span> can edit
-                organization settings. Your organization owner can update these
-                details for you.
+    <div className="min-h-screen w-full bg-[var(--background)]">
+      <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4 space-y-4">
+        <div className={cn(cardBase, "px-5 py-4")}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1
+                className={cn(
+                  "text-xl font-semibold",
+                  isDark ? "text-slate-100" : "text-slate-900",
+                )}
+              >
+                Profile &amp; Organization
+              </h1>
+              <p
+                className={cn(
+                  "mt-1 text-sm",
+                  isDark ? "text-slate-400" : "text-slate-600",
+                )}
+              >
+                Update your personal account settings and manage your company
+                branding.
               </p>
-            )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Link href="/profile/integrations" className={buttonOutline}>
+                <PuzzlePieceIcon className="h-4 w-4" />
+                Integrations
+              </Link>
+            </div>
           </div>
+        </div>
 
-          {isAdmin && (
-            <form
-              onSubmit={handleSaveOrganization}
-              className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex-1 flex flex-col"
-            >
-              {orgError && (
-                <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
-                  {orgError}
+        {error && (
+          <div
+            className={cn(
+              "rounded-xl border px-4 py-2 text-xs",
+              isDark
+                ? "border-rose-900/40 bg-rose-500/10 text-rose-200"
+                : "border-rose-100 bg-rose-50 text-rose-700",
+            )}
+          >
+            {error}
+          </div>
+        )}
+
+        {status === "saved" && !error && (
+          <div
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs",
+              isDark
+                ? "border-emerald-900/40 bg-emerald-500/10 text-emerald-200"
+                : "border-emerald-100 bg-emerald-50 text-emerald-700",
+            )}
+          >
+            ✅ Account updated
+          </div>
+        )}
+
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.7fr)]">
+          {/* LEFT: organization (Admin only) */}
+          <div className="space-y-3 flex flex-col h-full">
+            <div className={cn(cardBase, "p-5")}>
+              <h2
+                className={cn(
+                  "text-sm font-semibold",
+                  isDark ? "text-slate-100" : "text-slate-900",
+                )}
+              >
+                Organization
+              </h2>
+              <p
+                className={cn(
+                  "mt-1 text-xs",
+                  isDark ? "text-slate-400" : "text-slate-500",
+                )}
+              >
+                Update your company name, logo, and primary colour used across
+                Faigata.
+              </p>
+
+              {!isAdmin && (
+                <div className={cn(softCard, "mt-3 px-3 py-2")}>
+                  <p
+                    className={cn(
+                      "text-[11px]",
+                      isDark ? "text-slate-400" : "text-slate-500",
+                    )}
+                  >
+                    Only <span className="font-semibold">Admins</span> can edit
+                    organization settings. Your organization owner can update
+                    these details for you.
+                  </p>
                 </div>
               )}
-              {orgStatus === "saved" && !orgError && (
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] text-emerald-700">
-                  ✅ Organization updated
-                </div>
-              )}
+            </div>
 
-              {/* Company logo */}
-              <div className="flex items-center gap-4">
-                {orgLogoSignedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={orgLogoSignedUrl}
-                    alt="Company logo"
-                    className="h-12 w-12 rounded-xl object-cover border border-slate-200 bg-slate-50"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs font-semibold text-slate-400">
-                    Logo
+            {isAdmin && (
+              <form
+                onSubmit={handleSaveOrganization}
+                className={cn(cardBase, "space-y-5 p-5 flex-1 flex flex-col")}
+              >
+                {orgError && (
+                  <div
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-[11px]",
+                      isDark
+                        ? "border-rose-900/40 bg-rose-500/10 text-rose-200"
+                        : "border-rose-100 bg-rose-50 text-rose-700",
+                    )}
+                  >
+                    {orgError}
                   </div>
                 )}
 
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
-                    Company logo
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    PNG or JPG, square works best.
-                  </span>
-                  <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                    {uploadingOrgLogo ? "Uploading…" : "Upload logo"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleOrgLogoChange}
-                      disabled={uploadingOrgLogo}
-                    />
-                  </label>
-                </div>
-              </div>
+                {orgStatus === "saved" && !orgError && (
+                  <div
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px]",
+                      isDark
+                        ? "border-emerald-900/40 bg-emerald-500/10 text-emerald-200"
+                        : "border-emerald-100 bg-emerald-50 text-emerald-700",
+                    )}
+                  >
+                    ✅ Organization updated
+                  </div>
+                )}
 
-              {/* Company name */}
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                  Company name
+                <div className="flex items-center gap-4">
+                  {orgLogoSignedUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={orgLogoSignedUrl}
+                      alt="Company logo"
+                      className={cn(
+                        "h-12 w-12 rounded-xl object-cover border",
+                        isDark
+                          ? "border-slate-800 bg-slate-950"
+                          : "border-slate-200 bg-slate-50",
+                      )}
+                    />
+                  ) : (
+                    <div
+                      className={cn(
+                        "flex h-12 w-12 items-center justify-center rounded-xl border border-dashed text-xs font-semibold",
+                        isDark
+                          ? "border-slate-700 bg-slate-950 text-slate-500"
+                          : "border-slate-300 bg-slate-50 text-slate-400",
+                      )}
+                    >
+                      Logo
+                    </div>
+                  )}
+
+                  <div className="flex flex-col">
+                    <span className={labelClass}>Company logo</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-500" : "text-slate-400",
+                      )}
+                    >
+                      PNG or JPG, square works best.
+                    </span>
+                    <label
+                      className={cn(buttonOutline, "mt-2 w-fit px-3 py-1.5")}
+                    >
+                      {uploadingOrgLogo ? "Uploading…" : "Upload logo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleOrgLogoChange}
+                        disabled={uploadingOrgLogo}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Company name</label>
+                  <input
+                    className={inputClass}
+                    value={org?.name ?? ""}
+                    onChange={(e) =>
+                      setOrg((prev) =>
+                        prev ? { ...prev, name: e.target.value } : prev,
+                      )
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className={labelClass}>Primary colour</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      className={cn(
+                        "h-9 w-9 cursor-pointer rounded-md border",
+                        isDark
+                          ? "border-slate-800 bg-slate-950"
+                          : "border-slate-300 bg-white",
+                      )}
+                      value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
+                      onChange={(e) =>
+                        setOrg((prev) =>
+                          prev
+                            ? { ...prev, primary_color: e.target.value }
+                            : prev,
+                        )
+                      }
+                    />
+                    <input
+                      className={cn(inputClass, "font-mono")}
+                      value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
+                      onChange={(e) =>
+                        setOrg((prev) =>
+                          prev
+                            ? { ...prev, primary_color: e.target.value }
+                            : prev,
+                        )
+                      }
+                      placeholder={DEFAULT_PRIMARY_COLOR}
+                    />
+                  </div>
+
+                  <div className={cn(softCard, "px-3 py-2")}>
+                    <p
+                      className={cn(
+                        "flex items-center gap-2 text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      This colour is used for buttons and highlights in your
+                      workspace.
+                      <span
+                        className="inline-flex h-4 w-10 items-center justify-center rounded-full text-[9px] font-medium text-white"
+                        style={{
+                          backgroundColor:
+                            org?.primary_color || DEFAULT_PRIMARY_COLOR,
+                        }}
+                      >
+                        Preview
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    disabled={orgStatus === "saving"}
+                    className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {orgStatus === "saving" ? "Saving…" : "Save organization"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* RIGHT: profile form */}
+          <form
+            onSubmit={handleSaveProfile}
+            className={cn(cardBase, "space-y-6 p-6 h-full flex flex-col")}
+          >
+            <div className="flex items-center gap-4">
+              {avatarSignedUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarSignedUrl}
+                  alt="Profile avatar"
+                  className={cn(
+                    "h-14 w-14 rounded-full object-cover border",
+                    isDark ? "border-slate-800" : "border-slate-200",
+                  )}
+                />
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+                  {initials}
+                </div>
+              )}
+
+              <div className="flex flex-col">
+                <span className={labelClass}>Profile picture</span>
+                <span
+                  className={cn(
+                    "text-[11px]",
+                    isDark ? "text-slate-500" : "text-slate-400",
+                  )}
+                >
+                  PNG or JPG, up to ~5MB.
+                </span>
+                <label className={cn(buttonOutline, "mt-2 w-fit px-3 py-1.5")}>
+                  {uploadingAvatar ? "Uploading…" : "Upload new photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    disabled={uploadingAvatar}
+                  />
                 </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>First name</label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={org?.name ?? ""}
+                  className={inputClass}
+                  value={profile.first_name}
                   onChange={(e) =>
-                    setOrg((prev) =>
-                      prev ? { ...prev, name: e.target.value } : prev,
-                    )
+                    setProfile({ ...profile, first_name: e.target.value })
                   }
                 />
               </div>
-
-              {/* Primary colour */}
-              <div className="space-y-2">
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                  Primary colour
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    className="h-9 w-9 cursor-pointer rounded-md border border-slate-300 bg-white"
-                    value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
-                    onChange={(e) =>
-                      setOrg((prev) =>
-                        prev
-                          ? { ...prev, primary_color: e.target.value }
-                          : prev,
-                      )
-                    }
-                  />
-                  <input
-                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
-                    onChange={(e) =>
-                      setOrg((prev) =>
-                        prev
-                          ? { ...prev, primary_color: e.target.value }
-                          : prev,
-                      )
-                    }
-                    placeholder={DEFAULT_PRIMARY_COLOR}
-                  />
-                </div>
-                <p className="flex items-center gap-2 text-[11px] text-slate-400">
-                  This colour is used for buttons and highlights in your
-                  workspace.
-                  <span
-                    className="inline-flex h-4 w-10 items-center justify-center rounded-full text-[9px] font-medium text-white"
-                    style={{
-                      backgroundColor:
-                        org?.primary_color || DEFAULT_PRIMARY_COLOR,
-                    }}
-                  >
-                    Preview
-                  </span>
-                </p>
-              </div>
-
-              <div className="pt-1">
-                <button
-                  type="submit"
-                  disabled={orgStatus === "saving"}
-                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {orgStatus === "saving" ? "Saving…" : "Save organization"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* RIGHT: profile form */}
-        <form
-          onSubmit={handleSaveProfile}
-          className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full flex flex-col"
-        >
-          <div className="flex items-center gap-4">
-            {avatarSignedUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarSignedUrl}
-                alt="Profile avatar"
-                className="h-14 w-14 rounded-full object-cover border border-slate-200"
-              />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
-                {initials}
-              </div>
-            )}
-
-            <div className="flex flex-col">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
-                Profile picture
-              </span>
-              <span className="text-[11px] text-slate-400">
-                PNG or JPG, up to ~5MB.
-              </span>
-              <label className="mt-2 inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                {uploadingAvatar ? "Uploading…" : "Upload new photo"}
+              <div>
+                <label className={labelClass}>Last name</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                  disabled={uploadingAvatar}
+                  className={inputClass}
+                  value={profile.last_name}
+                  onChange={(e) =>
+                    setProfile({ ...profile, last_name: e.target.value })
+                  }
                 />
-              </label>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                First name
-              </label>
+              <label className={labelClass}>Email</label>
               <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={profile.first_name}
+                type="email"
+                className={inputClass}
+                value={profile.email}
                 onChange={(e) =>
-                  setProfile({ ...profile, first_name: e.target.value })
+                  setProfile({ ...profile, email: e.target.value })
                 }
               />
+              <p
+                className={cn(
+                  "mt-1 text-[11px]",
+                  isDark ? "text-slate-500" : "text-slate-400",
+                )}
+              >
+                This updates the email tied to your login. You may need to
+                verify the new address.
+              </p>
             </div>
+
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                Last name
-              </label>
-              <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={profile.last_name}
-                onChange={(e) =>
-                  setProfile({ ...profile, last_name: e.target.value })
-                }
-              />
+              <label className={labelClass}>Roles</label>
+              <div className="flex flex-wrap gap-2">
+                {(profile.roles.length ? profile.roles : ["Member"]).map(
+                  (r) => (
+                    <span
+                      key={r}
+                      className={cn(
+                        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border",
+                        isDark
+                          ? "border-slate-800 bg-slate-900/30 text-slate-200"
+                          : "border-transparent bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      {r}
+                    </span>
+                  ),
+                )}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={profile.email}
-              onChange={(e) =>
-                setProfile({ ...profile, email: e.target.value })
-              }
-            />
-            <p className="mt-1 text-[11px] text-slate-400">
-              This updates the email tied to your login. You may need to verify
-              the new address.
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-              Roles
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(profile.roles.length ? profile.roles : ["Member"]).map((r) => (
-                <span
-                  key={r}
-                  className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
-                >
-                  {r}
-                </span>
-              ))}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>New password</label>
+                <input
+                  type="password"
+                  className={inputClass}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Confirm new password</label>
+                <input
+                  type="password"
+                  className={inputClass}
+                  placeholder="Leave blank to keep current"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                New password
-              </label>
-              <input
-                type="password"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Leave blank to keep current"
-              />
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={status === "saving"}
+                className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {status === "saving" ? "Saving…" : "Save changes"}
+              </button>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600">
-                Confirm new password
-              </label>
-              <input
-                type="password"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Leave blank to keep current"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={status === "saving"}
-              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {status === "saving" ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

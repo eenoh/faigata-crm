@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type DragEvent, type ChangeEvent } from "react";
+import { useEffect, useState, type DragEvent, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 const ROLES = ["Prospector", "Setter", "Closer", "Manager", "Admin"] as const;
 type Role = (typeof ROLES)[number];
@@ -24,7 +25,17 @@ interface ConversionMetricRow {
   toStage: string;
 }
 
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
 export function OnboardingPageClient() {
+  // ✅ Standard theme logic (keep for future pages)
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
   const steps = [
     "Team setup",
     "Invite teammates",
@@ -180,21 +191,53 @@ export function OnboardingPageClient() {
     });
   }
 
+  const pageBg = isDark
+    ? "bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900"
+    : "bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50";
+
+  const shell = isDark
+    ? "bg-slate-950 border-slate-800"
+    : "bg-white border-slate-100";
+
+  const headerTitle = isDark ? "text-slate-100" : "text-slate-900";
+  const headerSub = isDark ? "text-slate-400" : "text-slate-500";
+
+  const divider = isDark ? "border-slate-800" : "border-slate-100";
+  const progressTrack = isDark ? "bg-slate-900" : "bg-slate-100";
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
-      <div className="w-full max-w-4xl bg-white border border-slate-100 rounded-3xl shadow-xl p-8 md:p-10 flex flex-col gap-6">
+    <main
+      className={cn(
+        "min-h-screen flex items-center justify-center px-4",
+        pageBg,
+      )}
+    >
+      <div
+        className={cn(
+          "w-full max-w-4xl rounded-3xl border shadow-xl p-8 md:p-10 flex flex-col gap-6",
+          shell,
+        )}
+      >
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className={cn("text-2xl font-semibold", headerTitle)}>
               Welcome to Lumo
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className={cn("text-sm", headerSub)}>
               Step {stepIndex + 1} of {steps.length} · {steps[stepIndex]}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-semibold">
+
+          <div className={cn("flex items-center gap-2 text-xs", headerSub)}>
+            <span
+              className={cn(
+                "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold",
+                isDark
+                  ? "bg-indigo-950/60 text-indigo-200"
+                  : "bg-indigo-100 text-indigo-600",
+              )}
+            >
               ✨
             </span>
             <span>We’ll get you fully set up in a minute.</span>
@@ -202,7 +245,12 @@ export function OnboardingPageClient() {
         </header>
 
         {/* Progress bar */}
-        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            "h-2 w-full rounded-full overflow-hidden",
+            progressTrack,
+          )}
+        >
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all"
             style={{ width: `${progress}%` }}
@@ -213,6 +261,7 @@ export function OnboardingPageClient() {
         <section className="mt-2">
           {stepIndex === 0 && (
             <StepTeamSetup
+              isDark={isDark}
               companyName={companyName}
               setCompanyName={setCompanyName}
               teamName={teamName}
@@ -224,6 +273,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 1 && (
             <StepInvites
+              isDark={isDark}
               invites={invites}
               setInvites={setInvites}
               updateInvite={updateInvite}
@@ -232,6 +282,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 2 && (
             <StepCustomFields
+              isDark={isDark}
               fields={fields}
               updateField={updateField}
               setFields={setFields}
@@ -240,6 +291,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 3 && (
             <StepImportLeads
+              isDark={isDark}
               importFileName={importFileName}
               setImportFileName={setImportFileName}
             />
@@ -247,6 +299,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 4 && (
             <StepPipeline
+              isDark={isDark}
               stages={pipelineStages}
               updateStage={updateStage}
               setStages={setPipelineStages}
@@ -255,6 +308,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 5 && (
             <StepConversionMetrics
+              isDark={isDark}
               stages={pipelineStages}
               metrics={conversionMetrics}
               setMetrics={setConversionMetrics}
@@ -263,6 +317,7 @@ export function OnboardingPageClient() {
 
           {stepIndex === 6 && (
             <StepFinish
+              isDark={isDark}
               companyName={companyName}
               teamName={teamName}
               invites={invites}
@@ -274,16 +329,25 @@ export function OnboardingPageClient() {
         </section>
 
         {/* Navigation buttons */}
-        <footer className="flex items-center justify-between pt-4 border-t border-slate-100">
+        <footer
+          className={cn(
+            "flex items-center justify-between pt-4 border-t",
+            divider,
+          )}
+        >
           <button
             type="button"
             onClick={back}
             disabled={stepIndex === 0}
-            className={`text-sm text-slate-500 hover:text-slate-700 ${
+            className={cn(
+              "text-sm hover:opacity-100",
+              isDark
+                ? "text-slate-400 hover:text-slate-200"
+                : "text-slate-500 hover:text-slate-700",
               stepIndex === 0
                 ? "opacity-40 cursor-not-allowed"
-                : "cursor-pointer"
-            }`}
+                : "cursor-pointer",
+            )}
           >
             ← Back
           </button>
@@ -314,6 +378,7 @@ export function OnboardingPageClient() {
 /* ---------- Step components ---------- */
 
 function StepTeamSetup(props: {
+  isDark: boolean;
   companyName: string;
   setCompanyName: (v: string) => void;
   teamName: string;
@@ -321,15 +386,25 @@ function StepTeamSetup(props: {
   timezone: string;
   setTimezone: (v: string) => void;
 }) {
+  const input = cn(
+    "w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2",
+    props.isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
+  const label = cn(
+    "block text-sm font-medium mb-1",
+    props.isDark ? "text-slate-300" : "text-slate-700",
+  );
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Company name
-          </label>
+          <label className={label}>Company name</label>
           <input
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={input}
             value={props.companyName}
             onChange={(e) => props.setCompanyName(e.target.value)}
             placeholder="e.g. Faigata GmbH"
@@ -337,11 +412,9 @@ function StepTeamSetup(props: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Your first team
-          </label>
+          <label className={label}>Your first team</label>
           <input
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={input}
             value={props.teamName}
             onChange={(e) => props.setTeamName(e.target.value)}
             placeholder="e.g. Outbound Sales"
@@ -349,11 +422,9 @@ function StepTeamSetup(props: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Timezone
-          </label>
+          <label className={label}>Timezone</label>
           <select
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            className={cn(input, "cursor-pointer")}
             value={props.timezone}
             onChange={(e) => props.setTimezone(e.target.value)}
           >
@@ -365,13 +436,27 @@ function StepTeamSetup(props: {
         </div>
       </div>
 
-      <div className="bg-indigo-50 rounded-2xl p-4 text-sm text-slate-700 flex flex-col gap-2">
+      <div
+        className={cn(
+          "rounded-2xl p-4 text-sm flex flex-col gap-2",
+          props.isDark
+            ? "bg-indigo-950/30 text-slate-200"
+            : "bg-indigo-50 text-slate-700",
+        )}
+      >
         <span className="text-lg">💡</span>
         <p>
           Your <span className="font-medium">first user</span> will be the{" "}
-          <span className="font-semibold text-indigo-700">Admin</span> of this
-          workspace. Later you can add more teams like “SDR Team”, “Closers”, or
-          “CSM”.
+          <span
+            className={cn(
+              "font-semibold",
+              props.isDark ? "text-indigo-200" : "text-indigo-700",
+            )}
+          >
+            Admin
+          </span>{" "}
+          of this workspace. Later you can add more teams like “SDR Team”,
+          “Closers”, or “CSM”.
         </p>
       </div>
     </div>
@@ -379,38 +464,57 @@ function StepTeamSetup(props: {
 }
 
 function StepInvites(props: {
+  isDark: boolean;
   invites: InviteRow[];
   setInvites: (rows: InviteRow[]) => void;
   updateInvite: (index: number, patch: Partial<InviteRow>) => void;
 }) {
-  const { invites, setInvites, updateInvite } = props;
+  const { invites, setInvites, updateInvite, isDark } = props;
 
   function addRow() {
     setInvites([...invites, { email: "", role: "Setter" }]);
   }
 
+  const rowWrap = cn(
+    "flex flex-col md:flex-row gap-2 md:items-center rounded-xl px-3 py-2 border",
+    isDark
+      ? "bg-slate-900/40 border-slate-800"
+      : "bg-slate-50 border-slate-100",
+  );
+
+  const input = cn(
+    "flex-1 rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p
+        className={cn("text-sm", isDark ? "text-slate-300" : "text-slate-600")}
+      >
         Invite the people who will use Lumo with you. You can always add more
         later.
       </p>
 
       <div className="space-y-3">
         {invites.map((row, index) => (
-          <div
-            key={index}
-            className="flex flex-col md:flex-row gap-2 md:items-center bg-slate-50 border border-slate-100 rounded-xl px-3 py-2"
-          >
+          <div key={index} className={rowWrap}>
             <input
               type="email"
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={input}
               placeholder="teammate@company.com"
               value={row.email}
               onChange={(e) => updateInvite(index, { email: e.target.value })}
             />
             <select
-              className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className={cn(
+                "w-full md:w-40 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 cursor-pointer",
+                isDark
+                  ? "border-slate-800 bg-slate-900 text-slate-100 focus:ring-indigo-400"
+                  : "border-slate-200 bg-white text-slate-900 focus:ring-indigo-500",
+              )}
               value={row.role}
               onChange={(e) =>
                 updateInvite(index, { role: e.target.value as Role })
@@ -429,7 +533,10 @@ function StepInvites(props: {
       <button
         type="button"
         onClick={addRow}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
+        className={cn(
+          "text-sm font-medium mt-1 hover:underline cursor-pointer",
+          isDark ? "text-indigo-300" : "text-indigo-600",
+        )}
       >
         + Add another teammate
       </button>
@@ -438,11 +545,12 @@ function StepInvites(props: {
 }
 
 function StepCustomFields(props: {
+  isDark: boolean;
   fields: CustomFieldRow[];
   setFields: (rows: CustomFieldRow[]) => void;
   updateField: (index: number, patch: Partial<CustomFieldRow>) => void;
 }) {
-  const { fields, setFields, updateField } = props;
+  const { fields, setFields, updateField, isDark } = props;
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -480,9 +588,25 @@ function StepCustomFields(props: {
     setDragIndex(null);
   }
 
+  const card = cn(
+    "rounded-xl p-3 space-y-2 cursor-move border",
+    isDark
+      ? "bg-slate-900/40 border-slate-800"
+      : "bg-slate-50 border-slate-100",
+  );
+
+  const input = cn(
+    "w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p
+        className={cn("text-sm", isDark ? "text-slate-300" : "text-slate-600")}
+      >
         Choose the data you want to track on every lead or prospect. Drag fields
         to reorder them.
       </p>
@@ -495,19 +619,20 @@ function StepCustomFields(props: {
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragEnd={handleDragEnd}
-            className={`bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2 cursor-move ${
-              dragIndex === index ? "ring-2 ring-indigo-200" : ""
-            }`}
+            className={cn(
+              card,
+              dragIndex === index && "ring-2 ring-indigo-300/40",
+            )}
           >
             <div className="flex flex-col md:flex-row gap-2">
               <input
-                className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={cn(input, "flex-1")}
                 value={field.label}
                 onChange={(e) => updateField(index, { label: e.target.value })}
                 placeholder="Field label (e.g. Industry)"
               />
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className={cn(input, "w-full md:w-40 cursor-pointer text-sm")}
                 value={field.type}
                 onChange={(e) =>
                   updateField(index, {
@@ -525,7 +650,12 @@ function StepCustomFields(props: {
               <button
                 type="button"
                 onClick={() => removeField(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
+                className={cn(
+                  "text-xs self-start cursor-pointer",
+                  isDark
+                    ? "text-slate-400 hover:text-rose-300"
+                    : "text-slate-500 hover:text-red-500",
+                )}
               >
                 Remove
               </button>
@@ -533,7 +663,7 @@ function StepCustomFields(props: {
 
             {field.type === "select" && (
               <input
-                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={cn(input, "text-xs")}
                 value={field.options ?? ""}
                 onChange={(e) =>
                   updateField(index, { options: e.target.value })
@@ -548,7 +678,10 @@ function StepCustomFields(props: {
       <button
         type="button"
         onClick={addField}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
+        className={cn(
+          "text-sm font-medium mt-1 hover:underline cursor-pointer",
+          isDark ? "text-indigo-300" : "text-indigo-600",
+        )}
       >
         + Add another field
       </button>
@@ -557,6 +690,7 @@ function StepCustomFields(props: {
 }
 
 function StepImportLeads(props: {
+  isDark: boolean;
   importFileName: string | null;
   setImportFileName: (v: string | null) => void;
 }) {
@@ -568,23 +702,50 @@ function StepImportLeads(props: {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">
+        <p
+          className={cn(
+            "text-sm",
+            props.isDark ? "text-slate-300" : "text-slate-600",
+          )}
+        >
           Already have leads or prospects in a spreadsheet? Import them now so
           your team can start where they left off.
         </p>
 
-        <label className="border-2 border-dashed border-slate-300 rounded-2xl px-4 py-6 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition">
-          <span className="text-sm font-medium text-slate-700">
+        <label
+          className={cn(
+            "border-2 border-dashed rounded-2xl px-4 py-6 flex flex-col items-center justify-center cursor-pointer transition",
+            props.isDark
+              ? "border-slate-700 hover:border-indigo-500/60 hover:bg-indigo-950/30"
+              : "border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/40",
+          )}
+        >
+          <span
+            className={cn(
+              "text-sm font-medium",
+              props.isDark ? "text-slate-200" : "text-slate-700",
+            )}
+          >
             Click to upload CSV / Excel
           </span>
-          <span className="text-xs text-slate-500 mt-1">
+          <span
+            className={cn(
+              "text-xs mt-1",
+              props.isDark ? "text-slate-400" : "text-slate-500",
+            )}
+          >
             We’ll guide you through mapping the columns later.
           </span>
           <input type="file" className="hidden" onChange={handleFileChange} />
         </label>
 
         {props.importFileName && (
-          <p className="text-xs text-slate-600">
+          <p
+            className={cn(
+              "text-xs",
+              props.isDark ? "text-slate-300" : "text-slate-600",
+            )}
+          >
             Selected file:{" "}
             <span className="font-medium">{props.importFileName}</span>
           </p>
@@ -592,14 +753,31 @@ function StepImportLeads(props: {
 
         <button
           type="button"
-          className="text-xs text-indigo-600 font-medium hover:underline cursor-pointer"
+          className={cn(
+            "text-xs font-medium hover:underline cursor-pointer",
+            props.isDark ? "text-indigo-300" : "text-indigo-600",
+          )}
         >
           Download sample template
         </button>
       </div>
 
-      <div className="bg-slate-50 rounded-2xl p-4 text-xs text-slate-600 space-y-2">
-        <p className="font-medium text-slate-700 mb-1">Recommended columns</p>
+      <div
+        className={cn(
+          "rounded-2xl p-4 text-xs space-y-2",
+          props.isDark
+            ? "bg-slate-900/40 text-slate-300"
+            : "bg-slate-50 text-slate-600",
+        )}
+      >
+        <p
+          className={cn(
+            "font-medium mb-1",
+            props.isDark ? "text-slate-200" : "text-slate-700",
+          )}
+        >
+          Recommended columns
+        </p>
         <ul className="list-disc list-inside space-y-1">
           <li>Name, Email, Company</li>
           <li>Stage (New / Contacted / Replied / Qualified / …)</li>
@@ -612,11 +790,12 @@ function StepImportLeads(props: {
 }
 
 function StepPipeline(props: {
+  isDark: boolean;
   stages: string[];
   updateStage: (index: number, value: string) => void;
   setStages: (stages: string[]) => void;
 }) {
-  const { stages, updateStage, setStages } = props;
+  const { stages, updateStage, setStages, isDark } = props;
 
   function addStage() {
     setStages([...stages, "New stage"]);
@@ -626,9 +805,18 @@ function StepPipeline(props: {
     setStages(stages.filter((_, i) => i !== index));
   }
 
+  const input = cn(
+    "flex-1 rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p
+        className={cn("text-sm", isDark ? "text-slate-300" : "text-slate-600")}
+      >
         This is your default pipeline. You can keep our recommended one or
         rename stages to match your process.
       </p>
@@ -637,18 +825,22 @@ function StepPipeline(props: {
         {stages.map((stage, index) => (
           <div key={index} className="flex items-center gap-2">
             <input
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={input}
               value={stage}
               onChange={(e) => updateStage(index, e.target.value)}
             />
             <button
               type="button"
               onClick={() => removeStage(index)}
-              className={`text-xs text-slate-500 hover:text-red-500 ${
+              className={cn(
+                "text-xs",
+                isDark
+                  ? "text-slate-400 hover:text-rose-300"
+                  : "text-slate-500 hover:text-red-500",
                 stages.length <= 2
                   ? "cursor-not-allowed opacity-50"
-                  : "cursor-pointer"
-              }`}
+                  : "cursor-pointer",
+              )}
               disabled={stages.length <= 2}
             >
               Remove
@@ -660,7 +852,10 @@ function StepPipeline(props: {
       <button
         type="button"
         onClick={addStage}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
+        className={cn(
+          "text-sm font-medium mt-1 hover:underline cursor-pointer",
+          isDark ? "text-indigo-300" : "text-indigo-600",
+        )}
       >
         + Add stage
       </button>
@@ -669,11 +864,12 @@ function StepPipeline(props: {
 }
 
 function StepConversionMetrics(props: {
+  isDark: boolean;
   stages: string[];
   metrics: ConversionMetricRow[];
   setMetrics: (rows: ConversionMetricRow[]) => void;
 }) {
-  const { stages, metrics, setMetrics } = props;
+  const { stages, metrics, setMetrics, isDark } = props;
 
   function addMetric() {
     if (stages.length < 2) return;
@@ -700,9 +896,25 @@ function StepConversionMetrics(props: {
     setMetrics(metrics.filter((_, i) => i !== index));
   }
 
+  const card = cn(
+    "rounded-xl p-3 space-y-2 border",
+    isDark
+      ? "bg-slate-900/40 border-slate-800"
+      : "bg-slate-50 border-slate-100",
+  );
+
+  const input = cn(
+    "w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p
+        className={cn("text-sm", isDark ? "text-slate-300" : "text-slate-600")}
+      >
         Give names to the conversion rates you care about. Each metric compares
         how many leads move from one stage of the pipeline to another (e.g. “New
         → Contacted” or “Qualified → Booked call”).
@@ -710,20 +922,17 @@ function StepConversionMetrics(props: {
 
       <div className="space-y-3">
         {metrics.map((metric, index) => (
-          <div
-            key={index}
-            className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
-          >
+          <div key={index} className={card}>
             <div className="flex flex-col md:flex-row gap-2">
               <input
-                className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={cn(input, "flex-1")}
                 value={metric.label}
                 onChange={(e) => updateMetric(index, { label: e.target.value })}
                 placeholder="Metric name (e.g. Reply rate, Booking rate)"
               />
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className={cn(input, "w-full md:w-40 cursor-pointer")}
                 value={metric.fromStage}
                 onChange={(e) =>
                   updateMetric(index, { fromStage: e.target.value })
@@ -737,7 +946,7 @@ function StepConversionMetrics(props: {
               </select>
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className={cn(input, "w-full md:w-40 cursor-pointer")}
                 value={metric.toStage}
                 onChange={(e) =>
                   updateMetric(index, { toStage: e.target.value })
@@ -753,7 +962,12 @@ function StepConversionMetrics(props: {
               <button
                 type="button"
                 onClick={() => removeMetric(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
+                className={cn(
+                  "text-xs self-start cursor-pointer",
+                  isDark
+                    ? "text-slate-400 hover:text-rose-300"
+                    : "text-slate-500 hover:text-red-500",
+                )}
               >
                 Remove
               </button>
@@ -765,7 +979,10 @@ function StepConversionMetrics(props: {
       <button
         type="button"
         onClick={addMetric}
-        className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
+        className={cn(
+          "text-sm font-medium mt-1 hover:underline cursor-pointer",
+          isDark ? "text-indigo-300" : "text-indigo-600",
+        )}
       >
         + Add conversion metric
       </button>
@@ -774,6 +991,7 @@ function StepConversionMetrics(props: {
 }
 
 function StepFinish(props: {
+  isDark: boolean;
   companyName: string;
   teamName: string;
   invites: InviteRow[];
@@ -786,10 +1004,20 @@ function StepFinish(props: {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       <div className="space-y-3">
-        <p className="text-lg font-semibold text-slate-900">
+        <p
+          className={cn(
+            "text-lg font-semibold",
+            props.isDark ? "text-slate-100" : "text-slate-900",
+          )}
+        >
           You’re ready to roll 🎉
         </p>
-        <p className="text-sm text-slate-600">
+        <p
+          className={cn(
+            "text-sm",
+            props.isDark ? "text-slate-300" : "text-slate-600",
+          )}
+        >
           We’ll create{" "}
           <span className="font-medium">
             {props.teamName || "your sales team"}
@@ -802,7 +1030,12 @@ function StepFinish(props: {
           teammates.
         </p>
 
-        <ul className="mt-2 text-sm text-slate-600 space-y-1">
+        <ul
+          className={cn(
+            "mt-2 text-sm space-y-1",
+            props.isDark ? "text-slate-300" : "text-slate-600",
+          )}
+        >
           <li>• {activeInvites.length || "No"} teammate invites</li>
           <li>• {props.fields.length} custom lead fields</li>
           <li>• {props.stages.length} pipeline stages</li>
@@ -810,8 +1043,22 @@ function StepFinish(props: {
         </ul>
       </div>
 
-      <div className="bg-indigo-50 rounded-2xl p-4 text-sm text-slate-700 space-y-2">
-        <p className="font-medium mb-1">Next up in Lumo</p>
+      <div
+        className={cn(
+          "rounded-2xl p-4 text-sm space-y-2",
+          props.isDark
+            ? "bg-indigo-950/30 text-slate-200"
+            : "bg-indigo-50 text-slate-700",
+        )}
+      >
+        <p
+          className={cn(
+            "font-medium mb-1",
+            props.isDark ? "text-slate-100" : "text-slate-700",
+          )}
+        >
+          Next up in Lumo
+        </p>
         <ul className="list-disc list-inside space-y-1 text-xs">
           <li>Track setters’ outreach and replies in real time</li>
           <li>Auto-assign high potential leads to your best performers</li>

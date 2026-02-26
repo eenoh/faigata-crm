@@ -18,6 +18,7 @@ import {
   CreditCardIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 type NavItem = { href: string; baseHref: string; label: string; icon: any };
 
@@ -32,27 +33,38 @@ function hasPrivilegedAccess(roles: unknown): boolean {
   );
 }
 
-function SidebarSkeleton() {
+function SidebarSkeleton({ isDark }: { isDark: boolean }) {
+  const asideClass = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const skelA = isDark ? "bg-slate-800/70" : "bg-slate-200/70";
+  const skelB = isDark ? "bg-slate-800/60" : "bg-slate-200/60";
+  const skelC = isDark ? "bg-slate-800/50" : "bg-slate-200/50";
+  const divider = isDark ? "border-slate-900" : "border-slate-100";
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-slate-200 bg-white shadow-sm">
+    <aside
+      className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r shadow-sm ${asideClass}`}
+    >
       <div className="flex items-center px-3 pt-4 pb-6">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-slate-200/70" />
-          <div className="h-5 w-24 rounded bg-slate-200/60" />
+          <div className={`h-9 w-9 rounded-lg ${skelA}`} />
+          <div className={`h-5 w-24 rounded ${skelB}`} />
         </div>
       </div>
 
       <nav className="flex-1 space-y-2 px-2">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="h-5 w-5 rounded bg-slate-200/70" />
-            <div className="h-3 w-24 rounded bg-slate-200/50" />
+            <div className={`h-5 w-5 rounded ${skelA}`} />
+            <div className={`h-3 w-24 rounded ${skelC}`} />
           </div>
         ))}
       </nav>
 
-      <div className="ml-5 border-t border-slate-100 py-3">
-        <div className="h-3 w-40 rounded bg-slate-200/50" />
+      <div className={`ml-5 border-t py-3 ${divider}`}>
+        <div className={`h-3 w-40 rounded ${skelC}`} />
       </div>
     </aside>
   );
@@ -104,6 +116,8 @@ export function AppSidebar() {
     loading: workspaceLoading,
   } = useWorkspace();
 
+  const { resolvedTheme } = useTheme();
+
   const [mounted, setMounted] = useState(false);
 
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
@@ -113,6 +127,8 @@ export function AppSidebar() {
   const [canSeeBilling, setCanSeeBilling] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   const routeTeamId = useMemo(() => teamIdFromPathname(pathname), [pathname]);
   const effectiveTeamId = routeTeamId ?? ctxTeamId ?? null;
@@ -300,12 +316,34 @@ export function AppSidebar() {
   ]);
 
   if (!mounted || workspaceLoading || !permissionsLoaded) {
-    return <SidebarSkeleton />;
+    return <SidebarSkeleton isDark={false} />;
   }
+
+  const asideBase = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const brandActive = isDark
+    ? "bg-indigo-500/15 text-indigo-300"
+    : "bg-indigo-50 text-indigo-600";
+
+  const itemIdle = isDark
+    ? "text-slate-300 hover:bg-slate-900/60 hover:text-slate-100"
+    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+
+  const footerDivider = isDark ? "border-slate-900" : "border-slate-100";
+  const footerText = isDark ? "text-slate-500" : "text-slate-400";
+  const footerValue = isDark ? "text-slate-300" : "text-slate-500";
+
+  const collapseBtnBase = isDark
+    ? "border-slate-800 bg-slate-950 shadow-black/30 hover:border-indigo-500/40 hover:bg-indigo-500/10"
+    : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50";
+
+  const chevronColor = isDark ? "text-slate-400" : "text-slate-500";
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${
+      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r shadow-sm transition-all duration-300 ease-in-out ${asideBase} ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
@@ -329,9 +367,9 @@ export function AppSidebar() {
             }`}
           >
             <span
-              className={`block truncate text-lg font-semibold text-slate-900 transform transition-transform duration-300 ${
-                collapsed ? "-translate-x-3" : "translate-x-0"
-              }`}
+              className={`block truncate text-lg font-semibold transform transition-transform duration-300 ${
+                isDark ? "text-slate-100" : "text-slate-900"
+              } ${collapsed ? "-translate-x-3" : "translate-x-0"}`}
             >
               Lumo
             </span>
@@ -354,9 +392,7 @@ export function AppSidebar() {
               key={item.baseHref}
               href={item.href}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-indigo-50 text-indigo-600"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                active ? brandActive : itemIdle
               }`}
               title={collapsed ? item.label : undefined}
             >
@@ -368,14 +404,14 @@ export function AppSidebar() {
       </nav>
 
       <div
-        className={`ml-5 border-t border-slate-100 text-[11px] text-slate-400 overflow-hidden transition-all duration-300 ${
+        className={`ml-5 border-t text-[11px] overflow-hidden transition-all duration-300 ${footerDivider} ${footerText} ${
           collapsed ? "max-h-0 opacity-0 py-0" : "max-h-12 opacity-100 py-3"
         }`}
       >
         {!collapsed && (
           <p>
             Workspace:{" "}
-            <span className="font-medium">
+            <span className={`font-medium ${footerValue}`}>
               {ctxTeamName ?? effectiveTeamId ?? "—"}
             </span>
           </p>
@@ -386,10 +422,10 @@ export function AppSidebar() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors cursor-pointer"
+        className={`group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors cursor-pointer ${collapseBtnBase}`}
       >
         <ChevronLeftIcon
-          className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${
+          className={`h-4 w-4 transition-transform duration-200 ${chevronColor} ${
             collapsed ? "rotate-180" : ""
           }`}
         />

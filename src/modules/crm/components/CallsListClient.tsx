@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 import { supabase } from "@/lib/supabaseClient";
 import { PencilSquareIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 type OutcomeRow = {
   attended_status: string | null;
@@ -60,8 +61,22 @@ function toLabel(s: string) {
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
-function statusPill(status: string) {
+function statusPill(status: string, isDark: boolean) {
   const s = (status || "unknown").toLowerCase();
+
+  // Dark mode: slightly stronger background + brighter text + softer ring
+  if (isDark) {
+    if (s === "attended")
+      return "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30";
+    if (s === "no_show") return "bg-rose-500/15 text-rose-200 ring-rose-400/30";
+    if (s === "cancelled")
+      return "bg-slate-500/15 text-slate-200 ring-slate-400/25";
+    if (s === "rescheduled")
+      return "bg-amber-500/15 text-amber-200 ring-amber-400/30";
+    return "bg-slate-500/15 text-slate-200 ring-slate-400/25";
+  }
+
+  // Light mode (your current)
   if (s === "attended")
     return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
   if (s === "no_show") return "bg-rose-50/60 text-rose-700 ring-rose-200";
@@ -71,26 +86,56 @@ function statusPill(status: string) {
   return "bg-slate-100/70 text-slate-700 ring-slate-200";
 }
 
-function yesNoPill(isYes: boolean) {
+function yesNoPill(isYes: boolean, isDark: boolean) {
+  if (isDark) {
+    return isYes
+      ? "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30"
+      : "bg-rose-500/15 text-rose-200 ring-rose-400/30";
+  }
+
   return isYes
     ? "bg-emerald-50/60 text-emerald-700 ring-emerald-200"
     : "bg-rose-50/60 text-rose-700 ring-rose-200";
 }
 
-function CallsLoadingState() {
+function productPill(isDark: boolean) {
+  return isDark
+    ? "bg-indigo-500/15 text-indigo-200 ring-indigo-400/30"
+    : "bg-indigo-50 text-indigo-700 ring-indigo-200";
+}
+
+function productMissingPill(isDark: boolean) {
+  return isDark
+    ? "bg-slate-500/15 text-slate-200 ring-slate-400/25"
+    : "bg-slate-100 text-slate-700 ring-slate-200";
+}
+
+/* -------------------- loading UI (theme-aware) -------------------- */
+
+function CallsLoadingState({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headBg = isDark ? "bg-slate-900/40" : "bg-slate-50";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+  const rowDiv = isDark ? "divide-slate-800" : "divide-slate-100";
+  const sk = isDark ? "bg-slate-800" : "bg-slate-100";
+  const sk2 = isDark ? "bg-slate-700/70" : "bg-slate-200/70";
+  const tfoot = isDark ? "bg-slate-950" : "bg-white";
+
   return (
     <div className="max-w-5xl space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className={`rounded-2xl border p-5 shadow-sm ${card}`}>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="h-6 w-40 rounded bg-slate-100 animate-pulse" />
-            <div className="mt-2 h-4 w-64 rounded bg-slate-100 animate-pulse" />
+            <div className={`h-6 w-40 rounded animate-pulse ${sk}`} />
+            <div className={`mt-2 h-4 w-64 rounded animate-pulse ${sk}`} />
           </div>
-          <div className="h-9 w-20 rounded-lg bg-slate-100 animate-pulse" />
+          <div className={`h-9 w-20 rounded-lg animate-pulse ${sk}`} />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className={`rounded-2xl border shadow-sm overflow-hidden ${card}`}>
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed border-collapse text-sm">
             <colgroup>
@@ -99,7 +144,7 @@ function CallsLoadingState() {
               ))}
             </colgroup>
 
-            <thead className="bg-slate-50">
+            <thead className={headBg}>
               <tr className="text-left">
                 {[
                   "Date",
@@ -114,42 +159,56 @@ function CallsLoadingState() {
                   <th
                     key={h}
                     className={[
-                      "border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600",
+                      `border-b px-4 py-3 text-xs font-semibold ${
+                        isDark ? "text-slate-300" : "text-slate-600"
+                      } ${border}`,
                       h === "View" || h === "Edit" ? "text-center px-2" : "",
                     ].join(" ")}
                   >
-                    <div className="h-3 w-16 rounded bg-slate-200/70 animate-pulse mx-auto" />
+                    <div
+                      className={`h-3 w-16 rounded animate-pulse mx-auto ${sk2}`}
+                    />
                   </th>
                 ))}
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className={`divide-y ${rowDiv}`}>
               {Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}>
+                <tr key={i} className={isDark ? "bg-slate-950" : "bg-white"}>
                   <td className="px-4 py-3">
-                    <div className="h-4 w-28 rounded bg-slate-100 animate-pulse" />
+                    <div className={`h-4 w-28 rounded animate-pulse ${sk}`} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="h-4 w-36 rounded bg-slate-100 animate-pulse" />
+                    <div className={`h-4 w-36 rounded animate-pulse ${sk}`} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="h-5 w-24 rounded-full bg-slate-100 animate-pulse" />
+                    <div
+                      className={`h-5 w-24 rounded-full animate-pulse ${sk}`}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" />
+                    <div
+                      className={`h-5 w-16 rounded-full animate-pulse ${sk}`}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" />
+                    <div
+                      className={`h-5 w-16 rounded-full animate-pulse ${sk}`}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="h-4 w-40 rounded bg-slate-100 animate-pulse" />
+                    <div className={`h-4 w-40 rounded animate-pulse ${sk}`} />
                   </td>
                   <td className="px-2 py-3">
-                    <div className="mx-auto h-6 w-6 rounded bg-slate-100 animate-pulse" />
+                    <div
+                      className={`mx-auto h-6 w-6 rounded animate-pulse ${sk}`}
+                    />
                   </td>
                   <td className="px-2 py-3">
-                    <div className="mx-auto h-6 w-6 rounded bg-slate-100 animate-pulse" />
+                    <div
+                      className={`mx-auto h-6 w-6 rounded animate-pulse ${sk}`}
+                    />
                   </td>
                 </tr>
               ))}
@@ -159,9 +218,9 @@ function CallsLoadingState() {
               <tr>
                 <td
                   colSpan={8}
-                  className="border-t border-slate-100 bg-white px-4 py-3"
+                  className={`border-t px-4 py-3 ${border} ${tfoot}`}
                 >
-                  <div className="h-3 w-80 rounded bg-slate-100 animate-pulse" />
+                  <div className={`h-3 w-80 rounded animate-pulse ${sk}`} />
                 </td>
               </tr>
             </tfoot>
@@ -172,14 +231,27 @@ function CallsLoadingState() {
   );
 }
 
-function ProductBadgeLoading() {
+function ProductBadgeLoading({ isDark }: { isDark: boolean }) {
   return (
     <span
       aria-label="Loading product"
-      className="inline-flex max-w-full items-center gap-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200"
+      className={[
+        "inline-flex max-w-full items-center gap-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+        productPill(isDark),
+      ].join(" ")}
     >
-      <span className="h-2 w-2 rounded-full bg-indigo-200 animate-pulse" />
-      <span className="h-3 w-28 rounded bg-indigo-200/70 animate-pulse" />
+      <span
+        className={[
+          "h-2 w-2 rounded-full animate-pulse",
+          isDark ? "bg-indigo-300/40" : "bg-indigo-200",
+        ].join(" ")}
+      />
+      <span
+        className={[
+          "h-3 w-28 rounded animate-pulse",
+          isDark ? "bg-indigo-300/25" : "bg-indigo-200/70",
+        ].join(" ")}
+      />
     </span>
   );
 }
@@ -187,6 +259,11 @@ function ProductBadgeLoading() {
 export default function CallsListClient({ leadId }: { leadId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [loading, setLoading] = useState(true);
   const [calls, setCalls] = useState<BookingRow[]>([]);
@@ -423,18 +500,47 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
     };
   }, [rows, productLabels, teamId]);
 
-  if (loading) return <CallsLoadingState />;
-  if (err) return <p className="text-sm text-rose-600">{err}</p>;
+  if (loading) return <CallsLoadingState isDark={isDark} />;
+  if (err)
+    return (
+      <p
+        className={["text-sm", isDark ? "text-rose-300" : "text-rose-600"].join(
+          " ",
+        )}
+      >
+        {err}
+      </p>
+    );
 
   const showRows = filteredRows;
 
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headerBg = isDark ? "bg-slate-950" : "bg-white";
+  const tableHead = isDark ? "bg-slate-900/40" : "bg-slate-50";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+  const divider = isDark ? "divide-slate-800" : "divide-slate-100";
+  const hoverRow = isDark ? "hover:bg-slate-900/30" : "hover:bg-slate-50/70";
+  const titleText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+  const bodyText = isDark ? "text-slate-200" : "text-slate-700";
+  const thText = isDark ? "text-slate-300" : "text-slate-600";
+  const dashText = isDark ? "text-slate-500" : "text-slate-400";
+
+  const backBtn = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+
   return (
-    <div className="max-w-5xl space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div
+      className={`max-w-5xl space-y-4 ${isDark ? "text-slate-200" : "text-slate-800"}`}
+    >
+      <div className={`rounded-2xl border p-5 shadow-sm ${card} ${headerBg}`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Calls</h1>
-            <p className="mt-1 text-xs text-slate-500">
+            <h1 className={`text-xl font-semibold ${titleText}`}>Calls</h1>
+            <p className={`mt-1 text-xs ${mutedText}`}>
               {qRaw.trim().length === 0 ? (
                 "Booked calls for this lead."
               ) : (
@@ -452,7 +558,10 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
               onClick={() =>
                 router.push(`/leads/${encodeURIComponent(normalizedLeadId)}`)
               }
-              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className={[
+                "cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm",
+                backBtn,
+              ].join(" ")}
             >
               Back to Lead
             </button>
@@ -461,22 +570,50 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+        <div
+          className={[
+            "rounded-2xl border border-dashed p-6 text-sm",
+            isDark
+              ? "border-slate-700 bg-slate-950 text-slate-400"
+              : "border-slate-300 bg-white text-slate-500",
+          ].join(" ")}
+        >
           No calls booked yet.
         </div>
       ) : showRows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
-          <div className="font-semibold text-slate-900">No matches</div>
-          <div className="mt-1 text-xs text-slate-500">
+        <div
+          className={[
+            "rounded-2xl border border-dashed p-6 text-sm",
+            isDark
+              ? "border-slate-700 bg-slate-950 text-slate-300"
+              : "border-slate-300 bg-white text-slate-600",
+          ].join(" ")}
+        >
+          <div className={`font-semibold ${titleText}`}>No matches</div>
+          <div className={`mt-1 text-xs ${mutedText}`}>
             Try a different search (e.g.{" "}
-            <span className="font-semibold text-slate-700">attended</span>,{" "}
-            <span className="font-semibold text-slate-700">no show</span>,{" "}
-            <span className="font-semibold text-slate-700">yes</span>, or a
-            product name).
+            <span
+              className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+            >
+              attended
+            </span>
+            ,{" "}
+            <span
+              className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+            >
+              no show
+            </span>
+            ,{" "}
+            <span
+              className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+            >
+              yes
+            </span>
+            , or a product name).
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className={`rounded-2xl border shadow-sm overflow-hidden ${card}`}>
           <div className="overflow-x-auto">
             <table className="min-w-full table-fixed border-collapse text-sm">
               <colgroup>
@@ -485,36 +622,52 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                 ))}
               </colgroup>
 
-              <thead className="bg-slate-50">
+              <thead className={tableHead}>
                 <tr className="text-left">
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Date
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Time
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Attendance
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Offer
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Closed
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                  <th
+                    className={`border-b px-4 py-3 text-xs font-semibold ${thText} ${border}`}
+                  >
                     Product / Service
                   </th>
-                  <th className="border-b border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center">
+                  <th
+                    className={`border-b px-2 py-3 text-xs font-semibold ${thText} ${border} text-center`}
+                  >
                     View
                   </th>
-                  <th className="border-b border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center">
+                  <th
+                    className={`border-b px-2 py-3 text-xs font-semibold ${thText} ${border} text-center`}
+                  >
                     Edit
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={`divide-y ${divider}`}>
                 {showRows.map((r) => {
                   const shouldShowProduct = r.offerMade && !!r.offerProductId;
                   const label = shouldShowProduct
@@ -522,22 +675,31 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                     : null;
 
                   return (
-                    <tr key={r.id} className="hover:bg-slate-50/70">
+                    <tr
+                      key={r.id}
+                      className={[
+                        hoverRow,
+                        isDark ? "bg-slate-950" : "bg-white",
+                      ].join(" ")}
+                    >
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900 truncate">
+                        <div className={`font-semibold truncate ${titleText}`}>
                           {r.dateLabel}
                         </div>
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="text-slate-700 truncate">
+                        <div className={`truncate ${bodyText}`}>
                           {r.timeLabel}
                         </div>
                       </td>
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(r.attendedRaw)}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusPill(
+                            r.attendedRaw,
+                            isDark,
+                          )}`}
                         >
                           {r.attendedLabel}
                         </span>
@@ -545,7 +707,10 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(r.offerMade)}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
+                            r.offerMade,
+                            isDark,
+                          )}`}
                         >
                           {r.offerMade ? "Yes" : "No"}
                         </span>
@@ -553,7 +718,10 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
 
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(r.closed)}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${yesNoPill(
+                            r.closed,
+                            isDark,
+                          )}`}
                         >
                           {r.closed ? "Yes" : "No"}
                         </span>
@@ -562,18 +730,30 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                       <td className="px-4 py-3">
                         {shouldShowProduct ? (
                           label ? (
-                            <span className="inline-flex max-w-full items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 truncate">
+                            <span
+                              className={[
+                                "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 truncate",
+                                isDark
+                                  ? "bg-indigo-500/10 text-indigo-200 ring-indigo-400/30"
+                                  : "bg-indigo-50 text-indigo-700 ring-indigo-200",
+                              ].join(" ")}
+                            >
                               {label}
                             </span>
                           ) : productsResolving ? (
-                            <ProductBadgeLoading />
+                            <ProductBadgeLoading isDark={isDark} />
                           ) : (
-                            <span className="inline-flex max-w-full items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 truncate">
+                            <span
+                              className={[
+                                "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 truncate",
+                                productMissingPill(isDark),
+                              ].join(" ")}
+                            >
                               Product not found
                             </span>
                           )
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className={dashText}>—</span>
                         )}
                       </td>
 
@@ -583,10 +763,17 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                             type="button"
                             onClick={() =>
                               router.push(
-                                `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}/view`,
+                                `/leads/${encodeURIComponent(
+                                  normalizedLeadId,
+                                )}/calls/${encodeURIComponent(r.id)}/view`,
                               )
                             }
-                            className="inline-flex p-1 !text-slate-600 hover:!text-slate-800 transition-colors cursor-pointer"
+                            className={[
+                              "inline-flex p-1 transition-colors cursor-pointer",
+                              isDark
+                                ? "text-slate-300 hover:text-slate-100"
+                                : "!text-slate-600 hover:!text-slate-800",
+                            ].join(" ")}
                             title="View Call Details"
                             aria-label="View call details"
                           >
@@ -601,10 +788,17 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
                             type="button"
                             onClick={() =>
                               router.push(
-                                `/leads/${encodeURIComponent(normalizedLeadId)}/calls/${encodeURIComponent(r.id)}`,
+                                `/leads/${encodeURIComponent(
+                                  normalizedLeadId,
+                                )}/calls/${encodeURIComponent(r.id)}`,
                               )
                             }
-                            className="inline-flex p-1 !text-indigo-600 hover:!text-indigo-700 transition-colors cursor-pointer"
+                            className={[
+                              "inline-flex p-1 transition-colors cursor-pointer",
+                              isDark
+                                ? "text-indigo-300 hover:text-indigo-200"
+                                : "!text-indigo-600 hover:!text-indigo-700",
+                            ].join(" ")}
                             title="Edit Call Tracking"
                             aria-label="Edit call tracking"
                           >
@@ -619,11 +813,36 @@ export default function CallsListClient({ leadId }: { leadId?: string }) {
             </table>
           </div>
 
-          <div className="border-t border-slate-100 bg-white px-4 py-3 text-xs text-slate-500">
-            Use <span className="font-semibold text-slate-700">View</span> to
-            read notes/outcomes, or{" "}
-            <span className="font-semibold text-slate-700">Edit</span> to update
-            tracking.
+          <div
+            className={[
+              "border-t px-4 py-3 text-xs",
+              border,
+              isDark
+                ? "bg-slate-950 text-slate-400"
+                : "bg-white text-slate-500",
+            ].join(" ")}
+          >
+            Use{" "}
+            <span
+              className={
+                isDark
+                  ? "font-semibold text-slate-200"
+                  : "font-semibold text-slate-700"
+              }
+            >
+              View
+            </span>{" "}
+            to read notes/outcomes, or{" "}
+            <span
+              className={
+                isDark
+                  ? "font-semibold text-slate-200"
+                  : "font-semibold text-slate-700"
+              }
+            >
+              Edit
+            </span>{" "}
+            to update tracking.
           </div>
         </div>
       )}

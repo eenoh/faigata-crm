@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 import {
   ResponsiveContainer,
   LineChart,
@@ -126,6 +127,7 @@ type ActivityTooltipProps = {
   label?: string | number;
   payload?: readonly TooltipItem[];
   bucket: Bucket;
+  isDark: boolean;
 };
 
 /* -------------------- small utils -------------------- */
@@ -193,6 +195,7 @@ function ActivityTooltip({
   payload,
   label,
   bucket,
+  isDark,
 }: ActivityTooltipProps) {
   if (!active || !payload?.length || label == null) return null;
 
@@ -206,13 +209,26 @@ function ActivityTooltip({
   const leads = Number(leadsRaw ?? 0);
   const messages = Number(msgsRaw ?? 0);
 
+  const shell = isDark
+    ? "border-slate-800 bg-slate-950/95 text-slate-200"
+    : "border-slate-200 bg-white/95 text-slate-600";
+
+  const titleCls = isDark ? "text-slate-100" : "text-slate-900";
+  const valueCls = isDark ? "text-slate-100" : "text-slate-900";
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
-      <div className="text-[11px] font-semibold text-slate-900">
+    <div
+      className={`rounded-xl border px-3 py-2 shadow-lg backdrop-blur ${shell}`}
+    >
+      <div className={`text-[11px] font-semibold ${titleCls}`}>
         {fmtBucketLabel(String(label), bucket)}
       </div>
 
-      <div className="mt-1 grid gap-1 text-[11px] text-slate-600">
+      <div
+        className={`mt-1 grid gap-1 text-[11px] ${
+          isDark ? "text-slate-300" : "text-slate-600"
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span
@@ -221,7 +237,7 @@ function ActivityTooltip({
             />
             <span>Leads added</span>
           </div>
-          <span className="font-semibold text-slate-900">{leads}</span>
+          <span className={`font-semibold ${valueCls}`}>{leads}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -232,29 +248,47 @@ function ActivityTooltip({
             />
             <span>Messages sent</span>
           </div>
-          <span className="font-semibold text-slate-900">{messages}</span>
+          <span className={`font-semibold ${valueCls}`}>{messages}</span>
         </div>
       </div>
     </div>
   );
 }
 
-/* ✅ Loading overlay styled like LoginPageClient */
-function MiniLoadingOverlay({ label = "Loading" }: { label?: string }) {
+/* Loading overlay */
+function MiniLoadingOverlay({
+  label = "Loading",
+  isDark,
+}: {
+  label?: string;
+  isDark: boolean;
+}) {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center">
-      {/* blurred backdrop */}
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-md" />
+      <div
+        className={`absolute inset-0 backdrop-blur-md ${
+          isDark ? "bg-slate-950/40" : "bg-white/40"
+        }`}
+      />
 
-      {/* loader card */}
-      <div className="relative z-10 rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl px-10 py-8 shadow-xl">
+      <div
+        className={`relative z-10 rounded-2xl border backdrop-blur-xl px-10 py-8 shadow-xl ${
+          isDark
+            ? "border-slate-800 bg-slate-950/80"
+            : "border-slate-200 bg-white/80"
+        }`}
+      >
         <div className="flex items-end justify-center gap-2">
           <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.2s]" />
           <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.1s]" />
           <span className="h-3 w-3 rounded-full bg-indigo-600 animate-bounce" />
         </div>
 
-        <p className="mt-4 text-center text-sm font-semibold text-slate-700">
+        <p
+          className={`mt-4 text-center text-sm font-semibold ${
+            isDark ? "text-slate-200" : "text-slate-700"
+          }`}
+        >
           {label}
         </p>
       </div>
@@ -262,123 +296,147 @@ function MiniLoadingOverlay({ label = "Loading" }: { label?: string }) {
   );
 }
 
-function SkeletonBlock({ className = "" }: { className?: string }) {
+function SkeletonBlock({
+  className = "",
+  isDark,
+}: {
+  className?: string;
+  isDark: boolean;
+}) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-slate-100 ${className}`}
+      className={`animate-pulse rounded-lg ${
+        isDark ? "bg-slate-800/70" : "bg-slate-100"
+      } ${className}`}
       aria-hidden="true"
     />
   );
 }
 
-function DashboardSkeleton() {
+function DashboardSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const soft = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-200 bg-slate-50";
+
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <SkeletonBlock className="h-6 w-40" />
-            <SkeletonBlock className="mt-2 h-4 w-80 max-w-full" />
+            <SkeletonBlock isDark={isDark} className="h-6 w-40" />
+            <SkeletonBlock
+              isDark={isDark}
+              className="mt-2 h-4 w-80 max-w-full"
+            />
           </div>
-
           <div className="flex flex-wrap items-center gap-2">
-            <SkeletonBlock className="h-9 w-40 rounded-lg" />
+            <SkeletonBlock isDark={isDark} className="h-9 w-40 rounded-lg" />
             <div className="flex items-center gap-2">
-              <SkeletonBlock className="h-9 w-28 rounded-lg" />
-              <SkeletonBlock className="h-9 w-28 rounded-lg" />
-              <SkeletonBlock className="h-9 w-28 rounded-lg" />
-              <SkeletonBlock className="h-9 w-24 rounded-lg" />
+              <SkeletonBlock isDark={isDark} className="h-9 w-28 rounded-lg" />
+              <SkeletonBlock isDark={isDark} className="h-9 w-28 rounded-lg" />
+              <SkeletonBlock isDark={isDark} className="h-9 w-28 rounded-lg" />
+              <SkeletonBlock isDark={isDark} className="h-9 w-24 rounded-lg" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Grid */}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-          >
-            <SkeletonBlock className="h-3 w-20" />
-            <SkeletonBlock className="mt-2 h-7 w-24" />
-            <SkeletonBlock className="mt-2 h-3 w-28" />
+          <div key={i} className={`rounded-xl border p-3 shadow-sm ${card}`}>
+            <SkeletonBlock isDark={isDark} className="h-3 w-20" />
+            <SkeletonBlock isDark={isDark} className="mt-2 h-7 w-24" />
+            <SkeletonBlock isDark={isDark} className="mt-2 h-3 w-28" />
           </div>
         ))}
       </div>
 
-      {/* Main grid */}
       <div className="grid gap-3 lg:grid-cols-3">
-        {/* Left */}
         <div className="space-y-3 lg:col-span-2">
-          {/* Funnel */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
             <div className="mb-3 flex items-end justify-between gap-2">
               <div>
-                <SkeletonBlock className="h-4 w-32" />
-                <SkeletonBlock className="mt-2 h-3 w-64" />
+                <SkeletonBlock isDark={isDark} className="h-4 w-32" />
+                <SkeletonBlock isDark={isDark} className="mt-2 h-3 w-64" />
               </div>
-              <SkeletonBlock className="h-9 w-40 rounded-lg" />
+              <SkeletonBlock isDark={isDark} className="h-9 w-40 rounded-lg" />
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <SkeletonBlock className="h-6 w-48" />
+            <div className={`rounded-xl border p-4 ${soft}`}>
+              <SkeletonBlock isDark={isDark} className="h-6 w-48" />
               <div className="mt-3 space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <SkeletonBlock key={i} className="h-10 w-full" />
+                  <SkeletonBlock
+                    key={i}
+                    isDark={isDark}
+                    className="h-10 w-full"
+                  />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Activity */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <SkeletonBlock className="h-4 w-24" />
-            <SkeletonBlock className="mt-2 h-3 w-80 max-w-full" />
+          <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
+            <SkeletonBlock isDark={isDark} className="h-4 w-24" />
+            <SkeletonBlock
+              isDark={isDark}
+              className="mt-2 h-3 w-80 max-w-full"
+            />
 
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+            <div className={`mt-4 rounded-xl border p-3 ${card}`}>
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <SkeletonBlock className="h-7 w-28 rounded-full" />
-                <SkeletonBlock className="h-7 w-32 rounded-full" />
+                <SkeletonBlock
+                  isDark={isDark}
+                  className="h-7 w-28 rounded-full"
+                />
+                <SkeletonBlock
+                  isDark={isDark}
+                  className="h-7 w-32 rounded-full"
+                />
               </div>
 
-              <div className="h-[280px] rounded-lg border border-slate-200 bg-slate-50">
+              <div className={`h-[280px] rounded-lg border ${soft}`}>
                 <div className="p-4">
-                  <SkeletonBlock className="h-4 w-56" />
-                  <SkeletonBlock className="mt-3 h-4 w-72" />
-                  <SkeletonBlock className="mt-3 h-4 w-64" />
+                  <SkeletonBlock isDark={isDark} className="h-4 w-56" />
+                  <SkeletonBlock isDark={isDark} className="mt-3 h-4 w-72" />
+                  <SkeletonBlock isDark={isDark} className="mt-3 h-4 w-64" />
                 </div>
               </div>
 
-              <SkeletonBlock className="mt-3 h-3 w-72 max-w-full" />
+              <SkeletonBlock
+                isDark={isDark}
+                className="mt-3 h-3 w-72 max-w-full"
+              />
             </div>
           </div>
         </div>
 
-        {/* Right panels */}
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, panelIdx) => (
             <div
               key={panelIdx}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              className={`rounded-2xl border p-4 shadow-sm ${card}`}
             >
               <div className="mb-3 flex items-end justify-between gap-2">
                 <div>
-                  <SkeletonBlock className="h-4 w-36" />
-                  <SkeletonBlock className="mt-2 h-3 w-52" />
+                  <SkeletonBlock isDark={isDark} className="h-4 w-36" />
+                  <SkeletonBlock isDark={isDark} className="mt-2 h-3 w-52" />
                 </div>
-                <SkeletonBlock className="h-4 w-20" />
+                <SkeletonBlock isDark={isDark} className="h-4 w-20" />
               </div>
 
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((__, rowIdx) => (
                   <div
                     key={rowIdx}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    className={`rounded-xl border px-3 py-2 ${card}`}
                   >
-                    <SkeletonBlock className="h-4 w-44" />
-                    <SkeletonBlock className="mt-2 h-3 w-64" />
+                    <SkeletonBlock isDark={isDark} className="h-4 w-44" />
+                    <SkeletonBlock isDark={isDark} className="mt-2 h-3 w-64" />
                   </div>
                 ))}
               </div>
@@ -436,6 +494,7 @@ function FunnelSvg({
   onToggleTable,
   detailsRef,
   tableRef,
+  isDark,
 }: {
   stages: FunnelStage[];
   edges: FunnelEdge[];
@@ -445,6 +504,7 @@ function FunnelSvg({
   onToggleTable: () => void;
   detailsRef: RefObject<HTMLDivElement | null>;
   tableRef: RefObject<HTMLDivElement | null>;
+  isDark: boolean;
 }) {
   const n = stages.length;
 
@@ -458,6 +518,16 @@ function FunnelSvg({
 
   const cx = viewW / 2;
   const maxCount = Math.max(1, ...stages.map((s) => s.leadCount));
+
+  const surface = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200"
+    : "border-slate-200 bg-white text-slate-700";
+
+  const softSurface = isDark
+    ? "border-slate-800 bg-slate-900/30 text-slate-300"
+    : "border-slate-200 bg-slate-50 text-slate-700";
+
+  const rowHover = isDark ? "hover:bg-slate-900/35" : "hover:bg-slate-50";
 
   function lerp(a: number, b: number, t: number) {
     return a + (b - a) * t;
@@ -517,16 +587,28 @@ function FunnelSvg({
     <div className="w-full overflow-x-auto">
       <div className="mx-auto w-full max-w-[920px]">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 shadow-sm">
+          <div
+            className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] shadow-sm ${surface}`}
+          >
             <span className="h-2 w-2 rounded-full bg-indigo-500/70" />
-            <span className="font-semibold text-slate-800">Tip:</span>
-            <span>Click a stage for details.</span>
+            <span
+              className={`font-semibold ${
+                isDark ? "text-slate-100" : "text-slate-800"
+              }`}
+            >
+              Tip:
+            </span>
+            <span className={isDark ? "text-slate-300" : "text-slate-600"}>
+              Click a stage for details.
+            </span>
           </div>
 
           <button
             type="button"
             onClick={onToggleTable}
-            className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+            className={`inline-flex cursor-pointer items-center justify-center rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition active:scale-[0.99] ${surface} ${
+              isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+            }`}
             aria-pressed={showTable}
           >
             {showTable ? "Hide table" : "Show table"}
@@ -610,7 +692,6 @@ function FunnelSvg({
 
             const convText = hasEdge ? fmtPct(edge!.actualConversionRate) : "—";
 
-            // ✅ normalize target everywhere
             const normalizedTarget = hasEdge
               ? normalizePercent(edge!.targetRate)
               : null;
@@ -701,7 +782,7 @@ function FunnelSvg({
         {selectedStageId && (
           <div
             ref={detailsRef}
-            className="mt-3 scroll-mt-24 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            className={`mt-3 scroll-mt-24 rounded-xl border p-3 shadow-sm ${surface}`}
           >
             {(() => {
               const i = stages.findIndex((s) => s.id === selectedStageId);
@@ -715,52 +796,90 @@ function FunnelSvg({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="truncate text-sm font-extrabold text-slate-900">
+                      <div
+                        className={`truncate text-sm font-extrabold ${
+                          isDark ? "text-slate-100" : "text-slate-900"
+                        }`}
+                      >
                         {s.name}
                       </div>
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          isDark
+                            ? "bg-indigo-500/15 text-indigo-200"
+                            : "bg-indigo-50 text-indigo-700"
+                        }`}
+                      >
                         Stage {i + 1}/{stages.length}
                       </span>
                     </div>
 
-                    <div className="mt-0.5 text-[11px] text-slate-500">
+                    <div
+                      className={`mt-0.5 text-[11px] ${
+                        isDark ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
                       {s.leadCount} lead{s.leadCount === 1 ? "" : "s"} in this
                       stage.
                     </div>
 
                     {e && (
-                      <div className="mt-1.5 text-[11px] text-slate-600">
+                      <div
+                        className={`mt-1.5 text-[11px] ${
+                          isDark ? "text-slate-300" : "text-slate-600"
+                        }`}
+                      >
                         Next:{" "}
-                        <span className="font-semibold text-slate-900">
+                        <span
+                          className={`font-semibold ${
+                            isDark ? "text-slate-100" : "text-slate-900"
+                          }`}
+                        >
                           {e.fromStageName} → {e.toStageName}
                         </span>{" "}
-                        <span className="text-slate-400">•</span>{" "}
+                        <span
+                          className={
+                            isDark ? "text-slate-600" : "text-slate-400"
+                          }
+                        >
+                          •
+                        </span>{" "}
                         <span className="font-semibold">{e.label}</span>
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                      <div className="text-[10px] text-slate-500">
-                        Conversion
-                      </div>
-                      <div className="text-sm font-extrabold text-slate-900">
+                    <div
+                      className={`rounded-lg border px-2.5 py-2 ${softSurface}`}
+                    >
+                      <div className="text-[10px] opacity-80">Conversion</div>
+                      <div
+                        className={`text-sm font-extrabold ${
+                          isDark ? "text-slate-100" : "text-slate-900"
+                        }`}
+                      >
                         {fmtPct(e?.actualConversionRate ?? null)}
                       </div>
                       {normalizedTarget != null && (
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-[10px] opacity-80">
                           Target {normalizedTarget}%
                         </div>
                       )}
                     </div>
 
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                      <div className="text-[10px] text-slate-500">Drop-off</div>
-                      <div className="text-sm font-extrabold text-slate-900">
+                    <div
+                      className={`rounded-lg border px-2.5 py-2 ${softSurface}`}
+                    >
+                      <div className="text-[10px] opacity-80">Drop-off</div>
+                      <div
+                        className={`text-sm font-extrabold ${
+                          isDark ? "text-slate-100" : "text-slate-900"
+                        }`}
+                      >
                         {e ? e.dropOffCount : "—"}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] opacity-80">
                         {fmtPct(e?.dropOffRate ?? null)}
                       </div>
                     </div>
@@ -768,7 +887,9 @@ function FunnelSvg({
                     <button
                       type="button"
                       onClick={() => onSelectStageId(null)}
-                      className="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+                      className={`cursor-pointer rounded-lg border px-2.5 py-2 text-[11px] font-semibold shadow-sm transition active:scale-[0.99] ${surface} ${
+                        isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+                      }`}
                     >
                       Clear
                     </button>
@@ -782,16 +903,32 @@ function FunnelSvg({
         {showTable && (
           <div
             ref={tableRef}
-            className="mt-4 scroll-mt-24 overflow-hidden rounded-xl border border-slate-200"
+            className={`mt-4 scroll-mt-24 overflow-hidden rounded-xl border ${
+              isDark ? "border-slate-800" : "border-slate-200"
+            }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-3 py-2.5">
-              <div className="text-sm font-semibold text-slate-900">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 ${
+                isDark ? "bg-slate-950" : "bg-white"
+              }`}
+            >
+              <div
+                className={`text-sm font-semibold ${
+                  isDark ? "text-slate-100" : "text-slate-900"
+                }`}
+              >
                 Stage-to-Stage Performance
               </div>
             </div>
 
-            <div className="bg-slate-50/60">
-              <div className="grid grid-cols-12 gap-2 border-t border-slate-200 px-3 py-2 text-[10px] font-semibold text-slate-600">
+            <div className={isDark ? "bg-slate-950" : "bg-slate-50/60"}>
+              <div
+                className={`grid grid-cols-12 gap-2 border-t px-3 py-2 text-[10px] font-semibold ${
+                  isDark
+                    ? "border-slate-800 text-slate-300"
+                    : "border-slate-200 text-slate-600"
+                }`}
+              >
                 <div className="col-span-4">Transition</div>
                 <div className="col-span-3">Label</div>
                 <div className="col-span-2 text-right">Conversion</div>
@@ -799,7 +936,13 @@ function FunnelSvg({
               </div>
 
               {edges.length === 0 ? (
-                <div className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-600">
+                <div
+                  className={`border-t px-3 py-3 text-[11px] ${
+                    isDark
+                      ? "border-slate-800 text-slate-300"
+                      : "border-slate-200 text-slate-600"
+                  }`}
+                >
                   Add at least 2 pipeline stages to see conversion metrics.
                 </div>
               ) : (
@@ -829,15 +972,23 @@ function FunnelSvg({
                         type="button"
                         key={`${e.fromStageId}-${e.toStageId}-${e.position ?? "na"}`}
                         onClick={() => onSelectStageId(fromId)}
-                        className={`grid w-full grid-cols-12 gap-2 border-t border-slate-200 px-3 py-2.5 text-left text-[12px] transition ${
+                        className={`grid w-full grid-cols-12 gap-2 border-t px-3 py-2.5 text-left text-[12px] transition ${
+                          isDark ? "border-slate-800" : "border-slate-200"
+                        } ${
                           isRowActive
-                            ? "bg-indigo-50/60"
-                            : "bg-white hover:bg-slate-50"
+                            ? isDark
+                              ? "bg-indigo-500/10"
+                              : "bg-indigo-50/60"
+                            : isDark
+                              ? `bg-slate-950 ${rowHover}`
+                              : `bg-white ${rowHover}`
                         }`}
                       >
                         <div className="col-span-4 min-w-0">
                           <div
-                            className="truncate font-semibold text-slate-900"
+                            className={`truncate font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
                             title={`${e.fromStageName} → ${e.toStageName}`}
                           >
                             {e.fromStageName} → {e.toStageName}
@@ -846,7 +997,9 @@ function FunnelSvg({
 
                         <div className="col-span-3 min-w-0">
                           <div
-                            className="truncate text-slate-700"
+                            className={`truncate ${
+                              isDark ? "text-slate-300" : "text-slate-700"
+                            }`}
                             title={safeLabel}
                           >
                             {safeLabel}
@@ -854,20 +1007,36 @@ function FunnelSvg({
                         </div>
 
                         <div className="col-span-2 text-right">
-                          <div className="font-semibold text-slate-900">
+                          <div
+                            className={`font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
+                          >
                             {fmtPct(e.actualConversionRate)}
                           </div>
                           {normalizedTarget != null && (
-                            <div className="text-[10px] text-slate-500">
+                            <div
+                              className={`text-[10px] ${
+                                isDark ? "text-slate-400" : "text-slate-500"
+                              }`}
+                            >
                               Target {normalizedTarget}%
                             </div>
                           )}
                         </div>
 
                         <div className="col-span-3 text-right">
-                          <div className="font-semibold text-slate-900">
+                          <div
+                            className={`font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
+                          >
                             {e.dropOffCount}{" "}
-                            <span className="font-medium text-slate-500">
+                            <span
+                              className={`font-medium ${
+                                isDark ? "text-slate-400" : "text-slate-500"
+                              }`}
+                            >
                               ({fmtPct(e.dropOffRate)})
                             </span>
                           </div>
@@ -891,26 +1060,50 @@ function StatCard({
   value,
   sub,
   tone = "default",
+  isDark,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone?: "default" | "good" | "warn";
+  isDark: boolean;
 }) {
   const ring =
     tone === "good"
-      ? "border-emerald-200 bg-emerald-50"
+      ? isDark
+        ? "border-emerald-900/40 bg-emerald-500/10"
+        : "border-emerald-200 bg-emerald-50"
       : tone === "warn"
-        ? "border-amber-200 bg-amber-50"
-        : "border-slate-200 bg-white";
+        ? isDark
+          ? "border-amber-900/40 bg-amber-500/10"
+          : "border-amber-200 bg-amber-50"
+        : isDark
+          ? "border-slate-800 bg-slate-950"
+          : "border-slate-200 bg-white";
 
   return (
     <div className={`rounded-xl border ${ring} p-3 shadow-sm`}>
-      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+      <div
+        className={`text-[10px] font-semibold uppercase tracking-wide ${
+          isDark ? "text-slate-400" : "text-slate-500"
+        }`}
+      >
         {label}
       </div>
-      <div className="mt-1 text-xl font-extrabold text-slate-900">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-slate-600">{sub}</div>}
+      <div
+        className={`mt-1 text-xl font-extrabold ${
+          isDark ? "text-slate-100" : "text-slate-900"
+        }`}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div
+          className={`mt-1 text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}
+        >
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -919,17 +1112,27 @@ function SectionHeader({
   title,
   subtitle,
   right,
+  isDark,
 }: {
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
+  isDark: boolean;
 }) {
   return (
     <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
+        <div
+          className={`text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+        >
+          {title}
+        </div>
         {subtitle && (
-          <div className="mt-0.5 text-[11px] text-slate-500">{subtitle}</div>
+          <div
+            className={`mt-0.5 text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+          >
+            {subtitle}
+          </div>
         )}
       </div>
       {right}
@@ -941,6 +1144,48 @@ function SectionHeader({
 
 export default function DashboardClient() {
   const BRAND = "#4f46e5";
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  const pageText = isDark ? "text-slate-200" : "text-slate-900";
+  const subText = isDark ? "text-slate-400" : "text-slate-600";
+
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const cardHover = isDark ? "hover:bg-slate-900/30" : "hover:bg-slate-50";
+
+  const pill = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-300"
+    : "border-slate-200 bg-white text-slate-600";
+
+  const input = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200"
+    : "border-slate-200 bg-white text-slate-700";
+
+  const dashedEmpty = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-400"
+    : "border-slate-200 bg-slate-50 text-slate-600";
+
+  const badgeSoft = isDark
+    ? "bg-slate-900/60 text-slate-200"
+    : "bg-slate-100 text-slate-700";
+
+  const badgeIndigo = isDark
+    ? "bg-indigo-500/15 text-indigo-200"
+    : "bg-indigo-50 text-indigo-700";
+
+  const linkIndigo = isDark
+    ? "text-indigo-300 hover:text-indigo-200"
+    : "text-indigo-600 hover:text-indigo-700";
+
+  const gridStroke = isDark ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.10)";
+  const axisStroke = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.12)";
+  const tickFill = isDark ? "rgba(226,232,240,0.70)" : "rgba(15,23,42,0.60)";
 
   const [bucket, setBucket] = useState<Bucket>("week");
   const [days, setDays] = useState<number>(120);
@@ -1159,28 +1404,44 @@ export default function DashboardClient() {
   return (
     <div className="relative space-y-4">
       {/* Page Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-            <p className="mt-0.5 text-sm text-slate-600">
+            <h1 className={`text-xl font-semibold ${pageText}`}>Dashboard</h1>
+            <p className={`mt-0.5 text-sm ${subText}`}>
               Your pipeline health, activity, bookings, and what needs
               attention.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 shadow-sm">
+            <div
+              className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] shadow-sm ${pill}`}
+            >
               <span
-                className={`h-2 w-2 rounded-full ${refreshing ? "bg-amber-500" : "bg-emerald-500"}`}
+                className={`h-2 w-2 rounded-full ${
+                  refreshing ? "bg-amber-500" : "bg-emerald-500"
+                }`}
               />
-              <span className="font-semibold text-slate-800">
+              <span
+                className={`font-semibold ${
+                  isDark ? "text-slate-100" : "text-slate-800"
+                }`}
+              >
                 {refreshing ? "Updating…" : "Live"}
               </span>
               {data && (
                 <>
-                  <span className="mx-2 text-slate-300">•</span>
-                  <span className="font-semibold text-slate-800">
+                  <span
+                    className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                  >
+                    •
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      isDark ? "text-slate-100" : "text-slate-800"
+                    }`}
+                  >
                     {visibilityLabel}
                   </span>
                 </>
@@ -1191,7 +1452,7 @@ export default function DashboardClient() {
               <select
                 value={scope}
                 onChange={(e) => setScope(e.target.value as Scope)}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 shadow-sm outline-none"
+                className={`h-9 rounded-lg border px-2 text-[12px] font-semibold shadow-sm outline-none ${input}`}
               >
                 <option value="team">Team</option>
                 <option value="me">Me</option>
@@ -1200,7 +1461,7 @@ export default function DashboardClient() {
               <select
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 shadow-sm outline-none"
+                className={`h-9 rounded-lg border px-2 text-[12px] font-semibold shadow-sm outline-none ${input}`}
               >
                 <option value={30}>30 days</option>
                 <option value={90}>90 days</option>
@@ -1210,7 +1471,7 @@ export default function DashboardClient() {
               <select
                 value={bucket}
                 onChange={(e) => setBucket(e.target.value as Bucket)}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 shadow-sm outline-none"
+                className={`h-9 rounded-lg border px-2 text-[12px] font-semibold shadow-sm outline-none ${input}`}
               >
                 <option value="day">Daily</option>
                 <option value="week">Weekly</option>
@@ -1220,7 +1481,9 @@ export default function DashboardClient() {
               <button
                 type="button"
                 onClick={() => fetchOverview({ silent: false })}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                className={`h-9 rounded-lg border px-3 text-[12px] font-semibold shadow-sm ${input} ${
+                  isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+                }`}
               >
                 Refresh
               </button>
@@ -1229,37 +1492,53 @@ export default function DashboardClient() {
         </div>
 
         {error && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          <div
+            className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+              isDark
+                ? "border-rose-900/40 bg-rose-500/10 text-rose-200"
+                : "border-rose-200 bg-rose-50 text-rose-800"
+            }`}
+          >
             {error}
           </div>
         )}
       </div>
 
-      {loading && <DashboardSkeleton />}
+      {loading && (
+        <div className="relative">
+          <DashboardSkeleton isDark={isDark} />
+          <MiniLoadingOverlay label="Loading dashboard" isDark={isDark} />
+        </div>
+      )}
 
       {/* KPI Grid */}
       {data && !error && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           <StatCard
+            isDark={isDark}
             label="Leads"
             value={compactNumber(data.kpis.leads_total)}
           />
           <StatCard
+            isDark={isDark}
             label="New leads (7d)"
             value={compactNumber(data.kpis.leads_new_7d)}
             sub={`30d: ${compactNumber(data.kpis.leads_new_30d)}`}
           />
           <StatCard
+            isDark={isDark}
             label="Messages sent (7d)"
             value={compactNumber(data.kpis.messages_sent_7d)}
             sub={`30d: ${compactNumber(data.kpis.messages_sent_30d)}`}
           />
           <StatCard
+            isDark={isDark}
             label="Bookings (7d)"
             value={compactNumber(data.kpis.bookings_7d)}
             sub={`30d: ${compactNumber(data.kpis.bookings_30d)}`}
           />
           <StatCard
+            isDark={isDark}
             label="Show rate (30d)"
             value={fmtPct(data.kpis.show_rate_30d)}
             sub="Based on outcomes"
@@ -1270,6 +1549,7 @@ export default function DashboardClient() {
             }
           />
           <StatCard
+            isDark={isDark}
             label="Close rate (30d)"
             value={fmtPct(data.kpis.close_rate_30d)}
             sub="Based on outcomes"
@@ -1288,8 +1568,9 @@ export default function DashboardClient() {
           {/* Left: Funnel + Activity */}
           <div className="space-y-3 lg:col-span-2">
             {/* Funnel */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
               <SectionHeader
+                isDark={isDark}
                 title="Pipeline Funnel"
                 subtitle={
                   stageCount < 2
@@ -1309,11 +1590,19 @@ export default function DashboardClient() {
               />
 
               {stageCount === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                <div
+                  className={`rounded-xl border border-dashed px-4 py-6 text-sm ${dashedEmpty}`}
+                >
                   No pipeline stages found yet.
                 </div>
               ) : stageCount === 1 ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-700">
+                <div
+                  className={`rounded-xl border px-4 py-6 text-sm ${
+                    isDark
+                      ? "border-slate-800 bg-slate-900/30 text-slate-300"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  }`}
+                >
                   You only have <span className="font-semibold">1</span> stage.
                   Add another stage to unlock conversions.
                 </div>
@@ -1327,20 +1616,39 @@ export default function DashboardClient() {
                   onToggleTable={() => setShowTable((p) => !p)}
                   detailsRef={detailsRef}
                   tableRef={tableRef}
+                  isDark={isDark}
                 />
               )}
 
               {stageCount >= 2 && (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">
+                <div
+                  className={`mt-3 rounded-xl border p-3 text-[11px] ${
+                    isDark
+                      ? "border-slate-800 bg-slate-900/30 text-slate-300"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  }`}
+                >
                   <span className="font-semibold">Overall conversion:</span>{" "}
-                  <span className="font-extrabold">
+                  <span
+                    className={`font-extrabold ${
+                      isDark ? "text-slate-100" : "text-slate-900"
+                    }`}
+                  >
                     {fmtPct(insights.overallConv)}
                   </span>
                   {insights.worstEdge && (
                     <>
-                      <span className="mx-2 text-slate-300">•</span>
+                      <span
+                        className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                      >
+                        •
+                      </span>
                       <span className="font-semibold">Biggest drop:</span>{" "}
-                      <span className="font-extrabold">
+                      <span
+                        className={`font-extrabold ${
+                          isDark ? "text-slate-100" : "text-slate-900"
+                        }`}
+                      >
                         {insights.worstEdge.fromStageName} →{" "}
                         {insights.worstEdge.toStageName}
                       </span>
@@ -1351,27 +1659,34 @@ export default function DashboardClient() {
             </div>
 
             {/* Activity */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
               <SectionHeader
+                isDark={isDark}
                 title="Activity"
                 subtitle={`Leads added vs outbound messages (excludes pipeline). Total in range: ${totals.leads} leads, ${totals.msgs} messages.`}
               />
 
               {!activitySeries.length ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-600">
+                <div
+                  className={`rounded-xl border border-dashed px-4 py-8 text-sm ${dashedEmpty}`}
+                >
                   No activity data yet for this time range.
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className={`rounded-xl border p-3 ${card}`}>
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
+                    <div
+                      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm ${pill}`}
+                    >
                       <span
                         className="h-2 w-2 rounded-full"
                         style={{ background: BRAND }}
                       />
                       Leads added
                     </div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
+                    <div
+                      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm ${pill}`}
+                    >
                       <span
                         className="h-2 w-2 rounded-full"
                         style={{ background: "rgba(79,70,229,0.45)" }}
@@ -1388,7 +1703,7 @@ export default function DashboardClient() {
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
-                          stroke="rgba(15,23,42,0.10)"
+                          stroke={gridStroke}
                         />
                         <XAxis
                           dataKey="bucket_start"
@@ -1396,20 +1711,24 @@ export default function DashboardClient() {
                             fmtBucketLabel(String(v), bucket)
                           }
                           minTickGap={18}
-                          tick={{ fontSize: 11, fill: "rgba(15,23,42,0.60)" }}
-                          axisLine={{ stroke: "rgba(15,23,42,0.12)" }}
-                          tickLine={{ stroke: "rgba(15,23,42,0.12)" }}
+                          tick={{ fontSize: 11, fill: tickFill }}
+                          axisLine={{ stroke: axisStroke }}
+                          tickLine={{ stroke: axisStroke }}
                         />
                         <YAxis
                           allowDecimals={false}
                           tickFormatter={(v: number) => formatYAxisTick(v)}
-                          tick={{ fontSize: 11, fill: "rgba(15,23,42,0.60)" }}
-                          axisLine={{ stroke: "rgba(15,23,42,0.12)" }}
-                          tickLine={{ stroke: "rgba(15,23,42,0.12)" }}
+                          tick={{ fontSize: 11, fill: tickFill }}
+                          axisLine={{ stroke: axisStroke }}
+                          tickLine={{ stroke: axisStroke }}
                         />
                         <Tooltip
                           content={(props) => (
-                            <ActivityTooltip {...props} bucket={bucket} />
+                            <ActivityTooltip
+                              {...props}
+                              bucket={bucket}
+                              isDark={isDark}
+                            />
                           )}
                         />
                         <Legend wrapperStyle={{ display: "none" }} />
@@ -1439,7 +1758,9 @@ export default function DashboardClient() {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="mt-3 text-[10px] text-slate-500">
+                  <div
+                    className={`mt-3 text-[10px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                  >
                     Tip: hover the chart to compare leads added vs messages sent
                     for the same period.
                   </div>
@@ -1451,14 +1772,15 @@ export default function DashboardClient() {
           {/* Right: Action panels */}
           <div className="space-y-3">
             {/* Needs attention */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
               <SectionHeader
+                isDark={isDark}
                 title="Needs attention"
                 subtitle="High priority leads with stale activity."
                 right={
                   <Link
                     href="/pipeline"
-                    className="text-[12px] font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+                    className={`text-[12px] font-semibold hover:underline ${linkIndigo}`}
                   >
                     Open pipeline →
                   </Link>
@@ -1466,7 +1788,9 @@ export default function DashboardClient() {
               />
 
               {data.panels.needs_attention.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                <div
+                  className={`rounded-xl border border-dashed px-4 py-6 text-sm ${dashedEmpty}`}
+                >
                   No leads need attention right now.
                 </div>
               ) : (
@@ -1474,28 +1798,46 @@ export default function DashboardClient() {
                   {data.panels.needs_attention.map((l) => (
                     <div
                       key={l.id}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50"
+                      className={`rounded-xl border px-3 py-2 ${card} ${cardHover}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-slate-900">
+                          <div
+                            className={`truncate text-[12px] font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
+                          >
                             {l.name || "Unnamed lead"}
                           </div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">
+                          <div
+                            className={`mt-0.5 text-[11px] ${
+                              isDark ? "text-slate-400" : "text-slate-500"
+                            }`}
+                          >
                             Stage:{" "}
-                            <span className="font-semibold text-slate-700">
+                            <span
+                              className={`font-semibold ${
+                                isDark ? "text-slate-200" : "text-slate-700"
+                              }`}
+                            >
                               {l.stage || "—"}
                             </span>
                             {l.last_activity_at && (
                               <>
-                                <span className="mx-2 text-slate-300">•</span>
+                                <span
+                                  className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                                >
+                                  •
+                                </span>
                                 Last activity: {fmtDateTime(l.last_activity_at)}
                               </>
                             )}
                           </div>
                         </div>
 
-                        <div className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-extrabold text-indigo-700">
+                        <div
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold ${badgeIndigo}`}
+                        >
                           {l.score == null ? "—" : `Score ${l.score}`}
                         </div>
                       </div>
@@ -1506,14 +1848,17 @@ export default function DashboardClient() {
             </div>
 
             {/* Upcoming bookings */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
               <SectionHeader
+                isDark={isDark}
                 title="Upcoming bookings"
                 subtitle="Next 14 days"
               />
 
               {data.panels.upcoming_bookings.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                <div
+                  className={`rounded-xl border border-dashed px-4 py-6 text-sm ${dashedEmpty}`}
+                >
                   No upcoming bookings.
                 </div>
               ) : (
@@ -1521,22 +1866,32 @@ export default function DashboardClient() {
                   {data.panels.upcoming_bookings.map((b) => (
                     <div
                       key={b.id}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 hover:bg-slate-50"
+                      className={`rounded-xl border px-3 py-2 ${card} ${cardHover}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-slate-900">
+                          <div
+                            className={`truncate text-[12px] font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
+                          >
                             {b.invitee_first_name
                               ? `${b.invitee_first_name}`
                               : "Booking"}
                             {b.invitee_email ? ` · ${b.invitee_email}` : ""}
                           </div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">
+                          <div
+                            className={`mt-0.5 text-[11px] ${
+                              isDark ? "text-slate-400" : "text-slate-500"
+                            }`}
+                          >
                             {fmtDateTime(b.start_at)}
                           </div>
                         </div>
 
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeSoft}`}
+                        >
                           Scheduled
                         </span>
                       </div>
@@ -1547,11 +1902,17 @@ export default function DashboardClient() {
             </div>
 
             {/* Feed */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <SectionHeader title="Recent feed" subtitle="Latest events" />
+            <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
+              <SectionHeader
+                isDark={isDark}
+                title="Recent feed"
+                subtitle="Latest events"
+              />
 
               {data.panels.feed.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                <div
+                  className={`rounded-xl border border-dashed px-4 py-6 text-sm ${dashedEmpty}`}
+                >
                   No recent events.
                 </div>
               ) : (
@@ -1559,18 +1920,28 @@ export default function DashboardClient() {
                   {data.panels.feed.map((e, idx) => (
                     <div
                       key={`${e.type}-${idx}`}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      className={`rounded-xl border px-3 py-2 ${card}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-slate-900">
+                          <div
+                            className={`truncate text-[12px] font-semibold ${
+                              isDark ? "text-slate-100" : "text-slate-900"
+                            }`}
+                          >
                             {e.label}
                           </div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">
+                          <div
+                            className={`mt-0.5 text-[11px] ${
+                              isDark ? "text-slate-400" : "text-slate-500"
+                            }`}
+                          >
                             {fmtDateTime(e.at)}
                           </div>
                         </div>
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeSoft}`}
+                        >
                           {e.type === "lead_created"
                             ? "Lead"
                             : e.type === "booking"

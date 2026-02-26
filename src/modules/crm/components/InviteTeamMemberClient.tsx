@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useTheme } from "next-themes";
 
 const AVAILABLE_ROLES = [
   "Prospector",
@@ -22,7 +23,7 @@ function normalizeRoles(raw: unknown): TeamRole[] {
     const s = String(v ?? "").trim();
     if (!s) return null;
 
-    const canonical = s[0]?.toUpperCase() + s.slice(1).toLowerCase(); // "admin" -> "Admin"
+    const canonical = s[0]?.toUpperCase() + s.slice(1).toLowerCase();
     return allowed.has(canonical) ? (canonical as TeamRole) : null;
   };
 
@@ -33,6 +34,12 @@ function normalizeRoles(raw: unknown): TeamRole[] {
 export function InviteTeamMemberClient() {
   const router = useRouter();
   const { loading: workspaceLoading } = useWorkspace();
+
+  // ✅ replicate LeadsClient theme handling
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,9 +106,38 @@ export function InviteTeamMemberClient() {
     };
   }, [router, workspaceLoading]);
 
+  // ---------- theme-driven styles (same approach as LeadsClient) ----------
+  const shellCard = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const title = isDark ? "text-slate-100" : "text-slate-900";
+  const sub = isDark ? "text-slate-400" : "text-slate-600";
+  const muted = isDark ? "text-slate-500" : "text-slate-500";
+
+  const inputShell = isDark
+    ? "border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500"
+    : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400";
+
+  const label = isDark ? "text-slate-400" : "text-slate-500";
+
+  const rolePillBase = isDark
+    ? "border-slate-800 bg-slate-900/40 text-slate-200"
+    : "border-slate-200 bg-slate-50 text-slate-700";
+
+  const rolePillHover = isDark
+    ? "hover:border-indigo-400/60"
+    : "hover:border-indigo-300";
+
+  const errorText = isDark ? "text-rose-300" : "text-rose-600";
+  const successText = isDark ? "text-emerald-300" : "text-emerald-600";
+
+  const infoText = isDark ? "text-slate-400" : "text-slate-500";
+  const noPermText = isDark ? "text-rose-300" : "text-rose-500";
+
   if (workspaceLoading || loading) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className={`text-sm ${infoText}`}>
         Loading workspace and permissions…
       </p>
     );
@@ -109,7 +145,7 @@ export function InviteTeamMemberClient() {
 
   if (!isManager) {
     return (
-      <p className="text-sm text-rose-500">
+      <p className={`text-sm ${noPermText}`}>
         You don&apos;t have permission to invite team members.
       </p>
     );
@@ -178,15 +214,15 @@ export function InviteTeamMemberClient() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
-          Invite team members
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${shellCard}`}>
+        <h1 className={`text-xl font-semibold ${title}`}>
+          Invite Team Members
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className={`mt-1 text-sm ${sub}`}>
           Send an invitation and choose one or more roles.
         </p>
         {!isAdmin && (
-          <p className="mt-1 text-xs text-slate-500">
+          <p className={`mt-1 text-xs ${muted}`}>
             You are a Manager – you can’t grant Admin, only Admins can.
           </p>
         )}
@@ -194,15 +230,17 @@ export function InviteTeamMemberClient() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        className={`space-y-4 rounded-2xl border p-4 shadow-sm ${shellCard}`}
       >
         <div className="space-y-1">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label
+            className={`text-xs font-medium uppercase tracking-wide ${label}`}
+          >
             Email
           </label>
           <input
             type="email"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputShell}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="new.member@company.com"
@@ -210,7 +248,7 @@ export function InviteTeamMemberClient() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <p className={`text-xs font-medium uppercase tracking-wide ${label}`}>
             Roles
           </p>
           <div className="flex flex-wrap gap-3">
@@ -220,15 +258,20 @@ export function InviteTeamMemberClient() {
               return (
                 <label
                   key={role}
-                  className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 ${
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition-colors",
+                    rolePillBase,
                     disabled
                       ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer hover:border-indigo-300"
-                  }`}
+                      : `cursor-pointer ${rolePillHover}`,
+                  ].join(" ")}
                 >
                   <input
                     type="checkbox"
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className={[
+                      "h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500",
+                      isDark ? "bg-slate-950" : "bg-white",
+                    ].join(" ")}
                     disabled={disabled}
                     checked={roles.includes(role)}
                     onChange={() => !disabled && toggleRole(role)}
@@ -240,9 +283,9 @@ export function InviteTeamMemberClient() {
           </div>
         </div>
 
-        {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+        {error && <p className={`text-xs font-medium ${errorText}`}>{error}</p>}
         {success && (
-          <p className="text-xs font-medium text-emerald-600">{success}</p>
+          <p className={`text-xs font-medium ${successText}`}>{success}</p>
         )}
 
         <div className="flex justify-end">

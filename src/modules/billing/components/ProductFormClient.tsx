@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 async function authedFetch(input: RequestInfo, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
@@ -23,9 +24,7 @@ type Mode = "create" | "edit";
 type BillingType = "one_time" | "recurring";
 type Interval = "day" | "week" | "month" | "year";
 
-// ISO 4217 currency codes (Stripe uses lowercase in API requests commonly).
-// This is a broad list; Stripe supports a subset depending on account + payment methods.
-// You can trim if you want. Keeping it comprehensive for a dropdown.
+// ISO 4217 currency codes
 const CURRENCIES = [
   "aed",
   "afn",
@@ -193,7 +192,6 @@ function toCents(amountStr: string): number | null {
   const raw = amountStr.trim();
   if (!raw) return null;
 
-  // allow "19.99" or "19,99"
   const normalized = raw.replace(",", ".");
   const n = Number(normalized);
 
@@ -211,12 +209,61 @@ export default function ProductFormClient({
   const router = useRouter();
   const safeProductId = useMemo(() => (productId ?? "").trim(), [productId]);
 
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens (match invoices/customers)
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+  const mutedText2 = isDark ? "text-slate-500" : "text-slate-500";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+
+  const inputBase = [
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+      : "border-slate-200 bg-white text-slate-700 focus:ring-indigo-500",
+  ].join(" ");
+
+  const clsBtn =
+    "inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+
+  const clsBtnSecondary = [
+    clsBtn,
+    isDark
+      ? "border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  ].join(" ");
+
+  const clsBtnPrimary = `${clsBtn} bg-indigo-600 text-white hover:bg-indigo-700`;
+
+  const selectedToggle = isDark
+    ? "border-indigo-400/40 bg-indigo-500/10 text-indigo-200"
+    : "border-indigo-600 bg-indigo-50 text-indigo-700";
+
+  const unselectedToggle = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+
+  const priceCard = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-200 bg-slate-50";
+
+  const labelCls = isDark
+    ? "text-xs font-semibold text-slate-300"
+    : "text-xs font-semibold text-slate-700";
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  // ✅ price fields (create mode)
+  // price fields (create mode)
   const [currency, setCurrency] = useState<CurrencyCode>("usd");
-  const [amount, setAmount] = useState(""); // major units input (e.g. "19.99")
+  const [amount, setAmount] = useState("");
   const [billingType, setBillingType] = useState<BillingType>("one_time");
   const [interval, setInterval] = useState<Interval>("month");
   const [intervalCount, setIntervalCount] = useState<number>(1);
@@ -249,7 +296,6 @@ export default function ProductFormClient({
         const json = await res.json().catch(() => null);
         if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
 
-        // ✅ Stripe-only route returns Stripe Product -> name/description (not stripe_name)
         const p = json?.product;
         if (!cancelled) {
           setName(String(p?.name ?? "").trim());
@@ -274,7 +320,7 @@ export default function ProductFormClient({
     try {
       if (!name.trim()) throw new Error("Name is required.");
 
-      // ✅ CREATE: product + price
+      // CREATE: product + price
       if (mode === "create") {
         const cents = toCents(amount);
         if (cents == null) throw new Error("Price amount is required.");
@@ -313,7 +359,6 @@ export default function ProductFormClient({
         const json = await res.json().catch(() => null);
         if (!res.ok) throw new Error(json?.error ?? `failed_${res.status}`);
 
-        // ✅ Robustly extract product id
         const newId =
           json?.stripe_product_id ??
           json?.product?.id ??
@@ -327,7 +372,7 @@ export default function ProductFormClient({
         return;
       }
 
-      // ✅ EDIT: only name/description
+      // EDIT: only name/description
       if (!safeProductId) throw new Error("missing_product_id");
 
       const res = await authedFetch(
@@ -337,7 +382,6 @@ export default function ProductFormClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: name.trim(),
-            // allow clearing description: send null if empty
             description: description.trim() === "" ? null : description.trim(),
           }),
         },
@@ -356,92 +400,103 @@ export default function ProductFormClient({
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
+      {/* Header card */}
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <h1 className={`text-xl font-semibold ${headText}`}>
           {mode === "create" ? "New Product" : "Edit Product"}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className={`mt-1 text-sm ${mutedText}`}>
           {mode === "create"
             ? "Creates a Stripe product + price on your connected account."
             : "Updates the Stripe product name/description."}
         </p>
 
+        {/* Error box (matches invoices) */}
         {!!err && (
-          <p className="mt-3 text-xs font-semibold text-rose-600">
-            Error: {err}
-          </p>
+          <div
+            className={[
+              "mt-3 rounded-xl border px-3 py-2 text-xs",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10"
+                : "border-rose-200 bg-rose-50",
+            ].join(" ")}
+          >
+            <div
+              className={
+                isDark
+                  ? "font-semibold text-rose-200"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              Error: {err}
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      {/* Form card */}
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className={`text-sm ${mutedText}`}>Loading…</p>
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-700">
-                Name
-              </label>
+              <label className={labelCls}>Name</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                className={inputBase}
                 placeholder="e.g. Coaching Package"
+                disabled={saving}
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700">
-                Description
-              </label>
+              <label className={labelCls}>Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={5}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                className={inputBase}
                 placeholder="Optional…"
+                disabled={saving}
               />
             </div>
 
-            {/* ✅ Price section only for CREATE */}
+            {/* Price section only for CREATE */}
             {mode === "create" && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm font-semibold text-slate-900">
-                  Price
-                </div>
-                <p className="mt-0.5 text-xs text-slate-500">
+              <div className={`rounded-xl border p-4 ${priceCard}`}>
+                <div className={`text-sm font-semibold ${headText}`}>Price</div>
+                <p className={`mt-0.5 text-xs ${mutedText2}`}>
                   This will create a Stripe Price for the product. Stripe prices
                   are usually not edited—create a new one instead.
                 </p>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Amount
-                    </label>
+                    <label className={labelCls}>Amount</label>
                     <input
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                      className={inputBase}
                       placeholder="e.g. 19.99"
                       inputMode="decimal"
+                      disabled={saving}
                     />
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className={`mt-1 text-[11px] ${mutedText2}`}>
                       Enter in major units (e.g. 19.99). We’ll convert to cents.
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">
-                      Currency
-                    </label>
-
+                    <label className={labelCls}>Currency</label>
                     <select
                       value={currency}
                       onChange={(e) =>
                         setCurrency(e.target.value as CurrencyCode)
                       }
-                      className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                      className={inputBase}
+                      disabled={saving}
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>
@@ -449,26 +504,25 @@ export default function ProductFormClient({
                         </option>
                       ))}
                     </select>
-
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className={`mt-1 text-[11px] ${mutedText2}`}>
                       Sent to Stripe as lowercase code.
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Billing type
-                  </label>
+                  <label className={labelCls}>Billing type</label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setBillingType("one_time")}
-                      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold ${
+                      className={[
+                        "rounded-lg border px-3 py-2 text-xs font-semibold",
                         billingType === "one_time"
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
+                          ? selectedToggle
+                          : unselectedToggle,
+                      ].join(" ")}
+                      disabled={saving}
                     >
                       One-time
                     </button>
@@ -476,11 +530,13 @@ export default function ProductFormClient({
                     <button
                       type="button"
                       onClick={() => setBillingType("recurring")}
-                      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold ${
+                      className={[
+                        "rounded-lg border px-3 py-2 text-xs font-semibold",
                         billingType === "recurring"
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
+                          ? selectedToggle
+                          : unselectedToggle,
+                      ].join(" ")}
+                      disabled={saving}
                     >
                       Recurring
                     </button>
@@ -490,15 +546,14 @@ export default function ProductFormClient({
                 {billingType === "recurring" && (
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="sm:col-span-2">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Interval
-                      </label>
+                      <label className={labelCls}>Interval</label>
                       <select
                         value={interval}
                         onChange={(e) =>
                           setInterval(e.target.value as Interval)
                         }
-                        className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={inputBase}
+                        disabled={saving}
                       >
                         <option value="day">Daily</option>
                         <option value="week">Weekly</option>
@@ -508,9 +563,7 @@ export default function ProductFormClient({
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-700">
-                        Interval count
-                      </label>
+                      <label className={labelCls}>Interval count</label>
                       <input
                         type="number"
                         min={1}
@@ -518,9 +571,10 @@ export default function ProductFormClient({
                         onChange={(e) =>
                           setIntervalCount(Number(e.target.value))
                         }
-                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={inputBase}
+                        disabled={saving}
                       />
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className={`mt-1 text-[11px] ${mutedText2}`}>
                         e.g. 1 month, 3 months, etc.
                       </p>
                     </div>
@@ -533,7 +587,8 @@ export default function ProductFormClient({
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className={clsBtnSecondary}
+                disabled={saving}
               >
                 Cancel
               </button>
@@ -542,7 +597,7 @@ export default function ProductFormClient({
                 type="button"
                 onClick={submit}
                 disabled={saving}
-                className="cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className={clsBtnPrimary}
               >
                 {saving
                   ? "Saving…"
@@ -553,7 +608,7 @@ export default function ProductFormClient({
             </div>
 
             {mode === "edit" && !safeProductId && (
-              <div className="text-xs text-slate-500">
+              <div className={`text-xs ${mutedText2}`}>
                 Tip: This page requires a product id in the route params.
               </div>
             )}

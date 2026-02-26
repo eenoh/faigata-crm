@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 type CustomerOption = { id: string; name: string | null; email: string | null };
 
@@ -22,6 +23,40 @@ async function authedFetch(input: RequestInfo, init: RequestInit = {}) {
 export default function NewInvoiceClient() {
   const router = useRouter();
   const presetCustomer = (useSearchParams().get("customer") ?? "").trim();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens (match BillingCustomersClient / BillingInvoicesClient)
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const headText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-600";
+  const mutedText2 = isDark ? "text-slate-500" : "text-slate-500";
+  const border = isDark ? "border-slate-800" : "border-slate-200";
+
+  const inputBase = [
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+      : "border-slate-200 bg-white text-slate-700 focus:ring-indigo-500",
+  ].join(" ");
+
+  const btnBase =
+    "inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+
+  const btnSecondary = [
+    btnBase,
+    "border",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  ].join(" ");
+
+  const btnPrimary = `${btnBase} bg-indigo-600 text-white hover:bg-indigo-700`;
 
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -125,22 +160,44 @@ export default function NewInvoiceClient() {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">New Invoice</h1>
-        <p className="mt-1 text-sm text-slate-500">
+      {/* Header card */}
+      <div className={`rounded-2xl border px-6 py-5 shadow-sm ${card}`}>
+        <h1 className={`text-xl font-semibold ${headText}`}>New Invoice</h1>
+        <p className={`mt-1 text-sm ${mutedText}`}>
           Create an invoice in Stripe, then add line items and send it to the
           customer.
         </p>
+
         {!!err && (
-          <p className="mt-3 text-xs font-semibold text-rose-600">
-            Error: {err}
-          </p>
+          <div
+            className={[
+              "mt-3 rounded-xl border px-3 py-2 text-xs",
+              isDark
+                ? "border-rose-500/30 bg-rose-500/10"
+                : "border-rose-200 bg-rose-50",
+            ].join(" ")}
+          >
+            <div
+              className={
+                isDark
+                  ? "font-semibold text-rose-200"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              Error: {err}
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      {/* Form card */}
+      <div
+        className={`space-y-4 rounded-2xl border px-6 py-5 shadow-sm ${card}`}
+      >
         <div>
-          <label className="text-xs font-semibold text-slate-700">
+          <label
+            className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+          >
             Customer
           </label>
 
@@ -148,7 +205,7 @@ export default function NewInvoiceClient() {
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              className="w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className={[inputBase, "cursor-pointer"].join(" ")}
               disabled={loadingCustomers || saving}
             >
               <option value="">
@@ -164,7 +221,7 @@ export default function NewInvoiceClient() {
             <button
               type="button"
               onClick={() => router.push("/billing/customers")}
-              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className={btnSecondary}
               disabled={saving}
               title="Manage customers"
             >
@@ -172,7 +229,7 @@ export default function NewInvoiceClient() {
             </button>
           </div>
 
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className={`mt-1 text-[11px] ${mutedText2}`}>
             Tip: use the global header search on the Customers page to find the
             exact customer fast.
           </p>
@@ -180,50 +237,56 @@ export default function NewInvoiceClient() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-semibold text-slate-700">
+            <label
+              className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+            >
               Collection method
             </label>
             <select
               value={collectionMethod}
               onChange={(e) => setCollectionMethod(e.target.value as any)}
-              className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className={[inputBase, "cursor-pointer"].join(" ")}
               disabled={saving}
             >
               <option value="send_invoice">Send invoice</option>
               <option value="charge_automatically">Charge automatically</option>
             </select>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className={`mt-1 text-[11px] ${mutedText2}`}>
               Send invoice = email the invoice link. Charge automatically =
               Stripe attempts payment.
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700">
+            <label
+              className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+            >
               Days until due
             </label>
             <input
               value={daysUntilDue}
               onChange={(e) => setDaysUntilDue(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className={inputBase}
               inputMode="numeric"
               disabled={saving || collectionMethod !== "send_invoice"}
             />
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className={`mt-1 text-[11px] ${mutedText2}`}>
               Only applies when using “Send invoice”.
             </p>
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700">
+          <label
+            className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}
+          >
             Memo (optional)
           </label>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            className={inputBase}
             placeholder="Visible to the customer on the invoice."
             disabled={saving}
           />
@@ -233,7 +296,7 @@ export default function NewInvoiceClient() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className={btnSecondary}
             disabled={saving}
           >
             Cancel
@@ -243,12 +306,19 @@ export default function NewInvoiceClient() {
             type="button"
             onClick={createInvoice}
             disabled={!canSubmit}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className={btnPrimary}
           >
             {saving ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : null}
             {saving ? "Creating…" : "Create Invoice"}
           </button>
         </div>
+
+        {/* optional: tiny helper text for disabled submit */}
+        {!customerId && (
+          <p className={`text-[11px] ${mutedText2}`}>
+            Select a customer to enable “Create Invoice”.
+          </p>
+        )}
       </div>
     </div>
   );

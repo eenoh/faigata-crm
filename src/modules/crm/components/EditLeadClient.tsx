@@ -8,6 +8,7 @@ import { getPipelineStages } from "@/modules/crm/data/pipelineStages";
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 import type { PipelineStageDef } from "@/modules/crm/data/pipelineStages";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useTheme } from "next-themes";
 
 type LeadType = "individual" | "business";
 type Gender = "male" | "female";
@@ -207,10 +208,38 @@ const EMPTY_FORM: FormState = {
   notes: "",
 };
 
+function LoadingSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const sk = isDark ? "bg-slate-800" : "bg-slate-100";
+  return (
+    <div className="max-w-2xl space-y-3">
+      <div className={`rounded-2xl border p-6 shadow-sm ${card}`}>
+        <div className={`h-6 w-40 rounded animate-pulse ${sk}`} />
+        <div className={`mt-3 h-4 w-2/3 rounded animate-pulse ${sk}`} />
+      </div>
+      <div className={`rounded-2xl border p-6 shadow-sm ${card}`}>
+        <div className={`h-4 w-32 rounded animate-pulse ${sk}`} />
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={`h-10 rounded animate-pulse ${sk}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EditLeadClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { teamId, loading: workspaceLoading } = useWorkspace();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
@@ -223,7 +252,8 @@ export function EditLeadClient() {
   const leadNameMode = useMemo<"split" | "single">(() => {
     const cv = form.customValues ?? {};
     const hasFirstOrLast =
-      typeof cv.first_name === "string" || typeof cv.last_name === "string";
+      typeof (cv as any).first_name === "string" ||
+      typeof (cv as any).last_name === "string";
     return hasFirstOrLast ? "split" : "single";
   }, [form.customValues]);
 
@@ -247,6 +277,37 @@ export function EditLeadClient() {
       customValues: { ...(prev.customValues ?? {}), [key]: value },
     }));
   }
+
+  // Theme classes
+  const pageText = isDark ? "text-slate-200" : "text-slate-800";
+  const titleText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+
+  const formShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const sectionBorder = isDark ? "border-slate-800" : "border-slate-100";
+
+  const labelCls = isDark ? "text-slate-300" : "text-slate-700";
+
+  const inputCls = isDark
+    ? [
+        "border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-600",
+        "focus:ring-indigo-400 focus:border-indigo-400",
+      ].join(" ")
+    : [
+        "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400",
+        "focus:ring-indigo-500 focus:border-indigo-500",
+      ].join(" ");
+
+  const selectCls = inputCls;
+
+  const checkboxCls = isDark
+    ? "rounded border-slate-700 text-indigo-500 focus:ring-indigo-400"
+    : "rounded border-slate-300 text-indigo-600 focus:ring-indigo-500";
+
+  const helperText = isDark ? "text-slate-500" : "text-slate-500";
 
   // If lead type flips away from individual -> clear gender
   useEffect(() => {
@@ -321,11 +382,17 @@ export function EditLeadClient() {
         const colName =
           typeof lead.lead_name === "string" ? lead.lead_name : "";
 
-        const cvFirst = typeof cv.first_name === "string" ? cv.first_name : "";
-        const cvLast = typeof cv.last_name === "string" ? cv.last_name : "";
+        const cvFirst =
+          typeof (cv as any).first_name === "string"
+            ? (cv as any).first_name
+            : "";
+        const cvLast =
+          typeof (cv as any).last_name === "string"
+            ? (cv as any).last_name
+            : "";
         const cvSingle =
-          typeof cv.lead_name === "string"
-            ? cv.lead_name
+          typeof (cv as any).lead_name === "string"
+            ? (cv as any).lead_name
             : [cvFirst, cvLast].filter(Boolean).join(" ");
 
         const initialFull = (colName || cvSingle || "").trim();
@@ -353,7 +420,7 @@ export function EditLeadClient() {
           sourceCategory: (lead.source_category ?? "inbound") as SourceCategory,
           sourceName: (lead.source_name ?? "other") as SourceName,
 
-          customValues: cv,
+          customValues: cv as any,
           notes: lead.notes ?? "",
 
           // editor defaults
@@ -398,13 +465,13 @@ export function EditLeadClient() {
   }
 
   function renderCustomField(field: LeadFieldDefinition) {
-    const value = form.customValues?.[field.key] ?? "";
+    const value = (form.customValues as any)?.[field.key] ?? "";
 
-    const baseLabel =
-      "block text-xs font-medium uppercase tracking-wide text-slate-600";
-
-    const baseInput =
-      "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+    const baseLabel = `block text-xs font-medium uppercase tracking-wide ${mutedText}`;
+    const baseInput = [
+      "w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2",
+      selectCls,
+    ].join(" ");
 
     if (field.type === "text" || field.type === "link") {
       return (
@@ -442,10 +509,14 @@ export function EditLeadClient() {
       return (
         <div key={field.key} className="space-y-1">
           <label className={baseLabel}>{field.label}</label>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label
+            className={`inline-flex items-center gap-2 text-sm ${
+              isDark ? "text-slate-200" : "text-slate-700"
+            }`}
+          >
             <input
               type="checkbox"
-              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className={checkboxCls}
               checked={Boolean(value)}
               onChange={(e) => setCustom(field.key, e.target.checked)}
             />
@@ -496,7 +567,7 @@ export function EditLeadClient() {
       const cleanPostal = normalizeNullishString(form.postalCode);
 
       // ✅ keep backward compat mirror in custom_values
-      const nextCustomValues = { ...(form.customValues ?? {}) };
+      const nextCustomValues = { ...(form.customValues ?? {}) } as any;
       nextCustomValues.lead_name = fullName;
 
       if (leadNameMode === "split") {
@@ -561,31 +632,15 @@ export function EditLeadClient() {
   }
 
   // -------- guards --------
-  if (workspaceLoading || loading) {
-    return (
-      <div className="max-w-2xl space-y-3">
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="h-6 w-40 rounded bg-slate-100 animate-pulse" />
-          <div className="mt-3 h-4 w-2/3 rounded bg-slate-100 animate-pulse" />
-        </div>
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-10 rounded bg-slate-100 animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (workspaceLoading || loading) return <LoadingSkeleton isDark={isDark} />;
 
   if (!teamId) {
     return (
-      <p className="text-sm text-rose-500">
+      <p
+        className={["text-sm", isDark ? "text-rose-300" : "text-rose-500"].join(
+          " ",
+        )}
+      >
         We couldn&apos;t determine your team from the workspace context. Please
         open this page from your workspace or contact support.
       </p>
@@ -593,11 +648,11 @@ export function EditLeadClient() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className={`h-full overflow-y-auto ${pageText}`}>
       <div className="max-w-2xl">
         <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-slate-900">Edit Lead</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className={`text-2xl font-semibold ${titleText}`}>Edit Lead</h1>
+          <p className={`text-sm ${mutedText}`}>
             Update the lead’s core details, stage, and any custom fields your
             team tracks.
           </p>
@@ -605,15 +660,24 @@ export function EditLeadClient() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className={`space-y-6 rounded-2xl border p-6 shadow-sm ${formShell}`}
         >
           {error && (
-            <p className="text-xs font-medium text-rose-600">{error}</p>
+            <p
+              className={[
+                "text-xs font-medium",
+                isDark ? "text-rose-300" : "text-rose-600",
+              ].join(" ")}
+            >
+              {error}
+            </p>
           )}
 
           {/* Core details */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-slate-800">
+            <h2
+              className={`text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+            >
               Core details
             </h2>
 
@@ -621,22 +685,26 @@ export function EditLeadClient() {
             {leadNameMode === "split" ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                  <label
+                    className={`block mb-1 text-sm font-medium ${labelCls}`}
+                  >
                     First Name
                   </label>
                   <input
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                     value={form.firstName}
                     onChange={(e) => setField("firstName", e.target.value)}
                     placeholder="e.g. Alex"
                   />
                 </div>
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                  <label
+                    className={`block mb-1 text-sm font-medium ${labelCls}`}
+                  >
                     Last Name
                   </label>
                   <input
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                     value={form.lastName}
                     onChange={(e) => setField("lastName", e.target.value)}
                     placeholder="e.g. Johnson"
@@ -645,11 +713,11 @@ export function EditLeadClient() {
               </div>
             ) : (
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Lead Name
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.leadName}
                   onChange={(e) => setField("leadName", e.target.value)}
                   placeholder="e.g. Alex Johnson or Acme Inc."
@@ -660,11 +728,11 @@ export function EditLeadClient() {
             {/* Niche + Lead Type + Gender */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Niche / Industry
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.niche}
                   onChange={(e) => setField("niche", e.target.value)}
                   placeholder="e.g. Real Estate, SaaS, Healthcare"
@@ -673,11 +741,11 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Lead Type
                 </label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
                   value={form.leadType}
                   onChange={(e) =>
                     setField("leadType", e.target.value as LeadType)
@@ -691,11 +759,13 @@ export function EditLeadClient() {
 
               {showGender && (
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-slate-700">
+                  <label
+                    className={`block mb-1 text-sm font-medium ${labelCls}`}
+                  >
                     Gender
                   </label>
                   <select
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
                     value={form.gender}
                     onChange={(e) =>
                       setField("gender", e.target.value as Gender)
@@ -712,17 +782,19 @@ export function EditLeadClient() {
           </div>
 
           {/* Location */}
-          <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          <div className={`border-t pt-4 ${sectionBorder}`}>
+            <h2
+              className={`mb-3 text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+            >
               Location
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Country
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.country}
                   onChange={(e) => setField("country", e.target.value)}
                   placeholder="e.g. United States"
@@ -731,11 +803,11 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   State / Region
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.region}
                   onChange={(e) => setField("region", e.target.value)}
                   placeholder="e.g. California"
@@ -744,11 +816,11 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   City
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.city}
                   onChange={(e) => setField("city", e.target.value)}
                   placeholder="e.g. San Diego"
@@ -757,12 +829,16 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   ZIP / Postal Code{" "}
-                  <span className="text-slate-400 font-normal">(optional)</span>
+                  <span
+                    className={`${isDark ? "text-slate-500" : "text-slate-400"} font-normal`}
+                  >
+                    (optional)
+                  </span>
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.postalCode}
                   onChange={(e) => setField("postalCode", e.target.value)}
                   placeholder="e.g. 92101"
@@ -772,17 +848,19 @@ export function EditLeadClient() {
           </div>
 
           {/* Contact */}
-          <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          <div className={`border-t pt-4 ${sectionBorder}`}>
+            <h2
+              className={`mb-3 text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+            >
               Contact
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Primary Contact Type
                 </label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
                   value={form.primaryContactType}
                   onChange={(e) =>
                     setField(
@@ -814,11 +892,11 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   {contactValueLabel(form.primaryContactType)}
                 </label>
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
                   value={form.primaryContactValue}
                   onChange={(e) =>
                     setField("primaryContactValue", e.target.value)
@@ -828,20 +906,25 @@ export function EditLeadClient() {
                 />
               </div>
             </div>
+            <p className={`mt-2 text-xs ${helperText}`}>
+              Tip: For social links, paste the full profile URL when possible.
+            </p>
           </div>
 
           {/* Source */}
-          <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          <div className={`border-t pt-4 ${sectionBorder}`}>
+            <h2
+              className={`mb-3 text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+            >
               Source
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Source Category
                 </label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
                   value={form.sourceCategory}
                   onChange={(e) =>
                     setField("sourceCategory", e.target.value as SourceCategory)
@@ -857,11 +940,11 @@ export function EditLeadClient() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-slate-700">
+                <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
                   Source Name
                 </label>
                 <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
                   value={form.sourceName}
                   onChange={(e) =>
                     setField("sourceName", e.target.value as SourceName)
@@ -879,12 +962,12 @@ export function EditLeadClient() {
           </div>
 
           {/* Stage */}
-          <div className="border-t border-slate-100 pt-4">
-            <label className="block mb-1 text-sm font-medium text-slate-700">
+          <div className={`border-t pt-4 ${sectionBorder}`}>
+            <label className={`block mb-1 text-sm font-medium ${labelCls}`}>
               Pipeline Stage
             </label>
             <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${selectCls}`}
               value={form.stage}
               onChange={(e) => setField("stage", e.target.value)}
               required
@@ -899,8 +982,10 @@ export function EditLeadClient() {
 
           {/* Custom fields */}
           {fields.length > 0 && (
-            <div className="border-t border-slate-100 pt-4">
-              <h2 className="mb-3 text-sm font-semibold text-slate-800">
+            <div className={`border-t pt-4 ${sectionBorder}`}>
+              <h2
+                className={`mb-3 text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+              >
                 Custom fields
               </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -910,13 +995,17 @@ export function EditLeadClient() {
           )}
 
           {/* Notes */}
-          <div className="border-t border-slate-100 pt-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">Notes</h2>
-            <p className="mb-2 text-xs text-slate-500">
+          <div className={`border-t pt-4 ${sectionBorder}`}>
+            <h2
+              className={`mb-2 text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-800"}`}
+            >
+              Notes
+            </h2>
+            <p className={`mb-2 text-xs ${mutedText}`}>
               Internal notes about this lead. Only visible to your team.
             </p>
             <textarea
-              className="min-h-[120px] w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={`min-h-[120px] w-full resize-y rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${inputCls}`}
               value={form.notes}
               onChange={(e) => setField("notes", e.target.value)}
               placeholder="Add context, objections, personal details, or anything else that helps your team close this deal."
@@ -927,14 +1016,23 @@ export function EditLeadClient() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 cursor-pointer"
+              className={[
+                "inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer",
+                "bg-indigo-600 text-white hover:bg-indigo-700",
+                "disabled:opacity-70 disabled:cursor-not-allowed",
+              ].join(" ")}
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
             <button
               type="button"
               onClick={() => router.push(`/leads/${id}`)}
-              className="text-sm text-slate-500 hover:text-slate-700 cursor-pointer"
+              className={[
+                "text-sm cursor-pointer",
+                isDark
+                  ? "text-slate-400 hover:text-slate-200"
+                  : "text-slate-500 hover:text-slate-700",
+              ].join(" ")}
             >
               Cancel
             </button>

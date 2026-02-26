@@ -1,7 +1,8 @@
 // src/modules/crm/components/ConversionMetricDefinitionsSettingsClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTheme } from "next-themes";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
   getPipelineStages,
@@ -16,32 +17,46 @@ import {
 type SaveState = "idle" | "saving" | "saved";
 
 type ConversionMetricDefinitionWithTarget = ConversionMetricDefinition & {
-  targetRate: number | null;
+  targetRate: number | null; // 0–100
 };
 
-function LoadingState() {
+function normalizePercentLike(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === ("" as any)) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  // If API ever returns 0.5 meaning 50%, normalize.
+  if (n > 0 && n < 1) return Math.round(n * 100);
+  return Math.round(n);
+}
+
+function LoadingState({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const row = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-100 bg-slate-50";
+  const pulse = isDark ? "bg-slate-800/70" : "bg-slate-100";
+
   return (
     <div className="max-w-3xl space-y-6 animate-pulse">
       {/* Header card skeleton */}
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
-        <div className="h-6 w-56 rounded bg-slate-100" />
-        <div className="mt-2 h-4 w-full max-w-xl rounded bg-slate-100" />
-        <div className="mt-2 h-4 w-96 rounded bg-slate-100" />
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
+        <div className={`h-6 w-56 rounded ${pulse}`} />
+        <div className={`mt-2 h-4 w-full max-w-xl rounded ${pulse}`} />
+        <div className={`mt-2 h-4 w-96 rounded ${pulse}`} />
       </div>
 
       {/* List skeleton */}
       <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
-          >
+          <div key={i} className={`rounded-xl border p-3 space-y-2 ${row}`}>
             <div className="flex flex-col md:flex-row gap-2">
-              <div className="h-10 flex-1 rounded-lg bg-slate-100" />
-              <div className="h-10 w-full md:w-40 rounded-lg bg-slate-100" />
-              <div className="h-10 w-full md:w-40 rounded-lg bg-slate-100" />
-              <div className="h-10 w-full md:w-32 rounded-lg bg-slate-100" />
-              <div className="h-6 w-16 rounded bg-slate-100 mt-2 md:mt-2" />
+              <div className={`h-10 flex-1 rounded-lg ${pulse}`} />
+              <div className={`h-10 w-full md:w-40 rounded-lg ${pulse}`} />
+              <div className={`h-10 w-full md:w-40 rounded-lg ${pulse}`} />
+              <div className={`h-10 w-full md:w-32 rounded-lg ${pulse}`} />
+              <div className={`h-6 w-16 rounded ${pulse} mt-2 md:mt-2`} />
             </div>
           </div>
         ))}
@@ -49,8 +64,8 @@ function LoadingState() {
 
       {/* Actions skeleton */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <div className="h-5 w-44 rounded bg-slate-100" />
-        <div className="h-10 w-32 rounded-lg bg-slate-100" />
+        <div className={`h-5 w-44 rounded ${pulse}`} />
+        <div className={`h-10 w-32 rounded-lg ${pulse}`} />
       </div>
     </div>
   );
@@ -58,6 +73,31 @@ function LoadingState() {
 
 export function ConversionMetricDefinitionsSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
+  const { resolvedTheme } = useTheme();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+
+  const row = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-100 bg-slate-50";
+
+  const input = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-600"
+    : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400";
+
+  const select = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-100"
+    : "border-slate-200 bg-white text-slate-900";
+
+  const empty = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-400"
+    : "border-slate-200 bg-slate-50 text-slate-500";
 
   const [stages, setStages] = useState<PipelineStageDef[]>([]);
   const [defs, setDefs] = useState<ConversionMetricDefinitionWithTarget[]>([]);
@@ -95,16 +135,11 @@ export function ConversionMetricDefinitionsSettingsClient() {
           (existingDefs ?? []).map((d: any, i: number) => ({
             ...(d as ConversionMetricDefinition),
             position: typeof d?.position === "number" ? d.position : i,
+            // support either targetRate or target_rate, and normalize 0–1 -> 0–100 if needed
             targetRate:
-              typeof d?.targetRate === "number"
-                ? Number.isFinite(d.targetRate)
-                  ? d.targetRate | 0
-                  : null
-                : typeof d?.target_rate === "number"
-                  ? Number.isFinite(d.target_rate)
-                    ? d.target_rate | 0
-                    : null
-                  : null,
+              normalizePercentLike(d?.targetRate) ??
+              normalizePercentLike(d?.target_rate) ??
+              null,
           })),
         );
 
@@ -126,8 +161,10 @@ export function ConversionMetricDefinitionsSettingsClient() {
     };
   }, [teamId, workspaceLoading]);
 
+  const canAdd = useMemo(() => stages.length >= 2, [stages.length]);
+
   function addDefinition() {
-    if (stages.length < 2) return;
+    if (!canAdd) return;
 
     const first = stages[0]?.name ?? "";
     const second = stages[1]?.name ?? "";
@@ -181,16 +218,8 @@ export function ConversionMetricDefinitionsSettingsClient() {
     }
 
     const trimmed = defs.map((d, index) => {
-      const label = (d.label ?? "").trim();
-      const raw = d.targetRate;
-
-      const targetRate =
-        raw == null || raw === ("" as any)
-          ? null
-          : Number.isFinite(Number(raw))
-            ? Math.round(Number(raw)) | 0
-            : null;
-
+      const label = String(d.label ?? "").trim();
+      const targetRate = normalizePercentLike(d.targetRate);
       return { ...d, label, position: index, targetRate };
     });
 
@@ -233,44 +262,77 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
   if (!teamId && !workspaceLoading) {
     return (
-      <div className="max-w-xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      <div
+        className={`max-w-xl rounded-2xl border px-4 py-3 text-sm shadow-sm ${
+          isDark
+            ? "border-rose-900/40 bg-rose-950/30 text-rose-200"
+            : "border-rose-100 bg-rose-50 text-rose-700"
+        }`}
+      >
         <p className="font-medium">No team available</p>
         <p className="mt-1">
-          We couldn’t determine your team. Please open this page from your
-          workspace or contact support.
+          We couldn’t determine your team. Please open this page from within
+          your workspace or contact support.
         </p>
       </div>
     );
   }
 
   if (workspaceLoading || loading) {
-    return <LoadingState />;
+    return <LoadingState isDark={isDark} />;
   }
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-start justify-between gap-4">
+      <div
+        className={`rounded-2xl border px-5 py-4 shadow-sm flex items-start justify-between gap-4 ${card}`}
+      >
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
+          <h1
+            className={`text-xl md:text-2xl font-semibold ${
+              isDark ? "text-slate-100" : "text-slate-900"
+            }`}
+          >
             Conversion Metrics
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p
+            className={`mt-1 text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}
+          >
             Define the conversion metrics you want to track. Each metric
             compares how many leads move from one stage of the pipeline to
             another.
           </p>
+          {!canAdd && (
+            <p
+              className={`mt-2 text-xs ${isDark ? "text-amber-300/90" : "text-amber-700"}`}
+            >
+              Add at least 2 pipeline stages to create conversion metrics.
+            </p>
+          )}
         </div>
       </div>
 
       {(errorMessage || saveState === "saved") && (
         <div className="space-y-2">
           {errorMessage && (
-            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-700">
+            <div
+              className={`rounded-xl border px-4 py-2 text-xs ${
+                isDark
+                  ? "border-rose-900/40 bg-rose-950/30 text-rose-200"
+                  : "border-rose-100 bg-rose-50 text-rose-700"
+              }`}
+            >
               {errorMessage}
             </div>
           )}
           {saveState === "saved" && !errorMessage && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+            <div
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                isDark
+                  ? "border-emerald-900/40 bg-emerald-950/30 text-emerald-200"
+                  : "border-emerald-100 bg-emerald-50 text-emerald-700"
+              }`}
+            >
               ✅ Conversion metrics saved
             </div>
           )}
@@ -279,13 +341,19 @@ export function ConversionMetricDefinitionsSettingsClient() {
 
       <div className="space-y-3">
         {defs.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            <p className="font-medium text-slate-700">
+          <div
+            className={`rounded-2xl border border-dashed px-4 py-6 text-sm ${empty}`}
+          >
+            <p
+              className={`font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}
+            >
               No conversion metrics yet.
             </p>
             <p className="mt-1">
               Add metrics like{" "}
-              <span className="font-semibold">
+              <span
+                className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+              >
                 Reply rate, Booking rate, Show-up rate
               </span>{" "}
               to match your process.
@@ -296,11 +364,11 @@ export function ConversionMetricDefinitionsSettingsClient() {
         {defs.map((metric, index) => (
           <div
             key={`${metric.position}-${metric.label}-${index}`}
-            className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
+            className={`rounded-xl border p-3 space-y-2 ${row}`}
           >
             <div className="flex flex-col md:flex-row gap-2">
               <input
-                className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={`flex-1 rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${input}`}
                 value={metric.label}
                 onChange={(e) =>
                   updateDefinition(index, { label: e.target.value })
@@ -309,7 +377,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
               />
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className={`w-full md:w-40 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${select}`}
                 value={metric.fromStage}
                 onChange={(e) =>
                   updateDefinition(index, { fromStage: e.target.value })
@@ -323,7 +391,7 @@ export function ConversionMetricDefinitionsSettingsClient() {
               </select>
 
               <select
-                className="w-full md:w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className={`w-full md:w-40 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${select}`}
                 value={metric.toStage}
                 onChange={(e) =>
                   updateDefinition(index, { toStage: e.target.value })
@@ -342,25 +410,33 @@ export function ConversionMetricDefinitionsSettingsClient() {
                   min={0}
                   max={100}
                   step={1}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${input}`}
                   value={metric.targetRate ?? ""}
                   onChange={(e) => {
                     const v = e.target.value;
                     updateDefinition(index, {
-                      targetRate: v === "" ? null : Math.round(Number(v)) | 0,
+                      targetRate: v === "" ? null : normalizePercentLike(v),
                     });
                   }}
                   placeholder="Target %"
                   aria-label="Target rate"
                   title="Target rate (0–100)"
                 />
-                <p className="mt-1 text-[10px] text-slate-400">Target %</p>
+                <p
+                  className={`mt-1 text-[10px] ${isDark ? "text-slate-500" : "text-slate-400"}`}
+                >
+                  Target %
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => removeDefinition(index)}
-                className="text-xs text-slate-500 hover:text-red-500 self-start cursor-pointer"
+                className={`text-xs self-start cursor-pointer ${
+                  isDark
+                    ? "text-slate-400 hover:text-rose-300"
+                    : "text-slate-500 hover:text-red-500"
+                }`}
               >
                 Remove
               </button>
@@ -373,7 +449,10 @@ export function ConversionMetricDefinitionsSettingsClient() {
         <button
           type="button"
           onClick={addDefinition}
-          className="text-sm text-indigo-600 font-medium mt-1 hover:underline cursor-pointer"
+          disabled={!canAdd}
+          className={`text-sm font-medium mt-1 hover:underline disabled:opacity-50 disabled:cursor-not-allowed ${
+            isDark ? "text-indigo-300" : "text-indigo-600"
+          }`}
         >
           + Add Conversion Metric
         </button>
@@ -388,7 +467,9 @@ export function ConversionMetricDefinitionsSettingsClient() {
         </button>
 
         {saveState === "idle" && defs.length > 0 && (
-          <span className="text-xs text-slate-400">
+          <span
+            className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}
+          >
             Don’t forget to save your changes.
           </span>
         )}

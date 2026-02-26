@@ -1,8 +1,10 @@
+// src/components/IntegrationsClient.tsx
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 type ProviderId = "google" | "outlook";
 
@@ -30,7 +32,7 @@ const calendarProviders = [
     badgeText: "text-indigo-700",
     buttonBg: "bg-indigo-600",
     buttonHoverBg: "hover:bg-indigo-700",
-    buttonText: "text-black",
+    buttonText: "text-white",
     enabled: true,
   },
   {
@@ -42,7 +44,7 @@ const calendarProviders = [
     badgeText: "text-sky-700",
     buttonBg: "bg-sky-600",
     buttonHoverBg: "hover:bg-sky-700",
-    buttonText: "text-black",
+    buttonText: "text-white",
     enabled: false,
   },
 ];
@@ -57,7 +59,7 @@ const emailProviders = [
     badgeText: "text-emerald-700",
     buttonBg: "bg-emerald-600",
     buttonHoverBg: "hover:bg-emerald-700",
-    buttonText: "text-black",
+    buttonText: "text-white",
     enabled: false,
   },
   {
@@ -89,6 +91,10 @@ const billingProviders = [
     enabled: true,
   },
 ];
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function CalendarProviderIcon({ id }: { id: ProviderId }) {
   if (id === "google") {
@@ -231,9 +237,14 @@ const clearReconnectFlag = () => {
 };
 
 export default function IntegrationsClient() {
+  // ✅ IMPORTANT: call ALL hooks unconditionally (fixes hook-order error)
+  const { resolvedTheme } = useTheme();
   const searchParams = useSearchParams();
+
   const connectedParam = searchParams.get("connected");
   const errorParam = searchParams.get("error");
+
+  const [mounted, setMounted] = useState(false);
 
   const [status, setStatus] = useState<IntegrationStatus>(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
@@ -247,6 +258,52 @@ export default function IntegrationsClient() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(true);
+
+  useEffect(() => setMounted(true), []);
+
+  const isDark = resolvedTheme === "dark";
+
+  const cardBase = useMemo(
+    () =>
+      cn(
+        "rounded-2xl border shadow-sm",
+        isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+      ),
+    [isDark],
+  );
+
+  const tileBase = useMemo(
+    () =>
+      cn(
+        "flex h-full flex-col rounded-2xl border p-4 shadow-sm transition",
+        isDark
+          ? "border-slate-800 bg-slate-950 hover:border-indigo-500/40 hover:shadow-md"
+          : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md",
+      ),
+    [isDark],
+  );
+
+  const heading = (cls = "") =>
+    cn(
+      "text-sm font-semibold",
+      isDark ? "text-slate-100" : "text-slate-900",
+      cls,
+    );
+
+  const subText = (cls = "") =>
+    cn("text-xs", isDark ? "text-slate-400" : "text-slate-500", cls);
+
+  const muted = (cls = "") =>
+    cn(
+      "text-[11px] leading-snug",
+      isDark ? "text-slate-500" : "text-slate-400",
+      cls,
+    );
+
+  const iconWrap = cn(
+    "inline-flex h-10 w-10 items-center justify-center rounded-full",
+    isDark ? "bg-slate-900/40" : "bg-slate-100",
+  );
 
   const getAccessToken = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -382,7 +439,6 @@ export default function IntegrationsClient() {
   }, [refresh]);
 
   useEffect(() => {
-    // Re-fetch after redirect back from provider / error screen
     if (
       connectedParam === "google" ||
       connectedParam === "stripe" ||
@@ -526,23 +582,48 @@ export default function IntegrationsClient() {
     if (!connected) await startConnect(provider.connectHref, provider.id);
   }
 
+  // ✅ safe to gate render AFTER hooks
+  if (!mounted) return null;
+
   return (
     <div className="max-w-3xl space-y-6 pt-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Integrations</h1>
-        <p className="mt-1 text-sm text-slate-600">
+      <div className={cn(cardBase, "px-5 py-4")}>
+        <h1
+          className={cn(
+            "text-2xl font-semibold",
+            isDark ? "text-slate-100" : "text-slate-900",
+          )}
+        >
+          Integrations
+        </h1>
+        <p
+          className={cn(
+            "mt-1 text-sm",
+            isDark ? "text-slate-400" : "text-slate-600",
+          )}
+        >
           Connect your calendar and inbox to power bookings and communication.
         </p>
 
         {googleReconnectNeeded && (
-          <p className="mt-2 text-xs font-semibold text-amber-700">
+          <p
+            className={cn(
+              "mt-2 text-xs font-semibold",
+              isDark ? "text-amber-300" : "text-amber-700",
+            )}
+          >
             Your Google Calendar needs to be reconnected so booking links can
             check availability. Click “Reconnect Google Calendar”.
           </p>
         )}
 
         {!!errorParam && (
-          <p className="mt-2 text-xs font-semibold text-rose-600">
+          <p
+            className={cn(
+              "mt-2 text-xs font-semibold",
+              isDark ? "text-rose-300" : "text-rose-600",
+            )}
+          >
             Connection failed: {errorParam}
           </p>
         )}
@@ -551,10 +632,8 @@ export default function IntegrationsClient() {
       {/* Calendar */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
-            Calendar Connections
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <h2 className={heading()}>Calendar Connections</h2>
+          <p className={subText("mt-1")}>
             We use your calendar to show availability and create events when a
             lead books a call.
           </p>
@@ -570,42 +649,68 @@ export default function IntegrationsClient() {
             const isPending = pendingCalendar === p.id;
 
             return (
-              <div
-                key={p.id}
-                className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-              >
+              <div key={p.id} className={tileBase}>
                 <div className="mb-3 flex min-h-[40px] items-center gap-2">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <div className={iconWrap}>
                     <CalendarProviderIcon id={p.id} />
                   </div>
 
                   {connected && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                      <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-emerald-500/10 text-emerald-200"
+                          : "bg-emerald-50 text-emerald-700",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mr-1 h-1.5 w-1.5 rounded-full",
+                          isDark ? "bg-emerald-400" : "bg-emerald-500",
+                        )}
+                      />
                       Connected
                     </span>
                   )}
 
                   {p.id === "google" && googleReconnectNeeded && (
-                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-amber-500/10 text-amber-200"
+                          : "bg-amber-50 text-amber-800",
+                      )}
+                    >
                       Action required
                     </span>
                   )}
 
                   {!p.enabled && !connected && (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-slate-900/40 text-slate-300"
+                          : "bg-slate-100 text-slate-600",
+                      )}
+                    >
                       Coming soon
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {p.name}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">{p.description}</p>
+                  <h3 className={heading()}>{p.name}</h3>
+                  <p className={subText("mt-1")}>{p.description}</p>
                   <div
-                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                    className={cn(
+                      "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      isDark
+                        ? "bg-slate-900/40 text-slate-200"
+                        : `${p.badgeBg} ${p.badgeText}`,
+                    )}
                   >
                     {p.id === "google"
                       ? "Great for Google Workspace teams"
@@ -620,11 +725,14 @@ export default function IntegrationsClient() {
                       loading || isPending || (!p.enabled && !connected)
                     }
                     onClick={() => handleCalendarClick(p, connected)}
-                    className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
+                    className={cn(
+                      "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
                       connected
-                        ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
-                    }`}
+                        ? isDark
+                          ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+                          : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                    )}
                   >
                     {p.id === "google" && googleReconnectNeeded
                       ? "Reconnect Google Calendar"
@@ -633,9 +741,7 @@ export default function IntegrationsClient() {
                         : `Connect ${p.name}`}
                   </button>
 
-                  <p
-                    className={`text-[11px] leading-snug text-slate-400 ${connected ? "pb-[11px]" : ""}`}
-                  >
+                  <p className={muted(connected ? "pb-[11px]" : "")}>
                     {p.id === "google" && googleReconnectNeeded
                       ? "Reconnect to restore availability checks for booking links."
                       : connected
@@ -652,10 +758,8 @@ export default function IntegrationsClient() {
       {/* Email */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
-            Email Connections
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <h2 className={heading()}>Email Connections</h2>
+          <p className={subText("mt-1")}>
             Connect your inbox to send emails from FaigataCRM and log
             conversations to leads.
           </p>
@@ -666,36 +770,55 @@ export default function IntegrationsClient() {
             const connected = isEmailConnected(p.id);
 
             return (
-              <div
-                key={`${p.id}-email`}
-                className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-              >
+              <div key={`${p.id}-email`} className={tileBase}>
                 <div className="mb-3 flex min-h-[40px] items-center gap-2">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <div className={iconWrap}>
                     <EmailProviderIcon id={p.id} />
                   </div>
 
                   {connected && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                      <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-emerald-500/10 text-emerald-200"
+                          : "bg-emerald-50 text-emerald-700",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mr-1 h-1.5 w-1.5 rounded-full",
+                          isDark ? "bg-emerald-400" : "bg-emerald-500",
+                        )}
+                      />
                       Connected
                     </span>
                   )}
 
                   {!p.enabled && !connected && (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-slate-900/40 text-slate-300"
+                          : "bg-slate-100 text-slate-600",
+                      )}
+                    >
                       Coming soon
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {p.name}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">{p.description}</p>
+                  <h3 className={heading()}>{p.name}</h3>
+                  <p className={subText("mt-1")}>{p.description}</p>
                   <div
-                    className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                    className={cn(
+                      "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      isDark
+                        ? "bg-slate-900/40 text-slate-200"
+                        : `${p.badgeBg} ${p.badgeText}`,
+                    )}
                   >
                     {p.id === "google"
                       ? "Requires Gmail / Workspace mail permissions"
@@ -708,16 +831,19 @@ export default function IntegrationsClient() {
                     type="button"
                     disabled={loading || (!p.enabled && !connected)}
                     onClick={() => handleEmailClick(p, connected)}
-                    className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
+                    className={cn(
+                      "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
                       connected
-                        ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
-                    }`}
+                        ? isDark
+                          ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+                          : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                    )}
                   >
                     {connected ? `Disconnect ${p.name}` : `Connect ${p.name}`}
                   </button>
 
-                  <p className="text-[11px] leading-snug text-slate-400">
+                  <p className={muted()}>
                     {connected
                       ? "We’re using this inbox to send and log lead-related communication."
                       : "You’ll see a separate consent screen. We only use this to send and log lead-related communication."}
@@ -733,10 +859,8 @@ export default function IntegrationsClient() {
       {isAdmin && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Billing Connections
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <h2 className={heading()}>Billing Connections</h2>
+            <p className={subText("mt-1")}>
               Connect Stripe to create products, send invoices, and collect
               payments.
             </p>
@@ -744,23 +868,37 @@ export default function IntegrationsClient() {
 
           <div className="grid gap-4 md:grid-cols-2">
             {billingProviders.map((p) => (
-              <div
-                key={p.id}
-                className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-              >
+              <div key={p.id} className={tileBase}>
                 <div className="mb-3 flex min-h-[40px] items-center gap-2">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <div className={iconWrap}>
                     <StripeProviderIcon />
                   </div>
 
                   {isStripeConnected ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                      <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-emerald-500/10 text-emerald-200"
+                          : "bg-emerald-50 text-emerald-700",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mr-1 h-1.5 w-1.5 rounded-full",
+                          isDark ? "bg-emerald-400" : "bg-emerald-500",
+                        )}
+                      />
                       Connected
                     </span>
                   ) : (
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.badgeBg} ${p.badgeText}`}
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        isDark
+                          ? "bg-slate-900/40 text-slate-200"
+                          : `${p.badgeBg} ${p.badgeText}`,
+                      )}
                     >
                       Billing
                     </span>
@@ -768,10 +906,8 @@ export default function IntegrationsClient() {
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {p.name}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">{p.description}</p>
+                  <h3 className={heading()}>{p.name}</h3>
+                  <p className={subText("mt-1")}>{p.description}</p>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2">
@@ -781,11 +917,14 @@ export default function IntegrationsClient() {
                       loading || rolesLoading || pendingStripe || !p.enabled
                     }
                     onClick={handleStripeClick}
-                    className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer ${
+                    className={cn(
+                      "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
                       isStripeConnected
-                        ? "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : `${p.buttonBg} ${p.buttonHoverBg} ${p.buttonText}`
-                    }`}
+                        ? isDark
+                          ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+                          : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                    )}
                   >
                     {pendingStripe
                       ? "Working..."
@@ -794,7 +933,7 @@ export default function IntegrationsClient() {
                         : "Connect Stripe (Test)"}
                   </button>
 
-                  <p className="text-[11px] leading-snug text-slate-400">
+                  <p className={muted()}>
                     {isStripeConnected
                       ? "Stripe is connected for this workspace (test mode)."
                       : "You’ll be redirected to Stripe to authorize access (test mode)."}

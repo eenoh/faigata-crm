@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useTheme } from "next-themes";
 
 /* ------------------------- helpers ------------------------- */
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function slugify(value: string): string {
   return value
@@ -76,62 +81,225 @@ type AvailabilityMode = "business_hours" | "twenty_four_seven";
 
 const DEFAULT_PRIMARY = "#4f46e5";
 
+/* ------------------------- UI bits ------------------------- */
+
+function ErrorBox({ msg, isDark }: { msg: string; isDark: boolean }) {
+  return (
+    <div
+      className={cn(
+        "mt-3 rounded-xl border px-3 py-2 text-xs",
+        isDark
+          ? "border-rose-900/40 bg-rose-950/40"
+          : "border-rose-200 bg-rose-50",
+      )}
+    >
+      <div
+        className={cn(
+          "font-semibold",
+          isDark ? "text-rose-300" : "text-rose-700",
+        )}
+      >
+        Error: {msg}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------- loading UI ------------------------- */
 
-function PageLoading() {
+function PageLoading({ isDark }: { isDark: boolean }) {
   return (
     <div className="flex flex-col gap-6 max-w-5xl animate-pulse">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <div className="h-7 w-64 rounded bg-slate-100" />
-        <div className="mt-2 h-4 w-full max-w-2xl rounded bg-slate-100" />
-        <div className="mt-3 h-6 w-40 rounded-full bg-slate-100" />
+      <div
+        className={cn(
+          "rounded-2xl border px-5 py-4 shadow-sm",
+          isDark
+            ? "border-slate-800 bg-slate-950"
+            : "border-slate-200 bg-white",
+        )}
+      >
+        <div
+          className={cn(
+            "h-7 w-64 rounded",
+            isDark ? "bg-slate-800" : "bg-slate-100",
+          )}
+        />
+        <div
+          className={cn(
+            "mt-2 h-4 w-full max-w-2xl rounded",
+            isDark ? "bg-slate-800" : "bg-slate-100",
+          )}
+        />
+        <div
+          className={cn(
+            "mt-3 h-6 w-40 rounded-full",
+            isDark ? "bg-slate-800" : "bg-slate-100",
+          )}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="h-3 w-32 rounded bg-slate-100" />
-          <div className="h-10 w-full rounded-lg bg-slate-100" />
+        <div
+          className={cn(
+            "space-y-4 rounded-2xl border p-5 shadow-sm",
+            isDark
+              ? "border-slate-800 bg-slate-950"
+              : "border-slate-200 bg-white",
+          )}
+        >
+          <div
+            className={cn(
+              "h-3 w-32 rounded",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
+          <div
+            className={cn(
+              "h-10 w-full rounded-lg",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
 
-          <div className="h-3 w-40 rounded bg-slate-100" />
-          <div className="h-10 w-full rounded-lg bg-slate-100" />
+          <div
+            className={cn(
+              "h-3 w-40 rounded",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
+          <div
+            className={cn(
+              "h-10 w-full rounded-lg",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
 
-          <div className="h-3 w-44 rounded bg-slate-100" />
-          <div className="h-24 w-full rounded-lg bg-slate-100" />
+          <div
+            className={cn(
+              "h-3 w-44 rounded",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
+          <div
+            className={cn(
+              "h-24 w-full rounded-lg",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
 
-          <div className="h-28 w-full rounded-xl bg-slate-100" />
-          <div className="h-28 w-full rounded-xl bg-slate-100" />
+          <div
+            className={cn(
+              "h-28 w-full rounded-xl",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
+          <div
+            className={cn(
+              "h-28 w-full rounded-xl",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
 
-          <div className="h-10 w-44 rounded-lg bg-slate-100" />
+          <div
+            className={cn(
+              "h-10 w-44 rounded-lg",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="h-4 w-48 rounded bg-slate-100" />
-            <div className="mt-2 h-3 w-80 rounded bg-slate-100" />
+          <div
+            className={cn(
+              "rounded-2xl border p-4 shadow-sm",
+              isDark
+                ? "border-slate-800 bg-slate-950"
+                : "border-slate-200 bg-white",
+            )}
+          >
+            <div
+              className={cn(
+                "h-4 w-48 rounded",
+                isDark ? "bg-slate-800" : "bg-slate-100",
+              )}
+            />
+            <div
+              className={cn(
+                "mt-2 h-3 w-80 rounded",
+                isDark ? "bg-slate-800" : "bg-slate-100",
+              )}
+            />
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+          <div
+            className={cn(
+              "overflow-hidden rounded-2xl border shadow-lg",
+              isDark
+                ? "border-slate-800 bg-slate-950"
+                : "border-slate-200 bg-white",
+            )}
+          >
             <div className="px-6 py-5">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-slate-100" />
+                <div
+                  className={cn(
+                    "h-10 w-10 rounded-2xl",
+                    isDark ? "bg-slate-800" : "bg-slate-100",
+                  )}
+                />
                 <div className="flex-1">
-                  <div className="h-3 w-56 rounded bg-slate-100" />
-                  <div className="mt-2 h-5 w-64 rounded bg-slate-100" />
+                  <div
+                    className={cn(
+                      "h-3 w-56 rounded",
+                      isDark ? "bg-slate-800" : "bg-slate-100",
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "mt-2 h-5 w-64 rounded",
+                      isDark ? "bg-slate-800" : "bg-slate-100",
+                    )}
+                  />
                 </div>
               </div>
-              <div className="mt-4 h-3 w-full max-w-md rounded bg-slate-100" />
+              <div
+                className={cn(
+                  "mt-4 h-3 w-full max-w-md rounded",
+                  isDark ? "bg-slate-800" : "bg-slate-100",
+                )}
+              />
             </div>
-            <div className="border-t border-slate-200 p-5">
-              <div className="h-3 w-24 rounded bg-slate-100" />
+            <div
+              className={cn(
+                "border-t p-5",
+                isDark ? "border-slate-800" : "border-slate-200",
+              )}
+            >
+              <div
+                className={cn(
+                  "h-3 w-24 rounded",
+                  isDark ? "bg-slate-800" : "bg-slate-100",
+                )}
+              />
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-8 rounded-lg bg-slate-100" />
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-8 rounded-lg",
+                      isDark ? "bg-slate-800" : "bg-slate-100",
+                    )}
+                  />
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="h-3 w-60 rounded bg-slate-100" />
+          <div
+            className={cn(
+              "h-3 w-60 rounded",
+              isDark ? "bg-slate-800" : "bg-slate-100",
+            )}
+          />
         </div>
       </div>
     </div>
@@ -142,6 +310,12 @@ export default function CreateSchedulePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { teamId } = useWorkspace();
+
+  // ✅ Theme logic (same as CalendarClient)
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [userId, setUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -187,6 +361,7 @@ export default function CreateSchedulePageClient() {
   const [maxNoticeDays, setMaxNoticeDays] = useState<string>("30");
 
   const [redirectMode, setRedirectMode] = useState<RedirectMode>("default");
+  // kept for completeness (your UI below doesn’t render it right now)
   const [redirectUrl, setRedirectUrl] = useState("");
   const [confirmHeading, setConfirmHeading] = useState("You're booked!");
   const [confirmSubheading, setConfirmSubheading] = useState(
@@ -406,7 +581,7 @@ export default function CreateSchedulePageClient() {
     return `${workStart}–${workEnd}`;
   }, [availabilityMode, workStart, workEnd]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!teamId || !userId) return;
 
@@ -581,57 +756,99 @@ export default function CreateSchedulePageClient() {
   }
 
   const pageLoading =
-    authLoading || !teamId || !userId || loadingClosers || orgLoading; // you can drop orgLoading if you want the page to render without org preview
+    authLoading || !teamId || !userId || loadingClosers || orgLoading;
 
-  if (pageLoading) return <PageLoading />;
+  if (pageLoading) return <PageLoading isDark={isDark} />;
 
   const orgName = org?.name || "FaigataCRM";
   const orgInitial =
     org?.name?.trim()?.charAt(0).toUpperCase() ||
     (name ? name[0]?.toUpperCase() : "F");
 
+  const cardBase = cn(
+    "rounded-2xl border shadow-sm",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+  );
+
+  const labelClass = cn(
+    "block text-xs font-semibold uppercase tracking-wide",
+    isDark ? "text-slate-400" : "text-slate-500",
+  );
+
+  const inputClass = cn(
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1",
+    isDark
+      ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:ring-indigo-400"
+      : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:ring-indigo-500",
+  );
+
+  const helpText = cn(
+    "mt-1 text-[11px]",
+    isDark ? "text-slate-500" : "text-slate-400",
+  );
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">
+      <div className={cn(cardBase, "px-5 py-4")}>
+        <h1
+          className={cn(
+            "text-2xl font-semibold",
+            isDark ? "text-slate-100" : "text-slate-900",
+          )}
+        >
           Create Schedule Page
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p
+          className={cn(
+            "mt-1 text-sm",
+            isDark ? "text-slate-300" : "text-slate-600",
+          )}
+        >
           Pick a name, URL, and primary color. Choose which closers are included
           based on the type.
         </p>
-        <div className="mt-3 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+
+        <div
+          className={cn(
+            "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+            isDark
+              ? "bg-slate-900 text-slate-200"
+              : "bg-slate-100 text-slate-700",
+          )}
+        >
           {bookingType === "one_on_one" && "Type: One-on-one"}
           {bookingType === "group" && "Type: Group meeting"}
           {bookingType === "round_robin" && "Type: Round robin"}
         </div>
+
+        {!!error && <ErrorBox msg={error} isDark={isDark} />}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         {/* ---- form ---- */}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-        >
+        <form onSubmit={handleSubmit} className={cn(cardBase, "space-y-4 p-5")}>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Meeting name
-            </label>
+            <label className={labelClass}>Meeting name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Sales Discovery Call"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Public URL slug
-            </label>
+            <label className={labelClass}>Public URL slug</label>
             <div className="mt-1 flex items-center gap-1 text-sm">
-              <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">
+              <span
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-xs",
+                  isDark
+                    ? "border-slate-800 bg-slate-900 text-slate-300"
+                    : "border-slate-200 bg-slate-50 text-slate-500",
+                )}
+              >
                 /b/
               </span>
               <input
@@ -639,35 +856,38 @@ export default function CreateSchedulePageClient() {
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
                 placeholder="sales-discovery-call"
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className={cn(inputClass, "mt-0 flex-1")}
               />
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className={helpText}>
               This becomes the shareable link you’ll send to leads.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Description (optional)
-            </label>
+            <label className={labelClass}>Description (optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Choose a time that works for you. We’ll send a calendar invite after you confirm."
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className={inputClass}
             />
           </div>
 
-          {/* ---- host selection sections (unchanged UI) ---- */}
+          {/* ---- host selection sections (same logic; dark styles) ---- */}
           {bookingType === "one_on_one" && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Host (Closer)
-              </label>
+              <label className={labelClass}>Host (Closer)</label>
               {closers.length === 0 ? (
-                <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+                <p
+                  className={cn(
+                    "mt-1 rounded-lg border px-3 py-2 text-[11px]",
+                    isDark
+                      ? "border-amber-900/40 bg-amber-950/30 text-amber-200"
+                      : "border-amber-200 bg-amber-50 text-amber-700",
+                  )}
+                >
                   No teammates with role{" "}
                   <span className="font-semibold">Closer</span> found.
                 </p>
@@ -679,7 +899,7 @@ export default function CreateSchedulePageClient() {
                       setSelectedCloserId(e.target.value || null)
                     }
                     disabled={loadingClosers}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                    className={cn(inputClass, "cursor-pointer")}
                   >
                     {closers.map((c) => {
                       const fullName =
@@ -692,7 +912,7 @@ export default function CreateSchedulePageClient() {
                       );
                     })}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className={helpText}>
                     Lead books directly with this closer.
                   </p>
                 </>
@@ -702,19 +922,31 @@ export default function CreateSchedulePageClient() {
 
           {bookingType === "group" && (
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className={labelClass}>
                 Required closers (must attend)
               </label>
 
               {closers.length === 0 ? (
-                <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+                <p
+                  className={cn(
+                    "mt-1 rounded-lg border px-3 py-2 text-[11px]",
+                    isDark
+                      ? "border-amber-900/40 bg-amber-950/30 text-amber-200"
+                      : "border-amber-200 bg-amber-50 text-amber-700",
+                  )}
+                >
                   No teammates with role{" "}
                   <span className="font-semibold">Closer</span> found.
                 </p>
               ) : (
                 <>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <div
+                      className={cn(
+                        "text-[11px] font-semibold uppercase tracking-wide",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Primary closer (assigned on lead)
                     </div>
                     <select
@@ -727,7 +959,7 @@ export default function CreateSchedulePageClient() {
                         }
                       }}
                       disabled={loadingClosers}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      className={cn(inputClass, "cursor-pointer")}
                     >
                       {closers.map((c) => {
                         const fullName =
@@ -742,8 +974,20 @@ export default function CreateSchedulePageClient() {
                     </select>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <div
+                    className={cn(
+                      "rounded-xl border p-3",
+                      isDark
+                        ? "border-slate-800 bg-slate-900/40"
+                        : "border-slate-200 bg-slate-50",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "text-[11px] font-semibold uppercase tracking-wide",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Select required attendees
                     </div>
 
@@ -759,7 +1003,12 @@ export default function CreateSchedulePageClient() {
                         return (
                           <label
                             key={id}
-                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer"
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer",
+                              isDark
+                                ? "border-slate-800 bg-slate-950"
+                                : "border-slate-200 bg-white",
+                            )}
                           >
                             <input
                               type="checkbox"
@@ -783,11 +1032,16 @@ export default function CreateSchedulePageClient() {
                                 setSelectedGroupCloserIds(ensured);
                               }}
                             />
-                            <span className="font-medium text-slate-900">
+                            <span
+                              className={cn(
+                                "font-medium",
+                                isDark ? "text-slate-100" : "text-slate-900",
+                              )}
+                            >
                               {full}
                             </span>
                             {isPrimary && (
-                              <span className="ml-auto text-[11px] font-semibold text-indigo-600">
+                              <span className="ml-auto text-[11px] font-semibold text-indigo-500">
                                 Primary
                               </span>
                             )}
@@ -796,7 +1050,12 @@ export default function CreateSchedulePageClient() {
                       })}
                     </div>
 
-                    <p className="mt-2 text-[11px] text-slate-500">
+                    <p
+                      className={cn(
+                        "mt-2 text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Availability is the overlap of all selected calendars.
                     </p>
                   </div>
@@ -807,18 +1066,35 @@ export default function CreateSchedulePageClient() {
 
           {bookingType === "round_robin" && (
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Round robin closers (pool)
-              </label>
+              <label className={labelClass}>Round robin closers (pool)</label>
 
               {closers.length === 0 ? (
-                <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+                <p
+                  className={cn(
+                    "mt-1 rounded-lg border px-3 py-2 text-[11px]",
+                    isDark
+                      ? "border-amber-900/40 bg-amber-950/30 text-amber-200"
+                      : "border-amber-200 bg-amber-50 text-amber-700",
+                  )}
+                >
                   No teammates with role{" "}
                   <span className="font-semibold">Closer</span> found.
                 </p>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div
+                  className={cn(
+                    "rounded-xl border p-3",
+                    isDark
+                      ? "border-slate-800 bg-slate-900/40"
+                      : "border-slate-200 bg-slate-50",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "text-[11px] font-semibold uppercase tracking-wide",
+                      isDark ? "text-slate-400" : "text-slate-500",
+                    )}
+                  >
                     Select which closers can be assigned
                   </div>
 
@@ -833,7 +1109,12 @@ export default function CreateSchedulePageClient() {
                       return (
                         <label
                           key={id}
-                          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer"
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer",
+                            isDark
+                              ? "border-slate-800 bg-slate-950"
+                              : "border-slate-200 bg-white",
+                          )}
                         >
                           <input
                             type="checkbox"
@@ -846,7 +1127,12 @@ export default function CreateSchedulePageClient() {
                               });
                             }}
                           />
-                          <span className="font-medium text-slate-900">
+                          <span
+                            className={cn(
+                              "font-medium",
+                              isDark ? "text-slate-100" : "text-slate-900",
+                            )}
+                          >
                             {full}
                           </span>
                         </label>
@@ -854,7 +1140,12 @@ export default function CreateSchedulePageClient() {
                     })}
                   </div>
 
-                  <p className="mt-2 text-[11px] text-slate-500">
+                  <p
+                    className={cn(
+                      "mt-2 text-[11px]",
+                      isDark ? "text-slate-400" : "text-slate-500",
+                    )}
+                  >
                     Leads will see times where{" "}
                     <span className="font-semibold">at least one</span> closer
                     is free. At booking time, we randomly assign one of the
@@ -866,13 +1157,30 @@ export default function CreateSchedulePageClient() {
           )}
 
           {/* Duration */}
-          <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <div
+            className={cn(
+              "mt-3 space-y-2 rounded-xl border px-3 py-3",
+              isDark
+                ? "border-slate-800 bg-slate-900/40"
+                : "border-slate-200 bg-slate-50",
+            )}
+          >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <p
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
+                >
                   Duration
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p
+                  className={cn(
+                    "text-[11px]",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
+                >
                   Set how long this meeting should last.
                 </p>
               </div>
@@ -885,53 +1193,125 @@ export default function CreateSchedulePageClient() {
                   onChange={(e) =>
                     setDurationMinutes(parseInt(e.target.value || "0", 10) || 0)
                   }
-                  className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className={cn(
+                    "w-24 rounded-lg border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1",
+                    isDark
+                      ? "border-slate-800 bg-slate-950 text-slate-100 focus:border-indigo-400 focus:ring-indigo-400"
+                      : "border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500",
+                  )}
                 />
-                <span className="text-[11px] text-slate-500">minutes</span>
+                <span
+                  className={cn(
+                    "text-[11px]",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
+                >
+                  minutes
+                </span>
               </div>
             </div>
           </div>
 
           {/* Buffers & booking window */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <div
+            className={cn(
+              "rounded-xl border px-3 py-3",
+              isDark
+                ? "border-slate-800 bg-slate-900/40"
+                : "border-slate-200 bg-slate-50",
+            )}
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <p
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
+                >
                   Buffers
                 </p>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">Before</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      Before
+                    </span>
                     <input
                       type="number"
                       min={0}
                       value={bufferBefore}
                       onChange={(e) => setBufferBefore(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className={cn(
+                        "w-full rounded-lg border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1",
+                        isDark
+                          ? "border-slate-800 bg-slate-950 text-slate-100 focus:border-indigo-400 focus:ring-indigo-400"
+                          : "border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500",
+                      )}
                     />
-                    <span className="text-[11px] text-slate-500">min</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      min
+                    </span>
                   </div>
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">After</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      After
+                    </span>
                     <input
                       type="number"
                       min={0}
                       value={bufferAfter}
                       onChange={(e) => setBufferAfter(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className={cn(
+                        "w-full rounded-lg border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1",
+                        isDark
+                          ? "border-slate-800 bg-slate-950 text-slate-100 focus:border-indigo-400 focus:ring-indigo-400"
+                          : "border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500",
+                      )}
                     />
-                    <span className="text-[11px] text-slate-500">min</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      min
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <p
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
+                >
                   Booking window
                 </p>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Min notice
                     </span>
                     <input
@@ -939,12 +1319,29 @@ export default function CreateSchedulePageClient() {
                       min={0}
                       value={minNoticeHours}
                       onChange={(e) => setMinNoticeHours(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className={cn(
+                        "w-full rounded-lg border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1",
+                        isDark
+                          ? "border-slate-800 bg-slate-950 text-slate-100 focus:border-indigo-400 focus:ring-indigo-400"
+                          : "border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500",
+                      )}
                     />
-                    <span className="text-[11px] text-slate-500">hours</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      hours
+                    </span>
                   </div>
                   <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <span className="text-[11px] text-slate-500">
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Max notice
                     </span>
                     <input
@@ -952,9 +1349,21 @@ export default function CreateSchedulePageClient() {
                       min={0}
                       value={maxNoticeDays}
                       onChange={(e) => setMaxNoticeDays(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className={cn(
+                        "w-full rounded-lg border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1",
+                        isDark
+                          ? "border-slate-800 bg-slate-950 text-slate-100 focus:border-indigo-400 focus:ring-indigo-400"
+                          : "border-slate-300 bg-white text-slate-900 focus:border-indigo-500 focus:ring-indigo-500",
+                      )}
                     />
-                    <span className="text-[11px] text-slate-500">days</span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
+                      days
+                    </span>
                   </div>
                 </div>
               </div>
@@ -962,12 +1371,29 @@ export default function CreateSchedulePageClient() {
           </div>
 
           {/* Availability */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <div
+            className={cn(
+              "rounded-xl border px-3 py-3 space-y-2",
+              isDark
+                ? "border-slate-800 bg-slate-900/40"
+                : "border-slate-200 bg-slate-50",
+            )}
+          >
+            <p
+              className={cn(
+                "text-[11px] font-semibold uppercase tracking-wide",
+                isDark ? "text-slate-400" : "text-slate-500",
+              )}
+            >
               Availability
             </p>
 
-            <div className="flex flex-col gap-2 text-[11px] text-slate-600">
+            <div
+              className={cn(
+                "flex flex-col gap-2 text-[11px]",
+                isDark ? "text-slate-300" : "text-slate-600",
+              )}
+            >
               <label className="inline-flex items-center gap-2">
                 <input
                   type="radio"
@@ -993,32 +1419,47 @@ export default function CreateSchedulePageClient() {
               <div className="mt-2 space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-500">
+                    <label
+                      className={cn(
+                        "block text-[11px] font-medium",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       Start time
                     </label>
                     <input
                       type="time"
                       value={workStart}
                       onChange={(e) => setWorkStart(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      className={cn(inputClass, "cursor-pointer")}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-500">
+                    <label
+                      className={cn(
+                        "block text-[11px] font-medium",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      )}
+                    >
                       End time
                     </label>
                     <input
                       type="time"
                       value={workEnd}
                       onChange={(e) => setWorkEnd(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      className={cn(inputClass, "cursor-pointer")}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 cursor-pointer">
+                  <label
+                    className={cn(
+                      "block text-[11px] font-medium cursor-pointer",
+                      isDark ? "text-slate-400" : "text-slate-500",
+                    )}
+                  >
                     Days
                   </label>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1035,19 +1476,28 @@ export default function CreateSchedulePageClient() {
                                 : [...prev, d.id],
                             );
                           }}
-                          className={[
+                          className={cn(
                             "rounded-lg border px-3 py-1.5 text-[11px] font-semibold cursor-pointer",
                             active
-                              ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                          ].join(" ")}
+                              ? isDark
+                                ? "border-indigo-500/40 bg-indigo-950/40 text-indigo-200"
+                                : "border-indigo-300 bg-indigo-50 text-indigo-700"
+                              : isDark
+                                ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900"
+                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                          )}
                         >
                           {d.label}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="mt-2 text-[11px] text-slate-500">
+                  <p
+                    className={cn(
+                      "mt-2 text-[11px]",
+                      isDark ? "text-slate-400" : "text-slate-500",
+                    )}
+                  >
                     Availability will be limited to these days and times in the
                     invitee’s timezone.
                   </p>
@@ -1058,28 +1508,27 @@ export default function CreateSchedulePageClient() {
 
           {/* Primary color */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Primary color
-            </label>
+            <label className={labelClass}>Primary color</label>
             <div className="mt-1 flex items-center gap-3">
               <input
                 type="color"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="h-9 w-9 cursor-pointer rounded border border-slate-300 bg-white p-0"
+                className={cn(
+                  "h-9 w-9 cursor-pointer rounded border p-0",
+                  isDark
+                    ? "border-slate-800 bg-slate-950"
+                    : "border-slate-300 bg-white",
+                )}
               />
               <input
                 type="text"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className={cn(inputClass, "mt-0 flex-1")}
               />
             </div>
           </div>
-
-          {error && (
-            <p className="text-xs font-medium text-rose-600">{error}</p>
-          )}
 
           <div className="pt-2">
             <button
@@ -1094,16 +1543,27 @@ export default function CreateSchedulePageClient() {
 
         {/* ---- preview ---- */}
         <div className="space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Preview schedule page
+          <div className={cn(cardBase, "p-4")}>
+            <h2
+              className={cn(
+                "text-sm font-semibold",
+                isDark ? "text-slate-100" : "text-slate-900",
+              )}
+            >
+              Preview Schedule Page
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <p
+              className={cn(
+                "mt-1 text-xs",
+                isDark ? "text-slate-300" : "text-slate-500",
+              )}
+            >
               Rough preview of the public booking page. (Availability range
               preview: <span className="font-semibold">{previewHours}</span>)
             </p>
           </div>
 
+          {/* Preview itself is intentionally “public page” styled (dark card) */}
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950/90 shadow-lg">
             <div
               className="px-6 py-5 text-white"
@@ -1218,7 +1678,12 @@ export default function CreateSchedulePageClient() {
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-500">
+          <p
+            className={cn(
+              "text-[11px]",
+              isDark ? "text-slate-400" : "text-slate-500",
+            )}
+          >
             Note: Preview how the page is going to look like!
           </p>
         </div>

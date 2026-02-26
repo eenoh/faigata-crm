@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { TrashIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "next-themes";
 
 const AVAILABLE_ROLES = [
   "Prospector",
@@ -72,37 +73,59 @@ function normalizeMemberRow(raw: any): MemberRow {
   };
 }
 
-function LoadingSkeleton() {
+function LoadingSkeleton({ isDark }: { isDark: boolean }) {
+  const shell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const head = isDark
+    ? "border-slate-900 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const sub = isDark ? "text-slate-400" : "text-slate-600";
+
+  const skelStrong = isDark ? "bg-slate-800/80" : "bg-slate-200/80";
+  const skelSoft = isDark ? "bg-slate-800/60" : "bg-slate-100";
+
+  const divider = isDark
+    ? "border-slate-900 divide-slate-900"
+    : "border-slate-100 divide-slate-100";
+  const sectionLabel = isDark ? "text-slate-400" : "text-slate-500";
+
   return (
     <div className="max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
-        <div className="mt-2 h-4 w-96 animate-pulse rounded bg-slate-100" />
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${head}`}>
+        <div className={`h-6 w-48 animate-pulse rounded ${skelStrong}`} />
+        <div className={`mt-2 h-4 w-96 animate-pulse rounded ${skelSoft}`} />
+        <div className={`mt-2 h-3 w-64 animate-pulse rounded ${skelSoft}`} />
+        <p className={`sr-only ${sub}`}>Loading…</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className={`rounded-2xl border shadow-sm overflow-hidden ${shell}`}>
+        <div
+          className={`border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide ${divider} ${sectionLabel}`}
+        >
           Team members
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className={`divide-y ${divider}`}>
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-4">
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                <div className="h-3 w-56 animate-pulse rounded bg-slate-100" />
+                <div
+                  className={`h-4 w-40 animate-pulse rounded ${skelStrong}`}
+                />
+                <div className={`h-3 w-56 animate-pulse rounded ${skelSoft}`} />
               </div>
 
               <div className="flex gap-3">
                 {AVAILABLE_ROLES.map((r) => (
                   <div
                     key={r}
-                    className="h-4 w-4 animate-pulse rounded bg-slate-200"
+                    className={`h-4 w-4 animate-pulse rounded ${skelStrong}`}
                   />
                 ))}
               </div>
 
-              <div className="h-8 w-8 animate-pulse rounded bg-slate-200" />
+              <div className={`h-8 w-8 animate-pulse rounded ${skelStrong}`} />
             </div>
           ))}
         </div>
@@ -114,6 +137,12 @@ function LoadingSkeleton() {
 export function ManageTeamRolesClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
   const router = useRouter();
+
+  // ✅ replicate LeadsClient theme handling
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [callerRoles, setCallerRoles] = useState<TeamRole[]>([]);
   const [callerRolesLoaded, setCallerRolesLoaded] = useState(false);
@@ -132,25 +161,21 @@ export function ManageTeamRolesClient() {
     [callerRoles, isAdmin],
   );
 
-  // IMPORTANT:
-  // We keep showing the skeleton until:
-  // 1) workspace context is ready
+  // Keep skeleton until:
+  // 1) workspace context ready
   // 2) initial members fetch finished
-  // 3) caller roles have been loaded at least once
+  // 3) caller roles loaded at least once
   const pageLoading =
-    workspaceLoading || loading || (Boolean(teamId) && !callerRolesLoaded); // prevents the "no permission" flash
+    workspaceLoading || loading || (Boolean(teamId) && !callerRolesLoaded);
 
-  // Ensure skeleton shows immediately when entering the page (before useEffect runs)
   useLayoutEffect(() => {
     if (workspaceLoading) return;
 
-    // If we have a teamId, we're about to load/validate roles => show skeleton
     if (teamId) {
       setLoading(true);
       setCallerRolesLoaded(false);
       setLoadError(null);
     } else {
-      // No teamId once workspace is done => stop skeleton (we'll show the error message below)
       setLoading(false);
       setCallerRolesLoaded(false);
     }
@@ -174,7 +199,6 @@ export function ManageTeamRolesClient() {
         const { data: sessionRes } = await supabase.auth.getSession();
         const token = sessionRes.session?.access_token;
         if (!token) {
-          // no session => redirect (no need to show permission error)
           router.replace("/login");
           return;
         }
@@ -194,7 +218,6 @@ export function ManageTeamRolesClient() {
           ? await res.json().catch(() => null)
           : null;
 
-        // Regardless of success/failure, once we got a response, roles are "known" (or at least attempted)
         setCallerRolesLoaded(true);
 
         if (!res.ok || !json?.ok) {
@@ -234,29 +257,61 @@ export function ManageTeamRolesClient() {
     return () => controller.abort();
   }, [fetchMembers, teamId, workspaceLoading]);
 
+  // ---------- theme-driven styles (same idea as LeadsClient) ----------
+  const cardShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const titleCls = isDark ? "text-slate-100" : "text-slate-900";
+  const subCls = isDark ? "text-slate-400" : "text-slate-600";
+  const toastCls = isDark ? "text-slate-300" : "text-slate-700";
+
+  const tableShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const tableSection = isDark
+    ? "border-slate-900 text-slate-400"
+    : "border-slate-100 text-slate-500";
+
+  const theadBg = isDark ? "bg-slate-950" : "bg-slate-50";
+  const theadText = isDark ? "text-slate-300" : "text-slate-600";
+  const rowHover = isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50";
+  const divider = isDark ? "divide-slate-900" : "divide-slate-100";
+  const memberName = isDark ? "text-slate-100" : "text-slate-900";
+  const memberEmail = isDark ? "text-slate-400" : "text-slate-500";
+
+  const checkboxBase = "h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500";
+  const checkboxTheme = isDark
+    ? "border-slate-700 bg-slate-950"
+    : "border-slate-300 bg-white";
+
+  const dangerBtn = isDark
+    ? "text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+    : "text-rose-600 hover:bg-rose-50 hover:text-rose-700";
+
+  const errorText = isDark ? "text-rose-300" : "text-rose-500";
+  const refreshingText = isDark ? "text-slate-400" : "text-slate-500";
+
   if (pageLoading) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton isDark={isDark} />;
   }
 
   if (!teamId) {
     return (
-      <p className="text-sm text-rose-500">
+      <p className={`text-sm ${errorText}`}>
         Could not determine your workspace team.
       </p>
     );
   }
 
-  if (loadError) return <p className="text-sm text-rose-500">{loadError}</p>;
+  if (loadError) return <p className={`text-sm ${errorText}`}>{loadError}</p>;
 
-  // Only show permission error AFTER caller roles have been loaded at least once.
-  // (callerRolesLoaded is guaranteed here due to pageLoading gate, but keeping it explicit is safe.)
   if (!callerRolesLoaded) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton isDark={isDark} />;
   }
 
   if (!isManager) {
     return (
-      <p className="text-sm text-rose-500">
+      <p className={`text-sm ${errorText}`}>
         You don&apos;t have permission to manage roles.
       </p>
     );
@@ -290,7 +345,6 @@ export function ManageTeamRolesClient() {
 
     const prevRoles = prev.roles;
 
-    // optimistic update
     updateLocalRoles(userId, nextRoles);
 
     setSaving(userId, true);
@@ -327,7 +381,6 @@ export function ManageTeamRolesClient() {
         return;
       }
 
-      // Apply server-canonical roles (source of truth)
       const savedRoles = normalizeRoles(json.roles);
       updateLocalRoles(userId, savedRoles);
 
@@ -352,27 +405,31 @@ export function ManageTeamRolesClient() {
 
   return (
     <div className="max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
-          Manage team roles
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${cardShell}`}>
+        <h1 className={`text-xl font-semibold ${titleCls}`}>
+          Manage Team Roles
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className={`mt-1 text-sm ${subCls}`}>
           Toggle roles to update immediately. Managers can&apos;t grant Admin;
           only Admins can.
         </p>
         {toast && (
-          <p className="mt-2 text-xs font-medium text-slate-700">{toast}</p>
+          <p className={`mt-2 text-xs font-medium ${toastCls}`}>{toast}</p>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div
+        className={`rounded-2xl border shadow-sm overflow-hidden ${tableShell}`}
+      >
+        <div
+          className={`border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide ${tableSection}`}
+        >
           Team members
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-600">
+            <thead className={`${theadBg} text-xs ${theadText}`}>
               <tr>
                 <th className="px-4 py-2 text-left font-semibold">Member</th>
                 {AVAILABLE_ROLES.map((r) => (
@@ -384,11 +441,11 @@ export function ManageTeamRolesClient() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className={`divide-y ${divider}`}>
               {refreshing && (
                 <tr>
                   <td
-                    className="px-4 py-3 text-xs text-slate-500"
+                    className={`px-4 py-3 text-xs ${refreshingText}`}
                     colSpan={AVAILABLE_ROLES.length + 2}
                   >
                     Loading members…
@@ -404,25 +461,28 @@ export function ManageTeamRolesClient() {
                 const saving = Boolean(savingMap[m.user_id]);
 
                 return (
-                  <tr key={m.user_id} className="hover:bg-slate-50">
+                  <tr key={m.user_id} className={rowHover}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">{name}</p>
+                      <p className={`font-medium ${memberName}`}>{name}</p>
                       {m.email && (
-                        <p className="text-xs text-slate-500">{m.email}</p>
+                        <p className={`text-xs ${memberEmail}`}>{m.email}</p>
                       )}
                     </td>
 
                     {AVAILABLE_ROLES.map((role) => {
                       const disabled = (role === "Admin" && !isAdmin) || saving;
+
                       return (
                         <td key={role} className="px-3 py-3 text-center">
                           <input
                             type="checkbox"
-                            className={`h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                            className={[
+                              checkboxBase,
+                              checkboxTheme,
                               disabled
                                 ? "opacity-60 cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
+                                : "cursor-pointer",
+                            ].join(" ")}
                             disabled={disabled}
                             checked={m.roles.includes(role)}
                             onChange={(e) =>
@@ -449,7 +509,7 @@ export function ManageTeamRolesClient() {
                           )
                         }
                         title="Remove team member"
-                        className="inline-flex items-center justify-center rounded-lg p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                        className={`inline-flex items-center justify-center rounded-lg p-2 transition-colors cursor-pointer ${dangerBtn}`}
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
@@ -461,7 +521,7 @@ export function ManageTeamRolesClient() {
               {!refreshing && members.length === 0 && (
                 <tr>
                   <td
-                    className="px-4 py-6 text-sm text-slate-500"
+                    className={`px-4 py-6 text-sm ${refreshingText}`}
                     colSpan={AVAILABLE_ROLES.length + 2}
                   >
                     No members found for this team.

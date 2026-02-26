@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DateTime } from "luxon";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 /* -------------------- types -------------------- */
 
@@ -39,6 +40,10 @@ type UserProfile = {
 };
 
 /* -------------------- helpers -------------------- */
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function safeDecode(v: string) {
   try {
@@ -251,7 +256,12 @@ function formatBookedCallBody(body: string, viewerTz: string) {
 export function LeadMessagesClient() {
   const router = useRouter();
 
-  // ✅ FIX TS2869: make id optional if you want fallback logic
+  // ✅ Theme logic (keep this for future pages)
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
   const params = useParams<{ id?: string }>();
   const leadId = useMemo(() => safeDecode(params.id ?? "").trim(), [params.id]);
 
@@ -283,6 +293,46 @@ export function LeadMessagesClient() {
   const [bookingNameBySlug, setBookingNameBySlug] = useState<
     Map<string, string>
   >(new Map());
+
+  // theme-driven classes
+  const card = cn(
+    "rounded-2xl border shadow-sm",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+  );
+  const cardSoft = cn(
+    "rounded-2xl border",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-100 bg-white",
+  );
+  const divider = isDark ? "border-slate-800" : "border-slate-100";
+  const title = isDark ? "text-slate-100" : "text-slate-900";
+  const sub = isDark ? "text-slate-400" : "text-slate-600";
+  const tiny = isDark ? "text-slate-500" : "text-slate-500";
+
+  const btn = cn(
+    "rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  );
+
+  const selectBase = cn(
+    "rounded-lg border px-2 py-1 text-xs cursor-pointer",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200"
+      : "border-slate-300 bg-white text-slate-700",
+  );
+
+  const textareaClass = cn(
+    "h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500 focus:ring-indigo-400"
+      : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-indigo-500",
+  );
+
+  const primaryBtn = cn(
+    "rounded-lg px-4 py-1.5 text-sm font-semibold text-white shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed",
+    "bg-indigo-600 hover:bg-indigo-700",
+  );
 
   async function resolveAvatarUrl(raw: string | null): Promise<string | null> {
     if (!raw) return null;
@@ -517,7 +567,9 @@ export function LeadMessagesClient() {
 
   if (workspaceLoaded && !teamId) {
     return (
-      <p className="text-sm text-slate-500">
+      <p
+        className={cn("text-sm", isDark ? "text-slate-400" : "text-slate-500")}
+      >
         You don&apos;t seem to be in any team yet. Open this page from a
         workspace, or complete onboarding first.
       </p>
@@ -595,24 +647,49 @@ export function LeadMessagesClient() {
         ? "How did the lead respond?"
         : "What message did the lead send you?";
 
+  const timelineItemBox = cn(
+    "rounded-xl border px-3 py-2",
+    isDark
+      ? "border-slate-800 bg-slate-900/40"
+      : "border-slate-100 bg-slate-50",
+  );
+
+  const timelineMeta = cn(
+    "mb-1 flex items-center justify-between gap-2 text-[11px]",
+    isDark ? "text-slate-400" : "text-slate-500",
+  );
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-6xl space-y-6 pb-6">
         {/* Header */}
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className={cn(card, "px-5 py-4")}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-slate-900">
+              <h1 className={cn("text-xl font-semibold", title)}>
                 Log Conversations for this Lead
               </h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className={cn("mt-1 text-sm", sub)}>
                 Track inbound/outbound so you always know the last touch.
               </p>
               {lead && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Lead: <span className="font-medium">{leadLabel}</span> ·
-                  Stage:{" "}
-                  <span className="font-medium">
+                <p className={cn("mt-2 text-xs", tiny)}>
+                  Lead:{" "}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      isDark ? "text-slate-200" : "text-slate-700",
+                    )}
+                  >
+                    {leadLabel}
+                  </span>{" "}
+                  · Stage:{" "}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      isDark ? "text-slate-200" : "text-slate-700",
+                    )}
+                  >
                     {lead.stage || "Unassigned"}
                   </span>
                 </p>
@@ -624,21 +701,18 @@ export function LeadMessagesClient() {
               onClick={() =>
                 router.push(`/leads/${encodeURIComponent(leadId)}`)
               }
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+              className={btn}
             >
-              Back to lead
+              Back to Lead
             </button>
           </div>
         </div>
 
         {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-        >
+        <form onSubmit={handleSubmit} className={cn(card, "space-y-3 p-4")}>
           <div className="flex flex-wrap gap-2">
             <select
-              className="w-32 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs cursor-pointer"
+              className={cn("w-32", selectBase)}
               value={direction}
               onChange={(e) => setDirection(e.target.value as any)}
             >
@@ -647,7 +721,7 @@ export function LeadMessagesClient() {
             </select>
 
             <select
-              className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs cursor-pointer"
+              className={cn("w-28", selectBase)}
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
             >
@@ -658,7 +732,7 @@ export function LeadMessagesClient() {
           </div>
 
           <textarea
-            className="h-28 w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={textareaClass}
             placeholder={placeholder}
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -668,7 +742,7 @@ export function LeadMessagesClient() {
             <button
               type="submit"
               disabled={saving || !body.trim()}
-              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+              className={primaryBtn}
             >
               {saving ? "Saving…" : "Log Message"}
             </button>
@@ -676,15 +750,23 @@ export function LeadMessagesClient() {
         </form>
 
         {/* Timeline */}
-        <div className="flex h-[520px] flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div className={cn("flex h-[520px] flex-col", cardSoft)}>
+          <div
+            className={cn(
+              "flex items-center justify-between border-b px-4 py-3",
+              divider,
+            )}
+          >
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2
+                className={cn(
+                  "text-sm font-semibold",
+                  isDark ? "text-slate-200" : "text-slate-800",
+                )}
+              >
                 Activity Timeline
               </h2>
-              <p className="text-xs text-slate-500">
-                Messages + pipeline events.
-              </p>
+              <p className={cn("text-xs", tiny)}>Messages + pipeline events.</p>
             </div>
 
             <button
@@ -693,8 +775,13 @@ export function LeadMessagesClient() {
               onClick={() =>
                 router.push(`/leads/${encodeURIComponent(leadId)}`)
               }
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-              title="Open lead detail"
+              className={cn(
+                "inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm font-semibold shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed",
+                isDark
+                  ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+              )}
+              title="Open Lead Detail"
             >
               ↗
             </button>
@@ -702,11 +789,11 @@ export function LeadMessagesClient() {
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {loadingLead || loadingMessages ? (
-              <p className="text-xs text-slate-500">Loading…</p>
+              <p className={cn("text-xs", tiny)}>Loading…</p>
             ) : !lead ? (
-              <p className="text-xs text-slate-500">Lead not found.</p>
+              <p className={cn("text-xs", tiny)}>Lead not found.</p>
             ) : timelineMessages.length === 0 ? (
-              <p className="text-xs text-slate-500">No messages yet.</p>
+              <p className={cn("text-xs", tiny)}>No messages yet.</p>
             ) : (
               <div className="space-y-3 text-xs">
                 {timelineMessages.map((m) => {
@@ -748,6 +835,7 @@ export function LeadMessagesClient() {
                   const avatarUrl = isOutbound
                     ? (m.sender?.avatar_url ?? userAvatarUrl ?? null)
                     : null;
+
                   const initials = isOutbound
                     ? initialsFromName(
                         first ?? currentUser?.first_name,
@@ -784,18 +872,27 @@ export function LeadMessagesClient() {
                           <img
                             src={pipelineIcon}
                             alt="Pipeline"
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                            className={cn(
+                              "h-8 w-8 rounded-full object-cover border",
+                              isDark ? "border-slate-800" : "border-slate-200",
+                            )}
                           />
                         ) : avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={avatarUrl}
                             alt={authorName}
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                            className={cn(
+                              "h-8 w-8 rounded-full object-cover border",
+                              isDark ? "border-slate-800" : "border-slate-200",
+                            )}
                           />
                         ) : (
                           <div
-                            className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${isOutbound ? "bg-indigo-600" : "bg-slate-500"}`}
+                            className={cn(
+                              "flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white",
+                              isOutbound ? "bg-indigo-600" : "bg-slate-500",
+                            )}
                           >
                             {initials}
                           </div>
@@ -803,20 +900,35 @@ export function LeadMessagesClient() {
                       </div>
 
                       <div className="flex-1">
-                        <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                          <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                        <div className={timelineItemBox}>
+                          <div className={timelineMeta}>
                             <span className="flex items-center gap-1 min-w-0">
-                              <span className="font-semibold text-slate-700 truncate">
+                              <span
+                                className={cn(
+                                  "font-semibold truncate",
+                                  isDark ? "text-slate-200" : "text-slate-700",
+                                )}
+                              >
                                 {authorName}
                               </span>
-                              <span className="text-slate-400 truncate">
+                              <span
+                                className={cn(
+                                  "truncate",
+                                  isDark ? "text-slate-500" : "text-slate-400",
+                                )}
+                              >
                                 · {roleLabel} · {formatChannel(m.channel)}
                               </span>
                             </span>
                             <span className="shrink-0">{tsLabel}</span>
                           </div>
 
-                          <p className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          <p
+                            className={cn(
+                              "whitespace-pre-wrap text-[11px]",
+                              isDark ? "text-slate-100" : "text-slate-800",
+                            )}
+                          >
                             {renderedBody}
                           </p>
                         </div>

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useTheme } from "next-themes";
 
 interface LeadRow {
   id: string;
@@ -113,40 +114,116 @@ function isLikelyLinkField(def: LeadFieldDefinition) {
 
 /* -------------------- loading UI -------------------- */
 
-function SkeletonBlock({ className = "" }: { className?: string }) {
+function SkeletonBlock({
+  className = "",
+  isDark,
+}: {
+  className?: string;
+  isDark: boolean;
+}) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-slate-100 ${className}`}
+      className={[
+        "animate-pulse rounded-lg",
+        isDark ? "bg-slate-800" : "bg-slate-100",
+        className,
+      ].join(" ")}
       aria-hidden="true"
     />
   );
 }
 
-function DeleteLeadLoadingState() {
+function DeleteLeadLoadingState({ isDark }: { isDark: boolean }) {
+  const dangerShell = isDark
+    ? "border-rose-900/60 bg-rose-950/35"
+    : "border-rose-100 bg-rose-50";
+  const dangerIconShell = isDark ? "bg-rose-500/10" : "bg-rose-100";
+
+  const cardShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const softPanel = isDark
+    ? "border-slate-900 bg-slate-900/40"
+    : "border-slate-100 bg-slate-50";
+  const innerCard = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-3xl space-y-6">
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4">
-          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-rose-100">
-            <SkeletonBlock className="h-4 w-4 rounded-full bg-rose-200" />
+        <div
+          className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${dangerShell}`}
+        >
+          <div
+            className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${dangerIconShell}`}
+          >
+            <SkeletonBlock
+              isDark={isDark}
+              className={
+                isDark
+                  ? "h-4 w-4 rounded-full bg-rose-500/20"
+                  : "h-4 w-4 rounded-full bg-rose-200"
+              }
+            />
           </div>
           <div className="flex-1">
-            <SkeletonBlock className="h-5 w-56 bg-rose-100" />
-            <SkeletonBlock className="mt-2 h-4 w-full max-w-[520px] bg-rose-100" />
-            <SkeletonBlock className="mt-2 h-4 w-full max-w-[420px] bg-rose-100" />
+            <SkeletonBlock
+              isDark={isDark}
+              className={
+                isDark ? "h-5 w-56 bg-rose-500/15" : "h-5 w-56 bg-rose-100"
+              }
+            />
+            <SkeletonBlock
+              isDark={isDark}
+              className={
+                isDark
+                  ? "mt-2 h-4 w-full max-w-[520px] bg-rose-500/10"
+                  : "mt-2 h-4 w-full max-w-[520px] bg-rose-100"
+              }
+            />
+            <SkeletonBlock
+              isDark={isDark}
+              className={
+                isDark
+                  ? "mt-2 h-4 w-full max-w-[420px] bg-rose-500/10"
+                  : "mt-2 h-4 w-full max-w-[420px] bg-rose-100"
+              }
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className={`rounded-2xl border px-5 py-4 shadow-sm ${cardShell}`}>
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <SkeletonBlock className="h-4 w-28" />
-              <SkeletonBlock className="mt-2 h-3 w-64 max-w-full" />
+              <SkeletonBlock isDark={isDark} className="h-4 w-28" />
+              <SkeletonBlock
+                isDark={isDark}
+                className="mt-2 h-3 w-64 max-w-full"
+              />
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1">
-              <SkeletonBlock className="h-3 w-10 bg-indigo-100" />
-              <SkeletonBlock className="h-5 w-16 rounded-full bg-indigo-200" />
+            <div
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${
+                isDark ? "bg-indigo-500/10" : "bg-indigo-50"
+              }`}
+            >
+              <SkeletonBlock
+                isDark={isDark}
+                className={
+                  isDark
+                    ? "h-3 w-10 bg-indigo-500/15"
+                    : "h-3 w-10 bg-indigo-100"
+                }
+              />
+              <SkeletonBlock
+                isDark={isDark}
+                className={
+                  isDark
+                    ? "h-5 w-16 rounded-full bg-indigo-500/25"
+                    : "h-5 w-16 rounded-full bg-indigo-200"
+                }
+              />
             </div>
           </div>
 
@@ -154,23 +231,48 @@ function DeleteLeadLoadingState() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                className={`rounded-xl border px-3 py-2 ${softPanel}`}
               >
-                <SkeletonBlock className="h-3 w-24" />
-                <SkeletonBlock className="mt-2 h-4 w-44 max-w-full" />
+                <SkeletonBlock isDark={isDark} className="h-3 w-24" />
+                <SkeletonBlock
+                  isDark={isDark}
+                  className="mt-2 h-4 w-44 max-w-full"
+                />
               </div>
             ))}
+          </div>
+
+          <div className={`mt-4 rounded-xl border px-4 py-3 ${softPanel}`}>
+            <SkeletonBlock isDark={isDark} className="h-3 w-32" />
+            <SkeletonBlock
+              isDark={isDark}
+              className="mt-2 h-3 w-64 max-w-full"
+            />
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-xl border px-3 py-2 ${innerCard}`}
+                >
+                  <SkeletonBlock isDark={isDark} className="h-3 w-24" />
+                  <SkeletonBlock
+                    isDark={isDark}
+                    className="mt-2 h-4 w-44 max-w-full"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <SkeletonBlock className="h-10 w-28 rounded-lg" />
-            <SkeletonBlock className="h-10 w-20 rounded-lg" />
+            <SkeletonBlock isDark={isDark} className="h-10 w-28 rounded-lg" />
+            <SkeletonBlock isDark={isDark} className="h-10 w-20 rounded-lg" />
           </div>
         </div>
 
-        <SkeletonBlock className="h-3 w-56" />
+        <SkeletonBlock isDark={isDark} className="h-3 w-56" />
       </div>
     </div>
   );
@@ -182,6 +284,11 @@ export function DeleteLeadClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { teamId, loading: workspaceLoading } = useWorkspace();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [lead, setLead] = useState<LeadRow | null>(null);
@@ -292,11 +399,53 @@ export function DeleteLeadClient() {
   }
 
   // -------- guards (NO hooks below this line) --------
-  if (workspaceLoading || loading) return <DeleteLeadLoadingState />;
+  if (workspaceLoading || loading)
+    return <DeleteLeadLoadingState isDark={isDark} />;
+
+  const pageText = isDark ? "text-slate-200" : "text-slate-800";
+  const titleText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+
+  const dangerShell = isDark
+    ? "border-rose-900/60 bg-rose-950/35"
+    : "border-rose-100 bg-rose-50";
+  const dangerIconShell = isDark ? "bg-rose-500/10" : "bg-rose-100";
+  const dangerTitle = isDark ? "text-rose-100" : "text-rose-900";
+  const dangerBody = isDark ? "text-rose-200/90" : "text-rose-800";
+  const dangerIconText = isDark ? "text-rose-300" : "text-rose-600";
+
+  const cardShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const softPanel = isDark
+    ? "border-slate-900 bg-slate-900/40"
+    : "border-slate-100 bg-slate-50";
+  const innerCard = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+
+  const linkCls = isDark
+    ? "text-indigo-300 hover:text-indigo-200"
+    : "text-indigo-600 hover:text-indigo-700";
+
+  const stageWrap = isDark ? "bg-indigo-500/10" : "bg-indigo-50";
+  const stageLabel = isDark ? "text-slate-300" : "text-slate-500";
+  const stagePill = isDark
+    ? "bg-indigo-500/25 text-indigo-100"
+    : "bg-indigo-600 text-white";
+
+  const deleteBtn = "bg-rose-600 hover:bg-rose-700 text-white";
+  const cancelLink = isDark
+    ? "text-slate-300 hover:text-slate-100"
+    : "text-slate-600 hover:text-slate-800";
 
   if (!teamId) {
     return (
-      <p className="text-sm text-rose-500">
+      <p
+        className={["text-sm", isDark ? "text-rose-300" : "text-rose-500"].join(
+          " ",
+        )}
+      >
         We couldn&apos;t determine your team from the workspace context. Please
         open this page from your workspace or contact support.
       </p>
@@ -305,7 +454,9 @@ export function DeleteLeadClient() {
 
   if (!lead) {
     return (
-      <p className="text-sm text-slate-500">{error ?? "Lead not found."}</p>
+      <p className={["text-sm", mutedText].join(" ")}>
+        {error ?? "Lead not found."}
+      </p>
     );
   }
 
@@ -342,18 +493,22 @@ export function DeleteLeadClient() {
     : null;
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className={`h-full overflow-y-auto ${pageText}`}>
       <div className="max-w-3xl space-y-6">
         {/* Danger header */}
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4">
-          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-rose-100">
-            <span className="text-lg font-semibold text-rose-600">!</span>
+        <div
+          className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${dangerShell}`}
+        >
+          <div
+            className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${dangerIconShell}`}
+          >
+            <span className={`text-lg font-semibold ${dangerIconText}`}>!</span>
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-rose-900">
+            <h1 className={`text-xl font-semibold ${dangerTitle}`}>
               Delete this Lead?
             </h1>
-            <p className="mt-1 text-sm text-rose-800">
+            <p className={`mt-1 text-sm ${dangerBody}`}>
               This action is permanent and cannot be undone. All data for this
               lead will be removed from the{" "}
               <span className="font-semibold">current workspace</span>.
@@ -362,101 +517,140 @@ export function DeleteLeadClient() {
         </div>
 
         {/* Lead preview card */}
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className={`rounded-2xl border px-5 py-4 shadow-sm ${cardShell}`}>
           <div className="mb-3 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h2
+                className={`text-sm font-semibold uppercase tracking-wide ${mutedText}`}
+              >
                 Lead preview
               </h2>
-              <p className="text-xs text-slate-400">
+              <p
+                className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}
+              >
                 Review the lead details below before deleting.
               </p>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            <div
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${stageWrap}`}
+            >
+              <span
+                className={`text-[11px] font-medium uppercase tracking-wide ${stageLabel}`}
+              >
                 Stage
               </span>
-              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${stagePill}`}
+              >
                 {lead.stage || "—"}
               </span>
             </div>
           </div>
 
           {error && (
-            <p className="mb-3 text-xs font-medium text-rose-600">{error}</p>
+            <p
+              className={[
+                "mb-3 text-xs font-medium",
+                isDark ? "text-rose-300" : "text-rose-600",
+              ].join(" ")}
+            >
+              {error}
+            </p>
           )}
 
           {/* Core Details */}
-          <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className={`mb-4 rounded-xl border px-4 py-3 ${softPanel}`}>
             <div className="mb-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <h3
+                className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+              >
                 Core details
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p
+                className={`text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}
+              >
                 These are stored in the lead’s main columns.
               </p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 md:col-span-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div
+                className={`rounded-xl border px-3 py-2 md:col-span-2 ${innerCard}`}
+              >
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Lead name
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {safeValue(leadLabel)}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Niche / Industry
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {safeValue(lead.niche)}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Lead type
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {labelizeEnum(lead.lead_type)}
                 </p>
               </div>
 
               {lead.lead_type === "individual" && (
-                <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                  <p
+                    className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                  >
                     Gender
                   </p>
-                  <p className="mt-0.5 text-sm text-slate-900 break-words">
+                  <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                     {labelizeEnum(lead.gender)}
                   </p>
                 </div>
               )}
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2 md:col-span-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div
+                className={`rounded-xl border px-3 py-2 md:col-span-2 ${innerCard}`}
+              >
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Location
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {locationLine || "—"}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Primary contact type
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {labelizeEnum(lead.primary_contact_type)}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Primary contact
                 </p>
 
@@ -475,56 +669,64 @@ export function DeleteLeadClient() {
                         ? undefined
                         : "noopener noreferrer"
                     }
-                    className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                    className={`mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-sm hover:underline ${linkCls}`}
                   >
                     <span className="truncate">{contactValue || "—"}</span>
                   </a>
                 ) : (
-                  <p className="mt-0.5 text-sm text-slate-900 break-words">
+                  <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                     {contactValue || "—"}
                   </p>
                 )}
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Source category
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {labelizeEnum(lead.source_category)}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className={`rounded-xl border px-3 py-2 ${innerCard}`}>
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                >
                   Source name
                 </p>
-                <p className="mt-0.5 text-sm text-slate-900 break-words">
+                <p className={`mt-0.5 text-sm break-words ${titleText}`}>
                   {labelizeEnum(lead.source_name)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Additional fields — SAME STYLE as Core Details */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+          {/* Additional fields */}
+          <div className={`rounded-xl border px-4 py-3 ${softPanel}`}>
             <div className="mb-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <h3
+                className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+              >
                 Additional fields
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p
+                className={`text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}
+              >
                 Custom fields configured for this workspace.
               </p>
             </div>
 
             {fields.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className={`text-sm ${mutedText}`}>
                 This workspace has no custom fields configured for leads.
               </p>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {fields.map((field) => {
-                  const raw = customValues[field.key];
+                  const raw = (customValues as any)[field.key];
                   const empty =
                     raw === undefined ||
                     raw === null ||
@@ -540,9 +742,11 @@ export function DeleteLeadClient() {
                   return (
                     <div
                       key={field.key}
-                      className="rounded-xl border border-slate-100 bg-white px-3 py-2"
+                      className={`rounded-xl border px-3 py-2 ${innerCard}`}
                     >
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <p
+                        className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                      >
                         {field.label}
                       </p>
 
@@ -551,12 +755,14 @@ export function DeleteLeadClient() {
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                          className={`mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-sm hover:underline ${linkCls}`}
                         >
                           <span className="truncate">{displayValue}</span>
                         </a>
                       ) : (
-                        <p className="mt-0.5 text-sm text-slate-900 break-words">
+                        <p
+                          className={`mt-0.5 text-sm break-words ${titleText}`}
+                        >
                           {displayValue}
                         </p>
                       )}
@@ -575,7 +781,11 @@ export function DeleteLeadClient() {
               type="button"
               onClick={handleConfirmDelete}
               disabled={deleting}
-              className="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-70 cursor-pointer"
+              className={[
+                "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer",
+                deleteBtn,
+                "disabled:opacity-70 disabled:cursor-not-allowed",
+              ].join(" ")}
             >
               {deleting ? "Deleting…" : "Delete Lead"}
             </button>
@@ -584,7 +794,7 @@ export function DeleteLeadClient() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="text-sm font-medium text-slate-600 hover:text-slate-800 cursor-pointer"
+              className={`text-sm font-medium cursor-pointer ${cancelLink}`}
             >
               Cancel
             </button>

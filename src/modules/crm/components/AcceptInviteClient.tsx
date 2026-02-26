@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
 export default function AcceptInviteClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -45,6 +49,49 @@ export default function AcceptInviteClient() {
     const qs = q.toString();
     return `/login${qs ? `?${qs}` : ""}`;
   }, [inviteId, resolvedTeamId, resolvedCompanyId, teamQuery, companyQuery]);
+
+  // --- shared theme-aware UI tokens ---
+  const pageBg = cn(
+    "min-h-screen flex items-center justify-center px-4",
+    // light
+    "bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50",
+    // dark
+    "dark:from-slate-950 dark:via-slate-950 dark:to-slate-900",
+  );
+
+  const card = cn(
+    "w-full max-w-md rounded-3xl border p-10 shadow-2xl backdrop-blur-xl",
+    "bg-white/90 border-slate-200",
+    "dark:bg-slate-950/70 dark:border-slate-800",
+  );
+
+  const smallCard = cn(
+    "max-w-md rounded-2xl border p-6 shadow-sm text-sm",
+    "bg-white border-slate-200 text-slate-600",
+    "dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300",
+  );
+
+  const title = cn(
+    "font-semibold tracking-tight",
+    "text-slate-900",
+    "dark:text-slate-100",
+  );
+
+  const sub = cn("text-sm", "text-slate-500", "dark:text-slate-400");
+
+  const inputBase = cn(
+    "peer w-full rounded-xl border px-3.5 pr-10 pt-5 pb-2 text-sm placeholder-transparent",
+    "focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500",
+    "border-slate-300 bg-white text-slate-800",
+    "dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400",
+  );
+
+  const labelBase = cn(
+    "absolute left-3.5 top-2 text-xs transition-all duration-150 pointer-events-none",
+    "text-slate-600",
+    "peer-focus:-translate-y-1 peer-focus:text-[10px] peer-focus:text-indigo-600 peer-not-placeholder-shown:-translate-y-1 peer-not-placeholder-shown:text-[10px]",
+    "dark:text-slate-400 dark:peer-focus:text-indigo-400",
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -157,8 +204,13 @@ export default function AcceptInviteClient() {
 
   if (!inviteId) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md rounded-2xl bg-white shadow-sm border border-slate-200 p-6 text-sm text-rose-600">
+      <main
+        className={cn(
+          "min-h-screen flex items-center justify-center px-4",
+          "bg-slate-50 dark:bg-slate-950",
+        )}
+      >
+        <div className={cn(smallCard, "text-rose-600 dark:text-rose-300")}>
           The invitation link is missing information. Please ask your team to
           resend the invite.
         </div>
@@ -168,29 +220,37 @@ export default function AcceptInviteClient() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md rounded-2xl bg-white shadow-sm border border-slate-200 p-6 text-sm text-slate-600">
-          Loading your invitation…
-        </div>
+      <main
+        className={cn(
+          "min-h-screen flex items-center justify-center px-4",
+          "bg-slate-50 dark:bg-slate-950",
+        )}
+      >
+        <div className={smallCard}>Loading your invitation…</div>
       </main>
     );
   }
 
   if (successMode) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
-        <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-8 border border-slate-200 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">
+      <main className={pageBg}>
+        <div className={cn(card, "p-8 text-center")}>
+          <h1 className={cn("text-2xl", title)}>
             Welcome to {orgName ?? "your new team"} 🎉
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className={cn("mt-2", sub)}>
             Your account has been created and your roles have been assigned.
             Redirecting you to your dashboard…
           </p>
 
-          <div className="mt-6 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className={cn(
+              "mt-6 h-2 w-full rounded-full overflow-hidden",
+              "bg-slate-100 dark:bg-slate-900",
+            )}
+          >
             <div
-              className="h-full bg-indigo-600 transition-[width]"
+              className="h-full bg-indigo-600 transition-[width] dark:bg-indigo-500"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -200,10 +260,16 @@ export default function AcceptInviteClient() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
-      <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-10 border border-slate-200">
+    <main className={pageBg}>
+      <div className={card}>
         <div className="mb-6 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white shadow-md">
+          <div
+            className={cn(
+              "inline-flex items-center justify-center w-14 h-14 rounded-2xl shadow-md",
+              "bg-white",
+              "dark:bg-slate-950 dark:border dark:border-slate-800",
+            )}
+          >
             <img
               src="/icons/icon-faigata.svg"
               alt="Faigata"
@@ -211,10 +277,8 @@ export default function AcceptInviteClient() {
             />
           </div>
 
-          <h1 className="text-2xl font-semibold text-slate-900 mt-4 tracking-tight">
-            Accept your invitation
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className={cn("text-2xl mt-4", title)}>Accept your invitation</h1>
+          <p className={cn("mt-1", sub)}>
             {orgName
               ? `You’ve been invited to join ${orgName}.`
               : "You’ve been invited to join a Faigata team."}
@@ -229,6 +293,8 @@ export default function AcceptInviteClient() {
               required
               value={firstName}
               onChange={setFirstName}
+              inputClassName={inputBase}
+              labelClassName={labelBase}
             />
             <FloatingInput
               label="Last name"
@@ -236,6 +302,8 @@ export default function AcceptInviteClient() {
               required
               value={lastName}
               onChange={setLastName}
+              inputClassName={inputBase}
+              labelClassName={labelBase}
             />
           </div>
 
@@ -245,6 +313,8 @@ export default function AcceptInviteClient() {
             required
             value={email}
             onChange={setEmail}
+            inputClassName={inputBase}
+            labelClassName={labelBase}
           />
 
           <FloatingInput
@@ -253,26 +323,39 @@ export default function AcceptInviteClient() {
             required
             value={password}
             onChange={setPassword}
+            inputClassName={inputBase}
+            labelClassName={labelBase}
           />
 
           {error && (
-            <p className="text-xs font-medium text-rose-600">{error}</p>
+            <p className="text-xs font-medium text-rose-600 dark:text-rose-300">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
+            className={cn(
+              "w-full flex items-center justify-center rounded-xl text-sm font-semibold py-3 mt-2 transition shadow-sm cursor-pointer",
+              "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60",
+              "dark:bg-indigo-500 dark:hover:bg-indigo-600",
+            )}
           >
             {submitting ? "Creating your account…" : "Accept Invite"}
           </button>
         </form>
 
-        <p className="mt-6 text-xs text-slate-500 text-center">
+        <p
+          className={cn(
+            "mt-6 text-xs text-center",
+            "text-slate-500 dark:text-slate-400",
+          )}
+        >
           Already have a Faigata account?{" "}
           <a
             href={loginHref}
-            className="text-indigo-600 font-medium hover:underline"
+            className="text-indigo-600 font-medium hover:underline dark:text-indigo-400"
           >
             Log in to accept this invite
           </a>
@@ -288,12 +371,16 @@ function FloatingInput({
   required,
   value,
   onChange,
+  inputClassName,
+  labelClassName,
 }: {
   label: string;
   type: string;
   required?: boolean;
   value: string;
   onChange: (v: string) => void;
+  inputClassName: string;
+  labelClassName: string;
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
@@ -303,24 +390,22 @@ function FloatingInput({
       <input
         type={isPassword && showPassword ? "text" : type}
         required={required}
-        className="peer w-full rounded-xl border border-slate-300 px-3.5 pr-10 pt-5 pb-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-transparent"
+        className={inputClassName}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      <label className="absolute left-3.5 top-2 text-slate-600 text-xs transition-all duration-150 pointer-events-none peer-focus:-translate-y-1 peer-focus:text-[10px] peer-focus:text-indigo-600 peer-not-placeholder-shown:-translate-y-1 peer-not-placeholder-shown:text-[10px]">
-        {label}
-      </label>
+      <label className={labelClassName}>{label}</label>
 
       {isPassword && (
         <button
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute inset-y-0 right-3 flex items-center"
+          className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
         >
           <img
             src={showPassword ? "/icons/eye-off.svg" : "/icons/eye.svg"}
             alt={showPassword ? "Hide password" : "Show password"}
-            className="w-5 h-5"
+            className={cn("w-5 h-5", "opacity-80 dark:opacity-90")}
           />
         </button>
       )}

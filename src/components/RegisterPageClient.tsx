@@ -1,19 +1,15 @@
 // src/app/register/RegisterPageClient.tsx
 "use client";
 
-/**
- * Simplifications made:
- * • Removed custom sleep() helper and replaced “wait for session” with a small pollSession() utility
- * • Extracted “invite context” + login link building into small helpers (less inline URLSearchParams noise)
- * • Centralized redirect logic into go(url) for consistent navigation
- * • Kept behavior identical: session pre-check on mount, signUp -> ensure session -> onboarding vs complete-registration
- * • No UI changes
- */
-
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function buildHref(
   base: string,
@@ -63,6 +59,14 @@ export function RegisterPageClient() {
   const inviteId = searchParams.get("invite");
   const teamIdParam = searchParams.get("team");
   const companyIdParam = searchParams.get("company");
+
+  // ✅ theme hook
+  const { resolvedTheme } = useTheme();
+
+  // ✅ prevent hydration mismatch / flash
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = resolvedTheme === "dark";
 
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -194,10 +198,59 @@ export function RegisterPageClient() {
     }
   }
 
+  // ✅ Safe gate AFTER hooks
+  if (!mounted) return null;
+
+  const pageBg = cn(
+    "min-h-screen flex items-center justify-center px-4",
+    isDark
+      ? "bg-[var(--background)]"
+      : "bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50",
+  );
+
+  const card = cn(
+    "w-full max-w-md backdrop-blur-xl shadow-2xl rounded-3xl p-10 border",
+    isDark
+      ? "bg-slate-950/80 border-slate-800"
+      : "bg-white/90 border-slate-200",
+  );
+
+  const title = cn(
+    "text-3xl font-semibold mt-4 tracking-tight",
+    isDark ? "text-slate-100" : "text-slate-900",
+  );
+
+  const subtitle = cn(
+    "text-sm mt-1",
+    isDark ? "text-slate-400" : "text-slate-500",
+  );
+
+  const footerText = cn(
+    "mt-6 text-xs text-center",
+    isDark ? "text-slate-400" : "text-slate-500",
+  );
+
+  const linkClass = cn(
+    "font-medium hover:underline",
+    isDark ? "text-indigo-300" : "text-indigo-600",
+  );
+
+  const logoWrap = cn(
+    "inline-flex items-center justify-center w-14 h-14 rounded-2xl shadow-md",
+    isDark ? "bg-slate-950 border border-slate-800" : "bg-white",
+  );
+
   if (initializing) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
-        <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-8 border border-slate-200 text-center text-sm text-slate-500">
+      <main className={pageBg}>
+        <div
+          className={cn(
+            "w-full max-w-md backdrop-blur-xl shadow-2xl rounded-3xl p-8 border text-center text-sm",
+            isDark
+              ? "bg-slate-950/80 border-slate-800 text-slate-300"
+              : "bg-white/90 border-slate-200 text-slate-500",
+          )}
+        >
           Checking your session…
         </div>
       </main>
@@ -205,24 +258,20 @@ export function RegisterPageClient() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 px-4">
-      <div className="w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl p-10 border border-slate-200">
+    <main className={pageBg}>
+      <div className={card}>
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white shadow-md">
+          <div className={logoWrap}>
             <img
               src="/icons/icon-faigata.svg"
               alt="Faigata"
-              className="w-10 h-10"
+              className={cn("w-10 h-10", isDark ? "opacity-95" : "")}
             />
           </div>
 
-          <h1 className="text-3xl font-semibold text-slate-900 mt-4 tracking-tight">
-            Create your Faigata account
-          </h1>
+          <h1 className={title}>Create your Faigata account</h1>
 
-          <p className="text-sm text-slate-500 mt-1">
-            One login for all Faigata modules.
-          </p>
+          <p className={subtitle}>One login for all Faigata modules.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -233,6 +282,7 @@ export function RegisterPageClient() {
               required
               value={firstName}
               onChange={setFirstName}
+              isDark={isDark}
             />
             <FloatingInput
               label="Last name"
@@ -240,6 +290,7 @@ export function RegisterPageClient() {
               required
               value={lastName}
               onChange={setLastName}
+              isDark={isDark}
             />
           </div>
 
@@ -249,6 +300,7 @@ export function RegisterPageClient() {
             required
             value={email}
             onChange={setEmail}
+            isDark={isDark}
           />
           <FloatingInput
             label="Password"
@@ -256,6 +308,7 @@ export function RegisterPageClient() {
             required
             value={password}
             onChange={setPassword}
+            isDark={isDark}
           />
 
           <button
@@ -267,12 +320,9 @@ export function RegisterPageClient() {
           </button>
         </form>
 
-        <p className="mt-6 text-xs text-slate-500 text-center">
+        <p className={footerText}>
           Already have an account?{" "}
-          <Link
-            href={loginHref}
-            className="text-indigo-600 font-medium hover:underline"
-          >
+          <Link href={loginHref} className={linkClass}>
             Log in
           </Link>
         </p>
@@ -291,12 +341,14 @@ function FloatingInput({
   required,
   value,
   onChange,
+  isDark,
 }: {
   label: string;
   type: string;
   required?: boolean;
   value: string;
   onChange: (v: string) => void;
+  isDark: boolean;
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -308,11 +360,23 @@ function FloatingInput({
       <input
         type={inputType}
         required={required}
-        className="peer w-full rounded-xl border border-slate-300 px-3.5 pr-10 pt-5 pb-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-transparent"
+        className={cn(
+          "peer w-full rounded-xl border px-3.5 pr-10 pt-5 pb-2 text-sm focus:outline-none focus:ring-2 placeholder-transparent",
+          isDark
+            ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400 focus:border-indigo-400"
+            : "border-slate-300 bg-white text-slate-800 focus:ring-indigo-500 focus:border-indigo-500",
+        )}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      <label className="absolute left-3.5 top-2 text-slate-600 text-xs transition-all duration-150 pointer-events-none peer-focus:-translate-y-1 peer-focus:text-[10px] peer-focus:text-indigo-600 peer-not-placeholder-shown:-translate-y-1 peer-not-placeholder-shown:text-[10px]">
+      <label
+        className={cn(
+          "absolute left-3.5 top-2 text-xs transition-all duration-150 pointer-events-none",
+          isDark ? "text-slate-400" : "text-slate-600",
+          "peer-focus:-translate-y-1 peer-focus:text-[10px] peer-not-placeholder-shown:-translate-y-1 peer-not-placeholder-shown:text-[10px]",
+          isDark ? "peer-focus:text-indigo-300" : "peer-focus:text-indigo-600",
+        )}
+      >
         {label}
       </label>
 
@@ -321,11 +385,12 @@ function FloatingInput({
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
           className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
+          aria-label={showPassword ? "Hide password" : "Show password"}
         >
           <img
             src={showPassword ? "/icons/eye-off.svg" : "/icons/eye.svg"}
-            alt={showPassword ? "Hide password" : "Show password"}
-            className="w-5 h-5"
+            alt=""
+            className={cn("w-5 h-5", isDark ? "invert opacity-80" : "")}
           />
         </button>
       )}

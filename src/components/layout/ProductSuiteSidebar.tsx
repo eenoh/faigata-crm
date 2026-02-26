@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,6 +10,11 @@ import {
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 const navItems = [
   { href: "/crm", label: "Lumo", iconSrc: "/icons/icon-crm.svg" },
@@ -20,6 +25,11 @@ export function ProductSuiteSidebar() {
   const router = useRouter();
   const { collapsed, toggle } = useSidebar();
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const widthClass = collapsed ? "w-16" : "w-64";
   const brandRevealClass = collapsed ? "w-0 opacity-0" : "w-36 opacity-100";
@@ -49,7 +59,11 @@ export function ProductSuiteSidebar() {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out ${widthClass}`}
+      className={cn(
+        "fixed inset-y-0 left-0 z-30 flex flex-col border-r shadow-sm transition-all duration-300 ease-in-out",
+        widthClass,
+        isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+      )}
     >
       {/* Brand row */}
       <div className="flex items-center px-3 pt-4 pb-6">
@@ -59,15 +73,25 @@ export function ProductSuiteSidebar() {
             alt="Faigata"
             width={36}
             height={36}
-            className="rounded-lg shadow-sm"
+            className={cn(
+              "rounded-lg shadow-sm",
+              isDark ? "ring-1 ring-white/10" : "ring-0",
+            )}
             priority
           />
 
           <div
-            className={`overflow-hidden transition-all duration-300 ${brandRevealClass}`}
+            className={cn(
+              "overflow-hidden transition-all duration-300",
+              brandRevealClass,
+            )}
           >
             <span
-              className={`block truncate text-lg font-semibold text-slate-900 transform transition-transform duration-300 ${brandSlideClass}`}
+              className={cn(
+                "block truncate text-lg font-semibold transform transition-transform duration-300",
+                brandSlideClass,
+                isDark ? "text-slate-100" : "text-slate-900",
+              )}
             >
               Faigata
             </span>
@@ -85,18 +109,26 @@ export function ProductSuiteSidebar() {
               key={item.href}
               href={item.href}
               title={collapsed ? item.label : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={cn(
+                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-indigo-50 text-indigo-600"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
+                  ? isDark
+                    ? "bg-indigo-950/40 text-indigo-200 border border-indigo-500/20"
+                    : "bg-indigo-50 text-indigo-600"
+                  : isDark
+                    ? "text-slate-300 hover:bg-slate-900 hover:text-slate-100"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+              )}
             >
               <Image
                 src={item.iconSrc}
                 alt={item.label}
                 width={20}
                 height={20}
-                className="flex-shrink-0"
+                className={cn(
+                  "flex-shrink-0",
+                  isDark ? "opacity-90" : "opacity-100",
+                )}
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
@@ -105,17 +137,30 @@ export function ProductSuiteSidebar() {
       </nav>
 
       {/* Logout button */}
-      <div className="px-2 pb-3 pt-2 border-t border-slate-100">
+      <div
+        className={cn(
+          "px-2 pb-3 pt-2 border-t",
+          isDark ? "border-slate-800" : "border-slate-100",
+        )}
+      >
         <button
           type="button"
           onClick={handleLogout}
           title={collapsed ? "Log out" : undefined}
-          className="flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+          className={cn(
+            "flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer",
+            isDark
+              ? "text-slate-400 hover:bg-rose-950/30 hover:text-rose-300"
+              : "text-slate-500 hover:bg-rose-50 hover:text-rose-600",
+          )}
         >
           <ArrowRightOnRectangleIcon className="h-4 w-4 flex-shrink-0" />
 
           <div
-            className={`ml-1 overflow-hidden transition-[width,opacity] duration-300 ${logoutRevealClass}`}
+            className={cn(
+              "ml-1 overflow-hidden transition-[width,opacity] duration-300",
+              logoutRevealClass,
+            )}
           >
             <span className="whitespace-nowrap">
               {loggingOut ? "Logging out…" : "Log out"}
@@ -129,12 +174,19 @@ export function ProductSuiteSidebar() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md hover:border-indigo-200 hover:bg-indigo-50 transition-colors cursor-pointer"
+        className={cn(
+          "group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors cursor-pointer",
+          isDark
+            ? "border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900"
+            : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50",
+        )}
       >
         <ChevronLeftIcon
-          className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${
-            collapsed ? "rotate-180" : ""
-          }`}
+          className={cn(
+            "h-4 w-4 transition-transform duration-200",
+            isDark ? "text-slate-300" : "text-slate-500",
+            collapsed ? "rotate-180" : "",
+          )}
         />
       </button>
     </aside>

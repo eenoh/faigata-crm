@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentType, SVGProps } from "react";
+import { useTheme } from "next-themes";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import {
   DocumentTextIcon,
   CubeIcon,
@@ -59,14 +60,33 @@ const BILLING_CARDS: BillingCard[] = [
 ];
 
 export default function BillingClient() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  const cardBase = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const cardHover = isDark ? "hover:bg-slate-900/40" : "hover:bg-white";
+
+  const headerText = isDark ? "text-slate-100" : "text-slate-900";
+  const bodyText = isDark ? "text-slate-400" : "text-slate-600";
+  const hintText = isDark ? "text-slate-500" : "text-slate-400";
+  const linkText = isDark
+    ? "text-indigo-300 group-hover:text-indigo-200"
+    : "text-indigo-600 group-hover:text-indigo-700";
+
   return (
     <div className="max-w-6xl space-y-8">
       {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-7 py-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">
+      <div className={`rounded-2xl border px-7 py-6 shadow-sm ${cardBase}`}>
+        <h1 className={`text-2xl font-semibold ${headerText}`}>
           Billing & Payments
         </h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600">
+        <p className={`mt-1 max-w-3xl text-sm ${bodyText}`}>
           Manage your Stripe-powered billing — products, invoices, customers,
           and payment activity — all in one place.
         </p>
@@ -79,7 +99,7 @@ export default function BillingClient() {
             <Link
               key={title}
               href={href}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+              className={`group rounded-2xl border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${cardBase} ${cardHover}`}
             >
               <div
                 className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} text-white shadow-sm`}
@@ -87,15 +107,17 @@ export default function BillingClient() {
                 <Icon className="h-5 w-5" />
               </div>
 
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className={`text-base font-semibold ${headerText}`}>
                 {title}
               </h2>
 
-              <p className="mt-1 text-sm text-slate-600">{description}</p>
+              <p className={`mt-1 text-sm ${bodyText}`}>{description}</p>
 
-              <p className="mt-3 text-xs font-medium text-slate-400">{hint}</p>
+              <p className={`mt-3 text-xs font-medium ${hintText}`}>{hint}</p>
 
-              <div className="mt-4 text-sm font-semibold text-indigo-600">
+              <div
+                className={`mt-4 text-sm font-semibold transition-colors ${linkText}`}
+              >
                 Open {title} →
               </div>
             </Link>

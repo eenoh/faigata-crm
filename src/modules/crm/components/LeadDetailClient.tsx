@@ -6,6 +6,7 @@ import { DateTime } from "luxon";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import { supabase } from "@/lib/supabaseClient";
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
+import { useTheme } from "next-themes";
 
 interface LeadData {
   id: string;
@@ -260,77 +261,127 @@ async function fetchHasCalls(teamId: string, leadId: string): Promise<boolean> {
 
 /* -------------------- loading UI (page skeleton) -------------------- */
 
-function SkeletonLine({ w = "w-full" }: { w?: string }) {
-  return <div className={`h-3 ${w} rounded bg-slate-100`} />;
+function SkeletonLine({
+  w = "w-full",
+  isDark,
+}: {
+  w?: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      className={`h-3 ${w} rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+    />
+  );
 }
-function SkeletonPill({ w = "w-24" }: { w?: string }) {
-  return <div className={`h-6 ${w} rounded-full bg-slate-100`} />;
+function SkeletonPill({ w = "w-24", isDark }: { w?: string; isDark: boolean }) {
+  return (
+    <div
+      className={`h-6 ${w} rounded-full ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+    />
+  );
 }
-function SkeletonButton({ w = "w-24" }: { w?: string }) {
-  return <div className={`h-8 ${w} rounded-lg bg-slate-100`} />;
+function SkeletonButton({
+  w = "w-24",
+  isDark,
+}: {
+  w?: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      className={`h-8 ${w} rounded-lg ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+    />
+  );
 }
 
-function LeadDetailPageSkeleton() {
+function LeadDetailPageSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const borderSoft = isDark ? "border-slate-900" : "border-slate-100";
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)] animate-pulse">
         <div className="space-y-6 pb-6">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <div className="h-7 w-44 rounded bg-slate-100" />
+              <div
+                className={`h-7 w-44 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+              />
               <div className="mt-2 space-y-2">
-                <SkeletonLine w="w-72" />
-                <SkeletonLine w="w-56" />
+                <SkeletonLine isDark={isDark} w="w-72" />
+                <SkeletonLine isDark={isDark} w="w-56" />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <SkeletonButton w="w-28" />
-              <SkeletonButton w="w-16" />
-              <SkeletonButton w="w-16" />
+              <SkeletonButton isDark={isDark} w="w-28" />
+              <SkeletonButton isDark={isDark} w="w-16" />
+              <SkeletonButton isDark={isDark} w="w-16" />
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <div className="mb-3 h-4 w-24 rounded bg-slate-100" />
+          <div className={`rounded-2xl border px-4 py-3 shadow-sm ${card}`}>
+            <div
+              className={`mb-3 h-4 w-24 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+            />
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-slate-100" />
+              <div
+                className={`h-9 w-9 rounded-full ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+              />
               <div className="flex-1 space-y-2">
-                <SkeletonLine w="w-44" />
-                <SkeletonLine w="w-60" />
+                <SkeletonLine isDark={isDark} w="w-44" />
+                <SkeletonLine isDark={isDark} w="w-60" />
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <div className="mb-3 h-4 w-28 rounded bg-slate-100" />
-            <SkeletonPill w="w-28" />
+          <div className={`rounded-2xl border px-4 py-3 shadow-sm ${card}`}>
+            <div
+              className={`mb-3 h-4 w-28 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+            />
+            <SkeletonPill isDark={isDark} w="w-28" />
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <div className="mb-3 h-4 w-32 rounded bg-slate-100" />
+          <div className={`rounded-2xl border px-4 py-4 shadow-sm ${card}`}>
+            <div
+              className={`mb-3 h-4 w-32 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+            />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <SkeletonLine w="w-24" />
-                  <SkeletonLine w={i % 2 === 0 ? "w-52" : "w-40"} />
+                  <SkeletonLine isDark={isDark} w="w-24" />
+                  <SkeletonLine
+                    isDark={isDark}
+                    w={i % 2 === 0 ? "w-52" : "w-40"}
+                  />
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div
+          className={`flex h-full flex-col rounded-2xl border shadow-sm ${card}`}
+        >
+          <div
+            className={`flex items-center justify-between border-b px-4 py-3 ${borderSoft}`}
+          >
             <div className="min-w-0">
-              <div className="h-4 w-36 rounded bg-slate-100" />
+              <div
+                className={`h-4 w-36 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+              />
               <div className="mt-2 space-y-2">
-                <SkeletonLine w="w-64" />
-                <SkeletonLine w="w-48" />
+                <SkeletonLine isDark={isDark} w="w-64" />
+                <SkeletonLine isDark={isDark} w="w-48" />
               </div>
             </div>
 
-            <div className="h-7 w-7 rounded-full bg-slate-100" />
+            <div
+              className={`h-7 w-7 rounded-full ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+            />
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -338,22 +389,39 @@ function LeadDetailPageSkeleton() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex gap-2">
                   <div className="flex h-8 w-8 items-center justify-center">
-                    <div className="h-8 w-8 rounded-full bg-slate-100" />
+                    <div
+                      className={`h-8 w-8 rounded-full ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+                    />
                   </div>
 
                   <div className="flex-1">
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                    <div
+                      className={`rounded-xl border px-3 py-2 ${
+                        isDark
+                          ? "border-slate-900 bg-slate-900/40"
+                          : "border-slate-100 bg-slate-50"
+                      }`}
+                    >
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <div className="flex-1 space-y-2">
-                          <SkeletonLine w={i % 2 === 0 ? "w-56" : "w-44"} />
-                          <SkeletonLine w={i % 2 === 0 ? "w-36" : "w-52"} />
+                          <SkeletonLine
+                            isDark={isDark}
+                            w={i % 2 === 0 ? "w-56" : "w-44"}
+                          />
+                          <SkeletonLine
+                            isDark={isDark}
+                            w={i % 2 === 0 ? "w-36" : "w-52"}
+                          />
                         </div>
-                        <SkeletonLine w="w-24" />
+                        <SkeletonLine isDark={isDark} w="w-24" />
                       </div>
 
                       <div className="space-y-2">
-                        <SkeletonLine w="w-full" />
-                        <SkeletonLine w={i % 3 === 0 ? "w-5/6" : "w-2/3"} />
+                        <SkeletonLine isDark={isDark} w="w-full" />
+                        <SkeletonLine
+                          isDark={isDark}
+                          w={i % 3 === 0 ? "w-5/6" : "w-2/3"}
+                        />
                       </div>
                     </div>
                   </div>
@@ -530,7 +598,7 @@ function isCallClosedEvent(m: LeadMessage) {
 }
 
 /**
- * Legacy combined format that you still have in DB:
+ * Legacy combined format:
  * CALL_OUTCOME|<bookingId>|<prevStatus>|<nextStatus>|<offerMade0/1>|<closed0/1>
  */
 function isLegacyCallOutcomeEvent(m: LeadMessage) {
@@ -591,7 +659,6 @@ function parseOfferMade(body: string) {
 function formatOfferMadeBody(body: string, productTitle: string | null) {
   const { on, productTitleInline } = parseOfferMade(body);
   if (!on) return "Offer removed";
-
   const title = productTitleInline || productTitle || "Product";
   return `Offer made: ${title}`;
 }
@@ -852,18 +919,29 @@ function InlineAlert({
   message,
   tone = "warning",
   onClose,
+  isDark = false,
 }: {
   title?: string;
   message: string;
   tone?: "warning" | "danger" | "info";
   onClose?: () => void;
+  isDark?: boolean;
 }) {
-  const toneClasses =
-    tone === "danger"
-      ? "border-rose-200 bg-rose-50 text-rose-800"
-      : tone === "info"
-        ? "border-sky-200 bg-sky-50 text-sky-900"
-        : "border-amber-200 bg-amber-50 text-amber-900";
+  const toneClasses = (() => {
+    if (tone === "danger") {
+      return isDark
+        ? "border-rose-900/60 bg-rose-950/40 text-rose-200"
+        : "border-rose-200 bg-rose-50 text-rose-800";
+    }
+    if (tone === "info") {
+      return isDark
+        ? "border-sky-900/60 bg-sky-950/40 text-sky-100"
+        : "border-sky-200 bg-sky-50 text-sky-900";
+    }
+    return isDark
+      ? "border-amber-900/60 bg-amber-950/35 text-amber-100"
+      : "border-amber-200 bg-amber-50 text-amber-900";
+  })();
 
   const icon = tone === "danger" ? "!" : tone === "info" ? "i" : "⚠";
 
@@ -871,7 +949,14 @@ function InlineAlert({
     <div className={`rounded-2xl border px-4 py-3 shadow-sm ${toneClasses}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white/60 text-xs font-bold">
+          <div
+            className={[
+              "mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold",
+              isDark
+                ? "border-white/10 bg-white/5"
+                : "border-black/10 bg-white/60",
+            ].join(" ")}
+          >
             {icon}
           </div>
           <div className="min-w-0">
@@ -907,6 +992,7 @@ function ConfirmModal({
   loading,
   onConfirm,
   onCancel,
+  isDark = false,
 }: {
   open: boolean;
   title: string;
@@ -917,15 +1003,31 @@ function ConfirmModal({
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  isDark?: boolean;
 }) {
   if (!open) return null;
 
-  const toneBadge =
-    tone === "danger"
-      ? "bg-rose-50 text-rose-700 ring-rose-200"
-      : tone === "info"
-        ? "bg-sky-50 text-sky-700 ring-sky-200"
-        : "bg-amber-50 text-amber-800 ring-amber-200";
+  const shell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const borderSoft = isDark ? "border-slate-900" : "border-slate-100";
+  const footer = isDark ? "bg-slate-900/40" : "bg-slate-50";
+  const titleCls = isDark ? "text-slate-100" : "text-slate-900";
+  const msgCls = isDark ? "text-slate-300" : "text-slate-600";
+
+  const toneBadge = (() => {
+    if (tone === "danger")
+      return isDark
+        ? "bg-rose-500/15 text-rose-200 ring-rose-900/40"
+        : "bg-rose-50 text-rose-700 ring-rose-200";
+    if (tone === "info")
+      return isDark
+        ? "bg-sky-500/15 text-sky-200 ring-sky-900/40"
+        : "bg-sky-50 text-sky-700 ring-sky-200";
+    return isDark
+      ? "bg-amber-500/15 text-amber-100 ring-amber-900/40"
+      : "bg-amber-50 text-amber-800 ring-amber-200";
+  })();
 
   const confirmBtn =
     tone === "danger"
@@ -933,6 +1035,10 @@ function ConfirmModal({
       : tone === "info"
         ? "bg-sky-600 hover:bg-sky-700 text-white"
         : "bg-amber-600 hover:bg-amber-700 text-white";
+
+  const cancelBtn = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
 
   return (
     <div
@@ -946,8 +1052,12 @@ function ConfirmModal({
     >
       <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
 
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
+      <div
+        className={`relative z-10 w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${shell}`}
+      >
+        <div
+          className={`flex items-start gap-3 border-b px-5 py-4 ${borderSoft}`}
+        >
           <span
             className={[
               "inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 text-xs font-bold",
@@ -958,19 +1068,25 @@ function ConfirmModal({
           </span>
 
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">{title}</div>
-            <div className="mt-1 text-xs leading-relaxed text-slate-600">
+            <div className={`text-sm font-semibold ${titleCls}`}>{title}</div>
+            <div className={`mt-1 text-xs leading-relaxed ${msgCls}`}>
               {message}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 bg-slate-50 px-5 py-3">
+        <div
+          className={`flex items-center justify-end gap-2 px-5 py-3 ${footer}`}
+        >
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className={[
+              "rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm cursor-pointer",
+              cancelBtn,
+              "disabled:opacity-60 disabled:cursor-not-allowed",
+            ].join(" ")}
           >
             {cancelText}
           </button>
@@ -1003,6 +1119,11 @@ type LeadDetailClientProps = {
 export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const router = useRouter();
   const params = useParams<{ id?: string }>();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   // ✅ Works with BOTH:
   // - old: <LeadDetailClient leadId={params.id} />
@@ -1048,7 +1169,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       navigator.geolocation.getCurrentPosition(
         () => refreshTz(),
         () => {},
-        { maximumAge: 60_000, timeout: 7_000 },
+        {
+          maximumAge: 60_000,
+          timeout: 7_000,
+        },
       );
     }
 
@@ -1203,44 +1327,75 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   }
 
   function getScoreGrade(score: number | null) {
+    const mk = (light: string, dark: string) => (isDark ? dark : light);
+
     if (score == null)
       return {
         label: "Unscored",
         short: "?",
-        circle: "bg-slate-100 text-slate-500",
+        circle: mk(
+          "bg-slate-100 text-slate-500",
+          "bg-slate-900/60 text-slate-300",
+        ),
       };
     if (!thresholds)
       return {
         label: "Scored",
         short: "S",
-        circle: "bg-amber-100 text-amber-800",
+        circle: mk(
+          "bg-amber-100 text-amber-800",
+          "bg-amber-500/15 text-amber-200",
+        ),
       };
     const { low, high } = thresholds;
     if (score < low)
-      return { label: "Low", short: "L", circle: "bg-rose-100 text-rose-800" };
+      return {
+        label: "Low",
+        short: "L",
+        circle: mk("bg-rose-100 text-rose-800", "bg-rose-500/15 text-rose-200"),
+      };
     if (score >= high)
       return {
         label: "High",
         short: "H",
-        circle: "bg-emerald-100 text-emerald-800",
+        circle: mk(
+          "bg-emerald-100 text-emerald-800",
+          "bg-emerald-500/15 text-emerald-200",
+        ),
       };
     return {
       label: "Medium",
       short: "M",
-      circle: "bg-amber-100 text-amber-800",
+      circle: mk(
+        "bg-amber-100 text-amber-800",
+        "bg-amber-500/15 text-amber-200",
+      ),
     };
   }
 
   function typeClasses(t: BookingType | null) {
+    const mk = (light: string, dark: string) => (isDark ? dark : light);
     switch (t) {
       case "one_on_one":
-        return "bg-indigo-50 text-indigo-700 ring-indigo-200";
+        return mk(
+          "bg-indigo-50 text-indigo-700 ring-indigo-200",
+          "bg-indigo-500/15 text-indigo-200 ring-indigo-900/40",
+        );
       case "group":
-        return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+        return mk(
+          "bg-emerald-50 text-emerald-700 ring-emerald-200",
+          "bg-emerald-500/15 text-emerald-200 ring-emerald-900/40",
+        );
       case "round_robin":
-        return "bg-amber-50 text-amber-800 ring-amber-200";
+        return mk(
+          "bg-amber-50 text-amber-800 ring-amber-200",
+          "bg-amber-500/15 text-amber-100 ring-amber-900/40",
+        );
       default:
-        return "bg-slate-100 text-slate-700 ring-slate-200";
+        return mk(
+          "bg-slate-100 text-slate-700 ring-slate-200",
+          "bg-slate-900/60 text-slate-200 ring-slate-800",
+        );
     }
   }
 
@@ -1319,7 +1474,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   ): Promise<BookingLinkRow[]> {
     if (!activeTeamId || !isUuid(activeTeamId)) return [];
 
-    // 1) Load booking links (RLS must allow this for the current user)
     const { data: links, error: linksErr } = await supabase
       .from("booking_links")
       .select("id,name,slug,booking_type,owner_user_id,deleted_at,created_at")
@@ -1340,7 +1494,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       ),
     );
 
-    // 2) Load owners (optional; if RLS blocks profiles, we gracefully fallback)
     let ownerMap: Record<
       string,
       { first_name: string | null; last_name: string | null }
@@ -1366,7 +1519,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       }
     }
 
-    // 3) Shape into your UI type
     const rows: BookingLinkRow[] = (links ?? []).map((row: any) => {
       const owner = row.owner_user_id
         ? ownerMap[String(row.owner_user_id)]
@@ -1671,7 +1823,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               map[p.id] = full || "Team member";
             }
 
-            // ✅ avoid stale closure issues by computing merged labels once
             const merged = { ...profileLabels, ...map };
 
             if (!cancelled && Object.keys(map).length) {
@@ -1979,12 +2130,65 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     };
   }, [timelineMessages, productLabels]);
 
+  /* ---------- theme classes ---------- */
+  const pageText = isDark ? "text-slate-200" : "text-slate-800";
+  const titleText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+
+  const cardShell = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const cardTitle = isDark ? "text-slate-100" : "text-slate-800";
+  const cardBorderSoft = isDark ? "border-slate-900" : "border-slate-100";
+
+  const inputShell = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 placeholder:text-slate-600"
+    : "border-slate-200 bg-white text-slate-800 placeholder:text-slate-400";
+
+  const pillStage = isDark
+    ? "bg-indigo-500/15 text-indigo-200"
+    : "bg-indigo-50 text-indigo-700";
+  const pillNeutral = isDark
+    ? "bg-slate-900/60 text-slate-200"
+    : "bg-slate-100 text-slate-700";
+
+  const linkCls = isDark
+    ? "text-indigo-300 hover:text-indigo-200"
+    : "text-indigo-600 hover:text-indigo-700";
+
+  const timelineWrap = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const timelineItem = isDark
+    ? "border-slate-900 bg-slate-900/40"
+    : "border-slate-100 bg-slate-50";
+  const timelineMeta = isDark ? "text-slate-400" : "text-slate-500";
+  const timelineAuthor = isDark ? "text-slate-200" : "text-slate-700";
+  const timelineBody = isDark ? "text-slate-200" : "text-slate-800";
+
+  const secondaryBtn = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+
+  const callsBtn = isDark
+    ? "border-emerald-900/50 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15"
+    : "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400";
+
+  const rejectBtn = isDark
+    ? "border-amber-900/50 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
+    : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:border-amber-300";
+
+  const deleteBtn = isDark
+    ? "border-rose-900/50 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+    : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100";
+
   /* ---------- early returns ---------- */
-  if (!workspaceLoaded || loading) return <LeadDetailPageSkeleton />;
+  if (!workspaceLoaded || loading)
+    return <LeadDetailPageSkeleton isDark={isDark} />;
 
   if (workspaceLoaded && !teamId) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className={`text-sm ${mutedText}`}>
         You don&apos;t seem to be in any team yet. Open this page from a
         workspace, or complete onboarding first.
       </p>
@@ -1999,7 +2203,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     );
   }
 
-  if (!lead) return <p className="text-sm text-slate-500">Lead not found.</p>;
+  if (!lead) return <p className={`text-sm ${mutedText}`}>Lead not found.</p>;
 
   const createdDT = DateTime.fromISO(lead.created_at, {
     setZone: true,
@@ -2034,21 +2238,22 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   const locationLine = [firstPart, region, country].filter(Boolean).join(", ");
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className={`h-full overflow-y-auto ${pageText}`}>
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         {/* LEFT */}
         <div className="space-y-6 pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
+              <h1 className={`text-2xl font-semibold ${titleText}`}>
                 {leadLabel}
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className={`text-sm ${mutedText}`}>
                 Created on {createdLabel}
               </p>
               {rejectError && (
                 <div className="mt-3">
                   <InlineAlert
+                    isDark={isDark}
                     tone="warning"
                     title="Couldn’t reject lead"
                     message={rejectError}
@@ -2059,7 +2264,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             </div>
 
             <div className="flex gap-2">
-              {/* ✅ restored Calls button */}
               {canSeeCallsButton && (
                 <button
                   type="button"
@@ -2070,10 +2274,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     )
                   }
                   className={[
-                    "rounded-lg px-3 py-1.5 text-xs font-semibold",
-                    "border border-emerald-300",
-                    "bg-emerald-50 text-emerald-700",
-                    "hover:bg-emerald-100 hover:border-emerald-400",
+                    "rounded-lg px-3 py-1.5 text-xs font-semibold border shadow-sm",
+                    callsBtn,
                     "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer h-[28px] w-16",
                   ].join(" ")}
                   title="View and track outcomes for all booked calls"
@@ -2087,7 +2289,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   type="button"
                   disabled={!normalizedLeadId || !teamId}
                   onClick={() => setIsBookingModalOpen(true)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className={[
+                    "rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm cursor-pointer",
+                    secondaryBtn,
+                    "disabled:opacity-60 disabled:cursor-not-allowed",
+                  ].join(" ")}
                   title="Create a unique booking link for this lead"
                 >
                   Booking link
@@ -2100,10 +2306,8 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   disabled={rejecting}
                   onClick={() => setRejectConfirmOpen(true)}
                   className={[
-                    "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px]",
-                    "border border-amber-200 bg-amber-50 text-amber-900",
-                    "hover:bg-amber-100 hover:border-amber-300",
-                    "shadow-sm",
+                    "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px] border shadow-sm",
+                    rejectBtn,
                     "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer",
                   ].join(" ")}
                   title="Reject this lead and reassign to another setter"
@@ -2134,7 +2338,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                       `/leads/${encodeURIComponent(normalizedLeadId)}/delete`,
                     )
                   }
-                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer h-[28px] w-16"
+                  className={[
+                    "rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer h-[28px] w-16",
+                    deleteBtn,
+                  ].join(" ")}
                 >
                   Delete
                 </button>
@@ -2144,6 +2351,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           <ConfirmModal
             open={rejectConfirmOpen}
+            isDark={isDark}
             tone="warning"
             title="Reject Lead?"
             message="This lead will be reassigned to another team member and logged in the timeline."
@@ -2155,8 +2363,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           />
 
           {/* Score */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+          <div
+            className={`rounded-2xl border px-4 py-3 shadow-sm ${cardShell}`}
+          >
+            <h2 className={`mb-2 text-sm font-semibold ${cardTitle}`}>
               Lead Score
             </h2>
             {score != null ? (
@@ -2167,45 +2377,53 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   {gradeInfo.short}
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className={`text-sm font-semibold ${titleText}`}>
                     {score} · {gradeInfo.label}
                   </p>
                   {updatedLabel !== "—" && (
-                    <p className="text-[11px] text-slate-500">
+                    <p className={`text-[11px] ${mutedText}`}>
                       Updated {updatedLabel}
                     </p>
                   )}
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-500">
+              <p className={`text-xs ${mutedText}`}>
                 No score yet. Configure lead scoring in Settings → Lead scoring.
               </p>
             )}
           </div>
 
           {/* Stage */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+          <div
+            className={`rounded-2xl border px-4 py-3 shadow-sm ${cardShell}`}
+          >
+            <h2 className={`mb-2 text-sm font-semibold ${cardTitle}`}>
               Pipeline Stage
             </h2>
-            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${pillStage}`}
+            >
               {lead.stage || "—"}
             </span>
           </div>
 
-          {/* Assigned (closer only if not null) */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          {/* Assigned */}
+          <div
+            className={`rounded-2xl border px-4 py-4 shadow-sm ${cardShell}`}
+          >
+            <h2 className={`mb-3 text-sm font-semibold ${cardTitle}`}>
               Assigned
             </h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Prospector
                 </p>
-                <p className="text-sm text-slate-800">
+                <p className={`text-sm ${pageText}`}>
                   {creator
                     ? `${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() ||
                       "Team member"
@@ -2214,23 +2432,26 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Setter
                 </p>
-                <p className="text-sm text-slate-800">
+                <p className={`text-sm ${pageText}`}>
                   {lead.setter_id
                     ? safeValue(setterName ?? "Team member")
                     : "—"}
                 </p>
               </div>
 
-              {/* ✅ REQUIRED: closer only renders when closer_id is NOT null */}
               {lead.closer_id ? (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <p
+                    className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                  >
                     Closer
                   </p>
-                  <p className="text-sm text-slate-800">
+                  <p className={`text-sm ${pageText}`}>
                     {safeValue(closerName ?? "Team member")}
                   </p>
                 </div>
@@ -2239,66 +2460,80 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           </div>
 
           {/* Core details */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          <div
+            className={`rounded-2xl border px-4 py-4 shadow-sm ${cardShell}`}
+          >
+            <h2 className={`mb-3 text-sm font-semibold ${cardTitle}`}>
               Core Details
             </h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1 md:col-span-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Lead Name
                 </p>
-                <p className="text-sm text-slate-800">{safeValue(leadLabel)}</p>
+                <p className={`text-sm ${pageText}`}>{safeValue(leadLabel)}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Niche / Industry
                 </p>
-                <p className="text-sm text-slate-800">
-                  {safeValue(lead.niche)}
-                </p>
+                <p className={`text-sm ${pageText}`}>{safeValue(lead.niche)}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Lead Type
                 </p>
-                <p className="text-sm text-slate-800">
+                <p className={`text-sm ${pageText}`}>
                   {labelizeEnum(lead.lead_type)}
                 </p>
               </div>
 
               {lead.lead_type === "individual" && (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <p
+                    className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                  >
                     Gender
                   </p>
-                  <p className="text-sm text-slate-800">
+                  <p className={`text-sm ${pageText}`}>
                     {labelizeEnum(lead.gender)}
                   </p>
                 </div>
               )}
 
               <div className="space-y-1 md:col-span-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Location
                 </p>
-                <p className="text-sm text-slate-800">{locationLine || "—"}</p>
+                <p className={`text-sm ${pageText}`}>{locationLine || "—"}</p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Primary Contact Type
                 </p>
-                <p className="text-sm text-slate-800">
+                <p className={`text-sm ${pageText}`}>
                   {labelizeEnum(lead.primary_contact_type)}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Primary Contact
                 </p>
 
@@ -2317,58 +2552,67 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                         ? undefined
                         : "noopener noreferrer"
                     }
-                    className="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                    className={`inline-flex max-w-full items-center gap-1 truncate text-sm hover:underline ${linkCls}`}
                   >
                     <span className="truncate">{contactValue || "—"}</span>
                   </a>
                 ) : (
-                  <p className="text-sm text-slate-800">
+                  <p className={`text-sm ${pageText}`}>
                     {contactValue ? contactValue : "—"}
                   </p>
                 )}
               </div>
 
-              {/* ✅ restored Source fields */}
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Source Category
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {lead.source_category ? (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${pillNeutral}`}
+                    >
                       {labelizeEnum(lead.source_category)}
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-800">—</span>
+                    <span className={`text-sm ${pageText}`}>—</span>
                   )}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p
+                  className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                >
                   Source Name
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {lead.source_name ? (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${pillNeutral}`}
+                    >
                       {labelizeEnum(lead.source_name)}
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-800">—</span>
+                    <span className={`text-sm ${pageText}`}>—</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ✅ restored Custom fields */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+          {/* Custom fields */}
+          <div
+            className={`rounded-2xl border px-4 py-4 shadow-sm ${cardShell}`}
+          >
+            <h2 className={`mb-3 text-sm font-semibold ${cardTitle}`}>
               Additional Fields
             </h2>
 
             {customFieldDefs.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className={`text-sm ${mutedText}`}>
                 No custom fields configured for this workspace yet.
               </p>
             ) : (
@@ -2389,14 +2633,16 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     const href = normalizeUrl(raw);
                     return (
                       <div key={field.key} className="space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <p
+                          className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                        >
                           {field.label}
                         </p>
                         <a
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                          className={`inline-flex max-w-full items-center gap-1 truncate text-sm hover:underline ${linkCls}`}
                         >
                           <span className="truncate">{raw}</span>
                         </a>
@@ -2406,10 +2652,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
                   return (
                     <div key={field.key} className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      <p
+                        className={`text-xs font-medium uppercase tracking-wide ${mutedText}`}
+                      >
                         {field.label}
                       </p>
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap">
+                      <p className={`text-sm whitespace-pre-wrap ${pageText}`}>
                         {formatCustomValue(value)}
                       </p>
                     </div>
@@ -2419,11 +2667,13 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             )}
           </div>
 
-          {/* ✅ restored Notes */}
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+          {/* Notes */}
+          <div
+            className={`rounded-2xl border px-4 py-4 shadow-sm ${cardShell}`}
+          >
             <div className="mb-3">
-              <h2 className="text-sm font-semibold text-slate-800">Notes</h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <h2 className={`text-sm font-semibold ${cardTitle}`}>Notes</h2>
+              <p className={`mt-1 text-xs ${mutedText}`}>
                 Internal notes about this lead. Only visible to your team.
               </p>
             </div>
@@ -2433,29 +2683,36 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               aria-readonly="true"
               tabIndex={0}
               className={[
-                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
-                "text-sm text-slate-800 whitespace-pre-wrap",
+                "w-full rounded-lg border px-3 py-2",
+                "text-sm whitespace-pre-wrap",
                 "min-h-[140px] max-h-[320px] overflow-y-auto",
                 "focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300",
+                inputShell,
               ].join(" ")}
             >
               {String(lead.notes ?? "").trim() ? (
                 String(lead.notes)
               ) : (
-                <span className="text-slate-400">No notes yet.</span>
+                <span className={isDark ? "text-slate-600" : "text-slate-400"}>
+                  No notes yet.
+                </span>
               )}
             </div>
           </div>
         </div>
 
         {/* RIGHT: timeline */}
-        <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div
+          className={`flex h-full flex-col rounded-2xl border shadow-sm ${timelineWrap}`}
+        >
+          <div
+            className={`flex items-center justify-between border-b px-4 py-3 ${cardBorderSoft}`}
+          >
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className={`text-sm font-semibold ${cardTitle}`}>
                 Activity Timeline
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className={`text-xs ${mutedText}`}>
                 Newest activity at the top.
               </p>
             </div>
@@ -2468,7 +2725,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     `/leads/${encodeURIComponent(normalizedLeadId)}/messages`,
                   )
                 }
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-600 shadow-sm hover:border-emerald-400 hover:bg-emerald-100 cursor-pointer"
+                className={[
+                  "inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm font-semibold shadow-sm cursor-pointer",
+                  isDark
+                    ? "border-emerald-900/50 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-100",
+                ].join(" ")}
                 title="Log new message"
               >
                 +
@@ -2478,9 +2740,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {messagesLoading ? (
-              <p className="text-xs text-slate-500">Loading…</p>
+              <p className={`text-xs ${mutedText}`}>Loading…</p>
             ) : timelineMessages.length === 0 ? (
-              <p className="text-xs text-slate-500">No messages yet.</p>
+              <p className={`text-xs ${mutedText}`}>No messages yet.</p>
             ) : (
               <div className="space-y-3 text-xs">
                 {timelineMessages.map((m) => {
@@ -2598,18 +2860,28 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           <img
                             src={pipelineIcon}
                             alt={pipelineAlt}
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                            className={[
+                              "h-8 w-8 rounded-full object-cover border",
+                              isDark ? "border-slate-800" : "border-slate-200",
+                            ].join(" ")}
                           />
                         ) : avatarUrl ? (
                           <img
                             src={avatarUrl}
                             alt={authorName}
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                            className={[
+                              "h-8 w-8 rounded-full object-cover border",
+                              isDark ? "border-slate-800" : "border-slate-200",
+                            ].join(" ")}
                           />
                         ) : (
                           <div
                             className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white ${
-                              isOutbound ? "bg-indigo-600" : "bg-slate-500"
+                              isOutbound
+                                ? "bg-indigo-600"
+                                : isDark
+                                  ? "bg-slate-700"
+                                  : "bg-slate-500"
                             }`}
                           >
                             {initials}
@@ -2618,20 +2890,32 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                       </div>
 
                       <div className="flex-1">
-                        <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                          <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                        <div
+                          className={`rounded-xl border px-3 py-2 ${timelineItem}`}
+                        >
+                          <div
+                            className={`mb-1 flex items-center justify-between gap-2 text-[11px] ${timelineMeta}`}
+                          >
                             <span className="flex items-center gap-1">
-                              <span className="font-semibold text-slate-700">
+                              <span
+                                className={`font-semibold ${timelineAuthor}`}
+                              >
                                 {authorName}
                               </span>
-                              <span className="text-slate-400">
+                              <span
+                                className={
+                                  isDark ? "text-slate-500" : "text-slate-400"
+                                }
+                              >
                                 · {roleLabel} · {formatChannel(m.channel)}
                               </span>
                             </span>
                             <span>{tsLabel}</span>
                           </div>
 
-                          <p className="whitespace-pre-wrap text-[11px] text-slate-800">
+                          <p
+                            className={`whitespace-pre-wrap text-[11px] ${timelineBody}`}
+                          >
                             {isLeadCreatedEvent
                               ? formatLeadCreatedBody(m.body, leadLabel)
                               : isRejectedEvent
@@ -2678,7 +2962,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Create booking link"
-            className="relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            className={[
+              "relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl",
+              isDark
+                ? "border-slate-800 bg-slate-950"
+                : "border-slate-200 bg-white",
+            ].join(" ")}
           >
             <div className="flex items-center justify-between bg-indigo-600 px-6 py-4 text-white">
               <div>
@@ -2699,38 +2988,73 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               </button>
             </div>
 
-            <div className="space-y-4 bg-slate-50 px-6 pb-6 pt-5">
+            <div
+              className={[
+                "space-y-4 px-6 pb-6 pt-5",
+                isDark ? "bg-slate-900/40" : "bg-slate-50",
+              ].join(" ")}
+            >
               {bookingLinksError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div
+                  className={[
+                    "rounded-xl border px-4 py-3 text-sm",
+                    isDark
+                      ? "border-rose-900/60 bg-rose-950/40 text-rose-200"
+                      : "border-rose-200 bg-rose-50 text-rose-700",
+                  ].join(" ")}
+                >
                   {bookingLinksError}
                 </div>
               )}
               {inviteError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div
+                  className={[
+                    "rounded-xl border px-4 py-3 text-sm",
+                    isDark
+                      ? "border-rose-900/60 bg-rose-950/40 text-rose-200"
+                      : "border-rose-200 bg-rose-50 text-rose-700",
+                  ].join(" ")}
+                >
                   {inviteError}
                 </div>
               )}
               {inviteSuccess && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <div
+                  className={[
+                    "rounded-xl border px-4 py-3 text-sm",
+                    isDark
+                      ? "border-emerald-900/60 bg-emerald-950/40 text-emerald-100"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-800",
+                  ].join(" ")}
+                >
                   {inviteSuccess}
                 </div>
               )}
 
               {lastInviteUrl && (
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div
+                  className={`rounded-xl border px-4 py-3 shadow-sm ${cardShell}`}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <div
+                        className={`text-[11px] font-semibold uppercase tracking-wide ${mutedText}`}
+                      >
                         Latest link
                       </div>
-                      <div className="mt-1 truncate text-xs font-medium text-slate-800">
+                      <div
+                        className={`mt-1 truncate text-xs font-medium ${pageText}`}
+                      >
                         {lastInviteUrl}
                       </div>
                     </div>
 
                     <button
                       type="button"
-                      className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+                      className={[
+                        "shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm cursor-pointer",
+                        secondaryBtn,
+                      ].join(" ")}
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(lastInviteUrl);
@@ -2749,11 +3073,18 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               )}
 
               {bookingLinksLoading ? (
-                <p className="text-sm text-slate-500">
+                <p className={`text-sm ${mutedText}`}>
                   Loading schedule pages…
                 </p>
               ) : activeBookingLinks.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6">
+                <div
+                  className={[
+                    "rounded-2xl border border-dashed p-6",
+                    isDark
+                      ? "border-slate-700 bg-slate-950"
+                      : "border-slate-300 bg-white",
+                  ].join(" ")}
+                >
                   <div className="flex items-start gap-3">
                     <img
                       src="/icons/schedule-page.svg"
@@ -2762,10 +3093,12 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     />
 
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className={`text-sm font-semibold ${titleText}`}>
                         No schedule pages yet
                       </p>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      <p
+                        className={`mt-1 text-xs leading-relaxed ${mutedText}`}
+                      >
                         Create a schedule page first so you can generate a
                         booking link for this lead.
                       </p>
@@ -2782,7 +3115,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                         <button
                           type="button"
                           onClick={() => setIsBookingModalOpen(false)}
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+                          className={[
+                            "inline-flex items-center justify-center rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-sm cursor-pointer",
+                            secondaryBtn,
+                          ].join(" ")}
                         >
                           Not now
                         </button>
@@ -2791,21 +3127,54 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className={`rounded-xl border shadow-sm ${cardShell}`}>
                   <div className="max-h-[420px] overflow-y-auto overflow-x-auto rounded-xl">
                     <table className="w-full border-collapse text-sm">
-                      <thead className="sticky top-0 z-10 bg-slate-100">
+                      <thead
+                        className={[
+                          "sticky top-0 z-10",
+                          isDark ? "bg-slate-900/70" : "bg-slate-100",
+                        ].join(" ")}
+                      >
                         <tr className="text-left">
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                          <th
+                            className={[
+                              "border-b px-4 py-2 font-semibold",
+                              isDark
+                                ? "border-slate-800 text-slate-200"
+                                : "border-slate-200 text-slate-700",
+                            ].join(" ")}
+                          >
                             Schedule page
                           </th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                          <th
+                            className={[
+                              "border-b px-4 py-2 font-semibold",
+                              isDark
+                                ? "border-slate-800 text-slate-200"
+                                : "border-slate-200 text-slate-700",
+                            ].join(" ")}
+                          >
                             Type
                           </th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                          <th
+                            className={[
+                              "border-b px-4 py-2 font-semibold",
+                              isDark
+                                ? "border-slate-800 text-slate-200"
+                                : "border-slate-200 text-slate-700",
+                            ].join(" ")}
+                          >
                             Host
                           </th>
-                          <th className="border-b border-slate-200 px-4 py-2 font-semibold text-slate-700">
+                          <th
+                            className={[
+                              "border-b px-4 py-2 font-semibold",
+                              isDark
+                                ? "border-slate-800 text-slate-200"
+                                : "border-slate-200 text-slate-700",
+                            ].join(" ")}
+                          >
                             Action
                           </th>
                         </tr>
@@ -2818,14 +3187,23 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           return (
                             <tr
                               key={link.id}
-                              className="group border-b border-slate-100 hover:bg-slate-50/70"
+                              className={[
+                                "group border-b",
+                                isDark
+                                  ? "border-slate-900 hover:bg-slate-900/40"
+                                  : "border-slate-100 hover:bg-slate-50/70",
+                              ].join(" ")}
                             >
                               <td className="px-4 py-3">
                                 <div className="min-w-0">
-                                  <div className="truncate font-semibold text-slate-900">
+                                  <div
+                                    className={`truncate font-semibold ${titleText}`}
+                                  >
                                     {link.name}
                                   </div>
-                                  <div className="mt-0.5 text-[11px] text-slate-500">
+                                  <div
+                                    className={`mt-0.5 text-[11px] ${mutedText}`}
+                                  >
                                     /b/{link.slug}
                                   </div>
                                 </div>
@@ -2843,7 +3221,7 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                               </td>
 
                               <td className="px-4 py-3">
-                                <span className="text-sm text-slate-700">
+                                <span className={`text-sm ${pageText}`}>
                                   {hostLabelForLink(link)}
                                 </span>
                               </td>
@@ -2876,7 +3254,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 <button
                   type="button"
                   onClick={() => setIsBookingModalOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
+                  className={[
+                    "rounded-lg border px-4 py-2 text-xs font-semibold shadow-sm cursor-pointer",
+                    secondaryBtn,
+                  ].join(" ")}
                 >
                   Close
                 </button>

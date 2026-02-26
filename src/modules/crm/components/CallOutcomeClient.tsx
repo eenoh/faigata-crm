@@ -1,9 +1,11 @@
+// src/modules/crm/components/CallOutcomeClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DateTime } from "luxon";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 type Outcome = {
   attended_status: string | null;
@@ -82,6 +84,51 @@ function bestErrorMessage(json: any, status: number) {
   );
 }
 
+/* -------------------- pills (theme-aware) -------------------- */
+
+function statusPill(status: string, isDark: boolean) {
+  const s = (status || "unknown").toLowerCase();
+
+  if (isDark) {
+    if (s === "attended")
+      return "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30";
+    if (s === "no_show") return "bg-rose-500/15 text-rose-200 ring-rose-400/30";
+    if (s === "cancelled")
+      return "bg-slate-500/15 text-slate-200 ring-slate-400/25";
+    if (s === "rescheduled")
+      return "bg-amber-500/15 text-amber-200 ring-amber-400/30";
+    return "bg-slate-500/15 text-slate-200 ring-slate-400/25";
+  }
+
+  if (s === "attended")
+    return "bg-emerald-50/60 text-emerald-700 ring-emerald-200";
+  if (s === "no_show") return "bg-rose-50/60 text-rose-700 ring-rose-200";
+  if (s === "cancelled") return "bg-slate-100/70 text-slate-700 ring-slate-200";
+  if (s === "rescheduled")
+    return "bg-amber-50/60 text-amber-800 ring-amber-200";
+  return "bg-slate-100/70 text-slate-700 ring-slate-200";
+}
+
+function yesNoPill(isYes: boolean, isDark: boolean) {
+  if (isDark) {
+    return isYes
+      ? "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30"
+      : "bg-rose-500/15 text-rose-200 ring-rose-400/30";
+  }
+
+  return isYes
+    ? "bg-emerald-50/60 text-emerald-700 ring-emerald-200"
+    : "bg-rose-50/60 text-rose-700 ring-rose-200";
+}
+
+function productPill(isDark: boolean) {
+  return isDark
+    ? "bg-indigo-500/15 text-indigo-200 ring-indigo-400/30"
+    : "bg-indigo-50 text-indigo-700 ring-indigo-200";
+}
+
+/* -------------------- component -------------------- */
+
 export default function CallOutcomeClient({
   leadId,
   bookingId,
@@ -91,6 +138,11 @@ export default function CallOutcomeClient({
 }) {
   const router = useRouter();
   const viewerTz = useMemo(readBrowserTimeZone, []);
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const [teamId, setTeamId] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -109,6 +161,26 @@ export default function CallOutcomeClient({
   const [productsErr, setProductsErr] = useState<string | null>(null);
   const [offerProductId, setOfferProductId] = useState<string>("");
 
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+  const titleText = isDark ? "text-slate-100" : "text-slate-900";
+  const mutedText = isDark ? "text-slate-400" : "text-slate-500";
+  const bodyText = isDark ? "text-slate-200" : "text-slate-800";
+  const labelText = isDark ? "text-slate-300" : "text-slate-700";
+
+  const inputBase = [
+    "mt-2 w-full rounded-lg border px-3 py-2 text-sm",
+    "focus:outline-none focus:ring-2",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+      : "border-slate-200 bg-white text-slate-800 focus:ring-indigo-200 focus:border-indigo-300",
+  ].join(" ");
+
+  const backBtn = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/40"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+
   function hydrateFormFromOutcome(outcome: Outcome | null) {
     const nextStatus = safeStatus(outcome?.attended_status ?? "unknown");
     setAttendedStatus(nextStatus);
@@ -119,6 +191,7 @@ export default function CallOutcomeClient({
     setClosedOnCall(
       nextStatus === "attended" ? !!outcome?.closed_on_call : false,
     );
+
     setNotes(String(outcome?.notes ?? ""));
     setOfferProductId(String(outcome?.offer_product_id ?? "").trim());
   }
@@ -288,56 +361,76 @@ export default function CallOutcomeClient({
   }
 
   if (loading) {
+    const sk = isDark ? "bg-slate-800" : "bg-slate-100";
     return (
       <div className="max-w-3xl space-y-4 animate-pulse">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className={`rounded-2xl border p-5 shadow-sm ${card}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="h-6 w-44 rounded bg-slate-100" />
-              <div className="mt-2 h-4 w-56 rounded bg-slate-100" />
-              <div className="mt-3 h-3 w-40 rounded bg-slate-100" />
+              <div className={`h-6 w-44 rounded ${sk}`} />
+              <div className={`mt-2 h-4 w-56 rounded ${sk}`} />
+              <div className={`mt-3 h-3 w-40 rounded ${sk}`} />
             </div>
-            <div className="h-9 w-28 rounded-lg bg-slate-100" />
+            <div className={`h-9 w-28 rounded-lg ${sk}`} />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+        <div className={`rounded-2xl border p-5 shadow-sm space-y-5 ${card}`}>
           <div className="space-y-2">
-            <div className="h-3 w-24 rounded bg-slate-100" />
-            <div className="h-10 w-full rounded-lg bg-slate-100" />
+            <div className={`h-3 w-24 rounded ${sk}`} />
+            <div className={`h-10 w-full rounded-lg ${sk}`} />
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded bg-slate-100" />
-              <div className="h-4 w-24 rounded bg-slate-100" />
+              <div className={`h-4 w-4 rounded ${sk}`} />
+              <div className={`h-4 w-24 rounded ${sk}`} />
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded bg-slate-100" />
-              <div className="h-4 w-28 rounded bg-slate-100" />
+              <div className={`h-4 w-4 rounded ${sk}`} />
+              <div className={`h-4 w-28 rounded ${sk}`} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <div className="h-3 w-16 rounded bg-slate-100" />
-            <div className="h-28 w-full rounded-lg bg-slate-100" />
+            <div className={`h-3 w-16 rounded ${sk}`} />
+            <div className={`h-28 w-full rounded-lg ${sk}`} />
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-2">
-              <div className="h-3 w-72 rounded bg-slate-100" />
-              <div className="h-3 w-52 rounded bg-slate-100" />
+              <div className={`h-3 w-72 rounded ${sk}`} />
+              <div className={`h-3 w-52 rounded ${sk}`} />
             </div>
-            <div className="h-9 w-28 rounded-lg bg-slate-100" />
+            <div className={`h-9 w-28 rounded-lg ${sk}`} />
           </div>
         </div>
       </div>
     );
   }
 
-  if (err) return <p className="text-sm text-rose-600">{err}</p>;
+  if (err)
+    return (
+      <p
+        className={["text-sm", isDark ? "text-rose-300" : "text-rose-600"].join(
+          " ",
+        )}
+      >
+        {err}
+      </p>
+    );
+
   if (!booking)
-    return <p className="text-sm text-slate-500">Booking not found.</p>;
+    return (
+      <p
+        className={[
+          "text-sm",
+          isDark ? "text-slate-400" : "text-slate-500",
+        ].join(" ")}
+      >
+        Booking not found.
+      </p>
+    );
 
   const start = DateTime.fromISO(booking.start_at, { setZone: true }).setZone(
     viewerTz,
@@ -349,20 +442,27 @@ export default function CallOutcomeClient({
   const headerDate = start.isValid
     ? start.toLocaleString(DateTime.DATE_MED)
     : booking.start_at;
+
   const headerTime =
     start.isValid && end.isValid
-      ? `${start.toLocaleString(DateTime.TIME_SIMPLE)} – ${end.toLocaleString(DateTime.TIME_SIMPLE)}`
+      ? `${start.toLocaleString(DateTime.TIME_SIMPLE)} – ${end.toLocaleString(
+          DateTime.TIME_SIMPLE,
+        )}`
       : "—";
+
+  const statusLabel =
+    STATUS_OPTIONS.find((o) => o.value === safeStatus(attendedStatus))?.label ??
+    "Unknown";
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className={`rounded-2xl border p-5 shadow-sm ${card}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">
+            <h1 className={`text-xl font-semibold ${titleText}`}>
               Call Outcome
             </h1>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className={`mt-1 text-xs ${mutedText}`}>
               {headerDate} · {headerTime}
             </p>
           </div>
@@ -372,23 +472,95 @@ export default function CallOutcomeClient({
             onClick={() =>
               router.push(`/leads/${encodeURIComponent(leadId)}/calls`)
             }
-            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            className={[
+              "cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm",
+              backBtn,
+            ].join(" ")}
           >
             Back to Calls
           </button>
         </div>
 
         {ok && (
-          <p className="mt-3 text-xs font-semibold text-emerald-700">{ok}</p>
+          <p
+            className={[
+              "mt-3 text-xs font-semibold",
+              isDark ? "text-emerald-200" : "text-emerald-700",
+            ].join(" ")}
+          >
+            {ok}
+          </p>
         )}
         {err && (
-          <p className="mt-3 text-xs font-semibold text-rose-600">{err}</p>
+          <p
+            className={[
+              "mt-3 text-xs font-semibold",
+              isDark ? "text-rose-300" : "text-rose-600",
+            ].join(" ")}
+          >
+            {err}
+          </p>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      {/* Form */}
+      <div className={`rounded-2xl border p-5 shadow-sm space-y-4 ${card}`}>
+        {/* Quick chips (nice UX + dark mode colors) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+              statusPill(attendedStatus, isDark),
+            ].join(" ")}
+          >
+            Attendance: {statusLabel}
+          </span>
+
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+              yesNoPill(offerMade, isDark),
+            ].join(" ")}
+          >
+            Offer: {offerMade ? "Yes" : "No"}
+          </span>
+
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+              yesNoPill(
+                safeStatus(attendedStatus) === "attended"
+                  ? closedOnCall
+                  : false,
+                isDark,
+              ),
+            ].join(" ")}
+            title={
+              safeStatus(attendedStatus) !== "attended"
+                ? "Only meaningful when attendance is Attended."
+                : undefined
+            }
+          >
+            Closed:{" "}
+            {safeStatus(attendedStatus) === "attended" && closedOnCall
+              ? "Yes"
+              : "No"}
+          </span>
+
+          {offerMade && offerProductId ? (
+            <span
+              className={[
+                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                productPill(isDark),
+              ].join(" ")}
+            >
+              Product selected
+            </span>
+          ) : null}
+        </div>
+
         <div>
-          <label className="block text-xs font-semibold text-slate-700">
+          <label className={`block text-xs font-semibold ${labelText}`}>
             Attendance
           </label>
           <select
@@ -398,7 +570,7 @@ export default function CallOutcomeClient({
               setAttendedStatus(v);
               if (v !== "attended") setClosedOnCall(false);
             }}
-            className="cursor-pointer mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+            className={["cursor-pointer", inputBase].join(" ")}
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -409,7 +581,13 @@ export default function CallOutcomeClient({
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+          <label
+            className={[
+              "inline-flex items-center gap-2 text-sm",
+              isDark ? "text-slate-200" : "text-slate-800",
+              "cursor-pointer",
+            ].join(" ")}
+          >
             <input
               type="checkbox"
               checked={offerMade}
@@ -418,7 +596,12 @@ export default function CallOutcomeClient({
                 setOfferMade(checked);
                 if (!checked) setOfferProductId("");
               }}
-              className="h-4 w-4 cursor-pointer"
+              className={[
+                "h-4 w-4 cursor-pointer rounded border",
+                isDark
+                  ? "border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-400/30"
+                  : "border-slate-300 text-indigo-600 focus:ring-indigo-500",
+              ].join(" ")}
             />
             Offer Made
           </label>
@@ -426,12 +609,16 @@ export default function CallOutcomeClient({
           <label
             className={[
               "inline-flex items-center gap-2 text-sm",
-              attendedStatus !== "attended"
-                ? "text-slate-400 cursor-not-allowed"
-                : "text-slate-800 cursor-pointer",
+              safeStatus(attendedStatus) !== "attended"
+                ? isDark
+                  ? "text-slate-500 cursor-not-allowed"
+                  : "text-slate-400 cursor-not-allowed"
+                : isDark
+                  ? "text-slate-200 cursor-pointer"
+                  : "text-slate-800 cursor-pointer",
             ].join(" ")}
             title={
-              attendedStatus !== "attended"
+              safeStatus(attendedStatus) !== "attended"
                 ? "Mark attendance as Attended to enable this."
                 : undefined
             }
@@ -439,13 +626,16 @@ export default function CallOutcomeClient({
             <input
               type="checkbox"
               checked={closedOnCall}
-              disabled={attendedStatus !== "attended"}
+              disabled={safeStatus(attendedStatus) !== "attended"}
               onChange={(e) => setClosedOnCall(e.target.checked)}
               className={[
-                "h-4 w-4",
-                attendedStatus !== "attended"
+                "h-4 w-4 rounded border",
+                safeStatus(attendedStatus) !== "attended"
                   ? "cursor-not-allowed"
                   : "cursor-pointer",
+                isDark
+                  ? "border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-400/30"
+                  : "border-slate-300 text-indigo-600 focus:ring-indigo-500",
               ].join(" ")}
             />
             Closed on Call
@@ -453,28 +643,42 @@ export default function CallOutcomeClient({
         </div>
 
         {offerMade && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-semibold text-slate-900">
-              Offer Product
+          <div
+            className={[
+              "rounded-xl border p-4",
+              isDark
+                ? "border-slate-800 bg-slate-900/20"
+                : "border-slate-200 bg-slate-50",
+            ].join(" ")}
+          >
+            <div className={`text-sm font-semibold ${titleText}`}>
+              Offer Product / Service
             </div>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className={`mt-0.5 text-xs ${mutedText}`}>
               Select which Stripe product you offered on this call.
             </p>
 
             {productsErr && (
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+              <div
+                className={[
+                  "mt-3 rounded-lg border px-3 py-2 text-[12px]",
+                  isDark
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                    : "border-amber-200 bg-amber-50 text-amber-900",
+                ].join(" ")}
+              >
                 {productsErr}
               </div>
             )}
 
             <div className="mt-3">
-              <label className="block text-xs font-semibold text-slate-700">
+              <label className={`block text-xs font-semibold ${labelText}`}>
                 Product
               </label>
               <select
                 value={offerProductId}
                 onChange={(e) => setOfferProductId(e.target.value)}
-                className="mt-2 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                className={["cursor-pointer", inputBase].join(" ")}
                 disabled={productsLoading || !!productsErr}
               >
                 <option value="">
@@ -492,7 +696,7 @@ export default function CallOutcomeClient({
                 ))}
               </select>
 
-              <p className="mt-1 text-[11px] text-slate-500">
+              <p className={`mt-1 text-[11px] ${mutedText}`}>
                 This will be logged in the lead activity timeline.
               </p>
             </div>
@@ -500,22 +704,37 @@ export default function CallOutcomeClient({
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700">
+          <label className={`block text-xs font-semibold ${labelText}`}>
             Notes
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
-            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+            className={[
+              "mt-2 w-full rounded-lg border px-3 py-2 text-sm",
+              "focus:outline-none focus:ring-2",
+              isDark
+                ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400/30 focus:border-indigo-400/40"
+                : "border-slate-200 bg-white text-slate-800 focus:ring-indigo-200 focus:border-indigo-300",
+            ].join(" ")}
             placeholder="Quick summary of what happened on the call…"
           />
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] text-slate-500">
+          <p className={`text-[11px] ${mutedText}`}>
             Tip: Set the result of the call, then click{" "}
-            <span className="font-semibold text-slate-700">Save Outcome</span>.
+            <span
+              className={
+                isDark
+                  ? "font-semibold text-slate-200"
+                  : "font-semibold text-slate-700"
+              }
+            >
+              Save Outcome
+            </span>
+            .
           </p>
 
           <button

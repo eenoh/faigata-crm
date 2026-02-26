@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
+import { useTheme } from "next-themes";
 
 type ScoringRule = {
   fieldKey: string;
@@ -24,42 +25,76 @@ type ScoreThresholds = {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-function LoadingSkeleton() {
+function SkeletonBlock({
+  className = "",
+  isDark,
+}: {
+  className?: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "animate-pulse rounded-lg",
+        isDark ? "bg-slate-800/70" : "bg-slate-100",
+        className,
+      ].join(" ")}
+      aria-hidden="true"
+    />
+  );
+}
+
+function LoadingSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const soft = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-100 bg-white";
+  const soft2 = isDark
+    ? "border-slate-800 bg-slate-900/40"
+    : "border-slate-100 bg-slate-50";
+
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
-        <div className="h-7 w-40 animate-pulse rounded-lg bg-slate-100" />
-        <div className="mt-2 h-4 w-[34rem] max-w-full animate-pulse rounded-lg bg-slate-100" />
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
+        <SkeletonBlock isDark={isDark} className="h-7 w-40" />
+        <SkeletonBlock
+          isDark={isDark}
+          className="mt-2 h-4 w-[34rem] max-w-full"
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)]">
         {/* LEFT skeleton */}
-        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-          <div className="h-4 w-48 animate-pulse rounded-lg bg-slate-100" />
+        <div
+          className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm ${card}`}
+        >
+          <SkeletonBlock isDark={isDark} className="h-4 w-48" />
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
-              >
+              <div key={i} className={`rounded-xl border px-3 py-3 ${soft2}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="h-4 w-56 max-w-full animate-pulse rounded-lg bg-slate-200" />
-                    <div className="mt-2 h-3 w-28 animate-pulse rounded-lg bg-slate-200" />
+                    <SkeletonBlock
+                      isDark={isDark}
+                      className="h-4 w-56 max-w-full"
+                    />
+                    <SkeletonBlock isDark={isDark} className="mt-2 h-3 w-28" />
                   </div>
-                  <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-200" />
+                  <SkeletonBlock isDark={isDark} className="h-9 w-24" />
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <div className="h-3 w-24 animate-pulse rounded-lg bg-slate-200" />
+                  <SkeletonBlock isDark={isDark} className="h-3 w-24" />
                   <div className="space-y-2">
                     {[0, 1].map((j) => (
                       <div
                         key={j}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2"
+                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${soft}`}
                       >
-                        <div className="h-3 w-28 animate-pulse rounded-lg bg-slate-100" />
-                        <div className="h-8 w-24 animate-pulse rounded-lg bg-slate-100" />
+                        <SkeletonBlock isDark={isDark} className="h-3 w-28" />
+                        <SkeletonBlock isDark={isDark} className="h-8 w-24" />
                       </div>
                     ))}
                   </div>
@@ -70,37 +105,44 @@ function LoadingSkeleton() {
         </div>
 
         {/* RIGHT skeleton */}
-        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-          <div className="h-4 w-40 animate-pulse rounded-lg bg-slate-100" />
-          <div className="h-3 w-[22rem] max-w-full animate-pulse rounded-lg bg-slate-100" />
+        <div
+          className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm ${card}`}
+        >
+          <SkeletonBlock isDark={isDark} className="h-4 w-40" />
+          <SkeletonBlock isDark={isDark} className="h-3 w-[22rem] max-w-full" />
 
           <div className="mt-3 space-y-4">
             <div className="space-y-2">
-              <div className="h-3 w-32 animate-pulse rounded-lg bg-slate-100" />
+              <SkeletonBlock isDark={isDark} className="h-3 w-32" />
               <div className="flex items-center gap-2">
-                <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
-                <div className="h-3 w-48 animate-pulse rounded-lg bg-slate-100" />
+                <SkeletonBlock isDark={isDark} className="h-9 w-24" />
+                <SkeletonBlock isDark={isDark} className="h-3 w-48" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="h-3 w-36 animate-pulse rounded-lg bg-slate-100" />
+              <SkeletonBlock isDark={isDark} className="h-3 w-36" />
               <div className="flex items-center gap-2">
-                <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
-                <div className="h-3 w-56 animate-pulse rounded-lg bg-slate-100" />
+                <SkeletonBlock isDark={isDark} className="h-9 w-24" />
+                <SkeletonBlock isDark={isDark} className="h-3 w-56" />
               </div>
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-3">
-            <div className="h-3 w-10 animate-pulse rounded-lg bg-slate-200" />
-            <div className="mt-2 h-3 w-[18rem] max-w-full animate-pulse rounded-lg bg-slate-200" />
+          <div
+            className={`mt-3 rounded-xl px-3 py-3 ${isDark ? "bg-slate-900/40" : "bg-slate-50"}`}
+          >
+            <SkeletonBlock isDark={isDark} className="h-3 w-10" />
+            <SkeletonBlock
+              isDark={isDark}
+              className="mt-2 h-3 w-[18rem] max-w-full"
+            />
           </div>
         </div>
       </div>
 
       <div className="flex gap-3 pt-2">
-        <div className="h-10 w-44 animate-pulse rounded-lg bg-slate-200" />
+        <SkeletonBlock isDark={isDark} className="h-10 w-44" />
       </div>
     </div>
   );
@@ -108,6 +150,30 @@ function LoadingSkeleton() {
 
 export function LeadScoringSettingsClient() {
   const { teamId, loading: workspaceLoading } = useWorkspace();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // theme tokens
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-100 bg-white";
+  const soft = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-100 bg-slate-50";
+  const pageTitle = isDark ? "text-slate-100" : "text-slate-900";
+  const pageSub = isDark ? "text-slate-400" : "text-slate-600";
+  const label = isDark ? "text-slate-200" : "text-slate-900";
+  const muted = isDark ? "text-slate-400" : "text-slate-500";
+
+  const inputBase =
+    "rounded-lg border px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500";
+  const inputTheme = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-600"
+    : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400";
+
   const [fields, setFields] = useState<LeadFieldDefinition[]>([]);
   const [rules, setRules] = useState<ScoringRule[]>([]);
   const [thresholds, setThresholds] = useState<ScoreThresholds>({
@@ -122,7 +188,6 @@ export function LeadScoringSettingsClient() {
     let cancelled = false;
 
     (async () => {
-      // wait for workspace context to resolve
       if (workspaceLoading) return;
 
       if (!teamId) {
@@ -155,9 +220,7 @@ export function LeadScoringSettingsClient() {
               thresholds?: Partial<ScoreThresholds>;
             };
 
-            if (Array.isArray(json.rules)) {
-              loadedRules = json.rules;
-            }
+            if (Array.isArray(json.rules)) loadedRules = json.rules;
 
             if (json.thresholds) {
               const low = Number(json.thresholds.low);
@@ -170,7 +233,7 @@ export function LeadScoringSettingsClient() {
             console.warn("[LeadScoring] config API returned non-JSON:", ct);
           }
         } else {
-          const text = await res.text();
+          const text = await res.text().catch(() => "");
           console.error(
             "[LeadScoring] load config failed",
             res.status,
@@ -198,12 +261,9 @@ export function LeadScoringSettingsClient() {
           if (hasSelectOptions) {
             const existingOptions = existing?.optionWeights ?? {};
             const optionWeights: Record<string, number> = {};
-
-            // Cast the options to string[] for strict TS setups where options might be any/unknown.
             for (const opt of f.options as string[]) {
               optionWeights[opt] = existingOptions[opt] ?? 0;
             }
-
             base.optionWeights = optionWeights;
           }
 
@@ -212,21 +272,11 @@ export function LeadScoringSettingsClient() {
 
         setFields(defs);
         setRules(normalizedRules);
-
-        // thresholds: use loaded or defaults
-        setThresholds(
-          loadedThresholds ?? {
-            low: 40,
-            high: 70,
-          },
-        );
-
+        setThresholds(loadedThresholds ?? { low: 40, high: 70 });
         setError(null);
       } catch (err) {
         console.error("[LeadScoring] Failed to load", err);
-        if (!cancelled) {
-          setError("Failed to load lead scoring settings.");
-        }
+        if (!cancelled) setError("Failed to load lead scoring settings.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -254,13 +304,7 @@ export function LeadScoringSettingsClient() {
       prev.map((r) => {
         if (r.fieldKey !== fieldKey) return r;
         const current = r.optionWeights ?? {};
-        return {
-          ...r,
-          optionWeights: {
-            ...current,
-            [option]: weight,
-          },
-        };
+        return { ...r, optionWeights: { ...current, [option]: weight } };
       }),
     );
     setSaveState("idle");
@@ -268,10 +312,7 @@ export function LeadScoringSettingsClient() {
   }
 
   function updateThreshold(key: keyof ScoreThresholds, value: number | null) {
-    setThresholds((prev) => ({
-      ...prev,
-      [key]: value ?? 0,
-    }));
+    setThresholds((prev) => ({ ...prev, [key]: value ?? 0 }));
     setSaveState("idle");
     setError(null);
   }
@@ -330,9 +371,17 @@ export function LeadScoringSettingsClient() {
     }
   }
 
+  // returns AFTER hooks ✅
   if (!teamId && !workspaceLoading) {
     return (
-      <div className="max-w-3xl rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      <div
+        className={[
+          "max-w-3xl rounded-2xl border px-4 py-3 text-sm shadow-sm",
+          isDark
+            ? "border-rose-900/40 bg-rose-950/30 text-rose-200"
+            : "border-rose-100 bg-rose-50 text-rose-700",
+        ].join(" ")}
+      >
         <p className="font-medium">No team available</p>
         <p className="mt-1">
           We couldn’t determine your team. Please open this page from your
@@ -342,18 +391,17 @@ export function LeadScoringSettingsClient() {
     );
   }
 
-  // NEW: richer, fitting loading state (skeleton) while workspace and config are loading
   if (loading || workspaceLoading) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton isDark={isDark} />;
   }
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
+      <div className={`rounded-2xl border px-5 py-4 shadow-sm ${card}`}>
+        <h1 className={`text-xl font-semibold md:text-2xl ${pageTitle}`}>
           Lead Scoring
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className={`mt-1 text-sm ${pageSub}`}>
           Assign weights to your lead fields so FaigataCRM can calculate a score
           (0–100) for every lead.
         </p>
@@ -362,26 +410,50 @@ export function LeadScoringSettingsClient() {
       {(error || saveState === "saved") && (
         <div className="space-y-2">
           {error && (
-            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs text-rose-700">
+            <div
+              className={[
+                "rounded-xl border px-4 py-2 text-xs shadow-sm",
+                isDark
+                  ? "border-rose-900/40 bg-rose-950/30 text-rose-200"
+                  : "border-rose-100 bg-rose-50 text-rose-700",
+              ].join(" ")}
+            >
               {error}
             </div>
           )}
           {saveState === "saved" && !error && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+            <div
+              className={[
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs",
+                isDark
+                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                  : "border-emerald-100 bg-emerald-50 text-emerald-700",
+              ].join(" ")}
+            >
               ✅ Scoring rules saved
             </div>
           )}
         </div>
       )}
 
-      {/* main grid: left = field weights, right = thresholds */}
       <div className="grid gap-6 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)]">
-        {/* LEFT: field rules */}
-        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+        {/* LEFT */}
+        <div
+          className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm ${card}`}
+        >
           {fields.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className={`text-sm ${muted}`}>
               You don&apos;t have any lead fields yet. Create them first in{" "}
-              <span className="font-semibold">Settings → Lead Fields</span>.
+              <span
+                className={
+                  isDark
+                    ? "font-semibold text-slate-200"
+                    : "font-semibold text-slate-700"
+                }
+              >
+                Settings → Lead Fields
+              </span>
+              .
             </p>
           ) : (
             <div className="space-y-3">
@@ -397,14 +469,16 @@ export function LeadScoringSettingsClient() {
                 return (
                   <div
                     key={rule.fieldKey}
-                    className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                    className={`rounded-xl border px-3 py-2 ${soft}`}
                   >
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">
+                        <p
+                          className={`text-sm font-medium ${isDark ? "text-slate-100" : "text-slate-800"}`}
+                        >
                           {field.label}
                         </p>
-                        <p className="text-[11px] text-slate-500">
+                        <p className={`text-[11px] ${muted}`}>
                           Type: {field.type}
                         </p>
                       </div>
@@ -415,7 +489,7 @@ export function LeadScoringSettingsClient() {
                             type="number"
                             min={-100}
                             max={100}
-                            className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className={`w-20 text-right text-sm ${inputBase} ${inputTheme}`}
                             value={rule.weight}
                             onChange={(e) =>
                               updateFieldWeight(
@@ -426,16 +500,19 @@ export function LeadScoringSettingsClient() {
                               )
                             }
                           />
-                          <span className="text-xs text-slate-500">pts</span>
+                          <span className={`text-xs ${muted}`}>pts</span>
                         </div>
                       )}
                     </div>
 
                     {isSelect && (
                       <div className="mt-2 space-y-2">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                        <p
+                          className={`text-[11px] font-medium uppercase tracking-wide ${muted}`}
+                        >
                           Option weights
                         </p>
+
                         <div className="space-y-1">
                           {(field.options as string[]).map((opt: string) => {
                             const current = rule.optionWeights?.[opt] ?? 0;
@@ -443,9 +520,20 @@ export function LeadScoringSettingsClient() {
                             return (
                               <div
                                 key={opt}
-                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-1.5"
+                                className={[
+                                  "flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5",
+                                  isDark
+                                    ? "border-slate-800 bg-slate-950"
+                                    : "border-slate-100 bg-white",
+                                ].join(" ")}
                               >
-                                <span className="text-xs text-slate-700">
+                                <span
+                                  className={
+                                    isDark
+                                      ? "text-xs text-slate-200"
+                                      : "text-xs text-slate-700"
+                                  }
+                                >
                                   {opt}
                                 </span>
                                 <div className="flex items-center gap-2">
@@ -453,7 +541,7 @@ export function LeadScoringSettingsClient() {
                                     type="number"
                                     min={-100}
                                     max={100}
-                                    className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className={`w-20 text-right text-xs ${inputBase} ${inputTheme}`}
                                     value={current}
                                     onChange={(e) =>
                                       updateOptionWeight(
@@ -465,7 +553,7 @@ export function LeadScoringSettingsClient() {
                                       )
                                     }
                                   />
-                                  <span className="text-[11px] text-slate-500">
+                                  <span className={`text-[11px] ${muted}`}>
                                     pts
                                   </span>
                                 </div>
@@ -473,7 +561,10 @@ export function LeadScoringSettingsClient() {
                             );
                           })}
                         </div>
-                        <p className="text-[11px] text-slate-400">
+
+                        <p
+                          className={`text-[11px] ${isDark ? "text-slate-500" : "text-slate-400"}`}
+                        >
                           Each option contributes its own points when selected.
                         </p>
                       </div>
@@ -485,12 +576,13 @@ export function LeadScoringSettingsClient() {
           )}
         </div>
 
-        {/* RIGHT: thresholds card */}
-        <div className="space-y-3 rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Score thresholds
-          </h2>
-          <p className="mt-1 text-xs text-slate-600">
+        {/* RIGHT */}
+        <div
+          className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm ${card}`}
+        >
+          <h2 className={`text-sm font-semibold ${label}`}>Score thresholds</h2>
+
+          <p className={`mt-1 text-xs ${pageSub}`}>
             Control when scores are treated as{" "}
             <span className="font-semibold text-rose-600">low</span>,{" "}
             <span className="font-semibold text-amber-600">medium</span>, or{" "}
@@ -499,7 +591,9 @@ export function LeadScoringSettingsClient() {
 
           <div className="mt-3 space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label
+                className={`text-xs font-medium uppercase tracking-wide ${muted}`}
+              >
                 Low / red cutoff
               </label>
               <div className="flex items-center gap-2">
@@ -507,7 +601,7 @@ export function LeadScoringSettingsClient() {
                   type="number"
                   min={0}
                   max={100}
-                  className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-24 text-right text-sm ${inputBase} ${inputTheme}`}
                   value={thresholds.low}
                   onChange={(e) =>
                     updateThreshold(
@@ -516,7 +610,7 @@ export function LeadScoringSettingsClient() {
                     )
                   }
                 />
-                <span className="text-xs text-slate-500">
+                <span className={`text-xs ${pageSub}`}>
                   Scores below this are considered{" "}
                   <span className="font-semibold text-rose-600">low</span>.
                 </span>
@@ -524,7 +618,9 @@ export function LeadScoringSettingsClient() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label
+                className={`text-xs font-medium uppercase tracking-wide ${muted}`}
+              >
                 High / green cutoff
               </label>
               <div className="flex items-center gap-2">
@@ -532,7 +628,7 @@ export function LeadScoringSettingsClient() {
                   type="number"
                   min={0}
                   max={100}
-                  className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-24 text-right text-sm ${inputBase} ${inputTheme}`}
                   value={thresholds.high}
                   onChange={(e) =>
                     updateThreshold(
@@ -541,7 +637,7 @@ export function LeadScoringSettingsClient() {
                     )
                   }
                 />
-                <span className="text-xs text-slate-500">
+                <span className={`text-xs ${pageSub}`}>
                   Scores at or above this are{" "}
                   <span className="font-semibold text-emerald-600">high</span>.
                   Everything in between is{" "}
@@ -551,12 +647,22 @@ export function LeadScoringSettingsClient() {
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-            <p className="font-medium text-slate-700">Tip</p>
-            <p className="mt-1">
-              Leave a small buffer below 100 – our own automations (reply
-              detection, sales cycle, etc.) can add extra points on top of your
-              manual scoring.
+          <div
+            className={`mt-3 rounded-xl px-3 py-2 ${isDark ? "bg-slate-900/40" : "bg-slate-50"}`}
+          >
+            <p
+              className={
+                isDark
+                  ? "text-[11px] font-medium text-slate-200"
+                  : "text-[11px] font-medium text-slate-700"
+              }
+            >
+              Tip
+            </p>
+            <p className={`mt-1 text-[11px] ${pageSub}`}>
+              Leave a small buffer below 100 – automations (reply detection,
+              sales cycle, etc.) can add extra points on top of your manual
+              scoring.
             </p>
           </div>
         </div>
@@ -567,7 +673,7 @@ export function LeadScoringSettingsClient() {
           type="button"
           onClick={handleSave}
           disabled={saveState === "saving"}
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+          className="inline-flex cursor-pointer items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {saveState === "saving" ? "Saving…" : "Save Scoring Rules"}
         </button>

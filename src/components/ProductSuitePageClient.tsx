@@ -1,8 +1,10 @@
+// src/components/ProductSuitePageClient.tsx
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTheme } from "next-themes";
 
 type TeamRow = {
   id: string;
@@ -19,6 +21,10 @@ const ROLE_RANK: Record<string, number> = {
   setter: 2,
   prospector: 1,
 };
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 function normalizeRoles(raw: unknown): string[] {
   if (Array.isArray(raw))
@@ -64,6 +70,12 @@ function titleCaseRole(role: string | null) {
 
 export default function ProductSuitePageClient() {
   const router = useRouter();
+
+  // ✅ Theme (hooks must be unconditional)
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = resolvedTheme === "dark";
 
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState<TeamRow[]>([]);
@@ -189,7 +201,7 @@ export default function ProductSuitePageClient() {
 
   const handleOpenTeam = useCallback(
     async (teamId: string) => {
-      if (openingTeamId) return; // prevent double clicks while opening
+      if (openingTeamId) return;
       try {
         setOpeningTeamId(teamId);
 
@@ -223,12 +235,76 @@ export default function ProductSuitePageClient() {
 
   const totalCount = teams.length;
 
+  // ✅ Theme-aware tokens
+  const pageTitle = cn(
+    "text-2xl font-semibold mt-5",
+    isDark ? "text-slate-100" : "text-slate-900",
+  );
+  const pageSub = cn("text-sm", isDark ? "text-slate-400" : "text-slate-500");
+
+  const shellCard = cn(
+    "flex-1 rounded-xl border shadow-sm",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+  );
+
+  const cardHeader = cn(
+    "flex items-center justify-between border-b px-4 py-3",
+    isDark ? "border-slate-800" : "border-slate-200",
+  );
+
+  const thBase = cn(
+    "border-b px-3 py-2 font-semibold text-left",
+    isDark
+      ? "border-slate-800 text-slate-200"
+      : "border-slate-200 text-slate-700",
+  );
+
+  const thRight = cn(
+    "border-b px-3 py-2 font-semibold text-right",
+    isDark
+      ? "border-slate-800 text-slate-200"
+      : "border-slate-200 text-slate-700",
+  );
+
+  const theadBg = isDark ? "bg-slate-900/60" : "bg-slate-100";
+
+  const rowHover = isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50";
+
+  const tdName = cn(
+    "border-b px-3 py-2 align-top",
+    isDark
+      ? "border-slate-900 text-slate-200"
+      : "border-slate-100 text-slate-800",
+  );
+
+  const tdRole = cn(
+    "border-b px-3 py-2 align-top text-xs",
+    isDark
+      ? "border-slate-900 text-slate-400"
+      : "border-slate-100 text-slate-500",
+  );
+
+  const badge = (active: boolean) =>
+    cn(
+      "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+      active
+        ? isDark
+          ? "bg-indigo-500/10 text-indigo-200"
+          : "bg-indigo-50 text-indigo-700"
+        : isDark
+          ? "bg-slate-900/50 text-slate-200"
+          : "bg-slate-100 text-slate-700",
+    );
+
+  // ✅ safe to gate AFTER hooks
+  if (!mounted) return null;
+
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900 mt-5">Lumo</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className={pageTitle}>Lumo</h2>
+          <p className={pageSub}>
             {totalCount === 0
               ? "You don’t have any CRM teams yet."
               : `You’re a member of ${totalCount} CRM team${totalCount === 1 ? "" : "s"}.`}
@@ -246,45 +322,69 @@ export default function ProductSuitePageClient() {
         )}
       </div>
 
-      <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <div className={shellCard}>
+        <div className={cardHeader}>
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">CRM Teams</h3>
-            <p className="text-xs text-slate-500">
+            <h3
+              className={cn(
+                "text-sm font-semibold",
+                isDark ? "text-slate-100" : "text-slate-800",
+              )}
+            >
+              CRM Teams
+            </h3>
+            <p
+              className={cn(
+                "text-xs",
+                isDark ? "text-slate-400" : "text-slate-500",
+              )}
+            >
               Select a team to open its CRM workspace.
             </p>
           </div>
         </div>
 
         {loading ? (
-          <div className="px-4 py-6 text-sm text-slate-500">
+          <div
+            className={cn(
+              "px-4 py-6 text-sm",
+              isDark ? "text-slate-400" : "text-slate-500",
+            )}
+          >
             Loading your teams…
           </div>
         ) : totalCount === 0 ? (
-          <div className="px-4 py-6 text-sm text-slate-500">
+          <div
+            className={cn(
+              "px-4 py-6 text-sm",
+              isDark ? "text-slate-400" : "text-slate-500",
+            )}
+          >
             You’re not in any CRM team yet.
             {canCreateTeam && (
               <>
                 {" "}
-                Click <span className="font-semibold">Add team</span> to create
-                your first one.
+                Click{" "}
+                <span
+                  className={cn(
+                    "font-semibold",
+                    isDark ? "text-slate-200" : "text-slate-700",
+                  )}
+                >
+                  Add team
+                </span>{" "}
+                to create your first one.
               </>
             )}
           </div>
         ) : (
           <div className="max-h-[800px] overflow-y-auto overflow-x-auto rounded-b-xl">
             <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-100">
-                <tr className="text-left">
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-700">
-                    Team Name
-                  </th>
-                  <th className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-700">
-                    Role
-                  </th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold text-slate-700">
-                    Open
-                  </th>
+              <thead className={cn("sticky top-0 z-10", theadBg)}>
+                <tr>
+                  <th className={thBase}>Team Name</th>
+                  <th className={thBase}>Role</th>
+                  <th className={thRight}>Open</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,17 +394,18 @@ export default function ProductSuitePageClient() {
                   return (
                     <tr
                       key={team.id}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className={cn("cursor-pointer", rowHover)}
                       onClick={() => handleOpenTeam(team.id)}
                     >
-                      <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-800">
-                        {team.name}
-                      </td>
-                      <td className="border-b border-slate-100 px-3 py-2 align-top text-slate-500 text-xs">
-                        {titleCaseRole(team.role)}
-                      </td>
-                      <td className="border-b border-slate-100 px-3 py-2 align-top text-right">
-                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                      <td className={tdName}>{team.name}</td>
+                      <td className={tdRole}>{titleCaseRole(team.role)}</td>
+                      <td
+                        className={cn(
+                          "border-b px-3 py-2 align-top text-right",
+                          isDark ? "border-slate-900" : "border-slate-100",
+                        )}
+                      >
+                        <span className={badge(true)}>
                           {isOpening ? "Opening…" : "Open Dashboard"}
                         </span>
                       </td>

@@ -8,9 +8,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTheme } from "next-themes";
 
 import { getLeadFieldDefinitions } from "@/modules/crm/data/leadFields";
 import {
@@ -57,7 +59,13 @@ function uid() {
 }
 
 /** ---------- Fireworks / confetti burst (pure DOM + framer-motion) ---------- */
-function FireworksOverlay({ bursts }: { bursts: Burst[] }) {
+function FireworksOverlay({
+  bursts,
+  isDark,
+}: {
+  bursts: Burst[];
+  isDark: boolean;
+}) {
   const PARTICLES = 26;
 
   return (
@@ -124,7 +132,10 @@ function FireworksOverlay({ bursts }: { bursts: Burst[] }) {
 
             {/* soft “boom” ring */}
             <motion.span
-              className="absolute block h-6 w-6 rounded-full ring-2 ring-indigo-200"
+              className={[
+                "absolute block h-6 w-6 rounded-full ring-2",
+                isDark ? "ring-indigo-400/35" : "ring-indigo-200",
+              ].join(" ")}
               style={{ left: 0, top: 0, transform: "translate(-50%, -50%)" }}
               initial={{ scale: 0.4, opacity: 0 }}
               animate={{ scale: 2.6, opacity: 0 }}
@@ -143,10 +154,8 @@ function normalizeRoles(raw: unknown): string[] {
   if (raw === null || raw === undefined) return [];
   if (Array.isArray(raw))
     return raw.map((r) => String(r).trim()).filter(Boolean);
-  // some schemas store role as a single string
   const s = String(raw).trim();
   if (!s) return [];
-  // also allow comma-separated strings
   if (s.includes(","))
     return s
       .split(",")
@@ -202,6 +211,35 @@ function findNameLikeCustomValue(custom: Record<string, any>) {
 }
 
 export function PipelineClient() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  const pageText = isDark ? "text-slate-200" : "text-slate-900";
+  const subText = isDark ? "text-slate-400" : "text-slate-500";
+
+  const card = isDark
+    ? "border-slate-800 bg-slate-950"
+    : "border-slate-200 bg-white";
+
+  const softCard = isDark
+    ? "border-slate-800 bg-slate-900/30"
+    : "border-slate-200 bg-slate-50/80";
+
+  const hoverCard = isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50";
+
+  const dashedEmpty = isDark
+    ? "border-slate-800 bg-slate-950 text-slate-400"
+    : "border-slate-200 bg-white/70 text-slate-400";
+
+  const stageTitle = isDark ? "text-slate-300" : "text-slate-600";
+  const stageMeta = isDark ? "text-slate-500" : "text-slate-400";
+
+  const ringActiveDrop = isDark
+    ? "ring-2 ring-indigo-400/40 ring-offset-2 ring-offset-slate-950"
+    : "ring-2 ring-indigo-300 ring-offset-2 ring-offset-slate-100";
+
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
   const deferredQuery = useDeferredValue(searchQuery);
@@ -419,7 +457,6 @@ export function PipelineClient() {
     const firstStageName = stages[0]?.name;
 
     leads.forEach((lead) => {
-      // if stage not known (or stages missing), keep lead in its stage if possible, otherwise first stage or "New"
       const desired =
         lead.stage && map[lead.stage]
           ? lead.stage
@@ -490,9 +527,8 @@ export function PipelineClient() {
   function handleDragStart(
     leadId: string,
     fromStage: string,
-    e?: React.DragEvent,
+    e?: ReactDragEvent,
   ) {
-    // Needed for some browsers to allow drop
     try {
       if (e?.dataTransfer) {
         e.dataTransfer.setData("text/plain", leadId);
@@ -520,10 +556,19 @@ export function PipelineClient() {
     const lo = Math.min(safeLow, safeHigh);
     const hi = Math.max(safeLow, safeHigh);
 
-    if (score < lo) return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
-    if (score >= hi)
-      return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
-    return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+    if (score < lo) {
+      return isDark
+        ? "bg-rose-500/10 text-rose-200 ring-1 ring-rose-900/40"
+        : "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+    }
+    if (score >= hi) {
+      return isDark
+        ? "bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-900/40"
+        : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+    }
+    return isDark
+      ? "bg-amber-500/10 text-amber-200 ring-1 ring-amber-900/40"
+      : "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
   }
 
   async function logStageChange(
@@ -646,7 +691,11 @@ export function PipelineClient() {
 
   if (workspaceLoaded && !teamId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div
+        className={`rounded-2xl border p-6 text-sm shadow-sm ${card} ${
+          isDark ? "text-slate-300" : "text-slate-600"
+        }`}
+      >
         You don&apos;t seem to be in any team yet. Open this page from a
         workspace, or complete onboarding first.
       </div>
@@ -656,12 +705,16 @@ export function PipelineClient() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-40 rounded-lg bg-slate-200 animate-pulse" />
+        <div
+          className={`h-8 w-40 rounded-lg animate-pulse ${
+            isDark ? "bg-slate-800/70" : "bg-slate-200"
+          }`}
+        />
         <div className="grid gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-64 rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse"
+              className={`h-64 rounded-2xl border shadow-sm animate-pulse ${card}`}
             />
           ))}
         </div>
@@ -691,8 +744,8 @@ export function PipelineClient() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Pipeline</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className={`text-2xl font-semibold ${pageText}`}>Pipeline</h1>
+          <p className={`text-sm ${subText}`}>
             Drag leads between columns to update their stage.
           </p>
         </div>
@@ -714,17 +767,20 @@ export function PipelineClient() {
               <motion.div
                 key={stage.name}
                 className={[
-                  "flex w-64 flex-shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm backdrop-blur transition",
-                  isActiveDrop
-                    ? "ring-2 ring-indigo-300 ring-offset-2 ring-offset-slate-100"
-                    : "",
+                  "flex w-64 flex-shrink-0 flex-col rounded-2xl border p-3 shadow-sm backdrop-blur transition",
+                  softCard,
+                  isActiveDrop ? ringActiveDrop : "",
                 ].join(" ")}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: stageIndex * 0.04, duration: 0.18 }}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
+                  try {
+                    e.dataTransfer.dropEffect = "move";
+                  } catch {
+                    // ignore
+                  }
                 }}
                 onDrop={(e) => {
                   e.preventDefault();
@@ -737,15 +793,21 @@ export function PipelineClient() {
                 {/* Header */}
                 <div className="mb-2 flex items-center justify-between">
                   <div>
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <h2
+                      className={`text-xs font-semibold uppercase tracking-wide ${stageTitle}`}
+                    >
                       {stage.name}
                     </h2>
-                    <p className="text-[11px] text-slate-400">
+                    <p className={`text-[11px] ${stageMeta}`}>
                       {stageLeads.length} lead
                       {stageLeads.length === 1 ? "" : "s"}
                     </p>
                     {conversion !== null && (
-                      <p className="mt-0.5 text-[11px] font-medium text-emerald-600">
+                      <p
+                        className={`mt-0.5 text-[11px] font-medium ${
+                          isDark ? "text-emerald-300" : "text-emerald-600"
+                        }`}
+                      >
                         {conversion.toFixed(0)}% conversion
                       </p>
                     )}
@@ -757,7 +819,7 @@ export function PipelineClient() {
                     {stageLeads.length === 0 && (
                       <motion.div
                         key={`placeholder:${stage.name}`}
-                        className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-4 text-center text-[11px] text-slate-400"
+                        className={`rounded-xl border border-dashed px-3 py-4 text-center text-[11px] ${dashedEmpty}`}
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.98 }}
@@ -788,28 +850,29 @@ export function PipelineClient() {
                           exit={{ opacity: 0, y: 6 }}
                           transition={{ duration: 0.14 }}
                           draggable
-                          onDragStart={() =>
+                          onDragStart={(e) =>
                             handleDragStart(lead.id, stage.name)
                           }
-                          onDragStartCapture={(e) => {
-                            // real React.DragEvent here ✅
-                            try {
-                              e.dataTransfer.setData("text/plain", lead.id);
-                              e.dataTransfer.effectAllowed = "move";
-                            } catch {
-                              // ignore
-                            }
-                          }}
                           onDragEnd={handleDragEnd}
-                          className="group flex w-full cursor-grab flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm transition will-change-transform active:cursor-grabbing"
+                          className={[
+                            "group flex w-full cursor-grab flex-col rounded-xl border px-3 py-2 text-left text-xs shadow-sm transition will-change-transform active:cursor-grabbing",
+                            card,
+                            hoverCard,
+                          ].join(" ")}
                           whileHover={{
                             y: -2,
-                            boxShadow: "0 10px 18px rgba(15, 23, 42, 0.10)",
+                            boxShadow: isDark
+                              ? "0 10px 18px rgba(0,0,0,0.35)"
+                              : "0 10px 18px rgba(15, 23, 42, 0.10)",
                           }}
                           whileTap={{ scale: 0.98 }}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="line-clamp-1 text-[13px] font-semibold text-slate-900">
+                            <span
+                              className={`line-clamp-1 text-[13px] font-semibold ${
+                                isDark ? "text-slate-100" : "text-slate-900"
+                              }`}
+                            >
                               {getLeadTitle(lead)}
                             </span>
 
@@ -826,7 +889,9 @@ export function PipelineClient() {
                               <span
                                 className={[
                                   "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                                  "bg-slate-100 text-slate-500 group-hover:text-indigo-600",
+                                  isDark
+                                    ? "bg-slate-800/70 text-slate-300 group-hover:text-indigo-200"
+                                    : "bg-slate-100 text-slate-500 group-hover:text-indigo-600",
                                 ].join(" ")}
                               >
                                 {stage.name}
@@ -835,7 +900,11 @@ export function PipelineClient() {
                           </div>
 
                           {getLeadSubtitle(lead) && (
-                            <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">
+                            <p
+                              className={`mt-1 line-clamp-1 text-[11px] ${
+                                isDark ? "text-slate-400" : "text-slate-500"
+                              }`}
+                            >
                               {getLeadSubtitle(lead)}
                             </p>
                           )}
@@ -850,7 +919,7 @@ export function PipelineClient() {
         </motion.div>
       </div>
 
-      <FireworksOverlay bursts={bursts} />
+      <FireworksOverlay bursts={bursts} isDark={isDark} />
     </div>
   );
 }
