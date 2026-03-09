@@ -22,7 +22,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const marginClass = collapsed ? "ml-16" : "ml-64";
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-slate-50 text-slate-900 dark:bg-[rgb(2,6,23)] dark:text-slate-100">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <AppSidebar />
 
       <div
@@ -30,8 +30,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
       >
         <AppHeader />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-6 pt-16 mt-5">
-          {children}
+        {/* Header is fixed, so give content enough top padding */}
+        <main className="flex-1 px-6 pb-6 pt-16 overflow-y-auto">
+          {/* if you want extra spacing below header, use padding not margin */}
+          <div className="pt-5">{children}</div>
         </main>
       </div>
     </div>

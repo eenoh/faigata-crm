@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  ExclamationTriangleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 import { useTheme } from "next-themes";
 
 type PaymentRow = {
@@ -149,9 +153,40 @@ function StatusPill({ status, isDark }: { status: string; isDark: boolean }) {
   );
 }
 
+/* -------------------- Role helpers (admin gate) -------------------- */
+
+// role priority from lowest -> highest
+const ROLE_PRIORITY: Record<string, number> = {
+  prospector: 1,
+  setter: 2,
+  closer: 3,
+  manager: 4,
+  admin: 5,
+};
+
+function getHighestRole(rawRoles: unknown): string | null {
+  if (!Array.isArray(rawRoles)) return null;
+
+  let bestRole: string | null = null;
+  let bestScore = -1;
+
+  for (const r of rawRoles) {
+    if (typeof r !== "string") continue;
+    const key = r.toLowerCase();
+    const score = ROLE_PRIORITY[key] ?? 0;
+    if (score > bestScore) {
+      bestScore = score;
+      bestRole = r; // keep original casing
+    }
+  }
+
+  return bestRole;
+}
+
 /* -------------------- Component -------------------- */
 
 export default function PaymentsClient() {
+  const router = useRouter();
   const q = (useSearchParams().get("q") ?? "").trim();
 
   const { resolvedTheme } = useTheme();
@@ -175,9 +210,60 @@ export default function PaymentsClient() {
     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
   const ghostBtn = refreshBtn;
 
+  // warning styles (calendar-like)
+  const warnShell = isDark
+    ? "border-amber-500/20 bg-amber-500/10"
+    : "border-amber-200 bg-amber-50";
+  const warnTitle = isDark ? "text-amber-200" : "text-amber-900";
+  const warnSub = isDark ? "text-amber-200/80" : "text-amber-800";
+  const warnIcon = isDark ? "text-amber-300" : "text-amber-600";
+
+  // fallback error styles
+  const errShell = isDark
+    ? "border-rose-500/25 bg-rose-500/10"
+    : "border-rose-200 bg-rose-50";
+  const errTitle = isDark ? "text-rose-200" : "text-rose-900";
+  const errSub = isDark ? "text-rose-200/80" : "text-rose-800";
+  const errIcon = isDark ? "text-rose-300" : "text-rose-600";
+
+  const primaryBtn = isDark
+    ? "cursor-pointer border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900/60"
+    : "cursor-pointer border-slate-200 bg-white text-slate-800 hover:bg-slate-50";
+
   const [items, setItems] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<ApiError | null>(null);
+
+  // role (for admin gate)
+  const [highestRole, setHighestRole] = useState<string | null>(null);
+  const isAdmin = (highestRole ?? "").toLowerCase() === "admin";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes.user;
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (cancelled) return;
+        setHighestRole(getHighestRole(profile?.role));
+      } catch {
+        if (!cancelled) setHighestRole(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const fetchPayments = useMemo(
     () =>
@@ -229,6 +315,9 @@ export default function PaymentsClient() {
   const totalCount = items.length;
   const visibleCount = totalCount;
 
+  const errCode = String(err?.error ?? "");
+  const isMissingStripe = errCode === "missing_stripe_account";
+
   return (
     <div className="max-w-6xl space-y-6">
       {/* Header card */}
@@ -241,44 +330,89 @@ export default function PaymentsClient() {
               payment to see details.
             </p>
 
-            {!!err && (
+            {!!err && isMissingStripe ? (
+              // ✅ Stripe missing warning (calendar-style)
+              <div className="mt-3">
+                <div
+                  className={["rounded-2xl border p-4 sm:p-5", warnShell].join(
+                    " ",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <ExclamationTriangleIcon
+                      className={`h-5 w-5 mt-0.5 ${warnIcon}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-sm font-semibold ${warnTitle}`}>
+                        Stripe account not connected
+                      </div>
+                      <div
+                        className={`mt-1 text-sm leading-relaxed ${warnSub}`}
+                      >
+                        This organization doesn’t have a Stripe account
+                        connected, so payments can’t be loaded yet.
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => router.push("/profile/integrations")}
+                            className={[
+                              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm",
+                              primaryBtn,
+                            ].join(" ")}
+                          >
+                            Open Integrations
+                          </button>
+                        ) : (
+                          <div
+                            className={[
+                              "text-sm",
+                              isDark ? "text-amber-200/80" : "text-amber-800",
+                            ].join(" ")}
+                          >
+                            Ask a <span className="font-semibold">manager</span>{" "}
+                            to connect Stripe for your organization.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : !!err ? (
+              // Existing error UI for other errors (still nice)
               <div
                 className={[
-                  "mt-3 rounded-xl border px-3 py-2 text-xs",
-                  isDark
-                    ? "border-rose-500/30 bg-rose-500/10"
-                    : "border-rose-200 bg-rose-50",
+                  "mt-3 rounded-2xl border p-4 sm:p-5",
+                  errShell,
                 ].join(" ")}
               >
-                <div
-                  className={
-                    isDark
-                      ? "font-semibold text-rose-200"
-                      : "font-semibold text-rose-700"
-                  }
-                >
-                  Error: {err.error}
+                <div className="flex items-start gap-3">
+                  <XCircleIcon className={`h-5 w-5 mt-0.5 ${errIcon}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-sm font-semibold ${errTitle}`}>
+                      Payments failed to load
+                    </div>
+                    <div className={`mt-1 text-sm leading-relaxed ${errSub}`}>
+                      {err.detail ||
+                        err.hint ||
+                        "Something went wrong while fetching payments. Please try again."}
+                    </div>
+                    <div
+                      className={[
+                        "mt-2 text-[11px] font-medium",
+                        isDark ? "text-slate-400" : "text-slate-500",
+                      ].join(" ")}
+                    >
+                      Error code:{" "}
+                      <span className="font-semibold">{errCode}</span>
+                    </div>
+                  </div>
                 </div>
-                {err.detail && (
-                  <div
-                    className={
-                      isDark ? "mt-1 text-rose-200/90" : "mt-1 text-rose-700/90"
-                    }
-                  >
-                    {err.detail}
-                  </div>
-                )}
-                {err.hint && (
-                  <div
-                    className={
-                      isDark ? "mt-1 text-rose-200/90" : "mt-1 text-rose-700/90"
-                    }
-                  >
-                    {err.hint}
-                  </div>
-                )}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">

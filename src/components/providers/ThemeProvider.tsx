@@ -11,8 +11,6 @@ function ThemeCookieSync() {
   const { theme, resolvedTheme } = useTheme();
 
   React.useEffect(() => {
-    // theme can be "system" (if enabled) or undefined while hydrating.
-    // We want to persist an actual "light" | "dark" value into the cookie.
     const value =
       theme === "light" || theme === "dark"
         ? theme

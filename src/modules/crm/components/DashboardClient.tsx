@@ -210,11 +210,11 @@ function ActivityTooltip({
   const messages = Number(msgsRaw ?? 0);
 
   const shell = isDark
-    ? "border-slate-800 bg-slate-950/95 text-slate-200"
-    : "border-slate-200 bg-white/95 text-slate-600";
+    ? "!border-slate-800 !bg-slate-950/95 !text-slate-200"
+    : "!border-slate-200 !bg-white/95 !text-slate-600";
 
-  const titleCls = isDark ? "text-slate-100" : "text-slate-900";
-  const valueCls = isDark ? "text-slate-100" : "text-slate-900";
+  const titleCls = isDark ? "!text-slate-100" : "!text-slate-900";
+  const valueCls = isDark ? "!text-slate-100" : "!text-slate-900";
 
   return (
     <div
@@ -226,7 +226,7 @@ function ActivityTooltip({
 
       <div
         className={`mt-1 grid gap-1 text-[11px] ${
-          isDark ? "text-slate-300" : "text-slate-600"
+          isDark ? "!text-slate-300" : "!text-slate-600"
         }`}
       >
         <div className="flex items-center justify-between gap-3">
@@ -267,15 +267,15 @@ function MiniLoadingOverlay({
     <div className="absolute inset-0 z-10 flex items-center justify-center">
       <div
         className={`absolute inset-0 backdrop-blur-md ${
-          isDark ? "bg-slate-950/40" : "bg-white/40"
+          isDark ? "!bg-slate-950/40" : "!bg-white/40"
         }`}
       />
 
       <div
         className={`relative z-10 rounded-2xl border backdrop-blur-xl px-10 py-8 shadow-xl ${
           isDark
-            ? "border-slate-800 bg-slate-950/80"
-            : "border-slate-200 bg-white/80"
+            ? "!border-slate-800 !bg-slate-950/80"
+            : "!border-slate-200 !bg-white/80"
         }`}
       >
         <div className="flex items-end justify-center gap-2">
@@ -286,7 +286,7 @@ function MiniLoadingOverlay({
 
         <p
           className={`mt-4 text-center text-sm font-semibold ${
-            isDark ? "text-slate-200" : "text-slate-700"
+            isDark ? "!text-slate-200" : "!text-slate-700"
           }`}
         >
           {label}
@@ -315,12 +315,12 @@ function SkeletonBlock({
 
 function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   const card = isDark
-    ? "border-slate-800 bg-slate-950"
-    : "border-slate-200 bg-white";
+    ? "!border-slate-800 !bg-slate-950"
+    : "!border-slate-200 !bg-white";
 
   const soft = isDark
-    ? "border-slate-800 bg-slate-900/30"
-    : "border-slate-200 bg-slate-50";
+    ? "!border-slate-800 !bg-slate-900/30"
+    : "!border-slate-200 !bg-slate-50";
 
   return (
     <div className="space-y-4">
@@ -520,12 +520,12 @@ function FunnelSvg({
   const maxCount = Math.max(1, ...stages.map((s) => s.leadCount));
 
   const surface = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-200"
-    : "border-slate-200 bg-white text-slate-700";
+    ? "!border-slate-800 !bg-slate-950 !text-slate-200"
+    : "!border-slate-200 !bg-white !text-slate-700";
 
   const softSurface = isDark
-    ? "border-slate-800 bg-slate-900/30 text-slate-300"
-    : "border-slate-200 bg-slate-50 text-slate-700";
+    ? "!border-slate-800 !bg-slate-900/30 !text-slate-300"
+    : "!border-slate-200 !bg-slate-50 !text-slate-700";
 
   const rowHover = isDark ? "hover:bg-slate-900/35" : "hover:bg-slate-50";
 
@@ -593,12 +593,12 @@ function FunnelSvg({
             <span className="h-2 w-2 rounded-full bg-indigo-500/70" />
             <span
               className={`font-semibold ${
-                isDark ? "text-slate-100" : "text-slate-800"
+                isDark ? "!text-slate-100" : "!text-slate-800"
               }`}
             >
               Tip:
             </span>
-            <span className={isDark ? "text-slate-300" : "text-slate-600"}>
+            <span className={isDark ? "!text-slate-300" : "!text-slate-600"}>
               Click a stage for details.
             </span>
           </div>
@@ -607,7 +607,7 @@ function FunnelSvg({
             type="button"
             onClick={onToggleTable}
             className={`inline-flex cursor-pointer items-center justify-center rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition active:scale-[0.99] ${surface} ${
-              isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+              isDark ? "hover:!bg-slate-900/40" : "hover:!bg-slate-50"
             }`}
             aria-pressed={showTable}
           >
@@ -798,7 +798,7 @@ function FunnelSvg({
                     <div className="flex items-center gap-2">
                       <div
                         className={`truncate text-sm font-extrabold ${
-                          isDark ? "text-slate-100" : "text-slate-900"
+                          isDark ? "!text-slate-100" : "!text-slate-900"
                         }`}
                       >
                         {s.name}
@@ -806,8 +806,8 @@ function FunnelSvg({
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                           isDark
-                            ? "bg-indigo-500/15 text-indigo-200"
-                            : "bg-indigo-50 text-indigo-700"
+                            ? "bg-indigo-500/15 !text-indigo-200"
+                            : "bg-indigo-50 !text-indigo-700"
                         }`}
                       >
                         Stage {i + 1}/{stages.length}
@@ -816,7 +816,7 @@ function FunnelSvg({
 
                     <div
                       className={`mt-0.5 text-[11px] ${
-                        isDark ? "text-slate-400" : "text-slate-500"
+                        isDark ? "!text-slate-400" : "!text-slate-500"
                       }`}
                     >
                       {s.leadCount} lead{s.leadCount === 1 ? "" : "s"} in this
@@ -826,20 +826,20 @@ function FunnelSvg({
                     {e && (
                       <div
                         className={`mt-1.5 text-[11px] ${
-                          isDark ? "text-slate-300" : "text-slate-600"
+                          isDark ? "!text-slate-300" : "!text-slate-600"
                         }`}
                       >
                         Next:{" "}
                         <span
                           className={`font-semibold ${
-                            isDark ? "text-slate-100" : "text-slate-900"
+                            isDark ? "!text-slate-100" : "!text-slate-900"
                           }`}
                         >
                           {e.fromStageName} → {e.toStageName}
                         </span>{" "}
                         <span
                           className={
-                            isDark ? "text-slate-600" : "text-slate-400"
+                            isDark ? "!text-slate-600" : "!text-slate-400"
                           }
                         >
                           •
@@ -856,7 +856,7 @@ function FunnelSvg({
                       <div className="text-[10px] opacity-80">Conversion</div>
                       <div
                         className={`text-sm font-extrabold ${
-                          isDark ? "text-slate-100" : "text-slate-900"
+                          isDark ? "!text-slate-100" : "!text-slate-900"
                         }`}
                       >
                         {fmtPct(e?.actualConversionRate ?? null)}
@@ -874,7 +874,7 @@ function FunnelSvg({
                       <div className="text-[10px] opacity-80">Drop-off</div>
                       <div
                         className={`text-sm font-extrabold ${
-                          isDark ? "text-slate-100" : "text-slate-900"
+                          isDark ? "!text-slate-100" : "!text-slate-900"
                         }`}
                       >
                         {e ? e.dropOffCount : "—"}
@@ -888,7 +888,7 @@ function FunnelSvg({
                       type="button"
                       onClick={() => onSelectStageId(null)}
                       className={`cursor-pointer rounded-lg border px-2.5 py-2 text-[11px] font-semibold shadow-sm transition active:scale-[0.99] ${surface} ${
-                        isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+                        isDark ? "hover:!bg-slate-900/40" : "hover:!bg-slate-50"
                       }`}
                     >
                       Clear
@@ -904,29 +904,29 @@ function FunnelSvg({
           <div
             ref={tableRef}
             className={`mt-4 scroll-mt-24 overflow-hidden rounded-xl border ${
-              isDark ? "border-slate-800" : "border-slate-200"
+              isDark ? "!border-slate-800" : "!border-slate-200"
             }`}
           >
             <div
               className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 ${
-                isDark ? "bg-slate-950" : "bg-white"
+                isDark ? "!bg-slate-950" : "!bg-white"
               }`}
             >
               <div
                 className={`text-sm font-semibold ${
-                  isDark ? "text-slate-100" : "text-slate-900"
+                  isDark ? "!text-slate-100" : "!text-slate-900"
                 }`}
               >
                 Stage-to-Stage Performance
               </div>
             </div>
 
-            <div className={isDark ? "bg-slate-950" : "bg-slate-50/60"}>
+            <div className={isDark ? "!bg-slate-950" : "bg-slate-50/60"}>
               <div
                 className={`grid grid-cols-12 gap-2 border-t px-3 py-2 text-[10px] font-semibold ${
                   isDark
-                    ? "border-slate-800 text-slate-300"
-                    : "border-slate-200 text-slate-600"
+                    ? "!border-slate-800 !text-slate-300"
+                    : "!border-slate-200 !text-slate-600"
                 }`}
               >
                 <div className="col-span-4">Transition</div>
@@ -939,8 +939,8 @@ function FunnelSvg({
                 <div
                   className={`border-t px-3 py-3 text-[11px] ${
                     isDark
-                      ? "border-slate-800 text-slate-300"
-                      : "border-slate-200 text-slate-600"
+                      ? "!border-slate-800 !text-slate-300"
+                      : "!border-slate-200 !text-slate-600"
                   }`}
                 >
                   Add at least 2 pipeline stages to see conversion metrics.
@@ -973,21 +973,21 @@ function FunnelSvg({
                         key={`${e.fromStageId}-${e.toStageId}-${e.position ?? "na"}`}
                         onClick={() => onSelectStageId(fromId)}
                         className={`grid w-full grid-cols-12 gap-2 border-t px-3 py-2.5 text-left text-[12px] transition ${
-                          isDark ? "border-slate-800" : "border-slate-200"
+                          isDark ? "!border-slate-800" : "!border-slate-200"
                         } ${
                           isRowActive
                             ? isDark
                               ? "bg-indigo-500/10"
                               : "bg-indigo-50/60"
                             : isDark
-                              ? `bg-slate-950 ${rowHover}`
-                              : `bg-white ${rowHover}`
+                              ? `!bg-slate-950 ${rowHover}`
+                              : `!bg-white ${rowHover}`
                         }`}
                       >
                         <div className="col-span-4 min-w-0">
                           <div
                             className={`truncate font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                             title={`${e.fromStageName} → ${e.toStageName}`}
                           >
@@ -998,7 +998,7 @@ function FunnelSvg({
                         <div className="col-span-3 min-w-0">
                           <div
                             className={`truncate ${
-                              isDark ? "text-slate-300" : "text-slate-700"
+                              isDark ? "!text-slate-300" : "!text-slate-700"
                             }`}
                             title={safeLabel}
                           >
@@ -1009,7 +1009,7 @@ function FunnelSvg({
                         <div className="col-span-2 text-right">
                           <div
                             className={`font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                           >
                             {fmtPct(e.actualConversionRate)}
@@ -1017,7 +1017,7 @@ function FunnelSvg({
                           {normalizedTarget != null && (
                             <div
                               className={`text-[10px] ${
-                                isDark ? "text-slate-400" : "text-slate-500"
+                                isDark ? "!text-slate-400" : "!text-slate-500"
                               }`}
                             >
                               Target {normalizedTarget}%
@@ -1028,13 +1028,13 @@ function FunnelSvg({
                         <div className="col-span-3 text-right">
                           <div
                             className={`font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                           >
                             {e.dropOffCount}{" "}
                             <span
                               className={`font-medium ${
-                                isDark ? "text-slate-400" : "text-slate-500"
+                                isDark ? "!text-slate-400" : "!text-slate-500"
                               }`}
                             >
                               ({fmtPct(e.dropOffRate)})
@@ -1071,35 +1071,37 @@ function StatCard({
   const ring =
     tone === "good"
       ? isDark
-        ? "border-emerald-900/40 bg-emerald-500/10"
-        : "border-emerald-200 bg-emerald-50"
+        ? "!border-emerald-900/40 !bg-emerald-500/10"
+        : "!border-emerald-200 !bg-emerald-50"
       : tone === "warn"
         ? isDark
-          ? "border-amber-900/40 bg-amber-500/10"
-          : "border-amber-200 bg-amber-50"
+          ? "!border-amber-900/40 !bg-amber-500/10"
+          : "!border-amber-200 !bg-amber-50"
         : isDark
-          ? "border-slate-800 bg-slate-950"
-          : "border-slate-200 bg-white";
+          ? "!border-slate-800 !bg-slate-950"
+          : "!border-slate-200 !bg-white";
 
   return (
     <div className={`rounded-xl border ${ring} p-3 shadow-sm`}>
       <div
         className={`text-[10px] font-semibold uppercase tracking-wide ${
-          isDark ? "text-slate-400" : "text-slate-500"
+          isDark ? "!text-slate-400" : "!text-slate-500"
         }`}
       >
         {label}
       </div>
       <div
         className={`mt-1 text-xl font-extrabold ${
-          isDark ? "text-slate-100" : "text-slate-900"
+          isDark ? "!text-slate-100" : "!text-slate-900"
         }`}
       >
         {value}
       </div>
       {sub && (
         <div
-          className={`mt-1 text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}
+          className={`mt-1 text-[11px] ${
+            isDark ? "!text-slate-300" : "!text-slate-600"
+          }`}
         >
           {sub}
         </div>
@@ -1123,13 +1125,17 @@ function SectionHeader({
     <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
       <div className="min-w-0">
         <div
-          className={`text-sm font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+          className={`text-sm font-semibold ${
+            isDark ? "!text-slate-100" : "!text-slate-900"
+          }`}
         >
           {title}
         </div>
         {subtitle && (
           <div
-            className={`mt-0.5 text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+            className={`mt-0.5 text-[11px] ${
+              isDark ? "!text-slate-400" : "!text-slate-500"
+            }`}
           >
             {subtitle}
           </div>
@@ -1150,38 +1156,39 @@ export default function DashboardClient() {
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
 
-  const pageText = isDark ? "text-slate-200" : "text-slate-900";
-  const subText = isDark ? "text-slate-400" : "text-slate-600";
+  // force text colors
+  const pageText = isDark ? "!text-slate-200" : "!text-slate-900";
+  const subText = isDark ? "!text-slate-400" : "!text-slate-600";
 
   const card = isDark
-    ? "border-slate-800 bg-slate-950"
-    : "border-slate-200 bg-white";
+    ? "!border-slate-800 !bg-slate-950"
+    : "!border-slate-200 !bg-white";
 
-  const cardHover = isDark ? "hover:bg-slate-900/30" : "hover:bg-slate-50";
+  const cardHover = isDark ? "hover:!bg-slate-900/30" : "hover:!bg-slate-50";
 
   const pill = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-300"
-    : "border-slate-200 bg-white text-slate-600";
+    ? "!border-slate-800 !bg-slate-950 !text-slate-300"
+    : "!border-slate-200 !bg-white !text-slate-600";
 
   const input = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-200"
-    : "border-slate-200 bg-white text-slate-700";
+    ? "!border-slate-800 !bg-slate-950 !text-slate-200"
+    : "!border-slate-200 !bg-white !text-slate-700";
 
   const dashedEmpty = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-400"
-    : "border-slate-200 bg-slate-50 text-slate-600";
+    ? "!border-slate-800 !bg-slate-950 !text-slate-400"
+    : "!border-slate-200 !bg-slate-50 !text-slate-600";
 
   const badgeSoft = isDark
-    ? "bg-slate-900/60 text-slate-200"
-    : "bg-slate-100 text-slate-700";
+    ? "!bg-slate-900/60 !text-slate-200"
+    : "!bg-slate-100 !text-slate-700";
 
   const badgeIndigo = isDark
-    ? "bg-indigo-500/15 text-indigo-200"
-    : "bg-indigo-50 text-indigo-700";
+    ? "bg-indigo-500/15 !text-indigo-200"
+    : "bg-indigo-50 !text-indigo-700";
 
   const linkIndigo = isDark
-    ? "text-indigo-300 hover:text-indigo-200"
-    : "text-indigo-600 hover:text-indigo-700";
+    ? "!text-indigo-300 hover:!text-indigo-200"
+    : "!text-indigo-600 hover:!text-indigo-700";
 
   const gridStroke = isDark ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.10)";
   const axisStroke = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.12)";
@@ -1425,7 +1432,7 @@ export default function DashboardClient() {
               />
               <span
                 className={`font-semibold ${
-                  isDark ? "text-slate-100" : "text-slate-800"
+                  isDark ? "!text-slate-100" : "!text-slate-800"
                 }`}
               >
                 {refreshing ? "Updating…" : "Live"}
@@ -1433,13 +1440,13 @@ export default function DashboardClient() {
               {data && (
                 <>
                   <span
-                    className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                    className={`mx-2 ${isDark ? "!text-slate-700" : "!text-slate-300"}`}
                   >
                     •
                   </span>
                   <span
                     className={`font-semibold ${
-                      isDark ? "text-slate-100" : "text-slate-800"
+                      isDark ? "!text-slate-100" : "!text-slate-800"
                     }`}
                   >
                     {visibilityLabel}
@@ -1482,7 +1489,7 @@ export default function DashboardClient() {
                 type="button"
                 onClick={() => fetchOverview({ silent: false })}
                 className={`h-9 rounded-lg border px-3 text-[12px] font-semibold shadow-sm ${input} ${
-                  isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50"
+                  isDark ? "hover:!bg-slate-900/40" : "hover:!bg-slate-50"
                 }`}
               >
                 Refresh
@@ -1495,8 +1502,8 @@ export default function DashboardClient() {
           <div
             className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
               isDark
-                ? "border-rose-900/40 bg-rose-500/10 text-rose-200"
-                : "border-rose-200 bg-rose-50 text-rose-800"
+                ? "border-rose-900/40 bg-rose-500/10 !text-rose-200"
+                : "border-rose-200 bg-rose-50 !text-rose-800"
             }`}
           >
             {error}
@@ -1599,8 +1606,8 @@ export default function DashboardClient() {
                 <div
                   className={`rounded-xl border px-4 py-6 text-sm ${
                     isDark
-                      ? "border-slate-800 bg-slate-900/30 text-slate-300"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
+                      ? "!border-slate-800 !bg-slate-900/30 !text-slate-300"
+                      : "!border-slate-200 !bg-slate-50 !text-slate-700"
                   }`}
                 >
                   You only have <span className="font-semibold">1</span> stage.
@@ -1624,14 +1631,14 @@ export default function DashboardClient() {
                 <div
                   className={`mt-3 rounded-xl border p-3 text-[11px] ${
                     isDark
-                      ? "border-slate-800 bg-slate-900/30 text-slate-300"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
+                      ? "!border-slate-800 !bg-slate-900/30 !text-slate-300"
+                      : "!border-slate-200 !bg-slate-50 !text-slate-700"
                   }`}
                 >
                   <span className="font-semibold">Overall conversion:</span>{" "}
                   <span
                     className={`font-extrabold ${
-                      isDark ? "text-slate-100" : "text-slate-900"
+                      isDark ? "!text-slate-100" : "!text-slate-900"
                     }`}
                   >
                     {fmtPct(insights.overallConv)}
@@ -1639,14 +1646,14 @@ export default function DashboardClient() {
                   {insights.worstEdge && (
                     <>
                       <span
-                        className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                        className={`mx-2 ${isDark ? "!text-slate-700" : "!text-slate-300"}`}
                       >
                         •
                       </span>
                       <span className="font-semibold">Biggest drop:</span>{" "}
                       <span
                         className={`font-extrabold ${
-                          isDark ? "text-slate-100" : "text-slate-900"
+                          isDark ? "!text-slate-100" : "!text-slate-900"
                         }`}
                       >
                         {insights.worstEdge.fromStageName} →{" "}
@@ -1759,7 +1766,7 @@ export default function DashboardClient() {
                   </div>
 
                   <div
-                    className={`mt-3 text-[10px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                    className={`mt-3 text-[10px] ${isDark ? "!text-slate-400" : "!text-slate-500"}`}
                   >
                     Tip: hover the chart to compare leads added vs messages sent
                     for the same period.
@@ -1804,20 +1811,20 @@ export default function DashboardClient() {
                         <div className="min-w-0">
                           <div
                             className={`truncate text-[12px] font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                           >
                             {l.name || "Unnamed lead"}
                           </div>
                           <div
                             className={`mt-0.5 text-[11px] ${
-                              isDark ? "text-slate-400" : "text-slate-500"
+                              isDark ? "!text-slate-400" : "!text-slate-500"
                             }`}
                           >
                             Stage:{" "}
                             <span
                               className={`font-semibold ${
-                                isDark ? "text-slate-200" : "text-slate-700"
+                                isDark ? "!text-slate-200" : "!text-slate-700"
                               }`}
                             >
                               {l.stage || "—"}
@@ -1825,7 +1832,7 @@ export default function DashboardClient() {
                             {l.last_activity_at && (
                               <>
                                 <span
-                                  className={`mx-2 ${isDark ? "text-slate-700" : "text-slate-300"}`}
+                                  className={`mx-2 ${isDark ? "!text-slate-700" : "!text-slate-300"}`}
                                 >
                                   •
                                 </span>
@@ -1872,7 +1879,7 @@ export default function DashboardClient() {
                         <div className="min-w-0">
                           <div
                             className={`truncate text-[12px] font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                           >
                             {b.invitee_first_name
@@ -1882,7 +1889,7 @@ export default function DashboardClient() {
                           </div>
                           <div
                             className={`mt-0.5 text-[11px] ${
-                              isDark ? "text-slate-400" : "text-slate-500"
+                              isDark ? "!text-slate-400" : "!text-slate-500"
                             }`}
                           >
                             {fmtDateTime(b.start_at)}
@@ -1926,14 +1933,14 @@ export default function DashboardClient() {
                         <div className="min-w-0">
                           <div
                             className={`truncate text-[12px] font-semibold ${
-                              isDark ? "text-slate-100" : "text-slate-900"
+                              isDark ? "!text-slate-100" : "!text-slate-900"
                             }`}
                           >
                             {e.label}
                           </div>
                           <div
                             className={`mt-0.5 text-[11px] ${
-                              isDark ? "text-slate-400" : "text-slate-500"
+                              isDark ? "!text-slate-400" : "!text-slate-500"
                             }`}
                           >
                             {fmtDateTime(e.at)}

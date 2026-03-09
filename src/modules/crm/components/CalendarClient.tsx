@@ -7,9 +7,92 @@ import {
   ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ExclamationTriangleIcon,
+  XCircleIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+
+/* ===================== HEADER ALERT BRIDGE ===================== */
+
+type HeaderAlertKind = "warning" | "error";
+
+type HeaderAlertPayload = {
+  id: string; // stable per page (e.g. "calendar")
+  kind: HeaderAlertKind;
+  text: string;
+  title?: string;
+};
+
+const HEADER_ALERT_EVENT = "faigata:header-alert";
+const HEADER_ALERT_CLEAR_EVENT = "faigata:header-alert-clear";
+
+function pushHeaderAlert(payload: HeaderAlertPayload) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(HEADER_ALERT_EVENT, { detail: payload }),
+  );
+}
+
+function clearHeaderAlert(id: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(HEADER_ALERT_CLEAR_EVENT, { detail: { id } }),
+  );
+}
+
+/**
+ * Map backend/client error -> header pill.
+ * IMPORTANT: We intentionally DO NOT create a header pill for
+ * `host_calendar_not_connected` so the "Connect Google Calendar" button
+ * never appears in the header.
+ */
+function mapCalendarErrorToHeaderAlert(err: string): HeaderAlertPayload | null {
+  if (err === "host_calendar_reconnect_required") {
+    return {
+      id: "calendar",
+      kind: "warning",
+      text: "Reconnect Google Calendar",
+      title:
+        "Reconnect Google Calendar in Integrations to keep booking links working.",
+    };
+  }
+
+  // ❌ NO header pill for this
+  if (err === "host_calendar_not_connected") {
+    return null;
+  }
+
+  if (err === "unauthorized") {
+    return {
+      id: "calendar",
+      kind: "error",
+      text: "Session expired",
+      title:
+        "You’re not signed in (or your session expired). Please log in again.",
+    };
+  }
+
+  if (err.startsWith("failed_")) {
+    return {
+      id: "calendar",
+      kind: "error",
+      text: "Calendar failed to load",
+      title: err,
+    };
+  }
+
+  return {
+    id: "calendar",
+    kind: "error",
+    text: "Calendar error",
+    title: err,
+  };
+}
+
+/* ===================== EXISTING TYPES ===================== */
 
 type BusyBlock = { start: string; end: string };
 
@@ -38,6 +121,107 @@ function clamp(dt: DateTime, min: DateTime, max: DateTime) {
   if (dt < min) return min;
   if (dt > max) return max;
   return dt;
+}
+
+/* ===================== ERROR UI HELPERS (NEW) ===================== */
+
+type CalendarErrorView = {
+  kind: "warning" | "error";
+  title: string;
+  message: string;
+  action?:
+    | { label: string; onClick: () => void }
+    | { label: string; href: string };
+  secondary?: { label: string; onClick: () => void };
+  showRetry?: boolean;
+};
+
+function buildCalendarErrorView(
+  err: string,
+  opts: {
+    routerPush: (href: string) => void;
+    onRetry: () => void;
+  },
+): CalendarErrorView {
+  if (err === "host_calendar_reconnect_required") {
+    return {
+      kind: "warning",
+      title: "Reconnect required",
+      message:
+        "Your Google Calendar connection needs a quick reconnect to load availability and events.",
+      action: {
+        label: "Open Integrations",
+        onClick: () => opts.routerPush("/profile/integrations"),
+      },
+      secondary: {
+        label: "Retry",
+        onClick: opts.onRetry,
+      },
+      showRetry: false,
+    };
+  }
+
+  if (err === "host_calendar_not_connected") {
+    return {
+      kind: "warning",
+      title: "Calendar not connected",
+      message:
+        "Connect Google Calendar in Integrations to load availability and bookings on this page.",
+      action: {
+        label: "Open Integrations",
+        onClick: () => opts.routerPush("/profile/integrations"),
+      },
+      secondary: {
+        label: "Retry",
+        onClick: opts.onRetry,
+      },
+      showRetry: false,
+    };
+  }
+
+  if (err === "unauthorized") {
+    return {
+      kind: "error",
+      title: "Session expired",
+      message:
+        "You’re not signed in (or your session expired). Please log in again to load your calendar.",
+      action: {
+        label: "Go to login",
+        onClick: () => opts.routerPush("/login"),
+      },
+      secondary: {
+        label: "Retry",
+        onClick: opts.onRetry,
+      },
+      showRetry: false,
+    };
+  }
+
+  if (err.startsWith("failed_")) {
+    return {
+      kind: "error",
+      title: "Calendar failed to load",
+      message:
+        "We couldn’t fetch your calendar data. This is usually temporary — please try again.",
+      secondary: {
+        label: "Retry",
+        onClick: opts.onRetry,
+      },
+      showRetry: true,
+    };
+  }
+
+  return {
+    kind: "error",
+    title: "Something went wrong",
+    message:
+      "An unexpected error occurred while loading the calendar. Please try again.",
+    secondary: {
+      label: "Retry",
+      onClick: opts.onRetry,
+    },
+    showRetry: true,
+  };
 }
 
 function LoadingSkeleton({
@@ -103,6 +287,8 @@ function LoadingSkeleton({
 }
 
 export default function CalendarClient() {
+  const router = useRouter();
+
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -113,6 +299,33 @@ export default function CalendarClient() {
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  // Used to force a refetch (retry) without reloading the page
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = () => setReloadKey((k) => k + 1);
+
+  /* ===================== HEADER ALERT SYNC ===================== */
+  useEffect(() => {
+    const alertId = "calendar";
+
+    if (!err) {
+      clearHeaderAlert(alertId);
+      return;
+    }
+
+    const mapped = mapCalendarErrorToHeaderAlert(err);
+    if (!mapped) {
+      clearHeaderAlert(alertId);
+      return;
+    }
+
+    pushHeaderAlert(mapped);
+  }, [err]);
+
+  useEffect(() => {
+    return () => clearHeaderAlert("calendar");
+  }, []);
+  /* ============================================================ */
 
   const [weekAnchor, setWeekAnchor] = useState(() =>
     DateTime.now().startOf("day"),
@@ -224,7 +437,7 @@ export default function CalendarClient() {
       cancelled = true;
       controller.abort();
     };
-  }, [tz, weekStart]);
+  }, [tz, weekStart, reloadKey]);
 
   const busyInWeek = useMemo(
     () =>
@@ -338,7 +551,9 @@ export default function CalendarClient() {
     return out;
   }
 
-  const titleRange = `${weekStart.toFormat("MMM d")} – ${weekStart.plus({ days: 6 }).toFormat("MMM d, yyyy")}`;
+  const titleRange = `${weekStart.toFormat("MMM d")} – ${weekStart
+    .plus({ days: 6 })
+    .toFormat("MMM d, yyyy")}`;
   const now = DateTime.now().setZone(tz);
 
   // event styling (indigo, but theme-safe)
@@ -373,6 +588,58 @@ export default function CalendarClient() {
   const hourLineBorder = isDark
     ? "rgba(148,163,184,0.12)"
     : "rgba(148,163,184,0.18)";
+
+  // NEW: error card styles
+  const warnShell = isDark
+    ? "border-amber-500/20 bg-amber-500/10"
+    : "border-amber-200 bg-amber-50";
+  const warnText = isDark ? "text-amber-200" : "text-amber-900";
+  const warnSub = isDark ? "text-amber-200/70" : "text-amber-800";
+  const warnIcon = isDark ? "text-amber-300" : "text-amber-600";
+
+  const errShell = isDark
+    ? "border-rose-500/20 bg-rose-500/10"
+    : "border-rose-200 bg-rose-50";
+  const errText = isDark ? "text-rose-200" : "text-rose-900";
+  const errSub = isDark ? "text-rose-200/70" : "text-rose-800";
+  const errIcon = isDark ? "text-rose-300" : "text-rose-600";
+
+  const actionBtn = isDark
+    ? "cursor-pointer border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900/60"
+    : "cursor-pointer border-slate-200 bg-white text-slate-800 hover:bg-slate-50";
+
+  const subtleBtn = isDark
+    ? [
+        "cursor-pointer",
+        "border-slate-700/60",
+        "bg-slate-900/60",
+        "text-slate-100",
+        "hover:bg-slate-900",
+        "hover:border-slate-600",
+        "shadow-sm",
+        "ring-1 ring-inset ring-slate-800/60",
+        "active:scale-[0.98]",
+        "transition",
+      ].join(" ")
+    : [
+        "cursor-pointer",
+        "border-slate-200",
+        "bg-slate-50",
+        "text-slate-800",
+        "hover:bg-white",
+        "hover:border-slate-300",
+        "shadow-sm",
+        "ring-1 ring-inset ring-slate-200",
+        "active:scale-[0.98]",
+        "transition",
+      ].join(" ");
+
+  const errorView = err
+    ? buildCalendarErrorView(err, {
+        routerPush: (href) => router.push(href),
+        onRetry: retry,
+      })
+    : null;
 
   return (
     <div className="p-6">
@@ -427,7 +694,9 @@ export default function CalendarClient() {
             Times shown in {tz}
             {loading && (
               <span
-                className={`ml-2 inline-flex items-center gap-2 ${isDark ? "text-slate-500" : "text-slate-400"}`}
+                className={`ml-2 inline-flex items-center gap-2 ${
+                  isDark ? "text-slate-500" : "text-slate-400"
+                }`}
               >
                 <span
                   className={`h-3 w-3 animate-spin rounded-full border-2 ${
@@ -442,17 +711,98 @@ export default function CalendarClient() {
           </div>
         </div>
 
-        {err ? (
-          <div
-            className={`p-4 text-sm ${isDark ? "text-rose-300" : "text-rose-700"}`}
-          >
-            {err === "unauthorized"
-              ? "You’re not signed in (or your session expired). Please log in again."
-              : err === "host_calendar_not_connected"
-                ? "Your Google Calendar isn’t connected yet."
-                : err === "host_calendar_reconnect_required"
-                  ? "Please reconnect Google Calendar in Settings."
-                  : err}
+        {/* ✅ Better themed error UI */}
+        {errorView ? (
+          <div className="p-4">
+            <div
+              className={[
+                "rounded-2xl border p-4 sm:p-5",
+                errorView.kind === "warning" ? warnShell : errShell,
+              ].join(" ")}
+            >
+              <div className="flex items-start gap-3">
+                {errorView.kind === "warning" ? (
+                  <ExclamationTriangleIcon
+                    className={`h-5 w-5 mt-0.5 ${warnIcon}`}
+                  />
+                ) : (
+                  <XCircleIcon className={`h-5 w-5 mt-0.5 ${errIcon}`} />
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={[
+                      "text-sm font-semibold",
+                      errorView.kind === "warning" ? warnText : errText,
+                    ].join(" ")}
+                  >
+                    {errorView.title}
+                  </div>
+
+                  <div
+                    className={[
+                      "mt-1 text-sm leading-relaxed",
+                      errorView.kind === "warning" ? warnSub : errSub,
+                    ].join(" ")}
+                  >
+                    {errorView.message}
+                  </div>
+
+                  {/* raw code (only if it's not one of the known ones) */}
+                  {err &&
+                    ![
+                      "host_calendar_reconnect_required",
+                      "host_calendar_not_connected",
+                      "unauthorized",
+                    ].includes(err) &&
+                    err.startsWith("failed_") && (
+                      <div
+                        className={[
+                          "mt-2 text-[11px] font-medium",
+                          isDark ? "text-slate-400" : "text-slate-500",
+                        ].join(" ")}
+                      >
+                        Error code: <span className="font-semibold">{err}</span>
+                      </div>
+                    )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {errorView.action && "onClick" in errorView.action && (
+                      <button
+                        type="button"
+                        onClick={errorView.action.onClick}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm ${actionBtn}`}
+                      >
+                        {errorView.action.label}
+                      </button>
+                    )}
+
+                    {errorView.secondary && (
+                      <button
+                        type="button"
+                        onClick={errorView.secondary.onClick}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${subtleBtn}`}
+                      >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        {errorView.secondary.label}
+                      </button>
+                    )}
+
+                    {/* fallback retry for generic errors */}
+                    {!errorView.secondary && errorView.showRetry && (
+                      <button
+                        type="button"
+                        onClick={retry}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${subtleBtn}`}
+                      >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Retry
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : loading ? (
           <LoadingSkeleton rows={12} isDark={isDark} />
@@ -540,7 +890,9 @@ export default function CalendarClient() {
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className={`${ROW_HEIGHT_CLASS} border-b px-3 py-1 text-[11px] ${timeColText} ${isDark ? "border-slate-900" : "border-slate-50"}`}
+                    className={`${ROW_HEIGHT_CLASS} border-b px-3 py-1 text-[11px] ${timeColText} ${
+                      isDark ? "border-slate-900" : "border-slate-50"
+                    }`}
                   >
                     {DateTime.fromObject({ hour: h }).toFormat("ha")}
                   </div>

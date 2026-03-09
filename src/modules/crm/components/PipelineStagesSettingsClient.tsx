@@ -80,10 +80,6 @@ export function PipelineStagesSettingsClient() {
     ? "border-slate-800 bg-slate-950"
     : "border-slate-100 bg-white";
 
-  const soft = isDark
-    ? "border-slate-800 bg-slate-900/40"
-    : "border-slate-100 bg-slate-50";
-
   const inputTheme = isDark
     ? "border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-600"
     : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400";
@@ -149,7 +145,7 @@ export function PipelineStagesSettingsClient() {
   function addStage() {
     setStages((prev) => [
       ...prev,
-      { name: `New Stage ${prev.length + 1}`, position: prev.length },
+      { name: `New Stage ${prev.length + 1}`, position: prev.length } as any,
     ]);
     setSaveState("idle");
     setErrorMessage(null);
@@ -299,45 +295,48 @@ export function PipelineStagesSettingsClient() {
           </div>
         )}
 
-        {stages.map((stage, index) => (
-          <div
-            key={index}
-            className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm ${card}`}
-          >
-            <input
-              className={`flex-1 rounded-lg border px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 ${inputTheme}`}
-              value={stage.name}
-              onChange={(e) => updateStage(index, { name: e.target.value })}
-              disabled={!canEdit}
-            />
+        {stages.map((stage, index) => {
+          const key = String((stage as any).id ?? `idx-${index}`);
+          return (
+            <div
+              key={key}
+              className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm ${card}`}
+            >
+              <input
+                className={`flex-1 rounded-lg border px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 ${inputTheme}`}
+                value={stage.name}
+                onChange={(e) => updateStage(index, { name: e.target.value })}
+                disabled={!canEdit}
+              />
 
-            <div className="flex flex-col items-end gap-1 text-[11px]">
-              <div className="inline-flex gap-1">
+              <div className="flex flex-col items-end gap-1 text-[11px]">
+                <div className="inline-flex gap-1">
+                  <button
+                    onClick={() => moveStage(index, "up")}
+                    disabled={!canEdit || index === 0}
+                    className="rounded-full border px-2 py-1 disabled:opacity-40"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveStage(index, "down")}
+                    disabled={!canEdit || index === stages.length - 1}
+                    className="rounded-full border px-2 py-1 disabled:opacity-40"
+                  >
+                    ↓
+                  </button>
+                </div>
                 <button
-                  onClick={() => moveStage(index, "up")}
-                  disabled={!canEdit || index === 0}
-                  className="rounded-full border px-2 py-1 disabled:opacity-40"
+                  onClick={() => removeStage(index)}
+                  disabled={!canEdit}
+                  className="text-[11px] text-slate-400 hover:text-rose-600"
                 >
-                  ↑
-                </button>
-                <button
-                  onClick={() => moveStage(index, "down")}
-                  disabled={!canEdit || index === stages.length - 1}
-                  className="rounded-full border px-2 py-1 disabled:opacity-40"
-                >
-                  ↓
+                  Remove
                 </button>
               </div>
-              <button
-                onClick={() => removeStage(index)}
-                disabled={!canEdit}
-                className="text-[11px] text-slate-400 hover:text-rose-600"
-              >
-                Remove
-              </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex gap-3 pt-2">

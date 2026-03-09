@@ -65,7 +65,6 @@ async function assertMembership(userId: string, teamId: string) {
       { status: 403 },
     );
   }
-
   return null;
 }
 
@@ -74,17 +73,42 @@ function normalizeIncomingStages(stagesRaw: unknown) {
 
   return stagesRaw
     .map((s: any, idx: number) => {
+      const id =
+        typeof s?.id === "string" && s.id.trim().length > 0
+          ? s.id.trim()
+          : null;
+
       const name = String(s?.name ?? "").trim();
+
       const positionNum = Number(s?.position);
       const position = Number.isFinite(positionNum) ? positionNum : idx;
-      return { name, position };
+
+      const scorePointsNum = s?.score_points ?? s?.scorePoints;
+      const score_points =
+        scorePointsNum === undefined || scorePointsNum === null
+          ? null
+          : Number(scorePointsNum);
+
+      const score_points_is_custom =
+        s?.score_points_is_custom === undefined ||
+        s?.score_points_is_custom === null
+          ? null
+          : Boolean(s.score_points_is_custom);
+
+      return {
+        id,
+        name,
+        position,
+        score_points: Number.isFinite(score_points as number)
+          ? (score_points as number)
+          : null,
+        score_points_is_custom,
+      };
     })
     .filter((s) => s.name.length > 0);
 }
 
 function escapePostgrestCsvUuidList(ids: string[]) {
-  // IDs here are UUIDs from DB, so they should already be safe; keep it explicit.
-  // PostgREST expects: in.(uuid1,uuid2,...)
   return ids.join(",");
 }
 
@@ -109,27 +133,26 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const teamIdParam = url.searchParams.get("teamId");
-
     const teamId = await resolveTeamIdForUser(userId, teamIdParam);
-    if (!teamId) {
+
+    if (!teamId)
       return NextResponse.json({ ok: true, stages: [] }, { status: 200 });
-    }
 
     const forbidden = await assertMembership(userId, teamId);
     if (forbidden) return forbidden;
 
     const { data, error } = await supabaseAdmin
       .from("pipeline_stages")
-      .select("id, name, position")
+      .select("id, name, position, score_points, score_points_is_custom")
       .eq("team_id", teamId)
       .order("position", { ascending: true });
 
     if (error) throw error;
 
-    // avoid `??` unreachable: ensure array
-    const stages = Array.isArray(data) ? data : [];
-
-    return NextResponse.json({ ok: true, stages }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, stages: Array.isArray(data) ? data : [] },
+      { status: 200 },
+    );
   } catch (err: any) {
     console.error("[pipeline-stages][GET] failed", err);
     return NextResponse.json(
@@ -139,7 +162,7 @@ export async function GET(req: Request) {
   }
 }
 
-/** PUT /api/crm/pipeline-stages?teamId=...  body: { stages: [{name, position}] } */
+/** PUT /api/crm/pipeline-stages?teamId=...  body: { stages: [{id?,name,position,score_points?,score_points_is_custom?}] } */
 export async function PUT(req: Request) {
   try {
     const token = getBearerToken(req);
@@ -160,8 +183,8 @@ export async function PUT(req: Request) {
 
     const url = new URL(req.url);
     const teamIdParam = url.searchParams.get("teamId");
-
     const teamId = await resolveTeamIdForUser(userId, teamIdParam);
+
     if (!teamId) {
       return NextResponse.json(
         { ok: false, error: "Missing teamId (and no default team on profile)" },
@@ -188,7 +211,7 @@ export async function PUT(req: Request) {
     // load existing stages WITH ids
     const { data: existingRaw, error: exErr } = await supabaseAdmin
       .from("pipeline_stages")
-      .select("id, name, position")
+      .select("id, name, position, score_points, score_points_is_custom")
       .eq("team_id", teamId);
 
     if (exErr) throw exErr;
@@ -197,42 +220,44 @@ export async function PUT(req: Request) {
       id: string;
       name: string;
       position: number | null;
+      score_points: number | null;
+      score_points_is_custom: boolean | null;
     }> = Array.isArray(existingRaw) ? (existingRaw as any) : [];
 
-    // name matching (case-insensitive) to preserve ids where possible
-    const existingByLower = new Map<
-      string,
-      { id: string; name: string; position: number | null }
-    >();
+    const existingByLower = new Map<string, (typeof existingList)[number]>();
+    const existingById = new Map<string, (typeof existingList)[number]>();
     for (const s of existingList) {
       existingByLower.set(String(s.name ?? "").toLowerCase(), s);
+      existingById.set(String(s.id), s);
     }
 
-    // split into updates (keep id) vs inserts
-    const updates: Array<{
-      id: string;
-      team_id: string;
-      name: string;
-      position: number;
-    }> = [];
-    const inserts: Array<{ team_id: string; name: string; position: number }> =
-      [];
+    const updates: Array<any> = [];
+    const inserts: Array<any> = [];
 
     for (const s of incoming) {
-      const hit = existingByLower.get(s.name.toLowerCase());
+      const byId = s.id ? existingById.get(s.id) : null;
+      const byName = existingByLower.get(s.name.toLowerCase());
+
+      const hit = byId ?? byName;
+
+      const base = {
+        team_id: teamId,
+        name: s.name,
+        position: s.position,
+      };
+
+      const scorePatch: any = {};
+      if (s.score_points !== null) scorePatch.score_points = s.score_points;
+      if (s.score_points_is_custom !== null)
+        scorePatch.score_points_is_custom = s.score_points_is_custom;
+
       if (hit?.id) {
-        updates.push({
-          id: String(hit.id),
-          team_id: teamId,
-          name: s.name,
-          position: s.position,
-        });
+        updates.push({ id: String(hit.id), ...base, ...scorePatch });
       } else {
-        inserts.push({ team_id: teamId, name: s.name, position: s.position });
+        inserts.push({ ...base, ...scorePatch });
       }
     }
 
-    // apply updates (keep ids)
     if (updates.length > 0) {
       const { error: upErr } = await supabaseAdmin
         .from("pipeline_stages")
@@ -241,7 +266,6 @@ export async function PUT(req: Request) {
       if (upErr) throw upErr;
     }
 
-    // apply inserts
     if (inserts.length > 0) {
       const { error: insErr } = await supabaseAdmin
         .from("pipeline_stages")
@@ -249,7 +273,7 @@ export async function PUT(req: Request) {
       if (insErr) throw insErr;
     }
 
-    // compute deletions: existing ids whose names are not in incoming
+    // deletions: existing ids whose names are not in incoming
     const incomingLowerSet = new Set(incoming.map((s) => s.name.toLowerCase()));
     const toDelete = existingList.filter(
       (s) => !incomingLowerSet.has(String(s.name ?? "").toLowerCase()),
@@ -257,9 +281,30 @@ export async function PUT(req: Request) {
     const toDeleteIds = toDelete.map((s) => String(s.id)).filter(Boolean);
 
     if (toDeleteIds.length > 0) {
-      // check if any conversion_metrics reference these stages
       const csv = escapePostgrestCsvUuidList(toDeleteIds);
 
+      // ✅ NEW: block deletion if ANY leads reference these stages
+      const { data: leadRefs, error: leadRefErr } = await supabaseAdmin
+        .from("leads")
+        .select("id, stage_id")
+        .eq("team_id", teamId)
+        .in("stage_id", toDeleteIds)
+        .limit(1);
+
+      if (leadRefErr) throw leadRefErr;
+
+      if ((Array.isArray(leadRefs) ? leadRefs : []).length > 0) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "You can’t delete a stage that is currently used by at least one lead. Move those leads to another stage first.",
+          },
+          { status: 409 },
+        );
+      }
+
+      // existing conversion_metrics guard (keep)
       const { data: refsRaw, error: refErr } = await supabaseAdmin
         .from("conversion_metrics")
         .select("id, from_stage_id, to_stage_id")
@@ -269,7 +314,6 @@ export async function PUT(req: Request) {
       if (refErr) throw refErr;
 
       const referenced = Array.isArray(refsRaw) ? refsRaw : [];
-
       if (referenced.length > 0) {
         const namesInUse = toDelete
           .filter((s) =>
@@ -293,7 +337,6 @@ export async function PUT(req: Request) {
         );
       }
 
-      // safe to delete
       const { error: delErr } = await supabaseAdmin
         .from("pipeline_stages")
         .delete()
@@ -313,7 +356,7 @@ export async function PUT(req: Request) {
 }
 
 /**
- * Optional backwards-compatible POST (your old version)
+ * Optional backwards-compatible POST
  * POST body: { teamId }
  */
 export async function POST(req: Request) {
@@ -331,14 +374,13 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from("pipeline_stages")
-      .select("id, name, position")
+      .select("id, name, position, score_points, score_points_is_custom")
       .eq("team_id", teamId)
       .order("position", { ascending: true });
 
     if (error) throw error;
 
-    const stages = Array.isArray(data) ? data : [];
-    return NextResponse.json(stages, { status: 200 });
+    return NextResponse.json(Array.isArray(data) ? data : [], { status: 200 });
   } catch (err: any) {
     console.error("[pipeline-stages][POST] failed", err);
     return NextResponse.json(

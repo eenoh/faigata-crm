@@ -2,15 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
+import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
 export const runtime = "nodejs";
 
 /**
- * Works with your existing endpoints:
- * - GET  /api/crm/booking-invite?t=TOKEN               (validate token)
- * - GET  /api/crm/booking-links/[slug]/availability?...&t=TOKEN
- * - POST /api/crm/booking-links/[slug]/book           body.token = TOKEN
- *
  * Creates a booking_link_invites row that matches your schema.
  */
 
@@ -107,8 +103,6 @@ export async function GET(req: NextRequest) {
       if (exp.getTime() < Date.now()) return jsonError("invite_expired", 410);
     }
 
-    // NOTE: We intentionally do NOT echo the token back.
-    // If you need it for debugging, add it back — but it’s usually safer not to.
     return NextResponse.json({ ok: true, invite: data });
   } catch (e: any) {
     console.error("[crm-booking-invite] unexpected:", e);
@@ -151,7 +145,7 @@ export async function POST(req: NextRequest) {
       return jsonError("invalid_session", 401);
     }
 
-    // Verify user is in the team (profiles.team_id)
+    // Verify user is in the team
     const { data: profile, error: profErr } = await admin
       .from("profiles")
       .select("id, team_id")
@@ -219,8 +213,6 @@ export async function POST(req: NextRequest) {
           token: inviteToken,
           expires_at: expiresAtIso,
           created_at: nowIso,
-          // If your schema supports it, this is useful:
-          // created_by: userId,
         })
         .select("id, token")
         .single();
@@ -232,7 +224,6 @@ export async function POST(req: NextRequest) {
 
       lastErr = invErr;
 
-      // retry only for genuine uniqueness collisions
       if (!isUniqueViolation(invErr)) break;
     }
 
@@ -261,7 +252,7 @@ export async function POST(req: NextRequest) {
     const path = `/b/${encodeURIComponent(slug)}?t=${encodeURIComponent(inviteRow.token)}`;
     const url = base ? `${base}${path}` : path;
 
-    // ✅ Timeline message (non-fatal) WITH event_type + event_data (jsonb NOT NULL)
+    // Timeline message (non-fatal)
     try {
       const event_type = "booking_invite_created";
       const event_data = {
@@ -270,7 +261,6 @@ export async function POST(req: NextRequest) {
         booking_link_id: bookingLinkId,
         booking_link_slug: slug,
         invite_id: inviteRow.id,
-        // token is useful internally; remove if you don’t want it stored
         token: inviteRow.token,
         url,
         expires_at: expiresAtIso,
@@ -280,19 +270,13 @@ export async function POST(req: NextRequest) {
       const { error: msgErr } = await admin.from("lead_messages").insert({
         team_id: teamId,
         lead_id: leadId,
-
         direction: "outbound",
         channel: "pipeline",
-
         body: `Sent booking link: ${url}`,
-
         sender_profile_id: userId,
-        // Only include user_id if your table has it; remove if not:
         user_id: userId,
-
         sent_at: nowIso,
         created_at: nowIso,
-
         event_type,
         event_data,
       } as any);
@@ -306,6 +290,50 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error(
         "[booking-invite] lead_messages insert failed (non-fatal):",
+        e,
+      );
+    }
+
+    // scoring event + recompute (non-fatal)
+    try {
+      const { error: scoreEventErr } = await admin
+        .from("lead_score_events")
+        .insert({
+          team_id: teamId,
+          lead_id: leadId,
+          event_type: "booking_link_created",
+          reason: "Unique booking link created",
+          source_table: "booking_link_invites",
+          source_id: inviteRow.id,
+          metadata: {
+            created_by: userId,
+            booking_link_id: bookingLinkId,
+            booking_link_slug: slug,
+            invite_id: inviteRow.id,
+            url,
+            expires_at: expiresAtIso,
+          },
+          created_at: nowIso,
+        });
+
+      if (scoreEventErr) {
+        console.error(
+          "[booking-invite] lead_score_events insert error (non-fatal):",
+          scoreEventErr,
+        );
+      } else {
+        try {
+          await recomputeLeadScore(teamId, leadId);
+        } catch (recomputeErr) {
+          console.error(
+            "[booking-invite] recomputeLeadScore failed after booking link creation",
+            recomputeErr,
+          );
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[booking-invite] lead_score_events insert failed (non-fatal):",
         e,
       );
     }

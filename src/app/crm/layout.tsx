@@ -13,5 +13,9 @@ export default function ProductSuiteLayout({
 }: {
   children: ReactNode;
 }) {
-  return <ProductSuiteShellClient>{children}</ProductSuiteShellClient>;
+  return (
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+      <ProductSuiteShellClient>{children}</ProductSuiteShellClient>
+    </div>
+  );
 }

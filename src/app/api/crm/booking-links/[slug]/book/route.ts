@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomInt } from "crypto";
+import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
 export const runtime = "nodejs";
 
@@ -571,8 +572,10 @@ export async function POST(req: Request, ctx: RouteContext) {
       calendar_event_link: organizerEventLink,
       meeting_link: organizerMeetLink,
     };
-    if (bookingType === "group")
+
+    if (bookingType === "group") {
       event_data.group_participants = groupParticipantIds;
+    }
 
     await admin.from("lead_messages").insert({
       team_id: invite.team_id,
@@ -590,6 +593,58 @@ export async function POST(req: Request, ctx: RouteContext) {
       event_type,
       event_data,
     });
+
+    // score event + recompute (non-fatal)
+    try {
+      const { error: scoreEventErr } = await admin
+        .from("lead_score_events")
+        .insert({
+          team_id: invite.team_id,
+          lead_id: invite.lead_id,
+          event_type: "call_booked",
+          reason: "Prospect booked a call",
+          source_table: "bookings",
+          source_id: booking.id,
+          metadata: {
+            booking_id: booking.id,
+            booking_link_id: invite.booking_link_id,
+            booking_type: bookingType,
+            host_user_id: ownerForBooking,
+            start_at: startDate.toISOString(),
+            end_at: endDate.toISOString(),
+            timezone,
+            invite_id: invite.id,
+            calendar_event_id: organizerEventId,
+            calendar_event_link: organizerEventLink,
+            meeting_link: organizerMeetLink,
+            ...(bookingType === "group"
+              ? { group_participants: groupParticipantIds }
+              : {}),
+          },
+          created_at: nowISO(),
+        });
+
+      if (scoreEventErr) {
+        console.error(
+          "[crm-book] lead_score_events insert error (non-fatal):",
+          scoreEventErr,
+        );
+      } else {
+        try {
+          await recomputeLeadScore(invite.team_id, invite.lead_id);
+        } catch (recomputeErr) {
+          console.error(
+            "[crm-book] recomputeLeadScore failed after call booking",
+            recomputeErr,
+          );
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[crm-book] lead_score_events insert failed for call_booked (non-fatal):",
+        e,
+      );
+    }
 
     return json({
       ok: true,

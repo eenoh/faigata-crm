@@ -1,6 +1,7 @@
 // src/app/api/crm/leads/[id]/reject/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
 export const runtime = "nodejs";
 
@@ -41,7 +42,7 @@ function getSupabaseServerClient() {
   });
 }
 
-// ✅ Next in your setup passes params as a Promise
+// Next passes params as Promise
 type RouteContext = { params: Promise<{ id: string | string[] }> };
 
 function pickParam(v: unknown): string {
@@ -80,12 +81,14 @@ export async function POST(req: Request, ctx: RouteContext) {
         "No lead id found in route params or URL. Expected /api/crm/leads/:id/reject",
       );
     }
+
     if (!isUuid(leadId))
       return jsonError("invalid_lead_id", 400, "Lead id must be a UUID.");
 
     // ---- body ----
     const body = await req.json().catch(() => ({}) as any);
     const teamId = String(body?.teamId ?? "").trim();
+
     if (!teamId) return jsonError("missing_team_id", 400);
     if (!isUuid(teamId)) return jsonError("invalid_team_id", 400);
 
@@ -95,11 +98,13 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     const { data: userRes, error: userErr } =
       await supabase.auth.getUser(token);
+
     const user = userRes?.user ?? null;
     const userId = user?.id ? String(user.id) : null;
+
     if (userErr || !userId) return jsonError("unauthorized", 401);
 
-    // 1) requester must be a setter
+    // ---- requester profile ----
     const { data: me, error: meErr } = await supabase
       .from("profiles")
       .select("id, team_id, role")
@@ -110,9 +115,10 @@ export async function POST(req: Request, ctx: RouteContext) {
     if (!me) return jsonError("profile_not_found", 403);
     if (String(me.team_id ?? "") !== teamId)
       return jsonError("team_mismatch", 403);
+
     if (!hasSetterRole(me.role)) return jsonError("not_a_setter", 403);
 
-    // 2) load lead + ensure requester is current setter
+    // ---- load lead ----
     const { data: lead, error: leadErr } = await supabase
       .from("leads")
       .select(
@@ -124,10 +130,11 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     if (leadErr) return jsonError("lead_load_failed", 500, leadErr.message);
     if (!lead) return jsonError("lead_not_found", 404);
+
     if (String((lead as any).setter_id ?? "") !== userId)
       return jsonError("not_current_setter", 403);
 
-    // 3) choose a new setter
+    // ---- choose new setter ----
     const { data: teamProfiles, error: profilesErr } = await supabase
       .from("profiles")
       .select("id, role")
@@ -146,12 +153,15 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     const newSetterId = eligible[Math.floor(Math.random() * eligible.length)];
 
-    // 4) update lead reject tracking
+    // ---- update lead reject tracking ----
     const nextCount = Number((lead as any).rejected_count ?? 0) + 1;
+
     const prevRejectedBy = Array.isArray((lead as any).rejected_by)
       ? ((lead as any).rejected_by as string[])
       : [];
+
     const mergedRejectedBy = Array.from(new Set([...prevRejectedBy, userId]));
+
     const nowIso = new Date().toISOString();
 
     const { error: updateErr } = await supabase
@@ -169,27 +179,31 @@ export async function POST(req: Request, ctx: RouteContext) {
     if (updateErr)
       return jsonError("lead_update_failed", 500, updateErr.message);
 
-    // 5) Insert timeline event (KEEP LEGACY BODY FORMAT so UI doesn't break)
-    // Body format: LEAD_REJECTED|<oldSetterId>|<newSetterId>|<count>
+    // ---- recompute lead score ----
+    try {
+      await recomputeLeadScore(teamId, leadId);
+    } catch (err) {
+      console.error("[lead-reject] recomputeLeadScore failed", err);
+    }
+
+    // ---- timeline event ----
     const eventBody = `LEAD_REJECTED|${userId}|${newSetterId}|${nextCount}`;
 
     const { error: msgErr } = await supabase.from("lead_messages").insert({
       team_id: teamId,
       lead_id: leadId,
 
-      // ✅ keep existing column (don’t break reads)
       sender_profile_id: userId,
-
-      // ✅ new generic column (for future events + analytics)
       user_id: userId,
 
       direction: "outbound",
       channel: "pipeline",
+
       body: eventBody,
+
       sent_at: nowIso,
       created_at: nowIso,
 
-      // ✅ analytics
       event_type: "lead_rejected",
       event_data: {
         old_setter_id: userId,
@@ -212,7 +226,11 @@ export async function POST(req: Request, ctx: RouteContext) {
     }
 
     return NextResponse.json(
-      { ok: true, newSetterId, rejectedCount: nextCount },
+      {
+        ok: true,
+        newSetterId,
+        rejectedCount: nextCount,
+      },
       { status: 200 },
     );
   } catch (e: any) {

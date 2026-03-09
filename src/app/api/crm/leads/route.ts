@@ -17,15 +17,11 @@ function getLeadIdFromRequest(req: Request): string | null {
 }
 
 /**
- * IMPORTANT:
- * Your `leads` table DOES have:
- * - lead_name (real column)
- *
- * Your previous PostgREST error 42703 happens only when selecting columns
- * that do not exist (ex: score_grade, score_breakdown).
+ * ✅ include stage_id
  */
 const LEAD_SELECT_COLUMNS = `
-id, team_id, stage,
+id, team_id,
+stage, stage_id,
 lead_name,
 niche, lead_type, gender,
 country, region, city, postal_code,
@@ -131,11 +127,53 @@ function inferPrimaryContactType(
   return null;
 }
 
+/* -------------------- stage helpers -------------------- */
+
+async function getStageById(teamId: string, stageId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("pipeline_stages")
+    .select("id, name")
+    .eq("team_id", teamId)
+    .eq("id", stageId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[LeadsAPI] getStageById error", error);
+    return null;
+  }
+  return data ?? null;
+}
+
+async function getStageByName(teamId: string, stageName: string) {
+  const name = String(stageName ?? "").trim();
+  if (!name) return null;
+
+  // case-insensitive match via lower(name) in a safe way:
+  const { data, error } = await supabaseAdmin
+    .from("pipeline_stages")
+    .select("id, name")
+    .eq("team_id", teamId)
+    .ilike("name", name)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[LeadsAPI] getStageByName error", error);
+    return null;
+  }
+  return data ?? null;
+}
+
 /* -------------------- types -------------------- */
 
 type NewLeadBody = {
   teamId?: string;
+
+  // ✅ new
+  stageId?: string;
+
+  // ✅ old (still accepted)
   stage?: string;
+
   customValues?: Record<string, any>;
   systemFields?: SystemFields;
 
@@ -153,7 +191,10 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as NewLeadBody;
 
   const teamId: string | null = urlTeamId ?? body.teamId ?? null;
-  const stage: string | undefined = body.stage;
+
+  const incomingStageId =
+    typeof body.stageId === "string" ? body.stageId : null;
+  const incomingStageName = typeof body.stage === "string" ? body.stage : null;
 
   // accept both custom + system fields
   const rawCustomValues: Record<string, any> = body.customValues ?? {};
@@ -175,8 +216,36 @@ export async function POST(req: Request) {
   if (!teamId) {
     return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
   }
-  if (!stage) {
-    return NextResponse.json({ error: "Missing stage" }, { status: 400 });
+
+  // ✅ Resolve stage_id + stage (string) safely
+  let stage_id: string | null = null;
+  let stage: string | null = null;
+
+  if (incomingStageId) {
+    const st = await getStageById(teamId, incomingStageId);
+    if (!st) {
+      return NextResponse.json(
+        { error: "Invalid stageId for this team" },
+        { status: 400 },
+      );
+    }
+    stage_id = st.id;
+    stage = st.name;
+  } else if (incomingStageName) {
+    const st = await getStageByName(teamId, incomingStageName);
+    if (!st) {
+      return NextResponse.json(
+        { error: "Invalid stage name for this team" },
+        { status: 400 },
+      );
+    }
+    stage_id = st.id;
+    stage = st.name;
+  } else {
+    return NextResponse.json(
+      { error: "Missing stageId/stage" },
+      { status: 400 },
+    );
   }
 
   // ✅ enforce NOT NULL primary_contact_type (with inference fallback)
@@ -211,7 +280,10 @@ export async function POST(req: Request) {
 
   const insertPayload: any = {
     team_id: teamId,
+
+    // ✅ keep both during migration
     stage,
+    stage_id,
 
     // ✅ lead_name stored in real column
     lead_name: normalizeNullish((system as any).lead_name),
@@ -265,7 +337,6 @@ export async function POST(req: Request) {
 
   /**
    * ✅ log lead creation event in lead_messages (non-fatal)
-   * - event_type: "lead_created"
    * - event_data: jsonb NOT NULL in your schema -> ALWAYS provide an object
    */
   try {
@@ -278,6 +349,8 @@ export async function POST(req: Request) {
         team_id: teamId,
 
         stage: (data as any).stage ?? stage ?? null,
+        stage_id: (data as any).stage_id ?? stage_id ?? null,
+
         prospector_id: (data as any).prospector_id ?? prospectorId ?? null,
         setter_id: (data as any).setter_id ?? setterId ?? null,
         closer_id: (data as any).closer_id ?? null,
@@ -389,7 +462,6 @@ export async function GET(req: Request) {
     );
   }
 
-  // ✅ avoids any TS “?? unreachable” setups by normalizing explicitly
   const rows = Array.isArray(data) ? data : [];
   return NextResponse.json(rows);
 }
@@ -415,9 +487,46 @@ export async function PATCH(req: Request) {
   const payload: any = {};
   let shouldRecomputeScore = false;
 
-  if (updates.stage !== undefined) {
-    payload.stage = updates.stage;
-    shouldRecomputeScore = true;
+  // ✅ stage updates: accept stage_id or stage (name) and keep both in sync
+  if (updates.stage_id !== undefined || updates.stage !== undefined) {
+    const incomingStageId =
+      typeof updates.stage_id === "string" ? updates.stage_id : null;
+    const incomingStageName =
+      typeof updates.stage === "string" ? updates.stage : null;
+
+    let stage_id: string | null = null;
+    let stage: string | null = null;
+
+    if (incomingStageId) {
+      const st = await getStageById(teamId, incomingStageId);
+      if (!st) {
+        return NextResponse.json(
+          { error: "Invalid stage_id for this team" },
+          { status: 400 },
+        );
+      }
+      stage_id = st.id;
+      stage = st.name;
+    } else if (incomingStageName) {
+      const st = await getStageByName(teamId, incomingStageName);
+      if (!st) {
+        return NextResponse.json(
+          { error: "Invalid stage name for this team" },
+          { status: 400 },
+        );
+      }
+      stage_id = st.id;
+      stage = st.name;
+    } else {
+      stage_id = null;
+      stage = null;
+    }
+
+    if (stage_id) payload.stage_id = stage_id;
+    if (stage) payload.stage = stage;
+
+    // Stage changes should not affect score anymore.
+    // Keep stage + stage_id in sync, but do not recompute score.
   }
 
   // customValues: strip system keys, but still apply them to real columns
@@ -602,14 +711,6 @@ export async function DELETE(req: Request) {
 /* ---------- setter assignment helper ---------- */
 /**
  * Decide which setter_id to use for a new lead.
- *
- * Rules:
- * 1) If current user (prospectorId) has BOTH Prospector + Setter roles
- *    → setter_id = prospectorId
- * 2) Else if user has Prospector but not Setter
- *    → distribute leads as evenly as possible between all Setters on this team
- *      (based on leads created this month).
- * 3) Otherwise → no setter assigned (null).
  */
 async function assignSetterId(
   teamId: string,
@@ -646,7 +747,7 @@ async function assignSetterId(
   // Rule 3: if not Prospector -> no setter
   if (!isProspector) return null;
 
-  // ✅ load all team profiles, filter setters in code (avoids case-sensitive array contains)
+  // ✅ load all team profiles, filter setters in code
   const { data: teamProfiles, error: teamProfilesError } = await supabaseAdmin
     .from("profiles")
     .select("id, role")

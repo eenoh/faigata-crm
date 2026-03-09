@@ -1,6 +1,7 @@
 // src/app/api/crm/booking-links/[slug]/availability/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,6 @@ function isValidYmd(s: string) {
 
 function isValidTimeZone(tz: string) {
   try {
-    // throws RangeError if tz invalid
     new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date());
     return true;
   } catch {
@@ -40,14 +40,12 @@ function isValidTimeZone(tz: string) {
 function resolveSlug(url: URL, slugFromParams?: string) {
   if (slugFromParams) return String(slugFromParams).trim() || undefined;
 
-  // fallback: /api/crm/booking-links/[slug]/availability
   const parts = url.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("booking-links");
   const guess = idx >= 0 ? parts[idx + 1] : undefined;
   return guess ? String(guess).trim() : undefined;
 }
 
-/** returns minutes offset of `timeZone` from UTC at the given UTC instant */
 function tzOffsetMinutes(timeZone: string, utcDate: Date) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -75,10 +73,6 @@ function tzOffsetMinutes(timeZone: string, utcDate: Date) {
   return (asUtc - utcDate.getTime()) / 60000;
 }
 
-/**
- * Create a UTC Date that corresponds to a "local wall time" in `timeZone`.
- * (No external libs; works for DST transitions reasonably well for scheduling)
- */
 function makeUtcFromLocal(
   timeZone: string,
   y: number,
@@ -96,7 +90,6 @@ function makeUtcFromLocal(
 /* -------------------- availability helpers -------------------- */
 
 function clampMinute(v: number) {
-  // allow 0..1440 (1440 == 24:00 boundary)
   return Math.max(0, Math.min(24 * 60, Math.floor(v)));
 }
 
@@ -105,14 +98,9 @@ function parseWorkDays(raw: any): number[] {
     .map((x) => Number(x))
     .filter((x) => Number.isFinite(x) && x >= 0 && x <= 6);
 
-  // default to ALL days
   return Array.from(new Set(cleaned.length ? cleaned : [...ALL_DAYS]));
 }
 
-/**
- * Day-of-week (Sun=0..Sat=6) for a given Y-M-D *in the requested tz*.
- * Uses local NOON to avoid DST midnight edge cases.
- */
 function dowForYmdInTz(
   timeZone: string,
   y: number,
@@ -124,6 +112,7 @@ function dowForYmdInTz(
     timeZone,
     weekday: "short",
   }).format(noonUtc);
+
   const map: Record<string, number> = {
     Sun: 0,
     Mon: 1,
@@ -133,15 +122,10 @@ function dowForYmdInTz(
     Fri: 5,
     Sat: 6,
   };
+
   return map[wd] ?? 0;
 }
 
-/**
- * Build the UTC window [workStartUtc, workEndUtc] for the requested day based on:
- * - availability_mode
- * - work_start_minute / work_end_minute (0..1440)
- * - work_days
- */
 function computeWorkWindowUtc(args: {
   tz: string;
   yy: number;
@@ -189,6 +173,95 @@ function computeWorkWindowUtc(args: {
     : makeUtcFromLocal(tz, yy, mm, dd, eh, em, 0);
 
   return { workStartUtc, workEndUtc, workDays };
+}
+
+/* -------------------- score helpers -------------------- */
+
+async function logBookingPageViewedOnce(args: {
+  teamId: string;
+  leadId: string;
+  inviteId: string;
+  bookingLinkId: string;
+  bookingLinkSlug: string;
+  tokenPresent: boolean;
+  date: string;
+  tz: string;
+}) {
+  const {
+    teamId,
+    leadId,
+    inviteId,
+    bookingLinkId,
+    bookingLinkSlug,
+    tokenPresent,
+    date,
+    tz,
+  } = args;
+
+  if (!teamId || !leadId || !inviteId || !tokenPresent) return;
+
+  try {
+    const existingQuery = await supabaseAdmin
+      .from("lead_score_events")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("lead_id", leadId)
+      .eq("event_type", "booking_page_viewed")
+      .eq("source_table", "booking_link_invites")
+      .eq("source_id", inviteId)
+      .limit(1);
+
+    if (existingQuery.error) {
+      console.error(
+        "[availability] failed checking booking_page_viewed event",
+        existingQuery.error,
+      );
+      return;
+    }
+
+    const alreadyExists =
+      Array.isArray(existingQuery.data) && existingQuery.data.length > 0;
+
+    if (alreadyExists) return;
+
+    const nowIso = new Date().toISOString();
+
+    const insertRes = await supabaseAdmin.from("lead_score_events").insert({
+      team_id: teamId,
+      lead_id: leadId,
+      event_type: "booking_page_viewed",
+      reason: "Prospect viewed booking page",
+      source_table: "booking_link_invites",
+      source_id: inviteId,
+      metadata: {
+        booking_link_id: bookingLinkId,
+        booking_link_slug: bookingLinkSlug,
+        invite_id: inviteId,
+        viewed_date: date,
+        viewed_timezone: tz,
+      },
+      created_at: nowIso,
+    });
+
+    if (insertRes.error) {
+      console.error(
+        "[availability] failed inserting booking_page_viewed event",
+        insertRes.error,
+      );
+      return;
+    }
+
+    try {
+      await recomputeLeadScore(teamId, leadId);
+    } catch (recomputeErr) {
+      console.error(
+        "[availability] recomputeLeadScore failed after booking_page_viewed",
+        recomputeErr,
+      );
+    }
+  } catch (err) {
+    console.error("[availability] logBookingPageViewedOnce failed", err);
+  }
 }
 
 /* -------------------- google helpers -------------------- */
@@ -263,7 +336,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     const { slug: slugFromParams } = await ctx.params;
 
     const slug = resolveSlug(url, slugFromParams);
-    const dateRaw = String(url.searchParams.get("date") ?? "").trim(); // YYYY-MM-DD
+    const dateRaw = String(url.searchParams.get("date") ?? "").trim();
     const tzRaw = String(url.searchParams.get("tz") ?? "UTC").trim();
     const token = String(url.searchParams.get("t") ?? "").trim() || null;
 
@@ -276,16 +349,17 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     const [yy, mm, dd] = dateRaw.split("-").map((x) => Number(x));
     if (!yy || !mm || !dd) return json({ error: "invalid_date" }, 400);
 
-    // ✅ re-use the same admin client for the whole request
     const sb = supabaseAdmin;
 
-    // If token present, resolve booking link from invite
     let linkIdFromToken: string | null = null;
+    let inviteIdFromToken: string | null = null;
+    let leadIdFromToken: string | null = null;
+    let teamIdFromToken: string | null = null;
 
     if (token) {
       const { data: inv, error: invErr } = await sb
         .from("booking_link_invites")
-        .select("booking_link_id, used_at, expires_at")
+        .select("id, booking_link_id, lead_id, team_id, used_at, expires_at")
         .eq("token", token)
         .maybeSingle();
 
@@ -293,14 +367,19 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         console.error("[availability] invite query error", invErr);
       } else if (inv?.booking_link_id) {
         if (inv.used_at) return json({ slots: [] });
-        if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now())
+        if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) {
           return json({ slots: [] });
+        }
+
         linkIdFromToken = String(inv.booking_link_id);
+        inviteIdFromToken = String(inv.id ?? "");
+        leadIdFromToken = String(inv.lead_id ?? "");
+        teamIdFromToken = String(inv.team_id ?? "");
       }
     }
 
     const baseSelect =
-      "id, slug, owner_user_id, booking_type, duration_minutes, buffer_before_minutes, buffer_after_minutes, min_notice_hours, max_notice_days, primary_color, availability_mode, work_start_minute, work_end_minute, work_days";
+      "id, slug, owner_user_id, team_id, booking_type, duration_minutes, buffer_before_minutes, buffer_after_minutes, min_notice_hours, max_notice_days, primary_color, availability_mode, work_start_minute, work_end_minute, work_days";
 
     const linkQuery = sb.from("booking_links").select(baseSelect);
     const { data: link, error: linkErr } = linkIdFromToken
@@ -317,7 +396,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       return json({ error: "token_slug_mismatch" }, 409);
     }
 
-    // booking bounds
     const minNoticeHours = Number((link as any).min_notice_hours ?? 0);
     const maxNoticeDays = Number((link as any).max_notice_days ?? 365);
 
@@ -325,7 +403,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     const minBookableMs = nowMs + minNoticeHours * 60 * 60 * 1000;
     const maxBookableMs = nowMs + maxNoticeDays * 24 * 60 * 60 * 1000;
 
-    // compare "requested day start" against "min day start" and max timestamp
     const reqDayStartUtcMs = makeUtcFromLocal(
       tz,
       yy,
@@ -350,10 +427,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     if (reqDayStartUtcMs < minDayStartUtcMs) return json({ slots: [] });
     if (reqDayStartUtcMs > maxBookableMs) return json({ slots: [] });
 
-    // booking type
     const bookingType = normalizeBookingType((link as any).booking_type);
 
-    /* Determine hosts */
     let hostIds: string[] = [];
 
     if (bookingType === "group" || bookingType === "round_robin") {
@@ -381,16 +456,17 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         if (!hostIds.includes(owner)) hostIds.unshift(owner);
       }
 
-      if (!hostIds.length && (link as any).owner_user_id)
+      if (!hostIds.length && (link as any).owner_user_id) {
         hostIds = [String((link as any).owner_user_id)];
+      }
     } else {
-      if ((link as any).owner_user_id)
+      if ((link as any).owner_user_id) {
         hostIds = [String((link as any).owner_user_id)];
+      }
     }
 
     if (!hostIds.length) return json({ error: "no_hosts_configured" }, 400);
 
-    /* Compute availability window from booking_links */
     const availabilityMode =
       (String(
         (link as any).availability_mode || "business_hours",
@@ -414,7 +490,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     const workEndMs = workEndUtc.getTime();
     if (workEndMs <= workStartMs) return json({ slots: [] });
 
-    /* Pull tokens */
     const durationMin = Number((link as any).duration_minutes ?? 30);
     const bufferBefore = Number((link as any).buffer_before_minutes ?? 0);
     const bufferAfter = Number((link as any).buffer_after_minutes ?? 0);
@@ -430,8 +505,9 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     }
 
     const byUser = new Map<string, any>();
-    for (const row of tokenRows ?? [])
+    for (const row of tokenRows ?? []) {
       byUser.set(String((row as any).user_id), row);
+    }
 
     const missing = hostIds.filter((uid) => !byUser.get(uid)?.refresh_token);
     if (missing.length) {
@@ -449,6 +525,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       const newExpiryDate = new Date(
         Date.now() + expiresInSec * 1000,
       ).toISOString();
+
       const { error } = await sb
         .from("user_google_calendar_tokens")
         .update({
@@ -515,7 +592,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       let accessToken = await ensureAccessToken(userId);
       let fbRes = await callFreeBusy(accessToken);
 
-      // If token revoked/expired, refresh once and retry
       if (isReconnectStatus(fbRes.status)) {
         const refreshed = await refreshAccessToken(refreshToken);
         await saveToken(userId, refreshed.access_token, refreshed.expires_in);
@@ -545,6 +621,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
       const busy: Array<{ start: string; end: string }> =
         fbJson?.calendars?.primary?.busy ?? [];
+
       return busy
         .map(
           (b) => [Date.parse(b.start), Date.parse(b.end)] as [number, number],
@@ -592,10 +669,10 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       const blockedEnd = end + bufferAfterMs;
 
       if (bookingType === "group") {
-        // available only if NONE of hosts conflict
         const conflictsAnyHost = busyPerHost.some((ranges) =>
           ranges.some(([bs, be]) => overlap(blockedStart, blockedEnd, bs, be)),
         );
+
         if (!conflictsAnyHost) {
           slots.push({
             start: new Date(start).toISOString(),
@@ -606,13 +683,13 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       }
 
       if (bookingType === "round_robin") {
-        // available if ANY host is free
         const anyHostFree = busyPerHost.some((ranges) => {
           const conflict = ranges.some(([bs, be]) =>
             overlap(blockedStart, blockedEnd, bs, be),
           );
           return !conflict;
         });
+
         if (anyHostFree) {
           slots.push({
             start: new Date(start).toISOString(),
@@ -622,17 +699,37 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         continue;
       }
 
-      // one_on_one: first host only
       const ranges = busyPerHost[0] ?? [];
       const conflict = ranges.some(([bs, be]) =>
         overlap(blockedStart, blockedEnd, bs, be),
       );
+
       if (!conflict) {
         slots.push({
           start: new Date(start).toISOString(),
           end: new Date(end).toISOString(),
         });
       }
+    }
+
+    // log page view once for invite-based pages
+    if (
+      token &&
+      inviteIdFromToken &&
+      leadIdFromToken &&
+      teamIdFromToken &&
+      (link as any).id
+    ) {
+      await logBookingPageViewedOnce({
+        teamId: teamIdFromToken,
+        leadId: leadIdFromToken,
+        inviteId: inviteIdFromToken,
+        bookingLinkId: String((link as any).id),
+        bookingLinkSlug: String((link as any).slug ?? slug),
+        tokenPresent: true,
+        date: dateRaw,
+        tz,
+      });
     }
 
     return json({

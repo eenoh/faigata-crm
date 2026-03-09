@@ -127,7 +127,7 @@ function deriveLeadName(
   if (directCol) return directCol;
 
   const cv = customValues ?? {};
-  const direct = String(cv.lead_name ?? "").trim();
+  const direct = String((cv as any).lead_name ?? "").trim();
   if (direct) return direct;
 
   const preferredKeys = [
@@ -331,6 +331,9 @@ function LeadsLoadingState({
 
 /* -------------------- component -------------------- */
 
+type SortDir = "asc" | "desc";
+type SortState = { key: string | null; dir: SortDir };
+
 export function LeadsClient() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -350,6 +353,9 @@ export function LeadsClient() {
   const [canAddLeads, setCanAddLeads] = useState(false);
   const [canDeleteLeads, setCanDeleteLeads] = useState(false);
   const [isManagerOrAdmin, setIsManagerOrAdmin] = useState(false);
+
+  // ✅ sorting (click header label)
+  const [sort, setSort] = useState<SortState>({ key: null, dir: "asc" });
 
   const searchParams = useSearchParams();
   const query = (searchParams.get("q") ?? "").trim().toLowerCase();
@@ -648,6 +654,12 @@ export function LeadsClient() {
     return out;
   }, [fields]);
 
+  const columnBySortKey = useMemo(() => {
+    const map = new Map<string, TableCol>();
+    for (const c of columns) map.set(`${c.kind}:${c.key}`, c);
+    return map;
+  }, [columns]);
+
   /* ---------- filtering ---------- */
 
   const visibleLeads = useMemo(() => {
@@ -710,6 +722,117 @@ export function LeadsClient() {
     });
   }, [visibleLeads, query]);
 
+  // ✅ sorting applied AFTER filtering
+  const sortedLeads = useMemo(() => {
+    if (!sort.key) return filteredLeads;
+
+    const col = columnBySortKey.get(sort.key);
+    if (!col) return filteredLeads;
+
+    const dirMul = sort.dir === "asc" ? 1 : -1;
+
+    const toSortableString = (v: any) => {
+      if (v === null || v === undefined) return "";
+      if (typeof v === "string") return v.trim().toLowerCase();
+      if (typeof v === "number") return String(v);
+      if (typeof v === "boolean") return v ? "true" : "false";
+      try {
+        return JSON.stringify(v).toLowerCase();
+      } catch {
+        return String(v).toLowerCase();
+      }
+    };
+
+    const getSortValue = (
+      lead: LeadRow,
+    ): { t: "n" | "s"; v: number | string } => {
+      if (col.kind === "score") {
+        const n = lead.score;
+        return {
+          t: "n",
+          v:
+            typeof n === "number" && !Number.isNaN(n)
+              ? n
+              : Number.NEGATIVE_INFINITY,
+        };
+      }
+
+      if (col.kind === "stage") {
+        return { t: "s", v: toSortableString(lead.stage ?? "") };
+      }
+
+      if (col.kind === "core") {
+        if (col.key === "__lead_name") {
+          const name = deriveLeadName(
+            lead.lead_name,
+            lead.customValues ?? {},
+            lead.stage || "",
+          );
+          return { t: "s", v: toSortableString(name) };
+        }
+
+        const raw = (lead as any)[col.key];
+        // keep enum-ish fields sorting stable but readable
+        if (
+          col.key === "lead_type" ||
+          col.key === "gender" ||
+          col.key === "primary_contact_type" ||
+          col.key === "source_category" ||
+          col.key === "source_name"
+        ) {
+          return { t: "s", v: toSortableString(labelizeEnum(raw ?? null)) };
+        }
+
+        if (typeof raw === "number") return { t: "n", v: raw };
+        return { t: "s", v: toSortableString(raw) };
+      }
+
+      // custom
+      const value = normalizedCustomValues[lead.id]?.[col.key];
+      if (typeof value === "number") return { t: "n", v: value };
+      return { t: "s", v: toSortableString(value) };
+    };
+
+    // stable sort (tie-breaker uses original index)
+    const withIndex = filteredLeads.map((l, i) => ({ l, i }));
+    withIndex.sort((a, b) => {
+      const av = getSortValue(a.l);
+      const bv = getSortValue(b.l);
+
+      // push blanks to bottom (both directions)
+      const aBlank =
+        (av.t === "s" && String(av.v).trim() === "") ||
+        (av.t === "n" && (av.v as number) === Number.NEGATIVE_INFINITY);
+      const bBlank =
+        (bv.t === "s" && String(bv.v).trim() === "") ||
+        (bv.t === "n" && (bv.v as number) === Number.NEGATIVE_INFINITY);
+
+      if (aBlank && !bBlank) return 1;
+      if (!aBlank && bBlank) return -1;
+
+      if (av.t === "n" && bv.t === "n") {
+        const diff = (av.v as number) - (bv.v as number);
+        if (diff !== 0) return diff * dirMul;
+        return a.i - b.i;
+      }
+
+      const cmp = String(av.v).localeCompare(String(bv.v), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (cmp !== 0) return cmp * dirMul;
+      return a.i - b.i;
+    });
+
+    return withIndex.map((x) => x.l);
+  }, [
+    filteredLeads,
+    sort.key,
+    sort.dir,
+    columnBySortKey,
+    normalizedCustomValues,
+  ]);
+
   const totalCount = visibleLeads.length;
   const visibleCount = filteredLeads.length;
 
@@ -748,7 +871,6 @@ export function LeadsClient() {
   const actionDividerTdClass = `border-l-2 ${dividerBorder}`;
 
   function getScoreBadgeClasses(score: number | null): string {
-    // keep your existing light colors; add dark variants
     if (score == null)
       return isDark
         ? "bg-slate-900/60 text-slate-500"
@@ -772,6 +894,37 @@ export function LeadsClient() {
       : "bg-amber-50 text-amber-700";
   }
 
+  const CORE_PILL_KEYS = new Set([
+    "niche",
+    "lead_type",
+    "primary_contact_type",
+    "source_category",
+    "source_name",
+  ]);
+
+  const getAriaSort = (sortKey: string) => {
+    if (sort.key !== sortKey) return "none" as const;
+    return sort.dir === "asc"
+      ? ("ascending" as const)
+      : ("descending" as const);
+  };
+
+  const sortIndicator = (sortKey: string) => {
+    if (sort.key !== sortKey) return null;
+    return sort.dir === "asc" ? "▲" : "▼";
+  };
+
+  const onHeaderClick = (sortKey: string) => {
+    setSort((prev) => {
+      if (prev.key === sortKey) {
+        return { key: sortKey, dir: prev.dir === "asc" ? "desc" : "asc" };
+      }
+      // sensible default: Score starts desc, everything else asc
+      const nextDir: SortDir = sortKey === "score:__score" ? "desc" : "asc";
+      return { key: sortKey, dir: nextDir };
+    });
+  };
+
   if (workspaceLoaded && !teamId) {
     return (
       <div
@@ -787,20 +940,14 @@ export function LeadsClient() {
     );
   }
 
-  const CORE_PILL_KEYS = new Set([
-    "niche",
-    "lead_type",
-    "primary_contact_type",
-    "source_category",
-    "source_name",
-  ]);
-
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
       <div className="sticky top-0 z-10 flex items-center justify-between bg-inherit pb-2 pt-1">
         <div>
           <h1
-            className={`text-2xl font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}
+            className={`text-2xl font-semibold ${
+              isDark ? "text-slate-100" : "text-slate-900"
+            }`}
           >
             Leads
           </h1>
@@ -855,7 +1002,9 @@ export function LeadsClient() {
           }`}
         >
           <p
-            className={`font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}
+            className={`font-semibold ${
+              isDark ? "text-slate-200" : "text-slate-700"
+            }`}
           >
             No leads match “{query}”.
           </p>
@@ -872,14 +1021,49 @@ export function LeadsClient() {
             <table className="min-w-max w-full border-collapse text-sm">
               <thead className={`sticky top-0 z-20 ${theadBg}`}>
                 <tr className="text-left">
-                  {columns.map((col) => (
-                    <th
-                      key={`${col.kind}:${col.key}`}
-                      className={`border-b px-5 py-2 font-semibold whitespace-nowrap ${headBorder} ${headText}`}
-                    >
-                      {col.label}
-                    </th>
-                  ))}
+                  {columns.map((col) => {
+                    const sortKey = `${col.kind}:${col.key}`;
+                    const active = sort.key === sortKey;
+
+                    return (
+                      <th
+                        key={sortKey}
+                        aria-sort={getAriaSort(sortKey)}
+                        className={`border-b px-5 py-2 font-semibold whitespace-nowrap ${headBorder} ${headText}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onHeaderClick(sortKey)}
+                          className={[
+                            "inline-flex items-center gap-2 select-none cursor-pointer",
+                            "hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/60 focus-visible:ring-offset-2",
+                            isDark
+                              ? "focus-visible:ring-offset-slate-950"
+                              : "focus-visible:ring-offset-white",
+                            active ? "opacity-100" : "opacity-80",
+                          ].join(" ")}
+                          title={`Sort by ${col.label}`}
+                        >
+                          <span>{col.label}</span>
+                          <span
+                            className={[
+                              "text-[10px] leading-none",
+                              active
+                                ? isDark
+                                  ? "text-indigo-200"
+                                  : "text-indigo-700"
+                                : isDark
+                                  ? "text-slate-500"
+                                  : "text-slate-400",
+                            ].join(" ")}
+                            aria-hidden="true"
+                          >
+                            {active ? sortIndicator(sortKey) : "↕"}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
 
                   {showLogAlways && (
                     <th
@@ -916,7 +1100,7 @@ export function LeadsClient() {
               </thead>
 
               <tbody>
-                {filteredLeads.map((lead) => {
+                {sortedLeads.map((lead) => {
                   const isAssignedToLead =
                     !!currentUserId &&
                     (lead.setter_id === currentUserId ||

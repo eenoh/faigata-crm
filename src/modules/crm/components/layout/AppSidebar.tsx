@@ -35,13 +35,13 @@ function hasPrivilegedAccess(roles: unknown): boolean {
 
 function SidebarSkeleton({ isDark }: { isDark: boolean }) {
   const asideClass = isDark
-    ? "border-slate-800 bg-slate-950"
-    : "border-slate-200 bg-white";
+    ? "!border-slate-800 !bg-slate-950"
+    : "!border-slate-200 !bg-white";
 
   const skelA = isDark ? "bg-slate-800/70" : "bg-slate-200/70";
   const skelB = isDark ? "bg-slate-800/60" : "bg-slate-200/60";
   const skelC = isDark ? "bg-slate-800/50" : "bg-slate-200/50";
-  const divider = isDark ? "border-slate-900" : "border-slate-100";
+  const divider = isDark ? "!border-slate-900" : "!border-slate-100";
 
   return (
     <aside
@@ -319,27 +319,28 @@ export function AppSidebar() {
     return <SidebarSkeleton isDark={false} />;
   }
 
+  // ✅ same structure, just force colors with ! where needed
   const asideBase = isDark
-    ? "border-slate-800 bg-slate-950"
-    : "border-slate-200 bg-white";
+    ? "!border-slate-800 !bg-slate-950"
+    : "!border-slate-200 !bg-white";
 
   const brandActive = isDark
-    ? "bg-indigo-500/15 text-indigo-300"
-    : "bg-indigo-50 text-indigo-600";
+    ? "bg-indigo-500/15 !text-indigo-300"
+    : "bg-indigo-50 !text-indigo-600";
 
   const itemIdle = isDark
-    ? "text-slate-300 hover:bg-slate-900/60 hover:text-slate-100"
-    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+    ? "!text-slate-300 hover:bg-slate-900/60 !hover:text-slate-100"
+    : "!text-slate-600 hover:bg-slate-50 !hover:text-slate-900";
 
-  const footerDivider = isDark ? "border-slate-900" : "border-slate-100";
-  const footerText = isDark ? "text-slate-500" : "text-slate-400";
-  const footerValue = isDark ? "text-slate-300" : "text-slate-500";
+  const footerDivider = isDark ? "!border-slate-900" : "!border-slate-100";
+  const footerText = isDark ? "!text-slate-500" : "!text-slate-400";
+  const footerValue = isDark ? "!text-slate-300" : "!text-slate-500";
 
   const collapseBtnBase = isDark
-    ? "border-slate-800 bg-slate-950 shadow-black/30 hover:border-indigo-500/40 hover:bg-indigo-500/10"
-    : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50";
+    ? "!border-slate-800 !bg-slate-950 shadow-black/30 hover:!border-indigo-500/40 hover:!bg-indigo-500/10"
+    : "!border-slate-200 !bg-white hover:!border-indigo-200 hover:!bg-indigo-50";
 
-  const chevronColor = isDark ? "text-slate-400" : "text-slate-500";
+  const chevronColor = isDark ? "!text-slate-400" : "!text-slate-500";
 
   return (
     <aside
@@ -368,7 +369,7 @@ export function AppSidebar() {
           >
             <span
               className={`block truncate text-lg font-semibold transform transition-transform duration-300 ${
-                isDark ? "text-slate-100" : "text-slate-900"
+                isDark ? "!text-slate-100" : "!text-slate-900"
               } ${collapsed ? "-translate-x-3" : "translate-x-0"}`}
             >
               Lumo
@@ -396,7 +397,17 @@ export function AppSidebar() {
               }`}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon
+                className={`h-5 w-5 flex-shrink-0 ${
+                  active
+                    ? isDark
+                      ? "!text-indigo-300"
+                      : "!text-indigo-600"
+                    : isDark
+                      ? "!text-slate-300 group-hover:!text-slate-100"
+                      : "!text-slate-600 group-hover:!text-slate-900"
+                }`}
+              />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );

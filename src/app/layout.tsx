@@ -28,7 +28,7 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={initialTheme === "dark" ? "dark" : ""}
     >
-      <body className="min-h-screen">
+      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <ThemeProvider defaultTheme={initialTheme}>{children}</ThemeProvider>
       </body>
     </html>

@@ -24,7 +24,12 @@ import type { LeadFieldDefinition } from "@/modules/crm/types/lead";
 
 type LeadCard = {
   id: string;
-  stage: string;
+
+  // ✅ New source of truth
+  stage_id?: string | null;
+
+  // ✅ Backwards-compat (still returned by your API / older data)
+  stage?: string | null;
 
   lead_name?: string | null;
   primary_contact_value?: string | null;
@@ -39,7 +44,9 @@ type LeadCard = {
 
 type DragState = {
   leadId: string | null;
-  fromStage: string | null;
+
+  fromStageId: string | null;
+  fromStageName: string | null;
 };
 
 type ScoreThresholds = {
@@ -262,7 +269,8 @@ export function PipelineClient() {
 
   const [dragState, setDragState] = useState<DragState>({
     leadId: null,
-    fromStage: null,
+    fromStageId: null,
+    fromStageName: null,
   });
 
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -412,7 +420,10 @@ export function PipelineClient() {
 
         const mapped: LeadCard[] = (leadsRes ?? []).map((l: any) => ({
           id: String(l.id),
-          stage: String(l.stage ?? ""),
+
+          // ✅ prefer stage_id, fallback to stage string
+          stage_id: l.stage_id ?? null,
+          stage: l.stage ?? null,
 
           lead_name: l.lead_name ?? null,
           primary_contact_value: l.primary_contact_value ?? null,
@@ -450,23 +461,52 @@ export function PipelineClient() {
   /* ---------- memoised helpers & render logic ---------- */
   const primaryField = useMemo(() => fields[0] ?? null, [fields]);
 
-  const leadsByStage = useMemo(() => {
+  const stageNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of stages) {
+      const id = (s as any).id as string | undefined;
+      if (id) map.set(id, s.name);
+    }
+    return map;
+  }, [stages]);
+
+  const stageIdByNameLower = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of stages) {
+      const id = (s as any).id as string | undefined;
+      if (id) map.set(String(s.name ?? "").toLowerCase(), id);
+    }
+    return map;
+  }, [stages]);
+
+  // ✅ Group by stage_id (stable), fallback to stage name mapping for old leads
+  const leadsByStageId = useMemo(() => {
     const map: Record<string, LeadCard[]> = {};
-    stages.forEach((s) => (map[s.name] = []));
+    const firstStageId = (stages[0] as any)?.id as string | undefined;
 
-    const firstStageName = stages[0]?.name;
-
-    leads.forEach((lead) => {
-      const desired =
-        lead.stage && map[lead.stage]
-          ? lead.stage
-          : (firstStageName ?? lead.stage ?? "New");
-      if (!map[desired]) map[desired] = [];
-      map[desired].push(lead);
+    stages.forEach((s) => {
+      const sid = (s as any).id as string | undefined;
+      if (sid) map[sid] = [];
     });
 
+    for (const lead of leads) {
+      let sid = lead.stage_id ?? null;
+
+      if (!sid && lead.stage) {
+        const maybe = stageIdByNameLower.get(String(lead.stage).toLowerCase());
+        if (maybe) sid = maybe;
+      }
+
+      if (!sid && firstStageId) sid = firstStageId;
+
+      if (!sid) continue; // no stages at all -> nothing to show
+
+      if (!map[sid]) map[sid] = [];
+      map[sid].push(lead);
+    }
+
     return map;
-  }, [leads, stages]);
+  }, [leads, stages, stageIdByNameLower]);
 
   function getLeadTitle(lead: LeadCard) {
     if (isMeaningfulValue(lead.lead_name)) return asDisplay(lead.lead_name);
@@ -526,7 +566,8 @@ export function PipelineClient() {
 
   function handleDragStart(
     leadId: string,
-    fromStage: string,
+    fromStageId: string,
+    fromStageName: string,
     e?: ReactDragEvent,
   ) {
     try {
@@ -537,11 +578,11 @@ export function PipelineClient() {
     } catch {
       // ignore
     }
-    setDragState({ leadId, fromStage });
+    setDragState({ leadId, fromStageId, fromStageName });
   }
 
   function handleDragEnd() {
-    setDragState({ leadId: null, fromStage: null });
+    setDragState({ leadId: null, fromStageId: null, fromStageName: null });
   }
 
   function getScoreBadgeClasses(score: number | null | undefined) {
@@ -583,7 +624,9 @@ export function PipelineClient() {
       const senderId = userRes.user?.id ?? null;
 
       const res = await fetch(
-        `/api/crm/lead-messages?teamId=${encodeURIComponent(teamId)}&leadId=${encodeURIComponent(leadId)}`,
+        `/api/crm/lead-messages?teamId=${encodeURIComponent(
+          teamId,
+        )}&leadId=${encodeURIComponent(leadId)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -628,21 +671,28 @@ export function PipelineClient() {
   }
 
   async function handleDrop(
-    targetStage: string,
+    targetStageId: string,
+    targetStageName: string,
     targetX: number,
     targetY: number,
   ) {
     if (!dragState.leadId || !teamId) return;
 
     const leadId = dragState.leadId;
-    const fromStage = dragState.fromStage;
+    const fromStageId = dragState.fromStageId;
+    const fromStageName = dragState.fromStageName;
 
-    setDragState({ leadId: null, fromStage: null });
-    if (!fromStage || fromStage === targetStage) return;
+    setDragState({ leadId: null, fromStageId: null, fromStageName: null });
+
+    if (!fromStageId || fromStageId === targetStageId) return;
 
     // optimistic UI
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l)),
+      prev.map((l) =>
+        l.id === leadId
+          ? { ...l, stage_id: targetStageId, stage: targetStageName }
+          : l,
+      ),
     );
 
     // fireworks on EVERY stage change
@@ -655,7 +705,8 @@ export function PipelineClient() {
         body: JSON.stringify({
           teamId,
           id: leadId,
-          updates: { stage: targetStage },
+          // ✅ update stage_id (API keeps stage string in sync)
+          updates: { stage_id: targetStageId },
         }),
       });
 
@@ -666,25 +717,48 @@ export function PipelineClient() {
         );
         // rollback on failure
         setLeads((prev) =>
-          prev.map((l) => (l.id === leadId ? { ...l, stage: fromStage } : l)),
+          prev.map((l) =>
+            l.id === leadId
+              ? {
+                  ...l,
+                  stage_id: fromStageId,
+                  stage: fromStageName ?? l.stage ?? null,
+                }
+              : l,
+          ),
         );
         return;
       }
 
-      const logged = await logStageChange(leadId, fromStage, targetStage);
-
-      if (logged && typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("lead-message-logged", {
-            detail: { teamId, leadId },
-          }),
+      // stage change message (readable)
+      if (fromStageName) {
+        const logged = await logStageChange(
+          leadId,
+          fromStageName,
+          targetStageName,
         );
+
+        if (logged && typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("lead-message-logged", {
+              detail: { teamId, leadId },
+            }),
+          );
+        }
       }
     } catch (err) {
       console.error("[Pipeline] Failed to update stage", err);
       // rollback on error
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, stage: fromStage } : l)),
+        prev.map((l) =>
+          l.id === leadId
+            ? {
+                ...l,
+                stage_id: fromStageId,
+                stage: fromStageName ?? l.stage ?? null,
+              }
+            : l,
+        ),
       );
     }
   }
@@ -730,8 +804,8 @@ export function PipelineClient() {
     return num;
   }
 
-  const filteredByStage = (stageName: string) => {
-    const allStageLeads = leadsByStage[stageName] ?? [];
+  const filteredByStageId = (stageId: string) => {
+    const allStageLeads = leadsByStageId[stageId] ?? [];
     return deferredQuery
       ? allStageLeads.filter((lead) => matchesSearch(lead, deferredQuery))
       : allStageLeads;
@@ -758,14 +832,17 @@ export function PipelineClient() {
           transition={{ duration: 0.18 }}
         >
           {stages.map((stage, stageIndex) => {
-            const stageLeads = filteredByStage(stage.name);
+            const stageId = String((stage as any).id ?? "");
+            if (!stageId) return null;
+
+            const stageLeads = filteredByStageId(stageId);
             const isActiveDrop =
-              dragState.leadId !== null && dragState.fromStage !== stage.name;
+              dragState.leadId !== null && dragState.fromStageId !== stageId;
             const conversion = getStageConversion(stage);
 
             return (
               <motion.div
-                key={stage.name}
+                key={stageId}
                 className={[
                   "flex w-64 flex-shrink-0 flex-col rounded-2xl border p-3 shadow-sm backdrop-blur transition",
                   softCard,
@@ -787,7 +864,7 @@ export function PipelineClient() {
                   const rect = boardRef.current?.getBoundingClientRect();
                   const localX = rect ? e.clientX - rect.left : e.clientX;
                   const localY = rect ? e.clientY - rect.top : e.clientY;
-                  handleDrop(stage.name, localX, localY);
+                  handleDrop(stageId, stage.name, localX, localY);
                 }}
               >
                 {/* Header */}
@@ -818,7 +895,7 @@ export function PipelineClient() {
                   <AnimatePresence initial={false} mode="popLayout">
                     {stageLeads.length === 0 && (
                       <motion.div
-                        key={`placeholder:${stage.name}`}
+                        key={`placeholder:${stageId}`}
                         className={`rounded-xl border border-dashed px-3 py-4 text-center text-[11px] ${dashedEmpty}`}
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -840,6 +917,11 @@ export function PipelineClient() {
                           ? null
                           : getScoreBadgeClasses(score);
 
+                      const leadStageName =
+                        lead.stage_id && stageNameById.get(lead.stage_id)
+                          ? stageNameById.get(lead.stage_id)!
+                          : (lead.stage ?? stage.name);
+
                       return (
                         <motion.button
                           key={lead.id}
@@ -851,7 +933,7 @@ export function PipelineClient() {
                           transition={{ duration: 0.14 }}
                           draggable
                           onDragStart={(e) =>
-                            handleDragStart(lead.id, stage.name)
+                            handleDragStart(lead.id, stageId, stage.name)
                           }
                           onDragEnd={handleDragEnd}
                           className={[
@@ -894,7 +976,7 @@ export function PipelineClient() {
                                     : "bg-slate-100 text-slate-500 group-hover:text-indigo-600",
                                 ].join(" ")}
                               >
-                                {stage.name}
+                                {leadStageName}
                               </span>
                             </div>
                           </div>

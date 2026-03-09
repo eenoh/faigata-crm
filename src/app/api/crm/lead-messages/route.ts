@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   const payload = {
     team_id: teamId,
     lead_id: leadId,
-    direction: body.direction, // 'inbound' | 'outbound'
+    direction: body.direction, // 'inbound' | 'outbound' | 'internal'
     channel: body.channel ?? null,
     body: body.body,
     sent_at: body.sent_at ?? new Date().toISOString(),
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     return json({ error: "Failed to create message" }, 500);
   }
 
-  // 🔁 Recompute score after the new message (for inbound frequency / pipeline moves)
+  // 🔁 Recompute score after the new message
   try {
     await recomputeLeadScore(teamId, leadId);
   } catch (e) {
@@ -102,7 +102,6 @@ export async function POST(req: Request) {
       "[lead-messages][POST] Failed to recompute score after message",
       e,
     );
-    // scoring failure shouldn’t block UI
   }
 
   return json(data);

@@ -25,6 +25,15 @@ type ScoreThresholds = {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+type SaveResponse = {
+  ok?: boolean;
+  total?: number;
+  recomputed?: number;
+  failed?: number;
+  warning?: string;
+  error?: string;
+};
+
 function SkeletonBlock({
   className = "",
   isDark,
@@ -184,6 +193,13 @@ export function LeadScoringSettingsClient() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
 
+  // optional: show recompute stats after saving
+  const [saveStats, setSaveStats] = useState<{
+    total?: number;
+    recomputed?: number;
+    failed?: number;
+  } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -274,6 +290,7 @@ export function LeadScoringSettingsClient() {
         setRules(normalizedRules);
         setThresholds(loadedThresholds ?? { low: 40, high: 70 });
         setError(null);
+        setSaveStats(null);
       } catch (err) {
         console.error("[LeadScoring] Failed to load", err);
         if (!cancelled) setError("Failed to load lead scoring settings.");
@@ -292,6 +309,7 @@ export function LeadScoringSettingsClient() {
       prev.map((r) => (r.fieldKey === fieldKey ? { ...r, weight } : r)),
     );
     setSaveState("idle");
+    setSaveStats(null);
     setError(null);
   }
 
@@ -308,12 +326,14 @@ export function LeadScoringSettingsClient() {
       }),
     );
     setSaveState("idle");
+    setSaveStats(null);
     setError(null);
   }
 
   function updateThreshold(key: keyof ScoreThresholds, value: number | null) {
     setThresholds((prev) => ({ ...prev, [key]: value ?? 0 }));
     setSaveState("idle");
+    setSaveStats(null);
     setError(null);
   }
 
@@ -324,9 +344,13 @@ export function LeadScoringSettingsClient() {
     }
 
     setSaveState("saving");
+    setSaveStats(null);
     setError(null);
 
     try {
+      // IMPORTANT:
+      // Backend MUST recompute all leads after saving config.
+      // (We keep recomputeAll: true as an explicit hint.)
       const res = await fetch("/api/crm/lead-scoring-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -335,6 +359,7 @@ export function LeadScoringSettingsClient() {
           action: "save",
           rules,
           thresholds,
+          recomputeAll: true,
         }),
       });
 
@@ -353,7 +378,27 @@ export function LeadScoringSettingsClient() {
         return;
       }
 
-      if (!ct.includes("application/json")) {
+      if (ct.includes("application/json")) {
+        const payload = (await res
+          .json()
+          .catch(() => null)) as SaveResponse | null;
+
+        if (payload?.warning) setError(payload.warning);
+
+        if (
+          payload &&
+          (payload.total !== undefined ||
+            payload.recomputed !== undefined ||
+            payload.failed !== undefined)
+        ) {
+          setSaveStats({
+            total: payload.total,
+            recomputed: payload.recomputed,
+            failed: payload.failed,
+          });
+        }
+      } else {
+        // not fatal — old endpoint might return non-json
         const text = await res.text().catch(() => "");
         console.warn(
           "[LeadScoring] save API returned non-JSON",
@@ -402,12 +447,13 @@ export function LeadScoringSettingsClient() {
           Lead Scoring
         </h1>
         <p className={`mt-1 text-sm ${pageSub}`}>
-          Assign weights to your lead fields so FaigataCRM can calculate a score
-          (0–100) for every lead.
+          Assign weights to your lead fields so Lumo can calculate a score
+          (0–100) for every lead. Saving will also recalculate scores for all
+          existing leads.
         </p>
       </div>
 
-      {(error || saveState === "saved") && (
+      {(error || saveState === "saved" || saveState === "error") && (
         <div className="space-y-2">
           {error && (
             <div
@@ -421,16 +467,52 @@ export function LeadScoringSettingsClient() {
               {error}
             </div>
           )}
-          {saveState === "saved" && !error && (
+
+          {saveState === "saved" && (
+            <div className="space-y-2">
+              <div
+                className={[
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs",
+                  isDark
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                    : "border-emerald-100 bg-emerald-50 text-emerald-700",
+                ].join(" ")}
+              >
+                ✅ Scoring rules saved
+                {saveStats?.recomputed != null
+                  ? ` — updated ${saveStats.recomputed} lead${
+                      saveStats.recomputed === 1 ? "" : "s"
+                    }`
+                  : ""}
+              </div>
+
+              {saveStats?.failed ? (
+                <div
+                  className={[
+                    "rounded-xl border px-4 py-2 text-xs shadow-sm",
+                    isDark
+                      ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
+                      : "border-amber-100 bg-amber-50 text-amber-700",
+                  ].join(" ")}
+                >
+                  Heads up: {saveStats.failed} lead
+                  {saveStats.failed === 1 ? "" : "s"} failed to recompute. Those
+                  leads will update again on the next activity or stage change.
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {saveState === "error" && !error && (
             <div
               className={[
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs",
+                "rounded-xl border px-4 py-2 text-xs shadow-sm",
                 isDark
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-                  : "border-emerald-100 bg-emerald-50 text-emerald-700",
+                  ? "border-rose-900/40 bg-rose-950/30 text-rose-200"
+                  : "border-rose-100 bg-rose-50 text-rose-700",
               ].join(" ")}
             >
-              ✅ Scoring rules saved
+              Saving failed. Please try again.
             </div>
           )}
         </div>
@@ -675,7 +757,9 @@ export function LeadScoringSettingsClient() {
           disabled={saveState === "saving"}
           className="inline-flex cursor-pointer items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {saveState === "saving" ? "Saving…" : "Save Scoring Rules"}
+          {saveState === "saving"
+            ? "Saving & recalculating…"
+            : "Save Scoring Rules"}
         </button>
       </div>
     </div>

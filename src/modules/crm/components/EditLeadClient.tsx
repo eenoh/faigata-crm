@@ -566,7 +566,7 @@ export function EditLeadClient() {
       const cleanNotes = normalizeNullishString(form.notes);
       const cleanPostal = normalizeNullishString(form.postalCode);
 
-      // ✅ keep backward compat mirror in custom_values
+      // keep backward compat mirror in custom_values
       const nextCustomValues = { ...(form.customValues ?? {}) } as any;
       nextCustomValues.lead_name = fullName;
 
@@ -575,49 +575,58 @@ export function EditLeadClient() {
         nextCustomValues.last_name = form.lastName;
       }
 
-      const payload: Partial<LeadRow> & { updated_at: string } = {
-        stage: form.stage,
+      const res = await fetch(
+        `/api/crm/leads?teamId=${encodeURIComponent(teamId)}&id=${encodeURIComponent(String(id))}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: {
+              stage: form.stage,
+              notes: cleanNotes,
+              customValues: nextCustomValues,
+              systemFields: {
+                lead_name: normalizeNullishString(fullName),
 
-        // ✅ save to real column
-        lead_name: normalizeNullishString(fullName),
+                niche: form.niche.trim(),
+                lead_type: form.leadType,
+                gender:
+                  form.leadType === "individual"
+                    ? (form.gender as Gender)
+                    : null,
 
-        niche: form.niche.trim(),
-        lead_type: form.leadType,
-        gender: form.leadType === "individual" ? (form.gender as Gender) : null,
+                country: form.country.trim(),
+                region: form.region.trim(),
+                city: form.city.trim(),
+                postal_code: cleanPostal,
 
-        country: form.country.trim(),
-        region: form.region.trim(),
-        city: form.city.trim(),
-        postal_code: cleanPostal,
+                primary_contact_type: form.primaryContactType,
+                primary_contact_value: form.primaryContactValue.trim(),
 
-        primary_contact_type: form.primaryContactType,
-        primary_contact_value: form.primaryContactValue.trim(),
+                source_category: form.sourceCategory,
+                source_name: form.sourceName,
+              },
+            },
+          }),
+        },
+      );
 
-        source_category: form.sourceCategory,
-        source_name: form.sourceName,
+      const json = await res.json().catch(() => null);
 
-        custom_values: nextCustomValues,
-        notes: cleanNotes,
+      if (!res.ok) {
+        const msg =
+          json?.error ||
+          json?.message ||
+          "Saving changes failed. Please try again.";
 
-        updated_at: new Date().toISOString(),
-      };
+        const lowered = String(msg).toLowerCase();
 
-      const { error: updateError } = await supabase
-        .from("leads")
-        .update(payload)
-        .eq("id", id)
-        .eq("team_id", teamId);
-
-      if (updateError) {
-        console.error("[EditLead] failed to update lead", updateError);
-        const msg = updateError.message?.toLowerCase?.() ?? "";
-
-        if (msg.includes("leads_gender_required_for_individual")) {
+        if (lowered.includes("leads_gender_required_for_individual")) {
           setError("Gender is required when Lead Type is Individual.");
-        } else if (msg.includes("leads_primary_contact_value_not_blank")) {
+        } else if (lowered.includes("leads_primary_contact_value_not_blank")) {
           setError("Primary contact value cannot be empty.");
         } else {
-          setError("Saving changes failed. Please try again.");
+          setError(String(msg));
         }
         return;
       }

@@ -305,21 +305,29 @@ function LeadDetailPageSkeleton({ isDark }: { isDark: boolean }) {
     <div className="h-full overflow-y-auto">
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)] animate-pulse">
         <div className="space-y-6 pb-6">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <div
-                className={`h-7 w-44 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
-              />
-              <div className="mt-2 space-y-2">
-                <SkeletonLine isDark={isDark} w="w-72" />
-                <SkeletonLine isDark={isDark} w="w-56" />
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div
+                  className={`h-7 w-44 rounded ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+                />
+                <div className="mt-2 space-y-2">
+                  <SkeletonLine isDark={isDark} w="w-72" />
+                  <SkeletonLine isDark={isDark} w="w-56" />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <SkeletonButton isDark={isDark} w="w-28" />
+                <SkeletonButton isDark={isDark} w="w-16" />
+                <SkeletonButton isDark={isDark} w="w-16" />
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <SkeletonButton isDark={isDark} w="w-28" />
-              <SkeletonButton isDark={isDark} w="w-16" />
-              <SkeletonButton isDark={isDark} w="w-16" />
+            <div className="space-y-2">
+              <div
+                className={`h-16 rounded-2xl ${isDark ? "bg-slate-800" : "bg-slate-100"}`}
+              />
             </div>
           </div>
 
@@ -835,6 +843,52 @@ function formatBookedCallBody(body: string, viewerTz: string) {
   return `Call booked for ${dateLabel} · ${startTime} – ${endTime}`;
 }
 
+function getRejectLeadErrorMessage(errorCode: unknown) {
+  const code = String(errorCode ?? "").trim();
+
+  switch (code) {
+    case "no_other_setter_available":
+      return "This lead can’t be rejected right now because there isn’t another setter available to reassign it to.";
+
+    case "not_current_setter":
+      return "Only the current setter can reject this lead.";
+
+    case "not_a_setter":
+      return "You don’t have permission to reject this lead.";
+
+    case "lead_not_found":
+      return "This lead could not be found.";
+
+    case "team_mismatch":
+      return "This lead does not belong to your current workspace.";
+
+    case "missing_auth_token":
+    case "unauthorized":
+      return "Your session expired. Please refresh the page and try again.";
+
+    case "failed_to_load_setters":
+      return "We couldn’t load the available setters right now. Please try again in a moment.";
+
+    case "lead_update_failed":
+      return "We couldn’t update the lead right now. Please try again.";
+
+    case "profile_not_found":
+    case "profile_load_failed":
+      return "We couldn’t verify your profile right now. Please try again.";
+
+    case "invalid_lead_id":
+    case "missing_lead_id":
+      return "This lead link is invalid.";
+
+    case "invalid_team_id":
+    case "missing_team_id":
+      return "Your workspace information is missing. Please reload the page.";
+
+    default:
+      return "Failed to reject lead. Please try again.";
+  }
+}
+
 /* -------------------- stripe product title lookup (for offer-made events) -------------------- */
 
 function isStripeProdOrPriceId(id: string) {
@@ -971,7 +1025,7 @@ function InlineAlert({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-2 py-1 text-xs font-semibold opacity-70 hover:opacity-100"
+            className="rounded-full px-2 py-1 text-xs font-semibold opacity-70 hover:opacity-100 cursor-pointer"
             title="Dismiss"
           >
             ✕
@@ -1042,7 +1096,7 @@ function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -1050,7 +1104,7 @@ function ConfirmModal({
         if (e.key === "Escape") onCancel();
       }}
     >
-      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="absolute inset-0" onClick={onCancel} />
 
       <div
         className={`relative z-10 w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${shell}`}
@@ -1125,9 +1179,10 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
 
-  // ✅ Works with BOTH:
-  // - old: <LeadDetailClient leadId={params.id} />
-  // - current: route /leads/[id] (useParams)
+  const editBtn = isDark
+    ? "border-indigo-900/50 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/20"
+    : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300";
+
   const routeLeadId = typeof params?.id === "string" ? params.id : "";
   const rawLeadId =
     typeof leadId === "string" && leadId.trim() ? leadId : routeLeadId;
@@ -1540,7 +1595,35 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
     return rows;
   }
 
-  /* -------------------- ✅ createBookingInvite -------------------- */
+  /* -------------------- createBookingInvite -------------------- */
+  async function refreshLeadDetailAfterScoring(
+    activeTeamId: string,
+    activeLeadId: string,
+  ) {
+    try {
+      const [leadRes, configRes, loadedMessages] = await Promise.all([
+        fetchLead(activeTeamId, activeLeadId),
+        fetchScoreConfig(activeTeamId),
+        fetchMessages(activeTeamId, activeLeadId).catch(() => null),
+      ]);
+
+      if (leadRes) {
+        setLead({ ...leadRes, custom_values: leadRes.custom_values ?? {} });
+      }
+
+      setThresholds(configRes);
+
+      if (Array.isArray(loadedMessages)) {
+        setMessages(loadedMessages);
+      }
+    } catch (err) {
+      console.error(
+        "[LeadDetail] Failed to refresh lead detail after booking link creation",
+        err,
+      );
+    }
+  }
+
   async function createBookingInvite(bookingLinkId: string) {
     if (!teamId) return;
     if (!leadIdIsUuid) {
@@ -1609,6 +1692,9 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
           "Booking link created. Copy manually from the latest link box.",
         );
       }
+
+      // live refresh score + timeline
+      await refreshLeadDetailAfterScoring(teamId, normalizedLeadId);
     } catch (e: any) {
       setInviteError(String(e?.message ?? "Failed to create booking invite"));
     } finally {
@@ -1642,8 +1728,11 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       );
 
       const json = await res.json().catch(() => ({}) as any);
-      if (!res.ok)
-        throw new Error((json as any)?.error || `reject_failed_${res.status}`);
+
+      if (!res.ok) {
+        const friendlyMessage = getRejectLeadErrorMessage((json as any)?.error);
+        throw new Error(friendlyMessage);
+      }
 
       router.push("/leads");
     } catch (e: any) {
@@ -2242,16 +2331,112 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
       <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
         {/* LEFT */}
         <div className="space-y-6 pb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={`text-2xl font-semibold ${titleText}`}>
-                {leadLabel}
-              </h1>
-              <p className={`text-sm ${mutedText}`}>
-                Created on {createdLabel}
-              </p>
-              {rejectError && (
-                <div className="mt-3">
+          <div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className={`text-2xl font-semibold ${titleText}`}>
+                  {leadLabel}
+                </h1>
+                <p className={`text-sm ${mutedText}`}>
+                  Created on {createdLabel}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                {canSeeCallsButton && (
+                  <button
+                    type="button"
+                    disabled={!normalizedLeadId || callsCheckLoading}
+                    onClick={() =>
+                      router.push(
+                        `/leads/${encodeURIComponent(normalizedLeadId)}/calls`,
+                      )
+                    }
+                    className={[
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold border shadow-sm",
+                      callsBtn,
+                      "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer h-[28px] w-16",
+                    ].join(" ")}
+                    title="View and track outcomes for all booked calls"
+                  >
+                    {callsCheckLoading ? "Calls…" : "Calls"}
+                  </button>
+                )}
+
+                {canManageLeadActions && (
+                  <button
+                    type="button"
+                    disabled={!normalizedLeadId || !teamId}
+                    onClick={() => setIsBookingModalOpen(true)}
+                    className={[
+                      "rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm cursor-pointer",
+                      secondaryBtn,
+                      "disabled:opacity-60 disabled:cursor-not-allowed",
+                    ].join(" ")}
+                    title="Create a unique booking link for this lead"
+                  >
+                    Booking link
+                  </button>
+                )}
+
+                {canRejectLead && (
+                  <button
+                    type="button"
+                    disabled={rejecting}
+                    onClick={() => setRejectConfirmOpen(true)}
+                    className={[
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px] border shadow-sm",
+                      rejectBtn,
+                      "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer",
+                    ].join(" ")}
+                    title="Reject this lead and reassign to another setter"
+                  >
+                    {rejecting ? "Rejecting…" : "Reject"}
+                  </button>
+                )}
+
+                {canManageLeadActions && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/leads/${encodeURIComponent(normalizedLeadId)}/edit`,
+                      )
+                    }
+                    className={[
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px] w-16 border shadow-sm cursor-pointer",
+                      editBtn,
+                    ].join(" ")}
+                  >
+                    Edit
+                  </button>
+                )}
+
+                {canDeleteLead && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/leads/${encodeURIComponent(normalizedLeadId)}/delete`,
+                      )
+                    }
+                    className={[
+                      "rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer h-[28px] w-16",
+                      deleteBtn,
+                    ].join(" ")}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {(rejectError ||
+              bookingLinksError ||
+              inviteError ||
+              inviteSuccess) && (
+              <div className="mt-3 max-w-3xl space-y-2">
+                {rejectError && (
                   <InlineAlert
                     isDark={isDark}
                     tone="warning"
@@ -2259,108 +2444,40 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                     message={rejectError}
                     onClose={() => setRejectError(null)}
                   />
-                </div>
-              )}
-            </div>
+                )}
 
-            <div className="flex gap-2">
-              {canSeeCallsButton && (
-                <button
-                  type="button"
-                  disabled={!normalizedLeadId || callsCheckLoading}
-                  onClick={() =>
-                    router.push(
-                      `/leads/${encodeURIComponent(normalizedLeadId)}/calls`,
-                    )
-                  }
-                  className={[
-                    "rounded-lg px-3 py-1.5 text-xs font-semibold border shadow-sm",
-                    callsBtn,
-                    "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer h-[28px] w-16",
-                  ].join(" ")}
-                  title="View and track outcomes for all booked calls"
-                >
-                  {callsCheckLoading ? "Calls…" : "Calls"}
-                </button>
-              )}
+                {bookingLinksError && (
+                  <InlineAlert
+                    isDark={isDark}
+                    tone="danger"
+                    title="Couldn’t load booking links"
+                    message={bookingLinksError}
+                    onClose={() => setBookingLinksError(null)}
+                  />
+                )}
 
-              {canManageLeadActions && (
-                <button
-                  type="button"
-                  disabled={!normalizedLeadId || !teamId}
-                  onClick={() => setIsBookingModalOpen(true)}
-                  className={[
-                    "rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm cursor-pointer",
-                    secondaryBtn,
-                    "disabled:opacity-60 disabled:cursor-not-allowed",
-                  ].join(" ")}
-                  title="Create a unique booking link for this lead"
-                >
-                  Booking link
-                </button>
-              )}
+                {inviteError && (
+                  <InlineAlert
+                    isDark={isDark}
+                    tone="danger"
+                    title="Couldn’t create booking link"
+                    message={inviteError}
+                    onClose={() => setInviteError(null)}
+                  />
+                )}
 
-              {canRejectLead && (
-                <button
-                  type="button"
-                  disabled={rejecting}
-                  onClick={() => setRejectConfirmOpen(true)}
-                  className={[
-                    "rounded-lg px-3 py-1.5 text-xs font-semibold h-[28px] border shadow-sm",
-                    rejectBtn,
-                    "disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer",
-                  ].join(" ")}
-                  title="Reject this lead and reassign to another setter"
-                >
-                  {rejecting ? "Rejecting…" : "Reject"}
-                </button>
-              )}
-
-              {canManageLeadActions && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(
-                      `/leads/${encodeURIComponent(normalizedLeadId)}/edit`,
-                    )
-                  }
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold !text-white shadow-sm hover:bg-indigo-700 cursor-pointer h-[28px] w-16"
-                >
-                  Edit
-                </button>
-              )}
-
-              {canDeleteLead && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(
-                      `/leads/${encodeURIComponent(normalizedLeadId)}/delete`,
-                    )
-                  }
-                  className={[
-                    "rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer h-[28px] w-16",
-                    deleteBtn,
-                  ].join(" ")}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
+                {inviteSuccess && (
+                  <InlineAlert
+                    isDark={isDark}
+                    tone="info"
+                    title="Booking link created"
+                    message={inviteSuccess}
+                    onClose={() => setInviteSuccess(null)}
+                  />
+                )}
+              </div>
+            )}
           </div>
-
-          <ConfirmModal
-            open={rejectConfirmOpen}
-            isDark={isDark}
-            tone="warning"
-            title="Reject Lead?"
-            message="This lead will be reassigned to another team member and logged in the timeline."
-            confirmText="Reject Lead"
-            cancelText="Cancel"
-            loading={rejecting}
-            onCancel={() => setRejectConfirmOpen(false)}
-            onConfirm={confirmRejectLead}
-          />
 
           {/* Score */}
           <div
@@ -2950,6 +3067,19 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
         </div>
       </div>
 
+      <ConfirmModal
+        open={rejectConfirmOpen}
+        isDark={isDark}
+        tone="warning"
+        title="Reject Lead?"
+        message="This lead will be reassigned to another team member and logged in the timeline."
+        confirmText="Reject Lead"
+        cancelText="Cancel"
+        loading={rejecting}
+        onCancel={() => setRejectConfirmOpen(false)}
+        onConfirm={confirmRejectLead}
+      />
+
       {/* Booking modal */}
       {isBookingModalOpen && canManageLeadActions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -2994,43 +3124,6 @@ export function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                 isDark ? "bg-slate-900/40" : "bg-slate-50",
               ].join(" ")}
             >
-              {bookingLinksError && (
-                <div
-                  className={[
-                    "rounded-xl border px-4 py-3 text-sm",
-                    isDark
-                      ? "border-rose-900/60 bg-rose-950/40 text-rose-200"
-                      : "border-rose-200 bg-rose-50 text-rose-700",
-                  ].join(" ")}
-                >
-                  {bookingLinksError}
-                </div>
-              )}
-              {inviteError && (
-                <div
-                  className={[
-                    "rounded-xl border px-4 py-3 text-sm",
-                    isDark
-                      ? "border-rose-900/60 bg-rose-950/40 text-rose-200"
-                      : "border-rose-200 bg-rose-50 text-rose-700",
-                  ].join(" ")}
-                >
-                  {inviteError}
-                </div>
-              )}
-              {inviteSuccess && (
-                <div
-                  className={[
-                    "rounded-xl border px-4 py-3 text-sm",
-                    isDark
-                      ? "border-emerald-900/60 bg-emerald-950/40 text-emerald-100"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-800",
-                  ].join(" ")}
-                >
-                  {inviteSuccess}
-                </div>
-              )}
-
               {lastInviteUrl && (
                 <div
                   className={`rounded-xl border px-4 py-3 shadow-sm ${cardShell}`}

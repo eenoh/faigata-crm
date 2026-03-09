@@ -1,4 +1,4 @@
-// src/components/layout/AppHeader.tsx
+// src/modules/crm/components/layout/AppHeader.tsx
 "use client";
 
 import {
@@ -14,6 +14,9 @@ import {
   BellIcon,
   MagnifyingGlassIcon,
   ClockIcon,
+  ExclamationTriangleIcon,
+  XCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useSidebar } from "@/context/SidebarContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -28,6 +31,26 @@ function getSectionName(pathname: string): string {
   if (pathname.startsWith("/dashboard")) return "Dashboard";
   return "FaigataCRM";
 }
+
+function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+/* ===================== HEADER ALERT BRIDGE (NEW) ===================== */
+
+type HeaderAlertKind = "warning" | "error";
+
+type HeaderAlertPayload = {
+  id: string; // stable per page (e.g. "calendar")
+  kind: HeaderAlertKind;
+  text: string;
+  title?: string;
+};
+
+const HEADER_ALERT_EVENT = "faigata:header-alert";
+const HEADER_ALERT_CLEAR_EVENT = "faigata:header-alert-clear";
+
+/* ================================================================ */
 
 type HeaderUser = {
   id: string;
@@ -206,6 +229,7 @@ export function AppHeader() {
   const searchParams = useSearchParams();
   const { collapsed } = useSidebar();
 
+  // ✅ Standard theme logic (match ProductSuiteHeader)
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -224,11 +248,15 @@ export function AppHeader() {
 
   const [gcReconnectNeeded, setGcReconnectNeeded] = useState(false);
 
+  // NEW: page-driven alerts (e.g. Calendar error/warning pill)
+  const [headerAlerts, setHeaderAlerts] = useState<
+    Record<string, HeaderAlertPayload>
+  >({});
+
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   const searchRef = useRef<HTMLDivElement | null>(null);
-  const [searchFocused, setSearchFocused] = useState(false);
 
   const leftClass = collapsed ? "left-16" : "left-64";
   const teamId = searchParams.get("team");
@@ -236,6 +264,38 @@ export function AppHeader() {
   useEffect(() => {
     setSearch(searchParams.get("q") ?? "");
   }, [searchParams]);
+
+  // NEW: Listen for cross-page header alert events
+  useEffect(() => {
+    const onAlert = (ev: Event) => {
+      const e = ev as CustomEvent<HeaderAlertPayload>;
+      if (!e?.detail?.id) return;
+      setHeaderAlerts((prev) => ({ ...prev, [e.detail.id]: e.detail }));
+    };
+
+    const onClear = (ev: Event) => {
+      const e = ev as CustomEvent<{ id: string }>;
+      const id = e?.detail?.id;
+      if (!id) return;
+      setHeaderAlerts((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    };
+
+    window.addEventListener(HEADER_ALERT_EVENT, onAlert as EventListener);
+    window.addEventListener(HEADER_ALERT_CLEAR_EVENT, onClear as EventListener);
+
+    return () => {
+      window.removeEventListener(HEADER_ALERT_EVENT, onAlert as EventListener);
+      window.removeEventListener(
+        HEADER_ALERT_CLEAR_EVENT,
+        onClear as EventListener,
+      );
+    };
+  }, []);
 
   // Reconnect banner: init from local flag, then verify real status and clear stale flag
   useEffect(() => {
@@ -390,38 +450,6 @@ export function AppHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [notificationsOpen]);
 
-  useEffect(() => {
-    function handleClickOutsideSearch(e: MouseEvent) {
-      if (!searchRef.current) return;
-
-      if (searchRef.current.contains(e.target as Node)) return;
-
-      if (search !== "") {
-        setSearch("");
-
-        if (
-          pathname.startsWith("/leads") ||
-          pathname.startsWith("/pipeline") ||
-          pathname.startsWith("/billing")
-        ) {
-          const params = new URLSearchParams(searchParams.toString());
-          params.delete("q");
-          const qs = params.toString();
-          router.replace(qs ? `${pathname}?${qs}` : pathname);
-        }
-      }
-
-      setSearchFocused(false);
-    }
-
-    if (searchFocused || search.trim().length > 0) {
-      document.addEventListener("mousedown", handleClickOutsideSearch);
-    }
-
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutsideSearch);
-  }, [searchFocused, search, pathname, router, searchParams]);
-
   // Close on route change
   useEffect(() => {
     setProfileOpen(false);
@@ -447,6 +475,21 @@ export function AppHeader() {
 
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function clearSearch() {
+    setSearch("");
+
+    if (
+      pathname.startsWith("/leads") ||
+      pathname.startsWith("/pipeline") ||
+      pathname.startsWith("/billing")
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("q");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
   }
 
   const initials = (() => {
@@ -516,7 +559,9 @@ export function AppHeader() {
       const authUrl = json?.authUrl as string | undefined;
       if (!authUrl) {
         router.push(
-          `/profile/integrations?error=${encodeURIComponent("missing_auth_url")}`,
+          `/profile/integrations?error=${encodeURIComponent(
+            "missing_auth_url",
+          )}`,
         );
         return;
       }
@@ -524,8 +569,31 @@ export function AppHeader() {
       window.location.href = authUrl;
     } catch {
       router.push(
-        `/profile/integrations?error=${encodeURIComponent("google_reconnect_failed")}`,
+        `/profile/integrations?error=${encodeURIComponent(
+          "google_reconnect_failed",
+        )}`,
       );
+    }
+  }
+
+  // NEW: Click behavior for dynamic header pills (calendar etc.)
+  function handleHeaderAlertClick(a: HeaderAlertPayload) {
+    // If it's a Calendar reconnect-type pill, reuse your reconnect flow.
+    if (a.id === "calendar" && a.text.toLowerCase().includes("reconnect")) {
+      handleGoogleReconnect();
+      return;
+    }
+
+    // Session expired: go login.
+    if (a.text.toLowerCase().includes("session")) {
+      router.push("/login");
+      return;
+    }
+
+    // Otherwise, integrations is the best default place for calendar issues.
+    if (a.id === "calendar") {
+      router.push("/profile/integrations");
+      return;
     }
   }
 
@@ -708,33 +776,61 @@ export function AppHeader() {
 
   const unreadCount = reminders.length;
 
-  // ---------- theme-driven styles (same pattern as sidebar) ----------
-  const headerShell = isDark
-    ? "border-slate-800 bg-slate-950/80"
-    : "border-slate-200 bg-white/80";
+  // ---------- theme-driven styles (match ProductSuiteHeader) ----------
+  const headerBase = cn(
+    "fixed top-0 right-0 z-20 flex items-center justify-between border-b px-6 py-3 transition-all duration-300",
+    isDark
+      ? "border-slate-800 bg-slate-950"
+      : "border-slate-200 bg-white backdrop-blur",
+  );
 
-  const brandKicker = isDark ? "text-slate-500" : "text-slate-400";
-  const sectionText = isDark ? "text-slate-100" : "text-slate-900";
+  const kickerText = "text-[11px] uppercase tracking-wide text-slate-400";
+  const titleText = cn(
+    "text-sm font-semibold",
+    isDark ? "text-slate-100" : "text-slate-900",
+  );
 
-  const inputWrap = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-400 focus-within:ring-indigo-500"
-    : "border-slate-200 bg-white text-slate-400 focus-within:ring-indigo-500";
+  // surfaces (buttons/inputs/popovers) mirror ProductSuiteHeader button styles
+  const surfaceBtn = cn(
+    "inline-flex items-center justify-center rounded-full border transition shadow-sm",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700"
+      : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600",
+  );
 
-  const inputText = isDark
-    ? "text-slate-200 placeholder:text-slate-500"
-    : "text-slate-700 placeholder:text-slate-400";
+  const iconBtn = cn("h-8 w-8", surfaceBtn);
 
-  const iconBtn = isDark
-    ? "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800";
+  const inputWrap = cn(
+    "hidden md:flex items-center gap-2 rounded-full border px-3 py-1 text-xs focus-within:ring-2 focus-within:ring-indigo-500",
+    isDark
+      ? "border-slate-800 bg-slate-950 text-slate-400"
+      : "border-slate-200 bg-white text-slate-500",
+  );
 
-  const popoverShell = isDark
-    ? "border-slate-800 bg-slate-950"
-    : "border-slate-200 bg-white";
+  const inputText = cn(
+    "w-40 bg-transparent text-xs focus:outline-none",
+    isDark
+      ? "text-slate-200 placeholder:text-slate-500"
+      : "text-slate-700 placeholder:text-slate-400",
+  );
 
-  const popoverHeaderBorder = isDark ? "border-slate-900" : "border-slate-100";
-  const popoverTitle = isDark ? "text-slate-100" : "text-slate-800";
-  const popoverMeta = isDark ? "text-slate-500" : "text-slate-400";
+  const popoverShell = cn(
+    "rounded-xl border shadow-lg text-xs",
+    isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
+  );
+
+  const popoverHeaderBorder = cn(
+    "border-b",
+    isDark ? "border-slate-900" : "border-slate-100",
+  );
+  const popoverTitle = cn(
+    "font-semibold",
+    isDark ? "text-slate-100" : "text-slate-800",
+  );
+  const popoverMeta = cn(
+    "text-[11px]",
+    isDark ? "text-slate-500" : "text-slate-400",
+  );
 
   const reminderItemHover = isDark
     ? "hover:bg-slate-900/60"
@@ -744,56 +840,83 @@ export function AppHeader() {
 
   const profileName = isDark ? "text-slate-100" : "text-slate-900";
   const profileRole = isDark ? "text-slate-500" : "text-slate-400";
-
   const profileMenuMeta = isDark ? "text-slate-400" : "text-slate-500";
-  const profileMenuBorder = isDark ? "border-slate-900" : "border-slate-100";
+  const profileMenuBorder = cn(
+    "border-t",
+    isDark ? "border-slate-900" : "border-slate-100",
+  );
 
-  const logoutBtn = isDark
-    ? "bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
-    : "bg-rose-50 text-rose-600 hover:bg-rose-100";
+  const logoutBtn = cn(
+    "w-full rounded-lg px-2 py-1.5 text-xs font-semibold transition cursor-pointer",
+    isDark
+      ? "bg-rose-500/10 text-rose-300 hover:bg-rose-500/15"
+      : "bg-rose-50 text-rose-600 hover:bg-rose-100",
+  );
+
+  // NEW: Alert pills styled similarly to reconnect button
+  const alertPillBase =
+    "hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer";
+
+  const alertPillWarning = cn(
+    alertPillBase,
+    isDark
+      ? "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
+      : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+  );
+
+  const alertPillError = cn(
+    alertPillBase,
+    isDark
+      ? "border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
+      : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
+  );
 
   return (
-    <header
-      className={`fixed top-0 right-0 ${leftClass}
-        z-20 flex items-center justify-between
-        border-b px-6 py-3
-        backdrop-blur transition-all duration-300 ${headerShell}`}
-    >
+    <header className={cn(headerBase, leftClass)}>
       <div className="flex flex-col">
-        <span className={`text-[11px] uppercase tracking-wide ${brandKicker}`}>
-          Lumo
-        </span>
-        <span className={`text-sm font-semibold ${sectionText}`}>
-          {section}
-        </span>
+        <span className={kickerText}>Lumo</span>
+        <span className={titleText}>{section}</span>
       </div>
 
       <div className="flex items-center gap-4">
-        <div
-          ref={searchRef}
-          className={`hidden md:flex items-center gap-2 rounded-full border px-3 py-1 text-xs focus-within:ring-2 ${inputWrap}`}
-        >
+        <div ref={searchRef} className={cn(inputWrap, "gap-2")}>
           <MagnifyingGlassIcon className="h-4 w-4" />
           <input
             type="text"
             placeholder="Search leads, companies…"
-            className={`w-40 bg-transparent text-xs focus:outline-none ${inputText}`}
+            className={cn(inputText, "pr-2")}
             value={search}
             onChange={handleSearchChange}
-            onFocus={() => setSearchFocused(true)}
           />
+
+          {search.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className={cn(
+                "ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full border cursor-pointer transition",
+                isDark
+                  ? "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:border-slate-700"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600",
+              )}
+              aria-label="Clear search"
+              title="Clear"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {gcReconnectNeeded && (
           <button
             type="button"
             onClick={handleGoogleReconnect}
-            className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer
-              ${
-                isDark
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
-                  : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-              }`}
+            className={cn(
+              "hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer",
+              isDark
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
+                : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+            )}
             title="Reconnect Google Calendar to keep booking links working"
           >
             <ClockIcon className="h-4 w-4" />
@@ -801,11 +924,31 @@ export function AppHeader() {
           </button>
         )}
 
+        {/* NEW: dynamic alerts pushed from pages (e.g. Calendar) */}
+        {Object.values(headerAlerts).map((a) => {
+          const isWarning = a.kind === "warning";
+          const cls = isWarning ? alertPillWarning : alertPillError;
+          const Icon = isWarning ? ExclamationTriangleIcon : XCircleIcon;
+
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => handleHeaderAlertClick(a)}
+              className={cls}
+              title={a.title || a.text}
+            >
+              <Icon className="h-4 w-4" />
+              {a.text}
+            </button>
+          );
+        })}
+
         <div ref={notificationsRef} className="relative">
           <button
             type="button"
             onClick={() => setNotificationsOpen((open) => !open)}
-            className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full border transition cursor-pointer ${iconBtn}`}
+            className={cn("relative", iconBtn)}
             aria-label="Notifications"
           >
             <BellIcon className="h-4 w-4" />
@@ -822,30 +965,35 @@ export function AppHeader() {
           </button>
 
           <div
-            className={`absolute right-0 mt-2 w-72 rounded-xl border shadow-lg text-xs
-              transition-all duration-150 ease-out origin-top-right ${popoverShell} ${
-                notificationsOpen
-                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                  : "opacity-0 translate-y-1 scale-95 pointer-events-none"
-              }`}
+            className={cn(
+              "absolute right-0 mt-2 w-72 transition-all duration-150 ease-out origin-top-right",
+              popoverShell,
+              notificationsOpen
+                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                : "opacity-0 translate-y-1 scale-95 pointer-events-none",
+            )}
           >
             <div
-              className={`px-3 py-2 border-b flex items-center justify-between ${popoverHeaderBorder}`}
+              className={cn(
+                "px-3 py-2 flex items-center justify-between",
+                popoverHeaderBorder,
+              )}
             >
-              <span className={`font-semibold ${popoverTitle}`}>Reminders</span>
+              <span className={popoverTitle}>Reminders</span>
               {loadingReminders ? (
-                <span className={`text-[11px] ${popoverMeta}`}>Checking…</span>
+                <span className={popoverMeta}>Checking…</span>
               ) : (
-                <span className={`text-[11px] ${popoverMeta}`}>
-                  {unreadCount} open
-                </span>
+                <span className={popoverMeta}>{unreadCount} open</span>
               )}
             </div>
 
             <div className="max-h-80 overflow-y-auto">
               {unreadCount === 0 ? (
                 <p
-                  className={`px-3 py-3 text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}
+                  className={cn(
+                    "px-3 py-3 text-[11px]",
+                    isDark ? "text-slate-400" : "text-slate-500",
+                  )}
                 >
                   No follow-ups due right now.
                 </p>
@@ -861,22 +1009,31 @@ export function AppHeader() {
                         )}`,
                       )
                     }
-                    className={`flex w-full items-start gap-2 px-3 py-2 text-left cursor-pointer ${reminderItemHover}`}
+                    className={cn(
+                      "flex w-full items-start gap-2 px-3 py-2 text-left cursor-pointer",
+                      reminderItemHover,
+                    )}
                   >
                     <span
-                      className={`mt-1 h-1.5 w-1.5 rounded-full ${
+                      className={cn(
+                        "mt-1 h-1.5 w-1.5 rounded-full",
                         r.type === "no_inbound"
                           ? "bg-amber-500"
-                          : "bg-indigo-500"
-                      }`}
+                          : "bg-indigo-500",
+                      )}
                     />
                     <div>
                       <p
-                        className={`text-[11px] font-semibold ${reminderLead}`}
+                        className={cn(
+                          "text-[11px] font-semibold",
+                          reminderLead,
+                        )}
                       >
                         {r.leadName}
                       </p>
-                      <p className={`text-[11px] ${reminderText}`}>{r.text}</p>
+                      <p className={cn("text-[11px]", reminderText)}>
+                        {r.text}
+                      </p>
                     </div>
                   </button>
                 ))
@@ -893,7 +1050,10 @@ export function AppHeader() {
           >
             {loadingUser ? (
               <div
-                className={`h-8 w-8 animate-pulse rounded-full ${isDark ? "bg-slate-800" : "bg-slate-200"}`}
+                className={cn(
+                  "h-8 w-8 animate-pulse rounded-full",
+                  isDark ? "bg-slate-800" : "bg-slate-200",
+                )}
               />
             ) : avatarUrl ? (
               <Image
@@ -912,11 +1072,14 @@ export function AppHeader() {
 
             <div className="hidden sm:flex flex-col text-left">
               <span
-                className={`text-xs font-medium cursor-pointer ${profileName}`}
+                className={cn(
+                  "text-xs font-medium cursor-pointer",
+                  profileName,
+                )}
               >
                 {displayName}
               </span>
-              <span className={`text-[11px] cursor-pointer ${profileRole}`}>
+              <span className={cn("text-[11px] cursor-pointer", profileRole)}>
                 {displayRole}
               </span>
             </div>
@@ -924,22 +1087,23 @@ export function AppHeader() {
 
           {!loadingUser && (
             <div
-              className={`absolute right-0 top-9 mt-2 w-44 rounded-xl border shadow-lg
-                transition-all duration-150 ease-out origin-top-right ${popoverShell} ${
-                  profileOpen
-                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                    : "opacity-0 translate-y-1 scale-95 pointer-events-none"
-                }`}
+              className={cn(
+                "absolute right-0 top-9 mt-2 w-44 transition-all duration-150 ease-out origin-top-right",
+                popoverShell,
+                profileOpen
+                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                  : "opacity-0 translate-y-1 scale-95 pointer-events-none",
+              )}
             >
-              <div className={`px-3 pt-2 pb-1 text-xs ${profileMenuMeta}`}>
-                <p className={`font-medium ${profileName}`}>{displayName}</p>
-                <p className={`text-[11px] ${profileRole}`}>{displayRole}</p>
+              <div className={cn("px-3 pt-2 pb-1 text-xs", profileMenuMeta)}>
+                <p className={cn("font-medium", profileName)}>{displayName}</p>
+                <p className={cn("text-[11px]", profileRole)}>{displayRole}</p>
               </div>
-              <div className={`border-t px-3 py-2 ${profileMenuBorder}`}>
+              <div className={cn("px-3 py-2", profileMenuBorder)}>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className={`w-full rounded-lg px-2 py-1.5 text-xs font-semibold transition cursor-pointer ${logoutBtn}`}
+                  className={logoutBtn}
                 >
                   Log out
                 </button>
