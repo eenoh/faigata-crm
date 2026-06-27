@@ -4,20 +4,23 @@ import Link from "next/link";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useSidebar } from "@/context/SidebarContext";
 import { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
 export function ProductSuiteHeader() {
+  const t = useTranslations("ProductSuiteHeader");
   const { collapsed } = useSidebar();
 
-  // ✅ Standard theme logic (same as other pages)
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
   useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === "dark";
+
+  const isDark = resolvedTheme === "dark";
 
   const baseClass = cn(
     "fixed top-0 right-0 z-20 flex items-center justify-between border-b px-6 py-3 transition-all duration-300",
@@ -40,13 +43,14 @@ export function ProductSuiteHeader() {
             isDark ? "text-slate-100" : "text-slate-900",
           )}
         >
-          Lumo
+          {t("productName")}
         </span>
       </div>
 
       <Link
         href="/profile"
-        title="Organization & account settings"
+        title={t("profileSettings")}
+        aria-label={t("profileSettings")}
         className={cn(
           "inline-flex h-9 w-9 items-center justify-center rounded-full border transition shadow-sm",
           isDark
@@ -55,7 +59,7 @@ export function ProductSuiteHeader() {
         )}
       >
         <Cog6ToothIcon className="h-4 w-4" />
-        <span className="sr-only">Organization & account settings</span>
+        <span className="sr-only">{t("profileSettings")}</span>
       </Link>
     </header>
   );

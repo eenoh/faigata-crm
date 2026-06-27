@@ -1,33 +1,12 @@
-// src/app/api/crm/leads/[id]/booking-invite/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
+import { isUuid, pickFirstRouteParam } from "@/features/crm/server/request";
+import { getCrmAdminClient } from "@/features/crm/server/supabase";
 
 export const runtime = "nodejs";
 
-// In your Next version, `params` is async (Promise) for route handlers.
 type Ctx = { params: Promise<{ id: string | string[] }> };
-
-function supabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!url || !serviceKey) throw new Error("missing_supabase_env");
-
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    v,
-  );
-}
-
-function pickParam(v: unknown): string {
-  if (Array.isArray(v)) return String(v[0] ?? "").trim();
-  return String(v ?? "").trim();
-}
+type PostBody = { bookingLinkId?: unknown };
 
 function randomToken() {
   return crypto.randomBytes(24).toString("base64url");
@@ -37,13 +16,10 @@ function addDaysIso(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-type PostBody = { bookingLinkId?: unknown };
-
 export async function POST(req: Request, ctx: Ctx) {
   try {
-    // ✅ FIX: params is a Promise in this Next version
     const { id } = await ctx.params;
-    const leadId = pickParam(id);
+    const leadId = pickFirstRouteParam(id);
 
     if (!leadId || !isUuid(leadId)) {
       return NextResponse.json(
@@ -62,9 +38,8 @@ export async function POST(req: Request, ctx: Ctx) {
       );
     }
 
-    const admin = supabaseAdmin();
+    const admin = getCrmAdminClient();
 
-    // 1) Load lead -> team_id
     const { data: lead, error: leadErr } = await admin
       .from("leads")
       .select("id, team_id")
@@ -75,17 +50,18 @@ export async function POST(req: Request, ctx: Ctx) {
       console.error("[booking-invite] lead query error:", leadErr);
       return NextResponse.json({ error: "lead_query_failed" }, { status: 500 });
     }
-    if (!lead)
+    if (!lead) {
       return NextResponse.json({ error: "lead_not_found" }, { status: 404 });
+    }
 
     const teamId = String((lead as any).team_id ?? "").trim();
-    if (!teamId)
+    if (!teamId) {
       return NextResponse.json(
         { error: "lead_missing_team_id" },
         { status: 500 },
       );
+    }
 
-    // 2) Load booking link and ensure same team
     const { data: link, error: linkErr } = await admin
       .from("booking_links")
       .select("id, team_id, slug, owner_user_id, name")
@@ -106,9 +82,7 @@ export async function POST(req: Request, ctx: Ctx) {
       );
     }
 
-    // 3) Create invite row (lead-specific) + expiry
     const expires_at = addDaysIso(14);
-
     let inviteToken: string | null = null;
 
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -131,12 +105,10 @@ export async function POST(req: Request, ctx: Ctx) {
         break;
       }
 
-      // token collision (extremely rare) → retry once
       if (invErr) {
         const msg = String((invErr as any)?.message ?? "");
         const code = String((invErr as any)?.code ?? "");
-        const isDup =
-          code === "23505" || msg.toLowerCase().includes("duplicate");
+        const isDup = code === "23505" || msg.toLowerCase().includes("duplicate");
 
         if (!isDup) {
           console.error("[booking-invite] invite insert error:", invErr);
@@ -156,17 +128,17 @@ export async function POST(req: Request, ctx: Ctx) {
     }
 
     const url = `/b/${String((link as any).slug)}?t=${inviteToken}`;
+    const nowIso = new Date().toISOString();
 
-    // 4) Activity log to lead_messages (don't block response if it fails)
     const logRes = await admin.from("lead_messages").insert({
       team_id: teamId,
       lead_id: leadId,
       direction: "outbound",
       channel: "pipeline",
-      body: `Sent booking link (“${String((link as any).name ?? "Booking Link")}”): ${url}`,
+      body: `Sent booking link ("${String((link as any).name ?? "Booking Link")}"): ${url}`,
       sender_profile_id: (link as any).owner_user_id ?? null,
-      sent_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      sent_at: nowIso,
+      created_at: nowIso,
     });
 
     if (logRes.error) {
@@ -174,7 +146,6 @@ export async function POST(req: Request, ctx: Ctx) {
         "[booking-invite] failed to log lead_message:",
         logRes.error,
       );
-      // don't fail the invite creation
     }
 
     return NextResponse.json({ ok: true, url, expires_at });

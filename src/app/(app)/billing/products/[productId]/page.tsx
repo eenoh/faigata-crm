@@ -1,17 +1,23 @@
-// src/app/(app)/billing/products/[productId]/page.tsx
 import type { Metadata } from "next";
-import ProductDetailClient from "@/modules/billing/components/ProductDetailClient";
+import { getTranslations } from "next-intl/server";
+import ProductDetailClient from "@/features/billing/components/ProductDetailClient";
 
-export const metadata: Metadata = {
-  title: "Product",
-  description: "View product details, prices, and activity timeline.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingProductDetailPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default async function ProductDetailPage({
   params,
 }: {
   params: Promise<{ productId: string }>;
 }) {
-  const { productId } = await params;
+  const resolved = await Promise.resolve(params);
+  const productId = String(resolved?.productId ?? "").trim();
+
   return <ProductDetailClient productId={productId} />;
 }

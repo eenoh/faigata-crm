@@ -4,6 +4,11 @@ import type { NextRequest } from "next/server";
 import { stripeClient } from "@/app/api/utils/stripeClient";
 import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
+import {
+  applyBillingActivityTranslations,
+  applyBillingProductTranslations,
+} from "@/features/billing/server/translations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +60,12 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
 
   const { orgId, livemode, stripeAccountId } = auth.ctx;
+  const sb = adminClient();
+  const requestedLocale = await resolveRequestLocale({
+    request: req,
+    admin: sb as any,
+    userId: auth.ctx.userId,
+  });
 
   // ✅ Next: params is Promise in your build
   const { productId: raw } = await ctx.params;
@@ -107,7 +118,6 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       );
 
     // Activity timeline from DB (optional)
-    const sb = adminClient();
     const { data: activity } = await sb
       .from("organization_stripe_catalog_activity")
       .select(
@@ -119,10 +129,36 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       .order("created_at", { ascending: false })
       .limit(100);
 
+    const localizedProduct = {
+      productId: product.id,
+      name: product.name ?? null,
+      description: product.description ?? null,
+    };
+
+    await applyBillingProductTranslations({
+      admin: sb as any,
+      orgId,
+      livemode,
+      requestedLocale,
+      rows: [localizedProduct],
+    });
+
+    const activityRows = Array.isArray(activity)
+      ? (activity as Array<{ id: string; payload?: Record<string, unknown> | null }>)
+      : [];
+
+    await applyBillingActivityTranslations({
+      requestedLocale,
+      rows: activityRows,
+    });
+
+    product.name = localizedProduct.name ?? product.name;
+    product.description = localizedProduct.description ?? product.description;
+
     return NextResponse.json({
       product,
       prices,
-      activity: activity ?? [],
+      activity: activityRows,
       source: "stripe",
       livemode,
       stripeAccountId,

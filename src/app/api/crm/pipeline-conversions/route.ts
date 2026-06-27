@@ -1,11 +1,14 @@
 // src/app/api/crm/pipeline-conversions/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { buildConversionMetricLabel } from "@/features/crm/utils/conversionMetrics";
 
 type RatePayload = {
-  fromStage: string;
-  toStage: string;
-  probability: number; // 0–100
+  fromStageId: string;
+  toStageId: string;
+  fromStageName?: string;
+  toStageName?: string;
+  probability: number;
 };
 
 type PostBody = {
@@ -14,8 +17,8 @@ type PostBody = {
   rates?: RatePayload[];
 };
 
-function clampPct(v: unknown): number {
-  const n = Number(v);
+function clampPct(value: unknown): number {
+  const n = Number(value);
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(100, n));
 }
@@ -35,7 +38,6 @@ async function loadStages(teamId: string) {
 }
 
 async function loadConversionMetrics(teamId: string) {
-  // NOTE: select("*") so it doesn't break if target_rate doesn't exist yet
   const { data, error } = await supabaseAdmin
     .from("conversion_metrics")
     .select("*")
@@ -70,7 +72,6 @@ export async function POST(req: Request) {
     );
   }
 
-  /* ---------- GET: return conversion rates ---------- */
   if (action === "get") {
     try {
       const [stages, metrics] = await Promise.all([
@@ -79,15 +80,21 @@ export async function POST(req: Request) {
       ]);
 
       const stageIdToName = new Map<string, string>();
-      for (const s of stages as any[]) {
-        stageIdToName.set(String(s.id), String(s.name ?? "Untitled"));
+      for (const stage of stages as any[]) {
+        stageIdToName.set(String(stage.id), String(stage.name ?? "Untitled"));
       }
 
-      const result: RatePayload[] = (metrics as any[]).map((m) => ({
-        fromStage: stageIdToName.get(String(m.from_stage_id)) ?? "(deleted)",
-        toStage: stageIdToName.get(String(m.to_stage_id)) ?? "(deleted)",
+      const result: RatePayload[] = (metrics as any[]).map((metric) => ({
+        fromStageId: String(metric.from_stage_id ?? ""),
+        toStageId: String(metric.to_stage_id ?? ""),
+        fromStageName:
+          stageIdToName.get(String(metric.from_stage_id)) ?? "(deleted)",
+        toStageName:
+          stageIdToName.get(String(metric.to_stage_id)) ?? "(deleted)",
         probability:
-          typeof m.target_rate === "number" ? clampPct(m.target_rate) : 0,
+          typeof metric.target_rate === "number"
+            ? clampPct(metric.target_rate)
+            : 0,
       }));
 
       return NextResponse.json(result);
@@ -103,7 +110,6 @@ export async function POST(req: Request) {
     }
   }
 
-  /* ---------- SAVE: overwrite conversion rates ---------- */
   if (action === "save") {
     const rates = body.rates;
 
@@ -113,38 +119,33 @@ export async function POST(req: Request) {
 
     try {
       const stages = await loadStages(teamId);
-
-      // Build name -> stageId map (trim + case-sensitive as stored)
-      const nameToStageId = new Map<string, string>();
-      for (const s of stages as any[]) {
-        const nm = String(s.name ?? "").trim();
-        if (!nm) continue;
-        nameToStageId.set(nm, String(s.id));
+      const stageIdToName = new Map<string, string>();
+      for (const stage of stages as any[]) {
+        stageIdToName.set(String(stage.id), String(stage.name ?? "").trim());
       }
 
       const rows = rates
-        .map((r, index) => {
-          const fromName = String(r?.fromStage ?? "").trim();
-          const toName = String(r?.toStage ?? "").trim();
-          const fromId = nameToStageId.get(fromName);
-          const toId = nameToStageId.get(toName);
+        .map((rate, index) => {
+          const fromId = String(rate?.fromStageId ?? "").trim();
+          const toId = String(rate?.toStageId ?? "").trim();
+          const fromName = stageIdToName.get(fromId);
+          const toName = stageIdToName.get(toId);
 
-          if (!fromName || !toName || !fromId || !toId) {
+          if (!fromId || !toId || !fromName || !toName) {
             console.warn(
               "[PipelineConversionsAPI] Missing stage for rate",
-              fromName,
-              toName,
+              fromId,
+              toId,
             );
             return null;
           }
 
           return {
             team_id: teamId,
-            label: `${fromName} → ${toName}`,
+            label: buildConversionMetricLabel(fromName, toName),
             from_stage_id: fromId,
             to_stage_id: toId,
-            // this column MUST exist in your DB for saving to work
-            target_rate: clampPct(r?.probability),
+            target_rate: clampPct(rate?.probability),
             position: index,
           };
         })
@@ -157,7 +158,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Simplest strategy: clear & reinsert
       const { error: deleteError } = await supabaseAdmin
         .from("conversion_metrics")
         .delete()

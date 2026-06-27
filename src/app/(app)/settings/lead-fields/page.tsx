@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import { LeadFieldsSettingsClient } from "../../../../modules/crm/components/LeadFieldsSettingsClient";
+import { LeadFieldsSettingsClient } from "@/features/crm/components/LeadFieldsSettingsClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Lead Fields",
-  description: "Configure which custom fields you want to track for your leads.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("LeadFieldsSettingsPage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function LeadFieldsPage() {
   return <LeadFieldsSettingsClient />;

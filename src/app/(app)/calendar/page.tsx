@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import CalendarClient from "../../../modules/crm/components/CalendarClient";
+import { getTranslations } from "next-intl/server";
+import CalendarClient from "@/features/crm/components/CalendarClient";
 
-export const metadata: Metadata = {
-  title: "Calendar",
-  description: "View your Google Calendar availability inside FaigataCRM.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("CalendarPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function CalendarPage() {
   return <CalendarClient />;

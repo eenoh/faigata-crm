@@ -1,28 +1,68 @@
-// src/app/(app)/settings/profile/ProfileSettingsClient.tsx
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 import { PuzzlePieceIcon } from "@heroicons/react/24/outline";
 import ThemeToggle from "@/components/ThemeToggle";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { useAppLocale } from "@/context/LocaleContext";
+import {
+  SUPPORTED_LOCALES,
+  getLocaleLabel,
+  type AppLocale,
+  normalizeLocale,
+} from "@/i18n/config";
 
 type ProfileState = {
   first_name: string;
   last_name: string;
-  roles: string[]; // display/original strings
-  avatar_url: string | null; // storage path or legacy URL
+  roles: string[];
+  avatar_url: string | null;
   email: string;
+  preferred_language: AppLocale;
 };
 
 type OrgState = {
   name: string;
-  logo_url: string | null; // path in org-logos bucket (or legacy URL)
-  primary_color: string; // hex
+  logo_url: string | null;
+  primary_color: string;
 };
 
 type Status = "idle" | "loading" | "saving" | "saved" | "error";
+
+type ProfileErrorKey =
+  | "notSignedIn"
+  | "loadProfile"
+  | "loadProfileUnexpected"
+  | "uploadAvatar"
+  | "uploadAvatarSignedUrl"
+  | "uploadAvatarSave"
+  | "uploadAvatarUnexpected"
+  | "saveProfile"
+  | "passwordMismatch"
+  | "saveAuthEmailPassword"
+  | "saveAuthEmail"
+  | "saveAuthPassword"
+  | "saveProfileUnexpected";
+
+type OrgErrorKey =
+  | "orgAdminOnly"
+  | "loadOrganization"
+  | "saveOrganization"
+  | "saveOrganizationUnexpected"
+  | "missingOrganizationId"
+  | "uploadLogo"
+  | "uploadLogoSignedUrl"
+  | "uploadLogoSave"
+  | "uploadLogoUnexpected";
 
 const DEFAULT_PRIMARY_COLOR = "#4f46e5";
 
@@ -30,54 +70,80 @@ function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function normalizeRole(v: unknown): string | null {
-  const s = String(v ?? "")
+function normalizeRole(value: unknown): string | null {
+  const nextValue = String(value ?? "")
     .trim()
     .toLowerCase();
-  return s ? s : null;
+  return nextValue || null;
 }
 
-function normalizeRoles(v: unknown): string[] {
-  if (Array.isArray(v))
-    return v.map(normalizeRole).filter((x): x is string => !!x);
-  const one = normalizeRole(v);
-  return one ? [one] : [];
+function normalizeRoles(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(normalizeRole).filter((item): item is string => !!item);
+  }
+
+  const role = normalizeRole(value);
+  return role ? [role] : [];
 }
 
-function isHttpUrl(v: string) {
-  return v.startsWith("http://") || v.startsWith("https://");
+function getRoleLabel(
+  common: ReturnType<typeof useTranslations<"Common">>,
+  role: unknown,
+) {
+  switch (String(role ?? "").trim().toLowerCase()) {
+    case "admin":
+      return common("roles.admin");
+    case "manager":
+      return common("roles.manager");
+    case "prospector":
+      return common("roles.prospector");
+    case "setter":
+      return common("roles.setter");
+    case "closer":
+      return common("roles.closer");
+    default:
+      return common("roles.member");
+  }
+}
+
+function isHttpUrl(value: string) {
+  return value.startsWith("http://") || value.startsWith("https://");
 }
 
 async function resolveSignedUrl(
   bucket: "avatars" | "org-logos",
   value: string | null,
 ): Promise<string | null> {
-  const v = (value ?? "").trim();
-  if (!v) return null;
-  if (isHttpUrl(v)) return v;
+  const nextValue = (value ?? "").trim();
+  if (!nextValue) return null;
+  if (isHttpUrl(nextValue)) return nextValue;
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(v, 60 * 60 * 24);
+    .createSignedUrl(nextValue, 60 * 60 * 24);
 
   if (error) {
     console.error(`[${bucket}] createSignedUrl error`, error);
     return null;
   }
+
   return data?.signedUrl ?? null;
 }
 
 export default function ProfileSettingsClient() {
+  const activeLocale = useLocale();
+  const t = useTranslations("ProfileSettings");
+  const common = useTranslations("Common");
   const { resolvedTheme } = useTheme();
+  const { setLocale } = useAppLocale();
 
-  // ✅ prevent theme flash / mismatched classes on first paint
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = resolvedTheme === "dark";
 
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [status, setStatus] = useState<Status>("loading");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ProfileErrorKey | null>(null);
 
   const [avatarSignedUrl, setAvatarSignedUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -85,27 +151,36 @@ export default function ProfileSettingsClient() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // --- org state (Admin only) ---
   const [orgId, setOrgId] = useState<string | null>(null);
   const [org, setOrg] = useState<OrgState | null>(null);
   const [orgStatus, setOrgStatus] = useState<Status>("idle");
-  const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgError, setOrgError] = useState<OrgErrorKey | null>(null);
   const [orgLogoSignedUrl, setOrgLogoSignedUrl] = useState<string | null>(null);
   const [uploadingOrgLogo, setUploadingOrgLogo] = useState(false);
 
   const initials = useMemo(() => {
-    if (!profile) return "U";
-    const f = profile.first_name?.trim()?.charAt(0).toUpperCase();
-    const l = profile.last_name?.trim()?.charAt(0).toUpperCase();
-    return (f && l ? `${f}${l}` : f || l || "U") ?? "U";
-  }, [profile]);
+    if (!profile) return t("profile.avatarFallback");
+    const firstName = profile.first_name.trim().charAt(0).toUpperCase();
+    const lastName = profile.last_name.trim().charAt(0).toUpperCase();
+    return firstName && lastName
+      ? `${firstName}${lastName}`
+      : firstName || lastName || t("profile.avatarFallback");
+  }, [profile, t]);
 
-  // ✅ Case-insensitive admin check; stored roles are display/original strings
-  const isAdmin = useMemo(() => {
-    return normalizeRoles(profile?.roles ?? []).includes("admin");
-  }, [profile?.roles]);
+  const isAdmin = useMemo(
+    () => normalizeRoles(profile?.roles ?? []).includes("admin"),
+    [profile?.roles],
+  );
 
-  // --- shared theme tokens ---
+  const localeOptions = useMemo(
+    () =>
+      SUPPORTED_LOCALES.map((code) => [
+        code,
+        getLocaleLabel(code, activeLocale),
+      ]) as Array<[AppLocale, string]>,
+    [activeLocale],
+  );
+
   const cardBase = cn(
     "rounded-2xl border shadow-sm",
     isDark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white",
@@ -137,7 +212,6 @@ export default function ProfileSettingsClient() {
       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
   );
 
-  // ---------- LOAD ----------
   useEffect(() => {
     let cancelled = false;
 
@@ -146,7 +220,7 @@ export default function ProfileSettingsClient() {
         const { data: userRes, error: userErr } = await supabase.auth.getUser();
         if (userErr || !userRes.user) {
           if (!cancelled) {
-            setError("Not signed in.");
+            setError("notSignedIn");
             setStatus("error");
           }
           return;
@@ -157,25 +231,22 @@ export default function ProfileSettingsClient() {
 
         const { data: prof, error: profErr } = await supabase
           .from("profiles")
-          .select("first_name, last_name, role, avatar_url, company_id")
+          .select(
+            "first_name, last_name, role, avatar_url, company_id, preferred_language",
+          )
           .eq("id", userId)
           .single();
 
         if (profErr) {
           console.error("[Profile] load error", profErr);
           if (!cancelled) {
-            setError("Could not load your profile.");
+            setError("loadProfile");
             setStatus("error");
           }
           return;
         }
 
-        // Display roles: keep original strings (no UI change)
-        const rolesArray: string[] = Array.isArray(prof?.role)
-          ? (prof.role as unknown[])
-              .map((r) => String(r ?? "").trim())
-              .filter(Boolean)
-          : [];
+        const rolesArray = normalizeRoles(prof?.role);
 
         const nextProfile: ProfileState = {
           first_name: prof?.first_name ?? "",
@@ -183,9 +254,15 @@ export default function ProfileSettingsClient() {
           roles: rolesArray,
           avatar_url: prof?.avatar_url ?? null,
           email,
+          preferred_language:
+            normalizeLocale(
+              (prof as { preferred_language?: string | null })
+                .preferred_language,
+            ) ?? "en",
         };
 
-        const companyId: string | null = (prof as any)?.company_id ?? null;
+        const companyId =
+          (prof as { company_id?: string | null } | null)?.company_id ?? null;
 
         if (cancelled) return;
 
@@ -193,14 +270,11 @@ export default function ProfileSettingsClient() {
         setOrgId(companyId);
         setStatus("idle");
 
-        // signed avatar
-        resolveSignedUrl("avatars", nextProfile.avatar_url).then((url) => {
+        void resolveSignedUrl("avatars", nextProfile.avatar_url).then((url) => {
           if (!cancelled) setAvatarSignedUrl(url);
         });
 
-        // org only for admins
-        const rolesNorm = normalizeRoles(prof?.role);
-        const userIsAdmin = rolesNorm.includes("admin");
+        const userIsAdmin = rolesArray.includes("admin");
 
         if (userIsAdmin && companyId) {
           setOrgStatus("loading");
@@ -214,7 +288,7 @@ export default function ProfileSettingsClient() {
           if (orgErr) {
             console.error("[Org] load error", orgErr);
             if (!cancelled) {
-              setOrgError("Could not load your organization.");
+              setOrgError("loadOrganization");
               setOrgStatus("error");
             }
             return;
@@ -234,14 +308,14 @@ export default function ProfileSettingsClient() {
           setOrg(nextOrg);
           setOrgStatus("idle");
 
-          resolveSignedUrl("org-logos", nextOrg.logo_url).then((url) => {
+          void resolveSignedUrl("org-logos", nextOrg.logo_url).then((url) => {
             if (!cancelled) setOrgLogoSignedUrl(url);
           });
         }
-      } catch (err) {
-        console.error("[Profile] unexpected error", err);
+      } catch (nextError) {
+        console.error("[Profile] unexpected error", nextError);
         if (!cancelled) {
-          setError("Something went wrong while loading your profile.");
+          setError("loadProfileUnexpected");
           setStatus("error");
         }
       }
@@ -252,9 +326,8 @@ export default function ProfileSettingsClient() {
     };
   }, []);
 
-  // ---------- AVATAR UPLOAD / PROFILE SAVE ----------
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     try {
@@ -263,7 +336,7 @@ export default function ProfileSettingsClient() {
 
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) {
-        setError("Not signed in.");
+        setError("notSignedIn");
         return;
       }
 
@@ -278,13 +351,13 @@ export default function ProfileSettingsClient() {
 
       if (uploadErr) {
         console.error("[Profile] avatar upload error", uploadErr);
-        setError("Could not upload your profile picture.");
+        setError("uploadAvatar");
         return;
       }
 
       const signedUrl = await resolveSignedUrl("avatars", filePath);
       if (!signedUrl) {
-        setError("Uploaded image, but could not generate a view URL.");
+        setError("uploadAvatarSignedUrl");
         return;
       }
 
@@ -295,22 +368,23 @@ export default function ProfileSettingsClient() {
 
       if (updateErr) {
         console.error("[Profile] avatar url update error", updateErr);
-        setError("Uploaded image, but failed to save it to your profile.");
+        setError("uploadAvatarSave");
         return;
       }
 
       setProfile((prev) => (prev ? { ...prev, avatar_url: filePath } : prev));
       setAvatarSignedUrl(signedUrl);
-    } catch (err) {
-      console.error("[Profile] avatar upload unexpected error", err);
-      setError("Something went wrong while uploading your picture.");
+    } catch (nextError) {
+      console.error("[Profile] avatar upload unexpected error", nextError);
+      setError("uploadAvatarUnexpected");
     } finally {
       setUploadingAvatar(false);
+      event.target.value = "";
     }
   }
 
-  async function handleSaveProfile(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSaveProfile(event: FormEvent) {
+    event.preventDefault();
     if (!profile) return;
 
     setStatus("saving");
@@ -319,25 +393,27 @@ export default function ProfileSettingsClient() {
     try {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) {
-        setError("Not signed in.");
+        setError("notSignedIn");
         setStatus("error");
         return;
       }
 
       const userId = userRes.user.id;
       const currentEmail = userRes.user.email ?? "";
+      const nextLocale = normalizeLocale(profile.preferred_language) ?? "en";
 
       const { error: updateProfErr } = await supabase
         .from("profiles")
         .update({
           first_name: profile.first_name || null,
           last_name: profile.last_name || null,
+          preferred_language: nextLocale,
         })
         .eq("id", userId);
 
       if (updateProfErr) {
         console.error("[Profile] update error", updateProfErr);
-        setError("Could not save your profile changes.");
+        setError("saveProfile");
         setStatus("error");
         return;
       }
@@ -350,10 +426,11 @@ export default function ProfileSettingsClient() {
 
       if (newPassword.trim()) {
         if (newPassword !== confirmPassword) {
-          setError("New passwords do not match.");
+          setError("passwordMismatch");
           setStatus("error");
           return;
         }
+
         updates.password = newPassword.trim();
       }
 
@@ -363,33 +440,43 @@ export default function ProfileSettingsClient() {
           console.error("[Profile] auth update error", authErr);
           setError(
             updates.email && updates.password
-              ? "Could not update your email / password."
+              ? "saveAuthEmailPassword"
               : updates.email
-                ? "Could not update your email."
-                : "Could not update your password.",
+                ? "saveAuthEmail"
+                : "saveAuthPassword",
           );
           setStatus("error");
           return;
         }
       }
 
-      setStatus("saved");
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              email: updates.email ?? prev.email,
+              preferred_language: nextLocale,
+            }
+          : prev,
+      );
+
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err) {
-      console.error("[Profile] unexpected save error", err);
-      setError("Something went wrong while saving.");
+      setLocale(nextLocale);
+      setStatus("saved");
+    } catch (nextError) {
+      console.error("[Profile] unexpected save error", nextError);
+      setError("saveProfileUnexpected");
       setStatus("error");
     }
   }
 
-  // ---------- ADMIN-ONLY ORGANIZATION SAVE / LOGO UPLOAD ----------
-  async function handleSaveOrganization(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSaveOrganization(event: FormEvent) {
+    event.preventDefault();
     if (!org || !orgId) return;
 
     if (!isAdmin) {
-      setOrgError("Only admins can update organization settings.");
+      setOrgError("orgAdminOnly");
       setOrgStatus("error");
       return;
     }
@@ -415,21 +502,21 @@ export default function ProfileSettingsClient() {
 
       if (updateErr) {
         console.error("[Org] update error", updateErr);
-        setOrgError("Could not save your organization changes.");
+        setOrgError("saveOrganization");
         setOrgStatus("error");
         return;
       }
 
       setOrgStatus("saved");
-    } catch (err) {
-      console.error("[Org] unexpected save error", err);
-      setOrgError("Something went wrong while saving organization settings.");
+    } catch (nextError) {
+      console.error("[Org] unexpected save error", nextError);
+      setOrgError("saveOrganizationUnexpected");
       setOrgStatus("error");
     }
   }
 
-  async function handleOrgLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleOrgLogoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     if (!file || !isAdmin) return;
 
     try {
@@ -437,7 +524,7 @@ export default function ProfileSettingsClient() {
       setOrgError(null);
 
       if (!orgId) {
-        setOrgError("Missing organization id.");
+        setOrgError("missingOrganizationId");
         return;
       }
 
@@ -451,13 +538,13 @@ export default function ProfileSettingsClient() {
 
       if (uploadErr) {
         console.error("[Org] logo upload error", uploadErr);
-        setOrgError("Could not upload your company logo.");
+        setOrgError("uploadLogo");
         return;
       }
 
       const signedUrl = await resolveSignedUrl("org-logos", filePath);
       if (!signedUrl) {
-        setOrgError("Uploaded logo, but could not generate a view URL.");
+        setOrgError("uploadLogoSignedUrl");
         return;
       }
 
@@ -468,37 +555,34 @@ export default function ProfileSettingsClient() {
 
       if (updateErr) {
         console.error("[Org] logo url update error", updateErr);
-        setOrgError("Uploaded logo, but failed to save it.");
+        setOrgError("uploadLogoSave");
         return;
       }
 
       setOrg((prev) => (prev ? { ...prev, logo_url: filePath } : prev));
       setOrgLogoSignedUrl(signedUrl);
-    } catch (err) {
-      console.error("[Org] logo upload unexpected error", err);
-      setOrgError("Something went wrong while uploading your logo.");
+    } catch (nextError) {
+      console.error("[Org] logo upload unexpected error", nextError);
+      setOrgError("uploadLogoUnexpected");
     } finally {
       setUploadingOrgLogo(false);
+      event.target.value = "";
     }
   }
 
-  // ✅ wait until theme is known (prevents flash)
-  if (!mounted) return null;
-
-  // ---------- RENDER ----------
   if (status === "loading" || !profile) {
     return (
       <div className="min-h-screen w-full bg-[var(--background)]">
-        <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4">
+        <div className="ml-4 mt-6 w-full max-w-6xl lg:mt-10">
           <div
             className={cn(
-              "max-w-xl rounded-2xl border p-6 shadow-sm text-sm",
+              "max-w-xl rounded-2xl border p-6 text-sm shadow-sm",
               isDark
                 ? "border-slate-800 bg-slate-950 text-slate-400"
                 : "border-slate-200 bg-white text-slate-500",
             )}
           >
-            Loading your profile…
+            {t("loading")}
           </div>
         </div>
       </div>
@@ -507,7 +591,7 @@ export default function ProfileSettingsClient() {
 
   return (
     <div className="min-h-screen w-full bg-[var(--background)]">
-      <div className="w-full max-w-6xl mt-6 lg:mt-10 ml-4 space-y-4">
+      <div className="ml-4 mt-6 w-full max-w-6xl space-y-4 lg:mt-10">
         <div className={cn(cardBase, "px-5 py-4")}>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -517,7 +601,7 @@ export default function ProfileSettingsClient() {
                   isDark ? "text-slate-100" : "text-slate-900",
                 )}
               >
-                Profile &amp; Organization
+                {t("title")}
               </h1>
               <p
                 className={cn(
@@ -525,16 +609,20 @@ export default function ProfileSettingsClient() {
                   isDark ? "text-slate-400" : "text-slate-600",
                 )}
               >
-                Update your personal account settings and manage your company
-                branding.
+                {t("description")}
               </p>
             </div>
 
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <Link href="/profile/integrations" className={buttonOutline}>
+              <Link
+                href="/profile/integrations"
+                className={buttonOutline}
+                title={t("integrations")}
+                aria-label={t("integrations")}
+              >
                 <PuzzlePieceIcon className="h-4 w-4" />
-                Integrations
+                {t("integrations")}
               </Link>
             </div>
           </div>
@@ -549,7 +637,7 @@ export default function ProfileSettingsClient() {
                 : "border-rose-100 bg-rose-50 text-rose-700",
             )}
           >
-            {error}
+            {t(`errors.${error}`)}
           </div>
         )}
 
@@ -562,13 +650,12 @@ export default function ProfileSettingsClient() {
                 : "border-emerald-100 bg-emerald-50 text-emerald-700",
             )}
           >
-            ✅ Account updated
+            {t("accountUpdated")}
           </div>
         )}
 
         <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.7fr)]">
-          {/* LEFT: organization (Admin only) */}
-          <div className="space-y-3 flex flex-col h-full">
+          <div className="flex h-full flex-col space-y-3">
             <div className={cn(cardBase, "p-5")}>
               <h2
                 className={cn(
@@ -576,7 +663,7 @@ export default function ProfileSettingsClient() {
                   isDark ? "text-slate-100" : "text-slate-900",
                 )}
               >
-                Organization
+                {t("organization.title")}
               </h2>
               <p
                 className={cn(
@@ -584,8 +671,7 @@ export default function ProfileSettingsClient() {
                   isDark ? "text-slate-400" : "text-slate-500",
                 )}
               >
-                Update your company name, logo, and primary colour used across
-                Faigata.
+                {t("organization.description")}
               </p>
 
               {!isAdmin && (
@@ -596,9 +682,7 @@ export default function ProfileSettingsClient() {
                       isDark ? "text-slate-400" : "text-slate-500",
                     )}
                   >
-                    Only <span className="font-semibold">Admins</span> can edit
-                    organization settings. Your organization owner can update
-                    these details for you.
+                    {t("organization.adminOnly")}
                   </p>
                 </div>
               )}
@@ -607,7 +691,7 @@ export default function ProfileSettingsClient() {
             {isAdmin && (
               <form
                 onSubmit={handleSaveOrganization}
-                className={cn(cardBase, "space-y-5 p-5 flex-1 flex flex-col")}
+                className={cn(cardBase, "flex flex-1 flex-col space-y-5 p-5")}
               >
                 {orgError && (
                   <div
@@ -618,7 +702,7 @@ export default function ProfileSettingsClient() {
                         : "border-rose-100 bg-rose-50 text-rose-700",
                     )}
                   >
-                    {orgError}
+                    {t(`errors.${orgError}`)}
                   </div>
                 )}
 
@@ -631,18 +715,17 @@ export default function ProfileSettingsClient() {
                         : "border-emerald-100 bg-emerald-50 text-emerald-700",
                     )}
                   >
-                    ✅ Organization updated
+                    {t("organization.updated")}
                   </div>
                 )}
 
                 <div className="flex items-center gap-4">
                   {orgLogoSignedUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={orgLogoSignedUrl}
-                      alt="Company logo"
+                      alt={t("organization.companyLogo")}
                       className={cn(
-                        "h-12 w-12 rounded-xl object-cover border",
+                        "h-12 w-12 rounded-xl border object-cover",
                         isDark
                           ? "border-slate-800 bg-slate-950"
                           : "border-slate-200 bg-slate-50",
@@ -657,24 +740,32 @@ export default function ProfileSettingsClient() {
                           : "border-slate-300 bg-slate-50 text-slate-400",
                       )}
                     >
-                      Logo
+                      {t("organization.logoFallback")}
                     </div>
                   )}
 
                   <div className="flex flex-col">
-                    <span className={labelClass}>Company logo</span>
+                    <span className={labelClass}>
+                      {t("organization.companyLogo")}
+                    </span>
                     <span
                       className={cn(
                         "text-[11px]",
                         isDark ? "text-slate-500" : "text-slate-400",
                       )}
                     >
-                      PNG or JPG, square works best.
+                      {t("organization.logoHelp")}
                     </span>
                     <label
-                      className={cn(buttonOutline, "mt-2 w-fit px-3 py-1.5")}
+                      className={cn(
+                        buttonOutline,
+                        "mt-2 w-fit cursor-pointer px-3 py-1.5",
+                      )}
+                      title={t("organization.companyLogo")}
                     >
-                      {uploadingOrgLogo ? "Uploading…" : "Upload logo"}
+                      {uploadingOrgLogo
+                        ? t("organization.uploadingLogo")
+                        : t("organization.uploadLogo")}
                       <input
                         type="file"
                         accept="image/*"
@@ -687,20 +778,24 @@ export default function ProfileSettingsClient() {
                 </div>
 
                 <div>
-                  <label className={labelClass}>Company name</label>
+                  <label className={labelClass}>
+                    {t("organization.companyName")}
+                  </label>
                   <input
                     className={inputClass}
                     value={org?.name ?? ""}
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setOrg((prev) =>
-                        prev ? { ...prev, name: e.target.value } : prev,
+                        prev ? { ...prev, name: event.target.value } : prev,
                       )
                     }
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className={labelClass}>Primary colour</label>
+                  <label className={labelClass}>
+                    {t("organization.primaryColor")}
+                  </label>
                   <div className="flex items-center gap-3">
                     <input
                       type="color"
@@ -711,10 +806,10 @@ export default function ProfileSettingsClient() {
                           : "border-slate-300 bg-white",
                       )}
                       value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setOrg((prev) =>
                           prev
-                            ? { ...prev, primary_color: e.target.value }
+                            ? { ...prev, primary_color: event.target.value }
                             : prev,
                         )
                       }
@@ -722,10 +817,10 @@ export default function ProfileSettingsClient() {
                     <input
                       className={cn(inputClass, "font-mono")}
                       value={org?.primary_color || DEFAULT_PRIMARY_COLOR}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setOrg((prev) =>
                           prev
-                            ? { ...prev, primary_color: e.target.value }
+                            ? { ...prev, primary_color: event.target.value }
                             : prev,
                         )
                       }
@@ -740,16 +835,15 @@ export default function ProfileSettingsClient() {
                         isDark ? "text-slate-400" : "text-slate-500",
                       )}
                     >
-                      This colour is used for buttons and highlights in your
-                      workspace.
+                      {t("organization.colorHelp")}
                       <span
-                        className="inline-flex h-4 w-10 items-center justify-center rounded-full text-[9px] font-medium text-white"
+                        className="inline-flex min-h-5 items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium leading-none text-white whitespace-nowrap"
                         style={{
                           backgroundColor:
                             org?.primary_color || DEFAULT_PRIMARY_COLOR,
                         }}
                       >
-                        Preview
+                        {t("organization.preview")}
                       </span>
                     </p>
                   </div>
@@ -759,28 +853,28 @@ export default function ProfileSettingsClient() {
                   <button
                     type="submit"
                     disabled={orgStatus === "saving"}
-                    className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                    className="inline-flex cursor-pointer items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {orgStatus === "saving" ? "Saving…" : "Save organization"}
+                    {orgStatus === "saving"
+                      ? common("actions.saving")
+                      : t("organization.save")}
                   </button>
                 </div>
               </form>
             )}
           </div>
 
-          {/* RIGHT: profile form */}
           <form
             onSubmit={handleSaveProfile}
-            className={cn(cardBase, "space-y-6 p-6 h-full flex flex-col")}
+            className={cn(cardBase, "flex h-full flex-col space-y-6 p-6")}
           >
             <div className="flex items-center gap-4">
               {avatarSignedUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarSignedUrl}
-                  alt="Profile avatar"
+                  alt={t("profile.picture")}
                   className={cn(
-                    "h-14 w-14 rounded-full object-cover border",
+                    "h-14 w-14 rounded-full border object-cover",
                     isDark ? "border-slate-800" : "border-slate-200",
                   )}
                 />
@@ -791,17 +885,25 @@ export default function ProfileSettingsClient() {
               )}
 
               <div className="flex flex-col">
-                <span className={labelClass}>Profile picture</span>
+                <span className={labelClass}>{t("profile.picture")}</span>
                 <span
                   className={cn(
                     "text-[11px]",
                     isDark ? "text-slate-500" : "text-slate-400",
                   )}
                 >
-                  PNG or JPG, up to ~5MB.
+                  {t("profile.pictureHelp")}
                 </span>
-                <label className={cn(buttonOutline, "mt-2 w-fit px-3 py-1.5")}>
-                  {uploadingAvatar ? "Uploading…" : "Upload new photo"}
+                <label
+                  className={cn(
+                    buttonOutline,
+                    "mt-2 w-fit cursor-pointer px-3 py-1.5",
+                  )}
+                  title={t("profile.picture")}
+                >
+                  {uploadingAvatar
+                    ? t("profile.uploadingPhoto")
+                    : t("profile.uploadPhoto")}
                   <input
                     type="file"
                     accept="image/*"
@@ -815,35 +917,39 @@ export default function ProfileSettingsClient() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>First name</label>
+                <label className={labelClass}>
+                  {common("fields.firstName")}
+                </label>
                 <input
                   className={inputClass}
                   value={profile.first_name}
-                  onChange={(e) =>
-                    setProfile({ ...profile, first_name: e.target.value })
+                  onChange={(event) =>
+                    setProfile({ ...profile, first_name: event.target.value })
                   }
                 />
               </div>
               <div>
-                <label className={labelClass}>Last name</label>
+                <label className={labelClass}>
+                  {common("fields.lastName")}
+                </label>
                 <input
                   className={inputClass}
                   value={profile.last_name}
-                  onChange={(e) =>
-                    setProfile({ ...profile, last_name: e.target.value })
+                  onChange={(event) =>
+                    setProfile({ ...profile, last_name: event.target.value })
                   }
                 />
               </div>
             </div>
 
             <div>
-              <label className={labelClass}>Email</label>
+              <label className={labelClass}>{common("fields.email")}</label>
               <input
                 type="email"
                 className={inputClass}
                 value={profile.email}
-                onChange={(e) =>
-                  setProfile({ ...profile, email: e.target.value })
+                onChange={(event) =>
+                  setProfile({ ...profile, email: event.target.value })
                 }
               />
               <p
@@ -852,26 +958,54 @@ export default function ProfileSettingsClient() {
                   isDark ? "text-slate-500" : "text-slate-400",
                 )}
               >
-                This updates the email tied to your login. You may need to
-                verify the new address.
+                {t("profile.emailHelp")}
               </p>
             </div>
 
             <div>
-              <label className={labelClass}>Roles</label>
+              <label className={labelClass}>{common("languages.label")}</label>
+              <select
+                className={cn(inputClass, "cursor-pointer")}
+                value={profile.preferred_language}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    preferred_language:
+                      normalizeLocale(event.target.value) ?? "en",
+                  })
+                }
+              >
+                {localeOptions.map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <p
+                className={cn(
+                  "mt-1 text-[11px]",
+                  isDark ? "text-slate-500" : "text-slate-400",
+                )}
+              >
+                {common("languages.help")}
+              </p>
+            </div>
+
+            <div>
+              <label className={labelClass}>{common("fields.roles")}</label>
               <div className="flex flex-wrap gap-2">
-                {(profile.roles.length ? profile.roles : ["Member"]).map(
-                  (r) => (
+                {(profile.roles.length ? profile.roles : ["member"]).map(
+                  (role) => (
                     <span
-                      key={r}
+                      key={role}
                       className={cn(
-                        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border",
+                        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium",
                         isDark
                           ? "border-slate-800 bg-slate-900/30 text-slate-200"
                           : "border-transparent bg-slate-100 text-slate-700",
                       )}
                     >
-                      {r}
+                      {getRoleLabel(common, role)}
                     </span>
                   ),
                 )}
@@ -880,23 +1014,25 @@ export default function ProfileSettingsClient() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>New password</label>
+                <label className={labelClass}>{t("profile.newPassword")}</label>
                 <input
                   type="password"
                   className={inputClass}
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Leave blank to keep current"
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder={t("profile.passwordPlaceholder")}
                 />
               </div>
               <div>
-                <label className={labelClass}>Confirm new password</label>
+                <label className={labelClass}>
+                  {t("profile.confirmNewPassword")}
+                </label>
                 <input
                   type="password"
                   className={inputClass}
-                  placeholder="Leave blank to keep current"
+                  placeholder={t("profile.passwordPlaceholder")}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
                 />
               </div>
             </div>
@@ -905,9 +1041,11 @@ export default function ProfileSettingsClient() {
               <button
                 type="submit"
                 disabled={status === "saving"}
-                className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                className="inline-flex cursor-pointer items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {status === "saving" ? "Saving…" : "Save changes"}
+                {status === "saving"
+                  ? common("actions.saving")
+                  : t("profile.save")}
               </button>
             </div>
           </form>

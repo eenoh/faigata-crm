@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import DashboardClient from "@/modules/crm/components/DashboardClient";
+import { getTranslations } from "next-intl/server";
+import DashboardClient from "@/features/crm/components/DashboardClient";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Dashboard.metadata");
+
+  return {
+    title: t("title"),
+  };
+}
 
 export default function DashboardPage() {
   return <DashboardClient />;

@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { stripeClient } from "@/app/api/utils/stripeClient";
 import { getAuthedBillingContext } from "@/app/api/utils/authedBilling";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
+import { applyBillingProductTranslations } from "@/features/billing/server/translations";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -92,8 +95,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const stripe = stripeClient(!!(billingCtx as any).livemode);
+    const supabase = getSupabaseAdminClient();
+    const requestedLocale = await resolveRequestLocale({
+      request: req,
+      admin: supabase,
+      userId: (billingCtx as any).userId ?? null,
+    });
 
-    const labels: Record<string, string> = {};
+    const productRows = ids.map((id) => ({
+      productId: id,
+      name: null as string | null,
+      description: null as string | null,
+    }));
 
     const results = await Promise.allSettled(
       ids.map((id) =>
@@ -111,8 +124,25 @@ export async function POST(req: NextRequest) {
 
       const p = r.value as any;
       const name = String(p?.name ?? "").trim();
-      if (name) labels[ids[i]!] = name;
+      if (name) {
+        productRows[i]!.name = name;
+      }
     }
+
+    await applyBillingProductTranslations({
+      admin: supabase,
+      orgId: (billingCtx as any).orgId,
+      livemode: !!(billingCtx as any).livemode,
+      requestedLocale,
+      rows: productRows,
+    });
+
+    const labels = productRows.reduce<Record<string, string>>((acc, row) => {
+      if (row.name) {
+        acc[row.productId] = row.name;
+      }
+      return acc;
+    }, {});
 
     return NextResponse.json({ ok: true, labels });
   } catch (e: any) {

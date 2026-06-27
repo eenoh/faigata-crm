@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import FailedPaymentsClient from "@/modules/billing/components/FailedPaymentsClient";
+import { getTranslations } from "next-intl/server";
+import FailedPaymentsClient from "@/features/billing/components/FailedPaymentsClient";
 
-export const metadata: Metadata = {
-  title: "Failed Payments",
-  description: "Review failed or action-required payments.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingFailedPaymentsPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function FailedPaymentsPage() {
   return <FailedPaymentsClient />;

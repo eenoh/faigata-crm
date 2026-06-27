@@ -1,11 +1,12 @@
-// src/app/register/RegisterPageClient.tsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useTheme } from "next-themes";
+import { publicEnv } from "@/lib/env/public";
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { useLocale, useTranslations } from "next-intl";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -16,35 +17,47 @@ function buildHref(
   params: Record<string, string | null | undefined>,
 ) {
   const qs = new URLSearchParams(
-    Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-      if (v) acc[k] = v;
-      return acc;
-    }, {}),
+    Object.entries(params).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        if (value) acc[key] = value;
+        return acc;
+      },
+      {},
+    ),
   ).toString();
+
   return qs ? `${base}?${qs}` : base;
 }
 
+function sanitizeNextPath(value: string | null) {
+  return value && value.startsWith("/") ? value : null;
+}
+
+function getAuthedLocaleHeaders(accessToken: string | null, locale: string) {
+  return {
+    "Content-Type": "application/json",
+    "x-faigata-locale": locale,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+}
+
 async function pollSession(maxAttempts = 5, delayMs = 150): Promise<boolean> {
-  for (let i = 0; i < maxAttempts; i++) {
+  for (let index = 0; index < maxAttempts; index++) {
     const { data } = await supabase.auth.getSession();
     if (data.session) return true;
-    await new Promise((r) => setTimeout(r, delayMs));
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
   return false;
 }
 
-/**
- * Make sure a browser session exists + is persisted before redirecting.
- * Returns true only if a session is actually available.
- */
-async function ensureSessionReady(normalizedEmail: string, pwd: string) {
+async function ensureSessionReady(normalizedEmail: string, password: string) {
   const { data: existing } = await supabase.auth.getSession();
   if (existing.session) return true;
 
   const { data: signInData, error: signInError } =
     await supabase.auth.signInWithPassword({
       email: normalizedEmail,
-      password: pwd,
+      password,
     });
 
   if (signInError || !signInData.session) return false;
@@ -52,29 +65,35 @@ async function ensureSessionReady(normalizedEmail: string, pwd: string) {
   return pollSession();
 }
 
+type CompleteRegistrationResponse = {
+  redirectTo?: string;
+};
+
 export function RegisterPageClient() {
+  const t = useTranslations("RegisterPage");
+  const common = useTranslations("Common");
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const inviteId = searchParams.get("invite");
   const teamIdParam = searchParams.get("team");
   const companyIdParam = searchParams.get("company");
-
-  // ✅ theme hook
+  const nextPath = sanitizeNextPath(searchParams.get("next"));
   const { resolvedTheme } = useTheme();
 
-  // ✅ prevent hydration mismatch / flash
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = resolvedTheme === "dark";
-
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => setMounted(true), []);
+  const isDark = resolvedTheme === "dark";
 
   const hasInviteContext = useMemo(
     () => Boolean(inviteId || teamIdParam || companyIdParam),
@@ -87,15 +106,26 @@ export function RegisterPageClient() {
         invite: inviteId,
         team: teamIdParam,
         company: companyIdParam,
+        next: nextPath,
       }),
-    [inviteId, teamIdParam, companyIdParam],
+    [inviteId, teamIdParam, companyIdParam, nextPath],
+  );
+
+  const confirmationRedirectPath = useMemo(
+    () =>
+      buildHref("/login", {
+        invite: inviteId,
+        team: teamIdParam,
+        company: companyIdParam,
+        next: nextPath,
+      }),
+    [inviteId, teamIdParam, companyIdParam, nextPath],
   );
 
   const go = (url: string) => {
     window.location.href = url;
   };
 
-  // If user is already signed in and already has a team -> go straight to CRM
   useEffect(() => {
     let cancelled = false;
 
@@ -112,94 +142,118 @@ export function RegisterPageClient() {
         .from("profiles")
         .select("team_id")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (cancelled) return;
       setInitializing(false);
 
-      if (profile?.team_id) router.replace("/crm");
-    })();
+      if (profile?.team_id) {
+        router.replace(nextPath ?? "/crm");
+        return;
+      }
+
+      if (!hasInviteContext) {
+        router.replace("/onboarding");
+      }
+    })().catch((error) => {
+      console.error("[register] initialization failed", error);
+      if (!cancelled) {
+        setInitializing(false);
+        setStatusMessage(t("errors.initializationFailed"));
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, hasInviteContext, nextPath, t]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
+    setStatusMessage(null);
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // 1) Create user
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: { data: { first_name: firstName, last_name: lastName } },
-    });
-
-    if (error || !data.user) {
-      setLoading(false);
-      console.error(error);
-      alert(error?.message || "Registration failed");
-      return;
-    }
-
-    // 2) Guarantee session before redirecting
-    const sessionOk =
-      Boolean(data.session) ||
-      (await ensureSessionReady(normalizedEmail, password));
-
-    if (!sessionOk) {
-      setLoading(false);
-      alert(
-        "Your account was created, but Supabase did not create a login session. " +
-          "This usually happens when email confirmation is enabled. " +
-          "Please confirm your email (or disable confirmation for local testing), then log in.",
-      );
-      go("/login");
-      return;
-    }
-
-    setLoading(false);
-
-    // 3) No invite/team/company → standard onboarding
-    if (!hasInviteContext) {
-      go("/onboarding");
-      return;
-    }
-
-    // 4) Invite/team/company present → backend completion, then CRM
     try {
-      const res = await fetch("/api/auth/complete-registration", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: data.user.id,
-          teamId: teamIdParam,
-          inviteId,
-          companyId: companyIdParam ?? null,
-          firstName,
-          lastName,
-        }),
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: { first_name: firstName, last_name: lastName },
+          emailRedirectTo: `${publicEnv.appUrl}/auth/confirm?next=${encodeURIComponent(
+            confirmationRedirectPath,
+          )}`,
+        },
       });
 
-      if (!res.ok) {
-        console.error("complete-registration failed", await res.text());
-        go("/crm");
+      if (error || !data.user) {
+        console.error(error);
+        setStatusMessage(resolveRegisterErrorMessage(error, t));
         return;
       }
 
-      const payload = (await res.json()) as { redirectTo?: string };
-      go(payload.redirectTo || "/crm");
+      const sessionOk =
+        Boolean(data.session) ||
+        (await ensureSessionReady(normalizedEmail, password));
+
+      if (!sessionOk) {
+        setStatusMessage(t("errors.sessionNotCreated"));
+        go(confirmationRedirectPath);
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken =
+        data.session?.access_token ?? sessionData.session?.access_token ?? null;
+
+      if (!hasInviteContext) {
+        go("/onboarding");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/complete-registration", {
+          method: "POST",
+          headers: getAuthedLocaleHeaders(accessToken, locale),
+          body: JSON.stringify({
+            teamId: teamIdParam,
+            inviteId,
+            companyId: companyIdParam ?? null,
+            firstName,
+            lastName,
+          }),
+        });
+
+        if (!res.ok) {
+          console.error(
+            "[register] complete-registration failed",
+            await res.text().catch(() => ""),
+          );
+          setStatusMessage(t("errors.completeRegistrationFailed"));
+          go(nextPath ?? "/crm");
+          return;
+        }
+
+        const payload = (await res
+          .json()
+          .catch(() => null)) as CompleteRegistrationResponse | null;
+
+        go(payload?.redirectTo || nextPath || "/crm");
+      } catch (err) {
+        console.error("[register] complete-registration error", err);
+        setStatusMessage(t("errors.completeRegistrationUnexpected"));
+        go(nextPath ?? "/crm");
+      }
     } catch (err) {
-      console.error("complete-registration error", err);
-      go("/crm");
+      console.error("[register] signup error", err);
+      setStatusMessage(t("errors.unexpected"));
+    } finally {
+      setLoading(false);
     }
   }
-
-  // ✅ Safe gate AFTER hooks
-  if (!mounted) return null;
 
   const pageBg = cn(
     "min-h-screen flex items-center justify-center px-4",
@@ -251,7 +305,7 @@ export function RegisterPageClient() {
               : "bg-white/90 border-slate-200 text-slate-500",
           )}
         >
-          Checking your session…
+          {t("states.checkingSession")}
         </div>
       </main>
     );
@@ -264,20 +318,30 @@ export function RegisterPageClient() {
           <div className={logoWrap}>
             <img
               src="/icons/icon-faigata.svg"
-              alt="Faigata"
+              alt={common("brand.logoAlt")}
               className={cn("w-10 h-10", isDark ? "opacity-95" : "")}
             />
           </div>
 
-          <h1 className={title}>Create your Faigata account</h1>
+          <h1 className={title}>{t("page.title")}</h1>
+          <p className={subtitle}>{t("page.subtitle")}</p>
 
-          <p className={subtitle}>One login for all Faigata modules.</p>
+          {statusMessage ? (
+            <p
+              className={cn(
+                "mt-3 text-xs",
+                isDark ? "text-rose-300" : "text-rose-600",
+              )}
+            >
+              {statusMessage}
+            </p>
+          ) : null}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <FloatingInput
-              label="First name"
+              label={common("fields.firstName")}
               type="text"
               required
               value={firstName}
@@ -285,7 +349,7 @@ export function RegisterPageClient() {
               isDark={isDark}
             />
             <FloatingInput
-              label="Last name"
+              label={common("fields.lastName")}
               type="text"
               required
               value={lastName}
@@ -295,15 +359,16 @@ export function RegisterPageClient() {
           </div>
 
           <FloatingInput
-            label="Work email"
+            label={common("fields.workEmail")}
             type="email"
             required
             value={email}
             onChange={setEmail}
             isDark={isDark}
           />
+
           <FloatingInput
-            label="Password"
+            label={common("fields.password")}
             type="password"
             required
             value={password}
@@ -316,24 +381,22 @@ export function RegisterPageClient() {
             disabled={loading}
             className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
-            {loading ? "Creating your account..." : "Continue"}
+            {loading
+              ? common("auth.creatingAccount")
+              : common("actions.continue")}
           </button>
         </form>
 
         <p className={footerText}>
-          Already have an account?{" "}
+          {t("footer.alreadyHaveAccount")}{" "}
           <Link href={loginHref} className={linkClass}>
-            Log in
+            {common("auth.logIn")}
           </Link>
         </p>
       </div>
     </main>
   );
 }
-
-/* --------------------------
-   Floating label input
---------------------------- */
 
 function FloatingInput({
   label,
@@ -350,6 +413,7 @@ function FloatingInput({
   onChange: (v: string) => void;
   isDark: boolean;
 }) {
+  const common = useTranslations("Common");
   const [showPassword, setShowPassword] = useState(false);
 
   const isPassword = type === "password";
@@ -360,6 +424,7 @@ function FloatingInput({
       <input
         type={inputType}
         required={required}
+        placeholder={label}
         className={cn(
           "peer w-full rounded-xl border px-3.5 pr-10 pt-5 pb-2 text-sm focus:outline-none focus:ring-2 placeholder-transparent",
           isDark
@@ -369,6 +434,7 @@ function FloatingInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
+
       <label
         className={cn(
           "absolute left-3.5 top-2 text-xs transition-all duration-150 pointer-events-none",
@@ -385,7 +451,16 @@ function FloatingInput({
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
           className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-label={
+            showPassword
+              ? common("auth.hidePassword")
+              : common("auth.showPassword")
+          }
+          title={
+            showPassword
+              ? common("auth.hidePassword")
+              : common("auth.showPassword")
+          }
         >
           <img
             src={showPassword ? "/icons/eye-off.svg" : "/icons/eye.svg"}
@@ -396,4 +471,38 @@ function FloatingInput({
       )}
     </div>
   );
+}
+
+function resolveRegisterErrorMessage(
+  error: { message?: string; status?: number; code?: string | null } | null,
+  t: ReturnType<typeof useTranslations<"RegisterPage">>,
+) {
+  const message = error?.message?.toLowerCase() ?? "";
+  const code = error?.code?.toLowerCase() ?? "";
+
+  if (
+    code.includes("user_already_exists") ||
+    message.includes("user already registered") ||
+    message.includes("already registered")
+  ) {
+    return t("errors.userAlreadyExists");
+  }
+
+  if (message.includes("password should be at least")) {
+    return t("errors.passwordTooShort");
+  }
+
+  if (message.includes("invalid email")) {
+    return t("errors.invalidEmail");
+  }
+
+  if (message.includes("too many requests")) {
+    return t("errors.tooManyRequests");
+  }
+
+  if (message.includes("network") || error?.status === 0) {
+    return t("errors.network");
+  }
+
+  return t("errors.registrationFailed");
 }

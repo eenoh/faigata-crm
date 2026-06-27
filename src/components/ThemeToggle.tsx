@@ -1,18 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 export default function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
-  React.useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // If theme is explicitly set, use it. Otherwise fall back to resolvedTheme.
   const current = theme === "light" || theme === "dark" ? theme : resolvedTheme;
-
   const isDark = current === "dark";
 
   return (

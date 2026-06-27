@@ -1,10 +1,15 @@
-// src/app/onboarding/page.tsx
 import type { Metadata } from "next";
-import { OnboardingPageClient } from "../../modules/crm/components/OnboardingPageClient";
+import { getTranslations } from "next-intl/server";
+import { OnboardingPageClient } from "@/features/crm/components/OnboardingPageClient";
 
-export const metadata: Metadata = {
-  title: "Onboarding",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("OnboardingPage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function OnboardingPage() {
   return <OnboardingPageClient />;

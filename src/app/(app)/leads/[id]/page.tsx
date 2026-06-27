@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import { LeadDetailClient } from "@/modules/crm/components/LeadDetailClient";
+import { getTranslations } from "next-intl/server";
+import { LeadDetailClient } from "@/features/crm/components/LeadDetailClient";
 
-export const metadata: Metadata = {
-  title: "Lead Details",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("LeadDetailPage.metadata");
+
+  return {
+    title: t("title"),
+  };
+}
 
 export default async function LeadDetailPage() {
   return <LeadDetailClient />;

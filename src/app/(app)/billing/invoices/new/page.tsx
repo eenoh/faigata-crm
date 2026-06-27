@@ -1,11 +1,15 @@
-// src/app/(app)/billing/invoices/new/page.tsx
 import type { Metadata } from "next";
-import NewInvoiceClient from "@/modules/billing/components/NewInvoiceClient";
+import { getTranslations } from "next-intl/server";
+import NewInvoiceClient from "@/features/billing/components/NewInvoiceClient";
 
-export const metadata: Metadata = {
-  title: "New Invoice",
-  description: "Create a new Stripe invoice for a customer.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingNewInvoicePage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function NewInvoicePage() {
   return <NewInvoiceClient />;

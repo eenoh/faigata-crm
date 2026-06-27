@@ -1,0 +1,2983 @@
+{
+  "Common": {
+    "actions": {
+      "save": "Enregistrer les modifications",
+      "saving": "Enregistrement des mises à jour...",
+      "upload": "Téléverser un fichier",
+      "working": "Traitement en cours...",
+      "clear": "Effacer les données",
+      "refresh": "Actualiser",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "copy": "Copier",
+      "continue": "Continuer",
+      "view": "Voir les détails",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "archive": "Archiver"
+    },
+    "brand": {
+      "logoAlt": "Logo du CRM de coaching fitness"
+    },
+    "fields": {
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Adresse e-mail",
+      "workEmail": "E-mail professionnel",
+      "password": "Mot de passe",
+      "roles": "Rôles de l’équipe"
+    },
+    "auth": {
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "creatingAccount": "Configuration de votre espace de travail de coaching fitness...",
+      "logIn": "Connectez-vous à votre CRM",
+      "createAccount": "Créez votre compte de coaching"
+    },
+    "status": {
+      "connected": "Connecté",
+      "comingSoon": "Bientôt disponible",
+      "actionRequired": "Action requise"
+    },
+    "roles": {
+      "admin": "Admin",
+      "manager": "Responsable commercial",
+      "prospector": "Générateur de leads",
+      "setter": "Priseur de rendez-vous",
+      "closer": "Closer commercial",
+      "member": "Membre de l’équipe",
+      "admins": "Admins"
+    },
+    "states": {
+      "noMessages": "Aucune conversation pour le moment."
+    },
+    "activityTimeline": {
+      "roleLead": "Lead",
+      "roleTeam": "Équipe",
+      "joinDetails": "Détails de l’appel",
+      "meetingLink": "Lien de l’appel",
+      "schedulePage": "Page de réservation",
+      "bookingLinkSent": "Lien de réservation envoyé : {name}",
+      "actions": {
+        "openGoogleMeet": "Ouvrir Google Meet",
+        "openCalendarEvent": "Voir le calendrier"
+      },
+      "alt": {
+        "newLead": "Nouveau lead fitness",
+        "leadRejected": "Lead disqualifié",
+        "callStatus": "Mise à jour du statut de l’appel",
+        "offerMade": "Offre du programme envoyée",
+        "closedOnCall": "Client signé pendant l’appel",
+        "callOutcomeUpdate": "Résultat de l’appel mis à jour",
+        "callBooked": "Consultation réservée",
+        "bookingLinkSent": "Lien de réservation envoyé",
+        "pipelineActivity": "Mise à jour du pipeline"
+      },
+      "channels": {
+        "dm": "DM",
+        "sms": "SMS",
+        "other": "AUTRE",
+        "pipeline": "PIPELINE"
+      }
+    },
+    "languages": {
+      "label": "Langue préférée",
+      "help": "Choisissez la langue utilisée dans tout votre CRM de coaching après l’enregistrement."
+    },
+    "common": {
+      "yes": "Oui",
+      "no": "Non",
+      "select": "Sélectionner..."
+    }
+  },
+  "BillingCommon": {
+    "actions": {
+      "creating": "Création du paiement...",
+      "archiving": "Archivage..."
+    },
+    "errors": {
+      "prefix": "Erreur de paiement"
+    },
+    "fields": {
+      "name": "Nom du programme / de l’offre",
+      "description": "Détails du programme",
+      "amount": "Prix",
+      "currency": "Devise",
+      "customer": "Client",
+      "phone": "Téléphone du client",
+      "chargeId": "ID du paiement"
+    },
+    "price": {
+      "oneTime": "Paiement unique",
+      "recurring": "Abonnement mensuel"
+    },
+    "states": {
+      "loading": "Chargement des paiements..."
+    },
+    "status": {
+      "active": "Actif",
+      "archived": "Archivé"
+    }
+  },
+  "DomainValues": {
+    "fallbacks": {
+      "empty": "—",
+      "unknown": "Inconnu"
+    },
+    "crm": {
+      "leadType": {
+        "individual": "Particulier",
+        "business": "Entreprise"
+      },
+      "gender": {
+        "male": "Homme",
+        "female": "Femme"
+      },
+      "contactType": {
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "linkedin": "LinkedIn",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "reddit": "Reddit",
+        "twitterX": "Twitter/X",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "tiktok": "TikTok",
+        "youtube": "YouTube",
+        "snapchat": "Snapchat",
+        "discord": "Discord",
+        "slack": "Slack",
+        "wechat": "WeChat",
+        "line": "LINE",
+        "signal": "Signal",
+        "other": "Autre"
+      },
+      "sourceCategory": {
+        "inbound": "Inbound (leads organiques)",
+        "outbound": "Outbound (prospection à froid)",
+        "referral": "Recommandation client",
+        "partner": "Partenariat",
+        "purchased": "Leads payants"
+      },
+      "attendance": {
+        "attended": "Présent",
+        "noShow": "Absent",
+        "cancelled": "Annulé",
+        "rescheduled": "Reprogrammé",
+        "unknown": "Inconnu"
+      }
+    },
+    "billing": {
+      "paymentStatus": {
+        "succeeded": "Paiement réussi",
+        "processing": "Paiement en cours",
+        "requiresPaymentMethod": "Moyen de paiement requis",
+        "requiresConfirmation": "En attente de confirmation",
+        "requiresAction": "Action requise",
+        "requiresCapture": "En attente de capture",
+        "canceled": "Paiement annulé",
+        "failed": "Paiement échoué"
+      },
+      "invoiceStatus": {
+        "paid": "Payée",
+        "open": "Ouverte",
+        "draft": "Brouillon",
+        "void": "Annulée",
+        "uncollectible": "Irrécouvrable"
+      }
+    }
+  },
+  "Home": {
+    "title": "Faigata",
+    "description": "Gérez votre pipeline de setters Instagram, vos consultations réservées et vos ventes de coaching en un seul endroit.",
+    "cta": "Ouvrir l’espace commercial"
+  },
+  "ProfileSettings": {
+    "metadata": {
+      "title": "Paramètres du profil",
+      "description": "Mettez à jour vos informations personnelles, votre rôle dans l’équipe et votre photo de profil."
+    },
+    "loading": "Chargement des paramètres de votre profil...",
+    "title": "Paramètres du profil et de l’entreprise",
+    "description": "Gérez les informations de votre compte personnel et l’image de marque de votre activité de coaching fitness.",
+    "integrations": "Intégrations",
+    "accountUpdated": "Votre profil a été mis à jour.",
+    "organization": {
+      "title": "Paramètres de l’entreprise",
+      "description": "Mettez à jour le nom de votre activité de coaching, votre logo et la couleur de marque utilisée sur vos pages de réservation.",
+      "adminOnly": "Seuls les admins peuvent modifier les paramètres de l’entreprise. Contactez le propriétaire du compte ou un admin si vous devez mettre à jour ces informations.",
+      "updated": "Les paramètres de l’entreprise ont été mis à jour.",
+      "logoFallback": "Logo",
+      "companyLogo": "Logo de l’entreprise",
+      "logoHelp": "Téléversez une image PNG ou JPG. Un logo carré fonctionne le mieux.",
+      "uploadLogo": "Téléverser le logo",
+      "uploadingLogo": "Téléversement du logo...",
+      "companyName": "Nom de l’entreprise",
+      "primaryColor": "Couleur de marque",
+      "colorHelp": "Cette couleur est utilisée pour les boutons, les surlignages et les autres éléments de marque dans votre espace de travail.",
+      "preview": "Aperçu",
+      "save": "Enregistrer les paramètres de l’entreprise"
+    },
+    "profile": {
+      "picture": "Photo de profil",
+      "pictureHelp": "Téléversez une image PNG ou JPG jusqu’à environ 5 Mo.",
+      "uploadPhoto": "Téléverser une nouvelle photo",
+      "uploadingPhoto": "Téléversement de la photo...",
+      "emailHelp": "Cela modifie l’adresse e-mail que vous utilisez pour vous connecter. Vous devrez peut-être vérifier la nouvelle adresse e-mail avant que le changement soit finalisé.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmNewPassword": "Confirmer le nouveau mot de passe",
+      "passwordPlaceholder": "Laissez vide pour conserver votre mot de passe actuel",
+      "save": "Enregistrer les modifications du profil",
+      "avatarFallback": "U"
+    },
+    "errors": {
+      "notSignedIn": "Vous n’êtes pas connecté.",
+      "loadProfile": "Nous n’avons pas pu charger votre profil.",
+      "loadProfileUnexpected": "Une erreur s’est produite lors du chargement de votre profil. Veuillez réessayer.",
+      "uploadAvatar": "Nous n’avons pas pu téléverser votre photo de profil.",
+      "uploadAvatarSignedUrl": "Votre photo a été téléversée, mais nous n’avons pas pu créer de lien d’aperçu.",
+      "uploadAvatarSave": "Votre photo a été téléversée, mais nous n’avons pas pu l’enregistrer dans votre profil.",
+      "uploadAvatarUnexpected": "Une erreur s’est produite lors du téléversement de votre photo de profil. Veuillez réessayer.",
+      "saveProfile": "Nous n’avons pas pu enregistrer les modifications de votre profil.",
+      "passwordMismatch": "Le nouveau mot de passe et sa confirmation ne correspondent pas.",
+      "saveAuthEmailPassword": "Nous n’avons pas pu mettre à jour votre adresse e-mail et votre mot de passe.",
+      "saveAuthEmail": "Nous n’avons pas pu mettre à jour votre adresse e-mail.",
+      "saveAuthPassword": "Nous n’avons pas pu mettre à jour votre mot de passe.",
+      "saveProfileUnexpected": "Une erreur s’est produite lors de l’enregistrement de votre profil. Veuillez réessayer.",
+      "orgAdminOnly": "Seuls les admins peuvent mettre à jour les paramètres de l’entreprise.",
+      "loadOrganization": "Nous n’avons pas pu charger les paramètres de votre entreprise.",
+      "saveOrganization": "Nous n’avons pas pu enregistrer les paramètres de votre entreprise.",
+      "saveOrganizationUnexpected": "Une erreur s’est produite lors de l’enregistrement des paramètres de votre entreprise. Veuillez réessayer.",
+      "missingOrganizationId": "L’identifiant de votre entreprise est manquant, cette modification n’a donc pas pu être effectuée.",
+      "uploadLogo": "Nous n’avons pas pu téléverser le logo de votre entreprise.",
+      "uploadLogoSignedUrl": "Votre logo a été téléversé, mais nous n’avons pas pu créer de lien d’aperçu.",
+      "uploadLogoSave": "Votre logo a été téléversé, mais nous n’avons pas pu l’enregistrer dans les paramètres de votre entreprise.",
+      "uploadLogoUnexpected": "Une erreur s’est produite lors du téléversement de votre logo. Veuillez réessayer."
+    }
+  },
+  "Integrations": {
+    "metadata": {
+      "title": "Intégrations",
+      "description": "Connectez votre calendrier et vos outils de paiement afin que les prospects puissent réserver des appels, que votre équipe reste organisée et que vous puissiez encaisser des paiements."
+    },
+    "errors": {
+      "loadStatus": "Nous n’avons pas pu charger le statut de vos intégrations. Veuillez actualiser la page et réessayer.",
+      "loadRoles": "Nous n’avons pas pu vérifier vos autorisations pour les intégrations de facturation. Veuillez actualiser la page et réessayer.",
+      "disconnectCalendar": "Nous n’avons pas pu déconnecter votre calendrier. Veuillez réessayer.",
+      "disconnectStripe": "Nous n’avons pas pu déconnecter Stripe. Veuillez réessayer.",
+      "connectStart": "Nous n’avons pas pu démarrer le processus de connexion. Veuillez réessayer.",
+      "missingAuthUrl": "Nous n’avons pas pu démarrer le processus de connexion car aucun lien d’autorisation n’a été renvoyé."
+    },
+    "title": "Intégrations",
+    "description": "Connectez les outils que votre activité de coaching fitness utilise pour réserver des appels, gérer les calendriers, relancer les leads et encaisser les paiements.",
+    "googleReconnectNotice": "Votre Google Calendar doit être reconnecté afin que les pages de réservation puissent vérifier vos disponibilités. Cliquez sur \"Reconnecter Google Calendar\" pour continuer.",
+    "connectionFailed": "Échec de la connexion : {error}",
+    "sections": {
+      "calendarTitle": "Connexions calendrier",
+      "calendarDescription": "Connectez un calendrier afin que les leads et les clients puissent réserver des appels selon vos disponibilités réelles.",
+      "emailTitle": "Connexions e-mail",
+      "emailDescription": "Connectez votre boîte mail pour envoyer des relances et conserver les conversations avec les leads au même endroit.",
+      "billingTitle": "Connexions de facturation",
+      "billingDescription": "Connectez Stripe pour vendre des programmes de coaching, envoyer des liens de paiement ou des factures et suivre les paiements."
+    },
+    "providers": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Utilisez Google Calendar pour afficher les créneaux disponibles et ajouter automatiquement les appels réservés à votre calendrier.",
+        "badge": "Idéal pour les utilisateurs de Google Calendar",
+        "connect": "Connecter Google Calendar",
+        "disconnect": "Déconnecter Google Calendar",
+        "reconnect": "Reconnecter Google Calendar",
+        "helperConnected": "Votre Google Calendar est connecté et peut être utilisé pour vérifier les disponibilités et gérer les appels réservés.",
+        "helperDisconnected": "Connectez Google Calendar afin que vos pages de réservation puissent afficher les créneaux disponibles et créer automatiquement des événements.",
+        "helperReconnect": "Reconnectez Google Calendar pour rétablir la vérification des disponibilités et la synchronisation des pages de réservation."
+      },
+      "outlookCalendar": {
+        "name": "Outlook / Microsoft 365 Calendar",
+        "description": "Utilisez Outlook Calendar pour afficher les créneaux disponibles et ajouter automatiquement les appels réservés à votre calendrier.",
+        "badge": "Idéal pour les utilisateurs d’Outlook et Microsoft 365",
+        "connect": "Connecter Outlook / Microsoft 365 Calendar",
+        "disconnect": "Déconnecter Outlook / Microsoft 365 Calendar",
+        "helperConnected": "Votre calendrier Outlook est connecté et peut être utilisé pour vérifier les disponibilités et gérer les appels réservés.",
+        "helperDisconnected": "Connectez Outlook Calendar afin que vos pages de réservation puissent afficher les créneaux disponibles et créer automatiquement des événements."
+      },
+      "gmail": {
+        "name": "Gmail / Google Workspace",
+        "description": "Envoyez et suivez les e-mails des leads depuis l’application.",
+        "badge": "Nécessite un accès Gmail ou Google Workspace",
+        "connect": "Connecter Gmail / Google Workspace",
+        "disconnect": "Déconnecter Gmail / Google Workspace",
+        "helperConnected": "Cette boîte mail est connectée et peut être utilisée pour envoyer et enregistrer les communications avec les leads.",
+        "helperDisconnected": "Il vous sera demandé d’approuver l’accès. Cela est utilisé uniquement pour envoyer et enregistrer les communications avec les leads."
+      },
+      "outlookMail": {
+        "name": "Outlook / Microsoft 365 Mail",
+        "description": "Envoyez et suivez les e-mails des leads depuis votre boîte Outlook dans l’application.",
+        "badge": "Nécessite un accès Outlook ou Microsoft 365",
+        "connect": "Connecter Outlook / Microsoft 365 Mail",
+        "disconnect": "Déconnecter Outlook / Microsoft 365 Mail",
+        "helperConnected": "Cette boîte mail est connectée et peut être utilisée pour envoyer et enregistrer les communications avec les leads.",
+        "helperDisconnected": "Il vous sera demandé d’approuver l’accès. Cela est utilisé uniquement pour envoyer et enregistrer les communications avec les leads."
+      },
+      "stripe": {
+        "name": "Stripe (Test)",
+        "description": "Connectez Stripe pour créer des offres, envoyer des factures ou des liens de paiement, encaisser des paiements et suivre leur statut.",
+        "badge": "Paiements",
+        "connect": "Connecter Stripe (Test)",
+        "disconnect": "Déconnecter Stripe",
+        "helperConnected": "Stripe est connecté à cet espace de travail en mode test.",
+        "helperDisconnected": "Vous serez redirigé vers Stripe pour approuver l’accès en mode test."
+      }
+    }
+  },
+  "ProductSuite": {
+    "metadata": {
+      "title": "Lumo",
+      "description": "Ouvrez les espaces de travail que votre équipe de coaching fitness utilise pour gérer les leads, les appels réservés, les clients et les paiements."
+    },
+    "errors": {
+      "loadTeams": "Nous n’avons pas pu charger vos espaces de travail. Veuillez actualiser la page et réessayer.",
+      "openTeam": "Nous n’avons pas pu ouvrir cet espace de travail. Veuillez réessayer."
+    },
+    "title": "Lumo",
+    "emptySummary": "Vous n’avez pas encore d’espace de travail de coaching.",
+    "memberSummary": "Vous êtes membre de {count} espace{count, plural, one {} other {s}} de travail.",
+    "addTeam": "+ Ajouter un espace de travail",
+    "loading": "Chargement de vos espaces de travail...",
+    "noTeams": "Vous ne faites encore partie d’aucun espace de travail de coaching.",
+    "noTeamsCtaPrefix": "Cliquez sur",
+    "addTeamLabel": "Ajouter un espace de travail",
+    "noTeamsCtaSuffix": "pour créer votre premier espace de travail de coaching.",
+    "opening": "Ouverture de l’espace de travail...",
+    "openDashboard": "Ouvrir l’espace de travail",
+    "table": {
+      "title": "Vos espaces de travail",
+      "description": "Sélectionnez un espace de travail pour gérer les leads, les appels, les clients et les paiements.",
+      "columns": {
+        "teamName": "Nom de l’espace de travail",
+        "role": "Votre rôle",
+        "open": "Ouvrir"
+      }
+    }
+  },
+  "ProductSuiteHeader": {
+    "productName": "Lumo",
+    "profileSettings": "Paramètres du compte et de l’entreprise"
+  },
+  "ProductSuiteSidebar": {
+    "logout": "Se déconnecter",
+    "loggingOut": "Déconnexion...",
+    "expandSidebar": "Développer la barre latérale",
+    "collapseSidebar": "Réduire la barre latérale",
+    "nav": {
+      "crm": "CRM"
+    }
+  },
+  "AppSidebar": {
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "leads": "Leads",
+      "home": "Accueil",
+      "pipeline": "Pipeline",
+      "settings": "Paramètres",
+      "calendar": "Calendrier",
+      "billing": "Facturation"
+    },
+    "brand": {
+      "logoAlt": "Logo CRM Lumo",
+      "productName": "Lumo"
+    },
+    "workspaceLabel": "Espace de travail :",
+    "expandSidebar": "Développer la barre latérale",
+    "collapseSidebar": "Réduire la barre latérale"
+  },
+  "AppHeader": {
+    "kicker": "Lumo",
+    "sections": {
+      "default": "CRM"
+    },
+    "search": {
+      "placeholders": {
+        "niches": "Rechercher des niches ou des entreprises...",
+        "default": "Rechercher des leads, clients ou entreprises..."
+      },
+      "clearSearch": "Effacer la recherche"
+    },
+    "calendarReconnect": {
+      "text": "Reconnecter Google Calendar",
+      "title": "Reconnectez Google Calendar pour que vos pages de réservation continuent de fonctionner"
+    },
+    "notifications": {
+      "ariaLabel": "Notifications",
+      "title": "Rappels",
+      "checking": "Vérification...",
+      "openCount": "{count} ouvert",
+      "empty": "Aucun rappel pour le moment."
+    },
+    "profile": {
+      "you": "Vous",
+      "initialsFallback": "U",
+      "menuAriaLabel": "Ouvrir le menu du profil",
+      "menuTitle": "Ouvrir le menu du profil",
+      "logout": "Se déconnecter"
+    },
+    "reminders": {
+      "noReply48h": "Aucune réponse dans les 48 heures après votre dernier message.",
+      "noReply4d": "Aucune réponse dans les 4 jours après votre dernier message.",
+      "noReply1w": "Aucune réponse dans 1 semaine après votre dernier message.",
+      "stageStuck": "Dans l’étape \"{stage}\" depuis plus de 3 jours.",
+      "fallbackLeadInStage": "Lead dans l’étape \"{stage}\"",
+      "pipelineFallback": "Pipeline"
+    }
+  },
+  "Dashboard": {
+    "metadata": {
+      "title": "Tableau de bord"
+    },
+    "common": {
+      "leadSingular": "lead",
+      "leadPlural": "leads"
+    },
+    "errors": {
+      "unauthorized": "Vous n’êtes pas autorisé. Votre jeton de session est manquant.",
+      "requestFailed": "La requête a échoué ({status}).",
+      "failedToLoad": "Nous n’avons pas pu charger votre tableau de bord."
+    },
+    "loading": {
+      "dashboard": "Chargement du tableau de bord..."
+    },
+    "page": {
+      "title": "Tableau de bord",
+      "subtitle": "Visualisez votre flux de leads, l’activité de votre équipe, les appels réservés et les éléments nécessitant votre attention."
+    },
+    "status": {
+      "live": "En direct",
+      "updating": "Mise à jour..."
+    },
+    "filters": {
+      "team": "Équipe",
+      "me": "Moi",
+      "days30": "30 derniers jours",
+      "days90": "90 derniers jours",
+      "days120": "120 derniers jours",
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "monthly": "Mensuel",
+      "scopeTeam": "Affichage : Équipe",
+      "scopeMe": "Affichage : Moi"
+    },
+    "kpis": {
+      "leads": "Total des leads",
+      "newLeads7d": "Nouveaux leads (7 derniers jours)",
+      "messagesSent7d": "Messages envoyés (7 derniers jours)",
+      "bookings7d": "Réservations (7 derniers jours)",
+      "showRate30d": "Taux de présence (30 derniers jours)",
+      "closeRate30d": "Taux de conversion (30 derniers jours)",
+      "last30d": "30 derniers jours : {value}",
+      "basedOnOutcomes": "Basé sur les résultats des réservations"
+    },
+    "funnel": {
+      "title": "Entonnoir du pipeline",
+      "subtitleNeedStages": "Ajoutez au moins 2 étapes de pipeline pour voir les métriques de conversion.",
+      "subtitleInteractive": "Cliquez sur une étape pour voir ses détails de conversion et d’abandon.",
+      "configureStages": "Configurer les étapes →",
+      "noStages": "Aucune étape de pipeline n’a encore été ajoutée.",
+      "onlyOneStage": "Vous n’avez que <strong>{count}</strong> étape. Ajoutez-en une autre pour débloquer les insights de conversion.",
+      "tipLabel": "Astuce :",
+      "tipText": "Cliquez sur une étape pour voir plus de détails.",
+      "showTable": "Afficher le tableau",
+      "hideTable": "Masquer le tableau",
+      "ariaLabel": "Entonnoir du pipeline",
+      "convShort": "Conv",
+      "targetShort": "objectif",
+      "dropShort": "Perte",
+      "stageBadge": "Étape {current} sur {total}",
+      "stageLeadCount": "{count} {count, plural, one {lead} other {leads}} dans cette étape.",
+      "nextLabel": "Étape suivante :",
+      "conversion": "Conversion",
+      "dropOff": "Abandon",
+      "targetLong": "Objectif : {value}%",
+      "tableTitle": "Performance entre étapes",
+      "table": {
+        "transition": "Transition",
+        "label": "Libellé",
+        "conversion": "Conversion",
+        "dropOff": "Abandon",
+        "empty": "Ajoutez au moins 2 étapes de pipeline pour voir les métriques de conversion."
+      },
+      "overallConversionLabel": "Conversion globale :",
+      "biggestDropLabel": "Plus forte perte :"
+    },
+    "activity": {
+      "title": "Activité",
+      "subtitle": "Leads ajoutés vs messages sortants (hors mises à jour du pipeline). Total sur cette période : {leads} leads, {messages} messages.",
+      "empty": "Aucune donnée d’activité disponible pour cette période.",
+      "legendLeads": "Leads ajoutés",
+      "legendMessages": "Messages envoyés",
+      "tip": "Astuce : survolez le graphique pour comparer les leads ajoutés et les messages envoyés sur la même période."
+    },
+    "attention": {
+      "title": "Nécessite une attention",
+      "subtitle": "Leads prioritaires sans activité récente.",
+      "openPipeline": "Ouvrir le pipeline →",
+      "empty": "Aucun lead ne nécessite d’attention pour le moment.",
+      "unnamedLead": "Lead sans nom",
+      "stageLabel": "Étape :",
+      "lastActivityLabel": "Dernière activité :",
+      "score": "Score {score}"
+    },
+    "bookings": {
+      "title": "Réservations à venir",
+      "subtitle": "14 prochains jours",
+      "empty": "Aucune réservation à venir.",
+      "bookingFallback": "Réservation",
+      "scheduled": "Planifié"
+    },
+    "feed": {
+      "title": "Flux récent",
+      "subtitle": "Dernière activité",
+      "empty": "Aucune activité récente pour le moment.",
+      "types": {
+        "lead": "Lead",
+        "booking": "Réservation",
+        "message": "Message"
+      }
+    }
+  },
+  "LeadsPage": {
+    "metadata": {
+      "title": "Leads"
+    },
+    "page": {
+      "title": "Leads",
+      "loading": "Chargement de vos leads...",
+      "showingFiltered": "Affichage de {visible} leads sur {total} auxquels vous avez accès.",
+      "showingAll": "Affichage de {total} leads auxquels vous avez accès."
+    },
+    "columns": {
+      "score": "Score",
+      "leadName": "Nom du lead",
+      "nicheIndustry": "Niche / Secteur",
+      "leadType": "Type de lead",
+      "gender": "Genre",
+      "city": "Ville",
+      "region": "Région / État",
+      "country": "Pays",
+      "postalCode": "Code postal",
+      "primaryContactType": "Type de contact principal",
+      "primaryContact": "Contact principal",
+      "sourceCategory": "Catégorie de source",
+      "sourceName": "Nom de la source",
+      "stage": "Étape"
+    },
+    "actions": {
+      "addLeads": "+ Ajouter des leads",
+      "log": "Journaliser",
+      "sortBy": "Trier par {label}",
+      "logMessages": "Journaliser les messages entrants ou sortants",
+      "viewDetails": "Voir les détails",
+      "editLead": "Modifier le lead",
+      "deleteLead": "Supprimer le lead"
+    },
+    "empty": {
+      "noWorkspace": "Vous n’êtes pas encore dans un espace de travail. Ouvrez cette page depuis un espace de travail ou terminez d’abord l’onboarding.",
+      "noLeads": "Il n’y a pas encore de leads, ou aucun auquel vous avez accès.",
+      "addFirstLead": "Cliquez sur <strong>+ Ajouter des leads</strong> pour créer votre premier lead.",
+      "noMatch": "Aucun lead ne correspond à « {query} ».",
+      "tryDifferentSearch": "Essayez de rechercher un autre nom, une autre valeur de champ ou une autre étape."
+    }
+  },
+  "PipelinePage": {
+    "metadata": {
+      "title": "Pipeline",
+      "description": "Visualisez votre pipeline et déplacez les leads entre les étapes sur un tableau Kanban."
+    },
+    "page": {
+      "title": "Pipeline",
+      "description": "Glissez-déposez les leads entre les colonnes pour mettre à jour leur étape."
+    },
+    "stage": {
+      "leadCount": "{count} lead{count, plural, one {} other {s}}",
+      "conversion": "{value}% de conversion",
+      "empty": "Glissez un lead ici"
+    },
+    "leadFallback": "Lead {id}...",
+    "score": {
+      "title": "Faible < {low} | Élevé ≥ {high}"
+    },
+    "stageChangeLog": "Étape changée de \"{fromStage}\" à \"{toStage}\""
+  },
+  "LeadMessagesPage": {
+    "metadata": {
+      "title": "Conversations du lead",
+      "description": "Suivez les conversations entrantes et sortantes avec ce lead."
+    },
+    "page": {
+      "title": "Journaliser les conversations pour ce lead",
+      "description": "Suivez l’activité entrante et sortante afin de toujours connaître le dernier point de contact.",
+      "leadLabel": "Lead :",
+      "stageLabel": "Étape :",
+      "unassigned": "Non attribué"
+    },
+    "actions": {
+      "backToLead": "Retour au lead",
+      "logMessage": "Journaliser un message",
+      "openLeadDetail": "Ouvrir les détails du lead"
+    },
+    "form": {
+      "directionOutbound": "Sortant",
+      "directionInbound": "Entrant",
+      "placeholderOutbound": "Qu’avez-vous envoyé à ce lead ?",
+      "placeholderInboundExisting": "Comment le lead a-t-il répondu ?",
+      "placeholderInboundFirst": "Quel message le lead vous a-t-il envoyé ?"
+    },
+    "timeline": {
+      "title": "Chronologie d’activité",
+      "subtitle": "Messages et événements du pipeline.",
+      "events": {
+        "leadCreated": "Nouveau lead ajouté : {leadLabel}",
+        "leadRejected": "{oldSetterName} a rejeté ce lead et l’a réattribué à {newSetterName}. Total des rejets précédents : {previousRejectionCount, plural, =0 {aucun} one {#} other {#}}.",
+        "otherSetter": "un autre setter",
+        "callAttendanceUpdated": "Statut de l’appel mis à jour : {previousStatus} → {nextStatus}",
+        "offerRemoved": "Offre supprimée",
+        "offerMade": "Offre faite : {productTitle}",
+        "closedOnCallRemoved": "Conclusion sur l’appel supprimée",
+        "closedOnCall": "Conclu sur l’appel : {productTitle}",
+        "callBooked": "Appel réservé → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "Rejoindre la réunion : {meetLink}"
+      }
+    },
+    "states": {
+      "loading": "Chargement...",
+      "leadNotFound": "Lead introuvable."
+    },
+    "fallback": {
+      "pipelineLead": "Lead dans le pipeline",
+      "pipeline": "Pipeline",
+      "leadInStage": "Lead dans l’étape \"{stage}\""
+    }
+  },
+  "NewLeadPage": {
+    "metadata": {
+      "title": "Ajouter un lead",
+      "description": "Créez un nouveau lead manuellement ou importez des leads depuis un fichier CSV."
+    },
+    "page": {
+      "title": "Ajouter des leads",
+      "description": "Ajoutez un lead manuellement ou importez plusieurs leads depuis un fichier CSV."
+    },
+    "sections": {
+      "pipeline": "Étape du pipeline",
+      "coreDetails": "Informations principales",
+      "additionalDetails": "Informations supplémentaires",
+      "csvImport": "Importer depuis un CSV"
+    },
+    "fields": {
+      "city": "Ville",
+      "region": "Région / État",
+      "country": "Pays",
+      "postalCode": "Code postal",
+      "primaryContact": "Contact principal"
+    },
+    "placeholders": {
+      "leadName": "ex. John Smith / Acme Fitness",
+      "link": "https://example.com"
+    },
+    "actions": {
+      "createLead": "Créer le lead",
+      "creating": "Création...",
+      "importRows": "Importer {count} ligne{count, plural, one {} other {s}}",
+      "importing": "Importation..."
+    },
+    "csv": {
+      "dropTitle": "Glissez-déposez votre fichier CSV ici",
+      "dropSubtitle": "ou cliquez pour choisir un fichier",
+      "selectedFile": "Fichier sélectionné : {name}",
+      "checking": "Vérification de la structure du CSV...",
+      "valid": "Le CSV semble correct. {count} ligne{count, plural, one {} other {s}} prête{count, plural, one {} other {s}} à être importée.",
+      "validHelp": "Vous pouvez importer à la fois vos champs personnalisés et les champs standards des leads.",
+      "invalidTitle": "Les colonnes du CSV ne correspondent pas.",
+      "idlePrefix": "Colonnes personnalisées autorisées :",
+      "idleCore": "Colonnes principales autorisées : Lead Name, Niche / Industry, Lead Type, Gender, City, Region, Country, Postal Code, Primary Contact Type, Primary Contact, Source Category, Source Name.",
+      "emptyRows": "Le fichier CSV ne contient aucune ligne de données.",
+      "fileType": "Veuillez téléverser un fichier .csv.",
+      "readFailed": "Nous n’avons pas pu lire le fichier CSV.",
+      "parseFailed": "Nous n’avons pas pu analyser le fichier CSV.",
+      "unknownColumns": "Colonnes inconnues : {columns}.",
+      "importResult": "{success} ligne{success, plural, one {} other {s}} importée{failed, plural, =0 {.} other {, {failed} échec(s).}}",
+      "importRowFailed": "Une ligne n’a pas pu être importée. Veuillez réessayer."
+    },
+    "states": {
+      "noStages": "Aucune étape disponible",
+      "noNiches": "Aucune niche n’est activée pour cet espace de travail",
+      "enableNiches": "Activez les niches dans Paramètres avant de créer un lead."
+    },
+    "errors": {
+      "title": "Impossible de créer le lead",
+      "dismiss": "Fermer",
+      "missingTeam": "Aucun espace de travail n’a été trouvé. Veuillez ouvrir cette page depuis votre espace de travail.",
+      "missingUser": "Votre compte utilisateur n’a pas pu être identifié. Veuillez vous reconnecter et réessayer.",
+      "missingStage": "Veuillez sélectionner une étape du pipeline.",
+      "missingStageForImport": "Veuillez sélectionner une étape du pipeline avant l’importation.",
+      "sessionExpired": "Votre session a expiré. Actualisez la page et reconnectez-vous.",
+      "createFailed": "Nous n’avons pas pu créer le lead. Veuillez réessayer."
+    },
+    "common": {
+      "yes": "Oui",
+      "select": "Sélectionner..."
+    }
+  },
+  "LeadDetailPage": {
+    "metadata": {
+      "title": "Détails du lead"
+    },
+    "page": {
+      "createdOn": "Créé le {date}"
+    },
+    "sections": {
+      "leadScore": "Score du lead",
+      "pipelineStage": "Étape du pipeline",
+      "assigned": "Attribué",
+      "coreDetails": "Informations principales",
+      "additionalFields": "Champs supplémentaires",
+      "notes": "Notes",
+      "activityTimeline": "Chronologie d’activité"
+    },
+    "fields": {
+      "prospector": "Prospector",
+      "setter": "Setter",
+      "closer": "Closer",
+      "location": "Emplacement",
+      "primaryContact": "Contact principal"
+    },
+    "score": {
+      "unscored": "Non scoré",
+      "scored": "Scoré",
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé",
+      "updated": "Mis à jour {date}",
+      "noScoreYet": "Ce lead n’a pas encore de score. Configurez le scoring des leads dans Paramètres → Lead scoring."
+    },
+    "additionalFields": {
+      "none": "Aucun champ personnalisé n’a encore été configuré pour cet espace de travail."
+    },
+    "notes": {
+      "description": "Notes internes sur ce lead. Ces notes ne sont visibles que par votre équipe.",
+      "none": "Aucune note pour le moment."
+    },
+    "timeline": {
+      "newestOnTop": "L’activité la plus récente apparaît en haut.",
+      "events": {
+        "leadCreated": "Nouveau lead ajouté : {leadLabel}",
+        "leadRejected": "{oldSetterName} a rejeté ce lead et l’a réattribué à {newSetterName}",
+        "otherSetter": "un autre setter",
+        "callAttendanceUpdated": "Statut de l’appel mis à jour : {previousStatus} → {nextStatus}",
+        "offerRemoved": "Offre supprimée",
+        "offerMade": "Offre faite : {productTitle}",
+        "closedOnCallRemoved": "Conclusion sur l’appel supprimée",
+        "closedOnCall": "Conclu sur l’appel : {productTitle}",
+        "callBooked": "Appel réservé → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "Rejoindre la réunion : {meetLink}"
+      }
+    },
+    "actions": {
+      "calls": "Appels",
+      "callsLoading": "Chargement des appels...",
+      "callsTitle": "Voir et suivre les résultats de tous les appels réservés",
+      "bookingLink": "Lien de réservation",
+      "bookingLinkTitle": "Créer un lien de réservation unique pour ce lead",
+      "reject": "Rejeter",
+      "rejecting": "Rejet en cours...",
+      "rejectTitle": "Rejeter ce lead et le réattribuer à un autre membre de l’équipe",
+      "delete": "Supprimer",
+      "logNewMessage": "Journaliser un nouveau message"
+    },
+    "alerts": {
+      "rejectFailedTitle": "Impossible de rejeter le lead",
+      "bookingLinksLoadFailedTitle": "Impossible de charger les liens de réservation",
+      "bookingLinkCreateFailedTitle": "Impossible de créer le lien de réservation",
+      "bookingLinkCreatedTitle": "Lien de réservation créé"
+    },
+    "reject": {
+      "modalTitle": "Rejeter le lead ?",
+      "modalMessage": "Ce lead sera réattribué à un autre membre de l’équipe et la modification sera enregistrée dans la chronologie.",
+      "confirm": "Rejeter le lead",
+      "errors": {
+        "failed": "Échec du rejet du lead"
+      }
+    },
+    "booking": {
+      "modalAriaLabel": "Créer un lien de réservation",
+      "modalTitle": "Créer un lien de réservation",
+      "modalDescription": "Choisissez une page de réservation ci-dessous. Nous générerons une invitation unique pour ce lead et l’enregistrerons dans la chronologie.",
+      "latestLink": "Dernier lien",
+      "schedulePage": "Page de réservation",
+      "host": "Hôte",
+      "emptyTitle": "Aucune page de réservation pour le moment",
+      "emptyDescription": "Créez d’abord une page de réservation afin de pouvoir générer un lien de réservation pour ce lead.",
+      "createSchedulePage": "Créer une page de réservation",
+      "notNow": "Pas maintenant",
+      "loadingSchedulePages": "Chargement des pages de réservation...",
+      "creating": "Création...",
+      "createAndCopy": "Créer et copier",
+      "columns": {
+        "schedulePage": "Page de réservation",
+        "type": "Type",
+        "host": "Hôte",
+        "action": "Action"
+      },
+      "success": {
+        "createdAndCopied": "Lien de réservation créé et copié dans votre presse-papiers.",
+        "createdCopyManual": "Lien de réservation créé. Copiez-le manuellement depuis le champ du dernier lien.",
+        "copied": "Lien de réservation copié dans votre presse-papiers.",
+        "copyFailedManual": "La copie a échoué — veuillez copier le lien manuellement."
+      },
+      "errors": {
+        "leadIdMustBeUuid": "L’identifiant du lead doit être un UUID valide pour créer une invitation.",
+        "inviteCreatedButNoUrl": "L’invitation a été créée, mais aucune URL n’a été renvoyée. Mettez à jour /api/crm/booking-invite pour renvoyer { url }.",
+        "createFailed": "Échec de la création de l’invitation de réservation",
+        "loadSchedulePages": "Échec du chargement des pages de réservation"
+      }
+    },
+    "states": {
+      "loading": "Chargement..."
+    },
+    "fallback": {
+      "leadInPipeline": "Lead dans le pipeline",
+      "pipeline": "Pipeline",
+      "leadInStage": "Lead dans l’étape \"{stage}\""
+    },
+    "empty": {
+      "missingLeadId": "L’identifiant du lead est manquant dans les paramètres de la route. Vérifiez le nom de votre segment dynamique.",
+      "leadNotFound": "Lead introuvable."
+    }
+  },
+  "DeleteLeadPage": {
+    "metadata": {
+      "title": "Supprimer le lead",
+      "description": "Supprimer définitivement ce lead de votre espace de travail."
+    },
+    "errors": {
+      "missingTeamOrLeadId": "Nous n’avons pas pu déterminer votre équipe ou l’identifiant du lead.",
+      "loadFailed": "Nous n’avons pas pu charger ce lead. Veuillez réessayer.",
+      "workspaceMismatch": "Ce lead n’appartient pas à votre espace de travail actuel.",
+      "deleteFailed": "Échec de la suppression du lead. Veuillez réessayer.",
+      "noWorkspaceContext": "Nous n’avons pas pu déterminer votre équipe à partir du contexte de l’espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support.",
+      "leadNotFound": "Lead introuvable."
+    },
+    "header": {
+      "title": "Supprimer ce lead ?",
+      "description": "Cette action est définitive et ne peut pas être annulée. Toutes les données de ce lead seront supprimées de l’<strong>espace de travail actuel</strong>."
+    },
+    "preview": {
+      "title": "Aperçu du lead",
+      "description": "Examinez les détails du lead ci-dessous avant de le supprimer.",
+      "stage": "Étape"
+    },
+    "core": {
+      "title": "Informations principales",
+      "description": "Ces valeurs sont enregistrées dans les colonnes principales du lead."
+    },
+    "additional": {
+      "title": "Champs supplémentaires",
+      "description": "Il s’agit des champs personnalisés configurés pour cet espace de travail.",
+      "none": "Cet espace de travail ne possède pas encore de champs de lead personnalisés."
+    },
+    "fields": {
+      "location": "Emplacement",
+      "primaryContact": "Contact principal"
+    },
+    "actions": {
+      "deleting": "Suppression...",
+      "deleteLead": "Supprimer le lead"
+    }
+  },
+  "EditLeadPage": {
+    "metadata": {
+      "title": "Modifier le lead",
+      "description": "Mettez à jour les détails et les informations associés à ce lead."
+    },
+    "page": {
+      "title": "Modifier le lead",
+      "description": "Mettez à jour les informations principales du lead, son étape et tous les champs personnalisés suivis par votre équipe."
+    },
+    "errorBox": {
+      "title": "Impossible d’enregistrer les modifications"
+    },
+    "errors": {
+      "generic": "Une erreur s’est produite. Veuillez réessayer.",
+      "sessionExpired": "Votre session a expiré. Veuillez actualiser la page et vous reconnecter.",
+      "forbidden": "Vous n’avez pas l’autorisation de modifier ce lead.",
+      "notFound": "Ce lead est introuvable.",
+      "workspaceMismatch": "Ce lead n’appartient pas à votre espace de travail actuel.",
+      "genderRequiredForIndividual": "Le genre est requis lorsque le type de lead est Individual.",
+      "primaryContactRequired": "La valeur du contact principal ne peut pas être vide.",
+      "invalidNiche": "Veuillez choisir une niche valide activée pour votre équipe.",
+      "invalidStage": "Veuillez choisir une étape de pipeline valide.",
+      "missingWorkspaceOrLeadId": "Nous n’avons pas pu déterminer votre espace de travail ou l’identifiant du lead.",
+      "loadFailed": "Nous n’avons pas pu charger ce lead. Veuillez réessayer.",
+      "saveFailed": "L’enregistrement des modifications a échoué. Veuillez réessayer.",
+      "noWorkspaceContext": "Nous n’avons pas pu déterminer votre équipe à partir du contexte de l’espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+    },
+    "validation": {
+      "stageRequired": "L’étape du pipeline est requise.",
+      "leadNameRequired": "Le nom du lead est requis.",
+      "nicheRequired": "La niche / le secteur est requis.",
+      "genderRequired": "Le genre est requis pour les particuliers.",
+      "countryRequired": "Le pays est requis.",
+      "regionRequired": "L’État / la région est requis.",
+      "cityRequired": "La ville est requise.",
+      "primaryContactTypeRequired": "Le type de contact principal est requis.",
+      "primaryContactValueRequired": "La valeur du contact principal est requise.",
+      "sourceCategoryRequired": "La catégorie de source est requise.",
+      "sourceNameRequired": "Le nom de la source est requis."
+    },
+    "sections": {
+      "coreDetails": "Informations principales",
+      "location": "Emplacement",
+      "contact": "Contact",
+      "source": "Source",
+      "customFields": "Champs personnalisés",
+      "notes": "Notes"
+    },
+    "fields": {
+      "niche": "Niche",
+      "selectNiche": "Sélectionner une niche",
+      "country": "Pays",
+      "region": "État / Région",
+      "city": "Ville",
+      "postalCode": "Code ZIP / postal",
+      "pipelineStage": "Étape du pipeline"
+    },
+    "placeholders": {
+      "firstName": "ex. Alex",
+      "lastName": "ex. Johnson",
+      "leadName": "ex. Alex Johnson ou Acme Inc.",
+      "country": "ex. États-Unis",
+      "region": "ex. Californie",
+      "city": "ex. San Diego",
+      "postalCode": "ex. 92101"
+    },
+    "contact": {
+      "tip": "Astuce : pour les liens sociaux, collez l’URL complète du profil lorsque c’est possible.",
+      "valueLabel": {
+        "email": "Adresse e-mail",
+        "phone": "Numéro de téléphone",
+        "linkedin": "URL du profil LinkedIn",
+        "instagram": "URL du profil Instagram",
+        "facebook": "URL du profil Facebook",
+        "reddit": "URL du profil Reddit",
+        "twitter_x": "URL du profil Twitter/X",
+        "whatsapp": "Numéro WhatsApp ou lien wa.me",
+        "telegram": "Nom d’utilisateur Telegram ou lien",
+        "tiktok": "URL du profil TikTok",
+        "youtube": "URL de la chaîne YouTube",
+        "snapchat": "Nom d’utilisateur Snapchat",
+        "discord": "Pseudo Discord ou lien d’invitation",
+        "slack": "Espace de travail/utilisateur Slack (ou lien de message)",
+        "wechat": "ID WeChat",
+        "line": "ID LINE",
+        "signal": "Numéro Signal",
+        "other": "Valeur du contact"
+      },
+      "placeholder": {
+        "email": "ex. alex@company.com",
+        "phone": "ex. +1 555 123 4567",
+        "linkedin": "ex. https://www.linkedin.com/in/username",
+        "instagram": "ex. https://instagram.com/username",
+        "facebook": "ex. https://facebook.com/username",
+        "reddit": "ex. https://reddit.com/u/username",
+        "twitter_x": "ex. https://x.com/username",
+        "whatsapp": "ex. +1 555 123 4567 ou https://wa.me/15551234567",
+        "telegram": "ex. @username ou https://t.me/username",
+        "tiktok": "ex. https://www.tiktok.com/@username",
+        "youtube": "ex. https://www.youtube.com/@channel",
+        "snapchat": "ex. username",
+        "discord": "ex. username#1234 ou https://discord.gg/xxxx",
+        "slack": "ex. espace de travail ou lien de message",
+        "wechat": "ex. wechat_id",
+        "line": "ex. line_id",
+        "signal": "ex. +1 555 123 4567",
+        "other": "ex. lien, pseudo ou identifiant"
+      }
+    },
+    "notes": {
+      "description": "Notes internes concernant ce lead. Visibles uniquement par votre équipe.",
+      "placeholder": "Ajoutez du contexte, des objections, des détails personnels ou toute autre information qui aide votre équipe à conclure cette affaire."
+    },
+    "actions": {
+      "saveChanges": "Enregistrer les modifications"
+    },
+    "niche": {
+      "unknown": "Niche inconnue",
+      "archivedSuffix": "(Archivée / plus activée)",
+      "archivedHelp": "Ce lead fait toujours référence à une niche archivée. Vous pouvez la conserver ou choisir une niche actuellement activée."
+    },
+    "common": {
+      "optional": "optionnel"
+    }
+  },
+  "CallsListPage": {
+    "metadata": {
+      "title": "Appels",
+      "description": "Voir tous les appels associés à ce lead."
+    },
+    "page": {
+      "title": "Appels",
+      "description": "Appels réservés pour ce lead.",
+      "filteredDescription": "Affichage de {shown} appels sur {total} pour ce lead."
+    },
+    "errors": {
+      "missingLeadId": "L’identifiant du lead est manquant.",
+      "invalidLeadId": "Identifiant du lead invalide.",
+      "notSignedIn": "Non connecté.",
+      "noTeam": "Aucune équipe trouvée pour votre utilisateur.",
+      "missingSessionToken": "Jeton de session manquant.",
+      "loadFailed": "Échec du chargement des appels"
+    },
+    "table": {
+      "date": "Date",
+      "time": "Heure",
+      "attendance": "Présence",
+      "offer": "Offre",
+      "closed": "Conclu",
+      "productService": "Produit / Service"
+    },
+    "actions": {
+      "backToLead": "Retour au lead",
+      "viewCallDetails": "Voir les détails de l’appel",
+      "editCallTracking": "Modifier le suivi de l’appel"
+    },
+    "states": {
+      "noCalls": "Aucun appel réservé pour le moment.",
+      "noMatches": "Aucun résultat",
+      "tryDifferentSearch": {
+        "before": "Essayez une autre recherche, par exemple",
+        "after": "ou un nom de produit."
+      }
+    },
+    "searchExamples": {
+      "attended": "présent",
+      "noShow": "absent"
+    },
+    "product": {
+      "notFound": "Produit introuvable"
+    },
+    "footer": {
+      "help": "Utilisez <view>Voir</view> pour lire les notes/résultats, ou <edit>Modifier</edit> pour mettre à jour le suivi."
+    }
+  },
+  "CallDetailPage": {
+    "metadata": {
+      "title": "Détails de l’appel",
+      "description": "Voir les détails et le résultat de cet appel."
+    },
+    "page": {
+      "title": "Détails de l’appel"
+    },
+    "errors": {
+      "missingLeadId": "L’identifiant du lead est manquant.",
+      "missingBookingId": "L’identifiant de réservation est manquant.",
+      "invalidLeadId": "Identifiant du lead invalide.",
+      "invalidBookingId": "Identifiant de réservation invalide.",
+      "notSignedIn": "Non connecté.",
+      "noTeam": "Aucune équipe trouvée.",
+      "missingSessionToken": "Jeton de session manquant.",
+      "loadFailed": "Échec du chargement des détails de l’appel",
+      "selectProductForOffer": "Veuillez sélectionner un produit ou service lorsqu’une offre a été faite.",
+      "saveFailed": "Échec de l’enregistrement du résultat de l’appel."
+    },
+    "fields": {
+      "attendance": "Présence",
+      "offerMade": "Offre faite",
+      "closedOnCall": "Conclu pendant l’appel",
+      "product": "Produit / Service",
+      "notes": "Notes",
+      "notesPlaceholder": "Ajoutez des notes sur le résultat de l’appel, les objections, les décisions ou les prochaines étapes."
+    },
+    "actions": {
+      "backToCalls": "Retour aux appels",
+      "saveOutcome": "Enregistrer le résultat"
+    },
+    "chips": {
+      "attendance": "Présence : {status}",
+      "offer": "Offre : {value}",
+      "closed": "Conclu : {value}",
+      "productSelected": "Produit sélectionné"
+    },
+    "products": {
+      "archivedSuffix": "(Archivé)",
+      "states": {
+        "loading": "Chargement des produits...",
+        "unavailable": "Produits indisponibles"
+      },
+      "errors": {
+        "loadFailed": "Échec du chargement des produits.",
+        "unauthorized": "Vous n’êtes pas autorisé à voir les produits.",
+        "forbidden": "Vous n’avez pas l’autorisation de voir les produits.",
+        "noConnectedStripeAccount": "Aucun compte Stripe connecté n’a été trouvé pour cette équipe."
+      }
+    },
+    "productCard": {
+      "title": "Produit / Service",
+      "description": "Choisissez le produit ou service qui a été proposé pendant cet appel.",
+      "help": "Requis uniquement lorsque « Offre faite » est activé."
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "« Conclu pendant l’appel » n’est disponible que si l’appel a eu lieu.",
+      "markAttendedToEnable": "Marquez l’appel comme effectué pour activer cette option."
+    },
+    "footer": {
+      "tip": "Cliquez sur <save>Enregistrer le résultat</save> pour mettre à jour cet appel."
+    },
+    "states": {
+      "notFound": "Appel introuvable.",
+      "noNotes": "Aucune note pour le moment."
+    }
+  },
+  "CallOutcomePage": {
+    "metadata": {
+      "title": "Résultat de l’appel",
+      "description": "Suivez la présence, si une offre a été faite et si le lead a été conclu pendant l’appel."
+    },
+    "page": {
+      "title": "Résultat de l’appel"
+    },
+    "errors": {
+      "invalidLeadId": "Identifiant du lead invalide.",
+      "invalidBookingId": "Identifiant de réservation invalide.",
+      "notSignedIn": "Non connecté.",
+      "noTeam": "Aucune équipe trouvée.",
+      "missingSessionToken": "Jeton de session manquant.",
+      "loadFailed": "Échec du chargement de la réservation.",
+      "saveFailed": "Échec de l’enregistrement.",
+      "selectProductForOffer": "Veuillez sélectionner un produit pour l’offre."
+    },
+    "success": {
+      "saved": "Enregistré."
+    },
+    "chips": {
+      "attendance": "Présence : {status}",
+      "offer": "Offre : {value}",
+      "closed": "Conclu : {value}",
+      "productSelected": "Produit sélectionné"
+    },
+    "fields": {
+      "attendance": "Présence",
+      "offerMade": "Offre faite",
+      "closedOnCall": "Conclu pendant l’appel",
+      "product": "Produit",
+      "notes": "Notes",
+      "notesPlaceholder": "Résumé rapide de ce qui s’est passé pendant l’appel..."
+    },
+    "actions": {
+      "backToCalls": "Retour aux appels",
+      "saveOutcome": "Enregistrer le résultat"
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "N’a de sens que si la présence est « Présent ».",
+      "markAttendedToEnable": "Marquez la présence comme « Présent » pour activer cela."
+    },
+    "productCard": {
+      "title": "Produit / Service proposé",
+      "description": "Sélectionnez quel produit Stripe vous avez proposé pendant cet appel.",
+      "help": "Cela sera enregistré dans la chronologie d’activité du lead."
+    },
+    "products": {
+      "archivedSuffix": "archivé",
+      "states": {
+        "loading": "Chargement des produits...",
+        "unavailable": "Produits indisponibles"
+      },
+      "errors": {
+        "unauthorized": "Non autorisé à charger les produits de facturation.",
+        "forbidden": "Vous n’êtes pas autorisé à charger les produits de facturation pour cet espace de travail.",
+        "noConnectedStripeAccount": "Aucun compte Stripe connecté n’a été trouvé pour cet espace de travail dans le mode sélectionné.",
+        "loadFailed": "Échec du chargement des produits."
+      }
+    },
+    "footer": {
+      "tip": "Astuce : définissez le résultat de l’appel, puis cliquez sur <save>Enregistrer le résultat</save>."
+    },
+    "states": {
+      "notFound": "Réservation introuvable."
+    }
+  },
+  "CalendarPage": {
+    "metadata": {
+      "title": "Calendrier",
+      "description": "Visualisez votre calendrier personnel, vos disponibilités et vos appels réservés au même endroit."
+    },
+    "page": {
+      "title": "Calendrier",
+      "description": "Visualisez votre planning personnel pour les discovery calls, les appels commerciaux, les suivis clients et autres rendez-vous dans une vue hebdomadaire simple."
+    },
+    "meta": {
+      "timesShownIn": "Heures affichées dans {tz}"
+    },
+    "actions": {
+      "prev": "Précédent",
+      "today": "Aujourd’hui",
+      "next": "Suivant",
+      "retry": "Réessayer",
+      "openIntegrations": "Ouvrir les intégrations",
+      "goToLogin": "Aller à la connexion"
+    },
+    "labels": {
+      "time": "Heure",
+      "allDay": "Toute la journée",
+      "today": "Aujourd’hui"
+    },
+    "states": {
+      "loading": "Chargement de votre calendrier..."
+    },
+    "headerAlert": {
+      "reconnect": {
+        "text": "Reconnecter Google Calendar",
+        "title": "Reconnectez Google Calendar dans Intégrations pour maintenir vos réservations personnelles et disponibilités à jour."
+      },
+      "unauthorized": {
+        "text": "Session expirée",
+        "title": "Vous n’êtes pas connecté, ou votre session a expiré. Veuillez vous reconnecter pour accéder à votre calendrier."
+      },
+      "loadFailed": {
+        "text": "Échec du chargement du calendrier"
+      },
+      "generic": {
+        "text": "Erreur du calendrier"
+      }
+    },
+    "errors": {
+      "reconnectRequired": {
+        "title": "Reconnexion requise",
+        "message": "Votre connexion Google Calendar doit être reconnectée pour charger vos disponibilités personnelles et vos événements."
+      },
+      "notConnected": {
+        "title": "Calendrier non connecté",
+        "message": "Connectez Google Calendar dans Intégrations pour voir votre planning personnel et vos réservations sur cette page."
+      },
+      "unauthorized": {
+        "title": "Session expirée",
+        "message": "Vous n’êtes pas connecté, ou votre session a expiré. Veuillez vous reconnecter pour charger votre calendrier."
+      },
+      "loadFailed": {
+        "title": "Échec du chargement du calendrier",
+        "message": "Nous n’avons pas pu charger les données de votre calendrier pour le moment. C’est généralement temporaire. Veuillez réessayer."
+      },
+      "generic": {
+        "title": "Une erreur s’est produite",
+        "message": "Une erreur inattendue s’est produite lors du chargement du calendrier. Veuillez réessayer."
+      },
+      "codeLabel": "Code d’erreur :"
+    },
+    "footer": {
+      "help": "Cette page affiche uniquement votre calendrier personnel, y compris vos disponibilités, vos appels réservés et vos rendez-vous planifiés."
+    }
+  },
+  "SettingsPage": {
+    "metadata": {
+      "title": "Paramètres",
+      "description": "Configurez votre espace de travail de coaching, gérez les champs de suivi des leads et mettez à jour votre profil et les paramètres de votre compte."
+    },
+    "loading": {
+      "workspace": {
+        "title": "Chargement de l’espace de travail...",
+        "subtitle": "Recherche de votre équipe de coaching et du contexte de l’espace de travail."
+      },
+      "auth": {
+        "title": "Vérification de votre session...",
+        "subtitle": "Vérification de votre compte."
+      },
+      "profile": {
+        "title": "Chargement des paramètres...",
+        "subtitle": "Récupération de votre profil, rôle et permissions."
+      },
+      "idle": {
+        "title": "Chargement...",
+        "subtitle": "Veuillez patienter."
+      }
+    },
+    "unavailable": {
+      "title": "Paramètres indisponibles",
+      "description": "Nous n’avons pas trouvé d’espace de travail ou de profil pour votre compte. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+    },
+    "page": {
+      "title": "Paramètres",
+      "description": "Configurez le fonctionnement de votre CRM de coaching pour vous et votre équipe."
+    },
+    "cards": {
+      "leadFields": {
+        "title": "Champs des leads",
+        "description": "Choisissez quels champs personnalisés votre équipe suit pour chaque lead, du premier contact jusqu’à la conclusion."
+      },
+      "leadScoring": {
+        "title": "Scoring des leads",
+        "description": "Définissez comment les informations et l’activité du lead se transforment en score pour une meilleure priorisation."
+      },
+      "niches": {
+        "title": "Niches",
+        "description": "Gérez les niches de coaching ciblées par votre équipe et créez des options de niche personnalisées."
+      },
+      "pipelineStages": {
+        "title": "Étapes du pipeline",
+        "description": "Définissez et réorganisez les étapes par lesquelles passent vos leads, du premier contact jusqu’au client signé."
+      },
+      "conversionMetrics": {
+        "title": "Métriques de conversion",
+        "description": "Créez et suivez les métriques commerciales clés telles que le taux de réponse, le taux de réservation, le taux de présence et le taux de conclusion."
+      },
+      "schedulePages": {
+        "title": "Pages de réservation",
+        "description": "Créez et gérez des liens de réservation pour les discovery calls, les appels commerciaux et autres rendez-vous."
+      },
+      "inviteTeamMembers": {
+        "title": "Inviter des membres de l’équipe",
+        "description": "Invitez des membres de l’équipe et attribuez des rôles tels que Appointment Setter, Sales Closer, Sales Manager ou Admin."
+      },
+      "manageTeamRoles": {
+        "title": "Gérer les rôles de l’équipe",
+        "description": "Mettez à jour les rôles des membres existants de l’équipe. Les managers ne peuvent pas promouvoir des utilisateurs au rôle d’Admin."
+      }
+    },
+    "logout": {
+      "button": "Se déconnecter"
+    }
+  },
+  "LeadFieldsSettingsPage": {
+    "metadata": {
+      "title": "Champs des leads",
+      "description": "Choisissez quels champs de lead votre équipe de coaching souhaite suivre."
+    },
+    "page": {
+      "title": "Champs des leads",
+      "description": "Les champs principaux sont requis pour chaque lead. Ajoutez des champs supplémentaires ci-dessous si votre équipe souhaite capturer plus de détails tout au long du processus de vente."
+    },
+    "states": {
+      "loading": "Chargement...",
+      "saved": "Modifications enregistrées",
+      "rememberToSave": "N’oubliez pas d’enregistrer vos modifications."
+    },
+    "systemSection": {
+      "title": "Champs système requis",
+      "description": "Ces champs principaux permettent de garder vos leads cohérents et rendent le filtrage, le reporting et les transferts fiables dans tout votre espace de travail.",
+      "locked": "Verrouillé"
+    },
+    "badges": {
+      "required": "Requis",
+      "optional": "Optionnel"
+    },
+    "fieldTypes": {
+      "text": "Texte",
+      "number": "Nombre",
+      "select": "Liste déroulante",
+      "boolean": "Case à cocher",
+      "link": "Lien (URL)"
+    },
+    "systemFields": {
+      "leadName": {
+        "label": "Nom du lead",
+        "note": "Requis pour chaque lead."
+      },
+      "nicheIndustry": {
+        "label": "Niche de coaching",
+        "note": "Aide à segmenter les leads par niche et type d’offre."
+      },
+      "leadType": {
+        "label": "Type de lead",
+        "note": "Choisissez si le lead est un prospect particulier ou une entreprise."
+      },
+      "gender": {
+        "label": "Genre",
+        "note": "Requis uniquement lorsque le type de lead est Individual."
+      },
+      "country": {
+        "label": "Pays",
+        "note": "Prend en charge le reporting, l’attribution territoriale et le filtrage basé sur la localisation."
+      },
+      "region": {
+        "label": "État / Région",
+        "note": "Améliore la précision du routage et rend le filtrage plus précis."
+      },
+      "city": {
+        "label": "Ville",
+        "note": "Utile pour le ciblage local, les vues par territoire et des listes de leads plus propres."
+      },
+      "postalCode": {
+        "label": "Code ZIP / postal",
+        "note": "Optionnel, mais utile pour les zones de service et un ciblage local plus précis."
+      },
+      "primaryContactType": {
+        "label": "Type de contact principal",
+        "note": "Comment vous contacterez le lead, par exemple par e-mail, téléphone ou réseaux sociaux."
+      },
+      "primaryContactValue": {
+        "label": "Valeur du contact principal",
+        "note": "L’adresse e-mail, le numéro de téléphone ou le lien de profil réel."
+      },
+      "sourceCategory": {
+        "label": "Catégorie de source",
+        "note": "Comment le lead est arrivé, par exemple inbound, outbound, referral ou partner."
+      },
+      "sourceName": {
+        "label": "Nom de la source",
+        "note": "D’où vient le lead, par exemple Instagram, Facebook, YouTube ou une landing page."
+      }
+    },
+    "customFields": {
+      "title": "Champs personnalisés",
+      "description": "Ajoutez des champs optionnels que votre équipe souhaite suivre pour les leads.",
+      "newFieldLabel": "Nouveau champ",
+      "untitled": "Sans titre",
+      "dropdownOptions": "Options de la liste déroulante",
+      "empty": {
+        "title": "Aucun champ personnalisé pour le moment.",
+        "description": "Ajoutez des champs comme Objectif, Objection, Budget, Niveau de fitness, Intérêt pour le programme ou Setter attribué."
+      }
+    },
+    "placeholders": {
+      "fieldLabel": "Libellé (ex. Budget)",
+      "dropdownOptions": "ex. Faible, Moyen, Élevé"
+    },
+    "actions": {
+      "addField": "+ Ajouter un champ",
+      "remove": "Supprimer",
+      "saveChanges": "Enregistrer les modifications"
+    },
+    "errors": {
+      "loadFailed": "Nous n’avons pas pu charger votre configuration des champs de lead. Veuillez réessayer.",
+      "missingTeam": "Espace de travail manquant. Cette page doit être ouverte depuis votre espace de travail.",
+      "reservedKey": "La clé de champ \"{key}\" entre en conflit avec un champ système. Veuillez la régénérer.",
+      "duplicateKey": "Clé de champ en double \"{key}\". Les clés doivent être uniques.",
+      "saveFailed": "L’enregistrement de vos champs a échoué. Veuillez réessayer."
+    },
+    "empty": {
+      "noTeam": {
+        "title": "Aucun espace de travail disponible",
+        "description": "Nous n’avons pas pu déterminer votre espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+      }
+    }
+  },
+  "LeadScoringSettingsPage": {
+    "metadata": {
+      "title": "Scoring des leads",
+      "description": "Définissez comment vos leads de coaching sont scorés."
+    },
+    "page": {
+      "title": "Scoring des leads",
+      "description": "Attribuez des poids à vos champs de lead afin que le CRM puisse calculer un score de 0 à 100 pour chaque lead. L’enregistrement recalculera également les scores de tous les leads existants."
+    },
+    "states": {
+      "loading": "Chargement...",
+      "saved": "Règles de scoring enregistrées",
+      "savedWithRecomputed": "Règles de scoring enregistrées — {count} lead{count, plural, one {} other {s}} mis à jour",
+      "recomputeFailed": "Attention : {count} lead{count, plural, one {} other {s}} n’ont pas pu être recalculés. Ces leads seront mis à jour de nouveau après la prochaine activité ou le prochain changement d’étape."
+    },
+    "actions": {
+      "save": "Enregistrer les règles de scoring",
+      "saving": "Enregistrement et recalcul..."
+    },
+    "errors": {
+      "noTeamInWorkspace": "Aucun espace de travail trouvé.",
+      "loadFailed": "Échec du chargement des paramètres de scoring des leads.",
+      "saveFailed": "L’enregistrement a échoué. Veuillez réessayer."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "Nous n’avons pas pu déterminer votre espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+      },
+      "noFields": {
+        "description": "Vous n’avez encore aucun champ de lead. Créez-les d’abord dans <path>Paramètres → Champs des leads</path>."
+      }
+    },
+    "fieldCard": {
+      "typeLabel": "Type : {type}",
+      "optionWeights": "Poids des options",
+      "optionWeightsHelp": "Chaque option ajoute son propre nombre de points lorsqu’elle est sélectionnée.",
+      "pointsShort": "pts"
+    },
+    "thresholds": {
+      "title": "Seuils de score",
+      "description": "Contrôlez à partir de quel niveau les scores sont considérés comme <low>faibles</low>, <medium>moyens</medium> ou <high>élevés</high>.",
+      "lowLabel": "Seuil faible / rouge",
+      "lowHelp": "Les scores en dessous de ce seuil sont considérés comme <low>faibles</low>.",
+      "highLabel": "Seuil élevé / vert",
+      "highHelp": "Les scores égaux ou supérieurs à ce seuil sont considérés comme <high>élevés</high>. Tout ce qui se trouve entre les deux est <medium>moyen</medium>."
+    },
+    "tip": {
+      "title": "Astuce",
+      "description": "Laissez une petite marge en dessous de 100, car des automatisations comme le suivi des réponses, les mouvements dans le pipeline ou d’autres activités peuvent ajouter des points supplémentaires au-dessus de votre scoring manuel."
+    }
+  },
+  "NicheSettingsPage": {
+    "metadata": {
+      "title": "Niches",
+      "description": "Gérez les niches de coaching disponibles dans votre espace de travail actuel."
+    },
+    "page": {
+      "title": "Niches",
+      "description": "Il s’agit de votre catalogue partagé de niches. Chaque espace de travail peut choisir les niches qu’il souhaite utiliser.",
+      "currentTeam": "Espace de travail actuel : {teamName}",
+      "unnamedTeam": "Espace de travail sans nom",
+      "searchSummary": "Recherche : « {search} » · {count} résultat{count, plural, one {} other {s}}"
+    },
+    "howItWorks": {
+      "title": "Comment ça fonctionne",
+      "step1": {
+        "title": "1. Sélectionnez des niches",
+        "description": "Utilisez les cases à cocher pour activer ou désactiver des niches pour cet espace de travail."
+      },
+      "step2": {
+        "title": "2. Enregistrez les modifications",
+        "description": "Votre espace de travail n’utilisera les niches sélectionnées qu’après enregistrement."
+      },
+      "step3": {
+        "title": "3. Utilisez-les dans les leads",
+        "description": "Les niches enregistrées apparaîtront dans la liste déroulante des niches lors de la création ou de la modification des leads."
+      }
+    },
+    "catalog": {
+      "title": "Toutes les niches",
+      "description": "Chaque niche de cette liste peut être utilisée par n’importe quel espace de travail. Sélectionnez celles auxquelles cet espace de travail doit avoir accès.",
+      "noSearchResults": "Aucune niche ne correspond à votre recherche.",
+      "empty": "Aucune niche n’est encore disponible.",
+      "createdBy": "Créée à l’origine par {organizationName}.",
+      "sharedNiche": "Niche partagée."
+    },
+    "enabled": {
+      "title": "Activées pour cet espace de travail",
+      "description": "Ces niches seront disponibles lorsque votre équipe créera ou modifiera des leads.",
+      "empty": "Aucune niche activée pour le moment."
+    },
+    "create": {
+      "title": "Créer une niche",
+      "description": "Les nouvelles niches sont ajoutées au catalogue partagé et activées immédiatement pour cet espace de travail. Si la niche existe déjà, elle sera simplement activée pour cet espace de travail.",
+      "fieldLabel": "Nom de la niche",
+      "placeholder": "Exemple : coachs fitness en ligne"
+    },
+    "actions": {
+      "saveChanges": "Enregistrer les modifications",
+      "everythingSaved": "Tout est enregistré",
+      "creating": "Création...",
+      "createNiche": "Créer une niche"
+    },
+    "feedback": {
+      "saved": "Les niches de votre espace de travail ont été enregistrées.",
+      "alreadyExistsSelected": "\"{name}\" existe déjà, elle a donc été activée pour cet espace de travail à la place.",
+      "alreadyExistedEnabled": "\"{name}\" existait déjà et a été activée pour cet espace de travail.",
+      "createdAndAdded": "\"{name}\" a été créée et ajoutée à cet espace de travail."
+    },
+    "errors": {
+      "noTeam": "Nous n’avons pas pu déterminer votre espace de travail actuel.",
+      "loadFailed": "Échec du chargement des niches.",
+      "saveFailed": "Échec de l’enregistrement des niches.",
+      "enterName": "Veuillez saisir un nom de niche.",
+      "createFailed": "Échec de la création de la niche."
+    }
+  },
+  "PipelineStagesSettingsPage": {
+    "metadata": {
+      "title": "Étapes du pipeline",
+      "description": "Définissez et organisez les étapes de votre pipeline de vente de coaching."
+    },
+    "page": {
+      "title": "Étapes du pipeline",
+      "description": "Configurez les étapes de votre pipeline commercial et choisissez l’ordre dans lequel les leads les traversent."
+    },
+    "loading": {
+      "workspace": {
+        "title": "Chargement de l’espace de travail...",
+        "subtitle": "Vérification de votre espace de travail et de vos autorisations."
+      },
+      "stages": {
+        "title": "Chargement des étapes du pipeline...",
+        "subtitle": "Récupération de votre configuration enregistrée du pipeline."
+      },
+      "idle": {
+        "title": "Chargement..."
+      }
+    },
+    "states": {
+      "saved": "Étapes du pipeline enregistrées"
+    },
+    "tips": {
+      "title": "Comment ça fonctionne",
+      "description": "Ces étapes sont utilisées dans tout votre pipeline, vos vues de leads, vos filtres et vos rapports. Utilisez les flèches pour les réorganiser, puis enregistrez vos modifications."
+    },
+    "placeholders": {
+      "stageName": "Nom de l’étape"
+    },
+    "defaults": {
+      "newStage": "Nouvelle étape {number}"
+    },
+    "actions": {
+      "addStage": "+ Ajouter une étape",
+      "saveStages": "Enregistrer les étapes",
+      "remove": "Supprimer",
+      "moveUp": "Monter l’étape",
+      "moveDown": "Descendre l’étape"
+    },
+    "errors": {
+      "loadFailed": "Échec du chargement des étapes du pipeline.",
+      "missingTeam": "Espace de travail manquant. Cette page doit être ouverte depuis votre espace de travail.",
+      "atLeastOneStage": "Ajoutez au moins une étape avant d’enregistrer.",
+      "stageNameRequired": "Chaque étape doit avoir un nom.",
+      "stageNamesUnique": "Les noms des étapes doivent être uniques.",
+      "saveFailed": "L’enregistrement des étapes de votre pipeline a échoué. Veuillez réessayer."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "Nous n’avons pas pu déterminer votre espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+      },
+      "noStages": "Aucune étape de pipeline pour le moment."
+    }
+  },
+  "ConversionMetricDefinitionsSettingsPage": {
+    "metadata": {
+      "title": "Métriques de conversion",
+      "description": "Définissez les métriques de conversion que votre équipe suit entre les étapes du pipeline."
+    },
+    "page": {
+      "title": "Métriques de conversion",
+      "description": "Définissez les métriques de conversion que vous souhaitez suivre. Chaque métrique compare combien de leads passent d’une étape du pipeline à une autre."
+    },
+    "loading": {
+      "workspace": {
+        "title": "Chargement de l’espace de travail...",
+        "subtitle": "Vérification de votre espace de travail et de vos autorisations."
+      },
+      "definitions": {
+        "title": "Chargement des métriques de conversion...",
+        "subtitle": "Récupération de vos définitions enregistrées des métriques de conversion."
+      },
+      "idle": {
+        "title": "Chargement..."
+      }
+    },
+    "states": {
+      "saved": "Métriques de conversion enregistrées",
+      "rememberToSave": "N’oubliez pas d’enregistrer vos modifications."
+    },
+    "tips": {
+      "title": "Comment ça fonctionne",
+      "description": "Créez des métriques nommées entre les étapes, comme le taux de réponse, le taux de réservation ou le taux de présence. Ces définitions aident votre équipe à suivre les conversions les plus importantes du pipeline.",
+      "needStages": "Ajoutez au moins 2 étapes de pipeline avant de créer des métriques de conversion."
+    },
+    "fields": {
+      "fromStageOption": "De : {stage}",
+      "toStageOption": "À : {stage}",
+      "targetRate": "Objectif %",
+      "targetRateTitle": "Taux cible (0–100)"
+    },
+    "placeholders": {
+      "metricName": "Nom de la métrique (ex. Taux de réponse, Taux de réservation)",
+      "targetRate": "Objectif %"
+    },
+    "defaults": {
+      "newMetric": "Nouvelle métrique de conversion"
+    },
+    "actions": {
+      "addMetric": "+ Ajouter une métrique de conversion",
+      "saveMetrics": "Enregistrer les métriques",
+      "remove": "Supprimer"
+    },
+    "errors": {
+      "loadFailed": "Échec du chargement des métriques de conversion.",
+      "missingTeam": "Espace de travail manquant. Cette page doit être ouverte depuis votre espace de travail.",
+      "atLeastOneMetric": "Ajoutez au moins une métrique de conversion avant d’enregistrer.",
+      "metricFieldsRequired": "Chaque métrique doit avoir un nom et des étapes de départ/arrivée valides.",
+      "targetRateRange": "Le taux cible doit être compris entre 0 et 100.",
+      "saveFailed": "L’enregistrement de vos métriques de conversion a échoué. Veuillez réessayer."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "Nous n’avons pas pu déterminer votre espace de travail. Veuillez ouvrir cette page depuis votre espace de travail ou contacter le support."
+      },
+      "noMetrics": {
+        "title": "Aucune métrique de conversion pour le moment.",
+        "description": "Ajoutez des métriques comme le taux de réponse, le taux de réservation ou le taux de présence pour correspondre à votre processus commercial."
+      }
+    }
+  },
+  "SchedulePagesSettingsPage": {
+    "page": {
+      "title": "Pages de réservation",
+      "description": "Créez des liens de réservation que les leads peuvent utiliser pour planifier des appels sur votre Google Calendar connecté."
+    },
+    "loading": {
+      "workspace": {
+        "title": "Chargement de l’espace de travail...",
+        "subtitle": "Recherche du contexte de votre espace de travail."
+      },
+      "auth": {
+        "title": "Vérification de votre session...",
+        "subtitle": "Vérification de votre compte."
+      },
+      "links": {
+        "title": "Chargement des pages de réservation...",
+        "subtitle": "Récupération de vos liens de réservation."
+      },
+      "idle": {
+        "title": "Chargement...",
+        "subtitle": "Veuillez patienter."
+      }
+    },
+    "dialog": {
+      "title": "Choisissez un type de page de réservation",
+      "description": "Choisissez comment ce lien de réservation doit fonctionner. Vous pouvez créer des flux de réservation one-on-one, group ou round robin."
+    },
+    "types": {
+      "oneOnOne": {
+        "label": "One-on-One",
+        "description": "Les leads peuvent réserver directement avec vous ou avec un membre spécifique de l’équipe."
+      },
+      "group": {
+        "label": "Groupe",
+        "description": "Utilisez ceci lorsque plusieurs membres de l’équipe doivent participer au même appel."
+      },
+      "roundRobin": {
+        "label": "Round Robin",
+        "description": "Répartissez automatiquement les réservations entre un groupe de membres de l’équipe. Idéal pour un volume élevé d’inbound."
+      }
+    },
+    "badges": {
+      "oneOnOne": "1:1",
+      "group": "Groupe",
+      "roundRobin": "Round Robin"
+    },
+    "table": {
+      "schedulePage": "Page de réservation",
+      "publicLink": "Lien public",
+      "color": "Couleur",
+      "actions": "Actions",
+      "noDescription": "Aucune description",
+      "publicBookingPage": "Page publique de réservation",
+      "createdAtTitle": "Créé le {date} à {time}"
+    },
+    "actions": {
+      "createSchedulePage": "Créer une page de réservation",
+      "deleteSchedulePage": "Supprimer la page de réservation"
+    },
+    "errors": {
+      "verifySessionFailed": "Échec de la vérification de votre session. Veuillez actualiser la page.",
+      "noTeam": "Aucun espace de travail trouvé. Ouvrez cette page depuis votre espace de travail.",
+      "noUserFound": "Aucun utilisateur trouvé. Veuillez vous reconnecter.",
+      "loadFailed": "Échec du chargement des pages de réservation.",
+      "loadUnexpected": "Une erreur inattendue s’est produite lors du chargement des pages de réservation."
+    },
+    "empty": {
+      "unavailable": "Vous avez besoin d’un espace de travail et d’un profil pour gérer les pages de réservation. Contactez le support si cela semble incorrect.",
+      "noPages": {
+        "title": "Aucune page de réservation pour le moment.",
+        "description": "Cliquez sur <strong>Créer une page de réservation</strong> pour configurer votre premier lien de réservation."
+      }
+    }
+  },
+  "DeleteSchedulePage": {
+    "metadata": {
+      "title": "Supprimer la page de réservation",
+      "description": "Confirmez la suppression de cette page de réservation. Cela masquera la page de réservation tout en conservant les réservations existantes."
+    },
+    "page": {
+      "title": "Supprimer la page de réservation",
+      "description": "Cela masquera la page de réservation. Les réservations existantes seront conservées."
+    },
+    "states": {
+      "loading": "Chargement...",
+      "alreadyDeleted": "Cette page de réservation a déjà été supprimée."
+    },
+    "confirm": {
+      "message": "Voulez-vous vraiment supprimer <strong>{name}</strong> ?",
+      "warning": "Cela va <strong>désactiver</strong> la page de réservation. Vous ne pourrez pas annuler cela depuis l’interface."
+    },
+    "preview": {
+      "title": "Aperçu de la page de réservation",
+      "name": "Nom",
+      "slug": "Slug"
+    },
+    "actions": {
+      "deleting": "Suppression...",
+      "delete": "Supprimer la page de réservation"
+    },
+    "errors": {
+      "notFound": "Nous n’avons pas trouvé cette page de réservation, ou vous n’y avez pas accès.",
+      "missingTeamOrId": "Nous n’avons pas pu déterminer votre espace de travail ou l’identifiant de la page de réservation.",
+      "loadFailed": "Échec du chargement de la page de réservation.",
+      "deleteFailed": "Échec de la suppression de la page de réservation."
+    },
+    "fallback": {
+      "thisSchedulePage": "cette page de réservation"
+    }
+  },
+  "CreateSchedulePage": {
+    "metadata": {
+      "title": "Créer une page de réservation",
+      "description": "Créez une nouvelle page de réservation dans votre CRM. Choisissez le type de réunion, définissez une URL personnalisée et choisissez une couleur principale pour votre lien public de réservation."
+    },
+    "page": {
+      "title": "Créer une page de réservation",
+      "description": "Choisissez un nom, une URL et une couleur principale. Sélectionnez ensuite quels closers sont inclus selon le type de réservation."
+    },
+    "common": {
+      "error": "Erreur",
+      "minutes": "minutes",
+      "min": "min",
+      "hours": "heures",
+      "days": "jours"
+    },
+    "defaults": {
+      "confirmHeading": "Votre réservation est confirmée !",
+      "confirmSubheading": "Nous avons envoyé une invitation calendrier à votre adresse e-mail."
+    },
+    "fields": {
+      "meetingName": "Nom de la réunion",
+      "publicSlug": "Slug de l’URL publique",
+      "descriptionOptional": "Description (optionnelle)",
+      "bufferBefore": "Avant",
+      "bufferAfter": "Après",
+      "minNotice": "Préavis minimum",
+      "maxNotice": "Préavis maximum",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "days": "Jours",
+      "primaryColor": "Couleur principale"
+    },
+    "placeholders": {
+      "meetingName": "Appel stratégie fitness",
+      "publicSlug": "fitness-strategy-call",
+      "description": "Choisissez un créneau qui vous convient. Nous vous enverrons une invitation calendrier après confirmation."
+    },
+    "help": {
+      "publicSlug": "Cela devient le lien partageable que vous envoyez aux leads."
+    },
+    "sections": {
+      "duration": {
+        "title": "Durée",
+        "description": "Choisissez la durée de cette réunion."
+      },
+      "buffers": {
+        "title": "Buffers"
+      },
+      "bookingWindow": {
+        "title": "Fenêtre de réservation"
+      },
+      "availability": {
+        "title": "Disponibilités"
+      }
+    },
+    "availability": {
+      "businessHours": "Heures ouvrées (choisissez des jours et une plage horaire)",
+      "twentyFourSeven": "24/7 (les leads peuvent réserver à tout moment)",
+      "daysHelp": "Les disponibilités seront limitées à ces jours et horaires dans le fuseau horaire du lead.",
+      "none": "Aucune"
+    },
+    "preview": {
+      "alwaysOpen": "24/7"
+    },
+    "actions": {
+      "create": "Créer une page de réservation",
+      "creating": "Création..."
+    },
+    "errors": {
+      "nameRequired": "Veuillez donner un nom à votre page de réservation.",
+      "slugRequired": "Le slug ne peut pas être vide.",
+      "durationMin": "La durée doit être d’au moins 5 minutes.",
+      "invalidTimes": "Veuillez définir des heures de début et de fin valides.",
+      "endAfterStart": "L’heure de fin doit être postérieure à l’heure de début.",
+      "pickDay": "Veuillez sélectionner au moins un jour de disponibilité.",
+      "pickOneOnOneCloser": "Veuillez choisir avec quel closer se tient cette réunion one-on-one.",
+      "pickPrimaryCloser": "Veuillez choisir un closer principal.",
+      "groupNeedsTwo": "Veuillez sélectionner au moins 2 closers pour une page de réservation de groupe.",
+      "roundRobinNeedsOne": "Veuillez sélectionner au moins 1 closer pour le round robin.",
+      "createFailed": "Échec de la création de la page de réservation.",
+      "groupHostsSaveFailed": "La page a été créée, mais l’enregistrement des hôtes du groupe a échoué.",
+      "roundRobinSaveFailed": "La page a été créée, mais l’enregistrement du pool round robin a échoué.",
+      "unexpected": "Erreur inattendue"
+    },
+    "weekdays": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mer",
+      "thu": "Jeu",
+      "fri": "Ven",
+      "sat": "Sam",
+      "sun": "Dim"
+    },
+    "hostSelection": {
+      "unnamedUser": "Utilisateur sans nom",
+      "emptyClosers": "Aucun coéquipier avec le rôle <strong>Closer</strong> n’a été trouvé.",
+      "oneOnOne": {
+        "label": "Hôte (Closer)",
+        "help": "Le lead réserve directement avec ce closer."
+      },
+      "group": {
+        "label": "Closers requis (doivent participer)",
+        "primaryCloser": "Closer principal (attribué au lead)",
+        "selectAttendees": "Sélectionner les participants requis",
+        "primaryBadge": "Principal",
+        "help": "Les disponibilités sont basées sur le chevauchement de tous les calendriers sélectionnés."
+      },
+      "roundRobin": {
+        "label": "Closers round robin (pool)",
+        "selectPool": "Sélectionnez quels closers peuvent être attribués",
+        "help": "Les leads verront les créneaux où <strong>au moins un</strong> closer est disponible. Lorsqu’une réservation est effectuée, un closer disponible est attribué au hasard."
+      }
+    },
+    "previewCard": {
+      "header": {
+        "title": "Aperçu de la page de réservation",
+        "description": "Un aperçu approximatif de la page publique de réservation."
+      },
+      "bookingType": {
+        "oneOnOne": "1:1",
+        "group": "Groupe",
+        "roundRobin": "Round robin"
+      },
+      "meta": {
+        "bookingWith": "Réservation avec {orgName} · {bookingType} · {duration} min",
+        "secureScheduling": "Réservation sécurisée"
+      },
+      "defaults": {
+        "meetingName": "Appel stratégie fitness",
+        "description": "Choisissez un créneau qui vous convient. Nous vous enverrons une invitation calendrier après confirmation."
+      },
+      "body": {
+        "yourDetails": "Vos informations",
+        "pickTime": "Choisissez une heure",
+        "firstName": "Prénom",
+        "email": "name@example.com",
+        "daysEnabled": "Jours activés : <days />",
+        "duration": "Durée : {value} min",
+        "bufferBefore": "Buffer avant : {value} min",
+        "bufferAfter": "Buffer après : {value} min",
+        "minNotice": "Préavis minimum : {value} heures",
+        "maxNotice": "Préavis maximum : {value} jours",
+        "noticeWindow": "Fenêtre de préavis :",
+        "noticeWindowValue": "{minNoticeHours}h minimum · {maxNoticeDays} jours maximum",
+        "availabilityAlways": "Disponibilités : 24/7",
+        "availabilityWindow": "Disponibilités : {days} · {hours}"
+      },
+      "footer": {
+        "note": "Aperçu de l’apparence de la page.",
+        "poweredBy": "Propulsé par <strong>Faigata</strong>"
+      }
+    }
+  },
+  "PublicBookingPage": {
+    "types": {
+      "one_on_one": "1:1",
+      "group": "Groupe",
+      "round_robin": "Round Robin"
+    },
+    "weekdays": {
+      "sun": "Dim",
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mer",
+      "thu": "Jeu",
+      "fri": "Ven",
+      "sat": "Sam"
+    },
+    "partsOfDay": {
+      "night": "Nuit",
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "states": {
+      "checkingAvailabilityTitle": "Vérification des disponibilités",
+      "checkingAvailabilitySubtitle": "Cela ne prend généralement qu’une seconde."
+    },
+    "header": {
+      "bookingWith": "Réservation avec {orgName} · {type}{duration, plural, =0 {} other { · {duration} min}}{hostsCount}",
+      "hostsCount": " · {count} hôtes",
+      "secureScheduling": "Réservation sécurisée",
+      "generalLinkNotice": "Remarque : cela ressemble à un lien de réservation général, pas à une invitation personnalisée.",
+      "defaultDescription": "Choisissez une date et une heure qui vous conviennent. Nous vous enverrons une invitation calendrier après confirmation.",
+      "noticeWindow": "Fenêtre de préavis :",
+      "noticeWindowValue": "{minNoticeHours}h minimum · {maxNoticeDays} jours maximum",
+      "availabilityAlways": "Disponibilités : 24/7",
+      "availabilityDaily": "Quotidien",
+      "availabilityWindow": "Disponibilités : {days} · {start}–{end}"
+    },
+    "details": {
+      "title": "Vos informations",
+      "firstName": "Prénom",
+      "firstNamePlaceholder": "Jane",
+      "email": "E-mail",
+      "emailPlaceholder": "jane@example.com",
+      "validEmail": "Veuillez saisir une adresse e-mail valide.",
+      "selected": "Sélectionné",
+      "pickToContinue": "Choisissez une date et une heure pour continuer.",
+      "bookingConfirmed": "Réservation confirmée",
+      "bookingSaved": "Votre réservation a été enregistrée.",
+      "continue": "Continuer",
+      "booking": "Réservation...",
+      "groupAvailabilityHelp": "Les disponibilités sont calculées sur l’ensemble des calendriers des hôtes requis pour cette réunion.",
+      "singleAvailabilityHelp": "Les disponibilités sont récupérées depuis le Google Calendar connecté de l’hôte."
+    },
+    "calendar": {
+      "chooseDate": "Choisissez une date",
+      "localTimezone": "Heures affichées dans votre fuseau horaire local",
+      "previousWeek": "Semaine précédente",
+      "nextWeek": "Semaine suivante",
+      "chooseTime": "Choisissez une heure",
+      "beforeEarliestDate": "Cette date est antérieure à la première date réservable ({minDate}).",
+      "outsideWindow": "Cette date est en dehors de la fenêtre de réservation ({maxNoticeDays} jours).",
+      "noSlotsTitle": "Aucun créneau disponible pour ce jour.",
+      "noSlotsDescription": "Essayez une autre date — l’hôte ou les hôtes peuvent être complets ou indisponibles.",
+      "showMore": "Afficher plus d’horaires",
+      "tip": "Astuce : les horaires désactivés sont en dehors de votre fenêtre de préavis ({minNoticeHours}h minimum / {maxNoticeDays} jours maximum)."
+    },
+    "errors": {
+      "loadAvailability": "Nous n’avons pas pu charger les disponibilités. Veuillez réessayer.",
+      "availabilityInternal": "Nous n’avons pas pu vérifier les disponibilités pour le moment. Veuillez actualiser la page et réessayer.",
+      "linkNotFound": "Ce lien de réservation n’existe plus.",
+      "inviteInvalid": "Ce lien d’invitation n’est plus valide.",
+      "hostCalendarNotConnected": "L’hôte n’a pas encore connecté son calendrier.",
+      "hostCalendarReconnectRequired": "L’hôte doit reconnecter son Google Calendar pour afficher ses disponibilités.",
+      "loadAvailabilitySoon": "Nous n’avons pas pu charger les disponibilités pour le moment. Veuillez réessayer dans un instant.",
+      "firstNameRequired": "Veuillez saisir votre prénom.",
+      "validEmailRequired": "Veuillez saisir une adresse e-mail valide.",
+      "slotOutsideAvailability": "Cet horaire est en dehors des disponibilités de ce lien de réservation.",
+      "bookingFailed": "Échec de la réservation."
+    },
+    "footer": {
+      "poweredBy": "Propulsé par <strong>Faigata</strong>"
+    }
+  },
+  "InviteTeamMembersPage": {
+    "metadata": {
+      "title": "Inviter des membres de l’équipe"
+    },
+    "page": {
+      "title": "Inviter des membres de l’équipe",
+      "description": "Envoyez une invitation et attribuez un ou plusieurs rôles.",
+      "managerNote": "Vous êtes Manager, vous ne pouvez donc pas attribuer le rôle Admin. Seuls les Admins peuvent le faire."
+    },
+    "placeholders": {
+      "email": "new.member@company.com"
+    },
+    "actions": {
+      "sendInvite": "Envoyer l’invitation",
+      "sending": "Envoi..."
+    },
+    "states": {
+      "loading": "Chargement de l’espace de travail et des autorisations...",
+      "noPermission": "Vous n’avez pas l’autorisation d’inviter des membres de l’équipe.",
+      "inviteSent": "Invitation envoyée !"
+    },
+    "errors": {
+      "loadPermissions": "Échec du chargement des autorisations. Veuillez actualiser la page.",
+      "emailAndRoleRequired": "Une adresse e-mail et au moins un rôle sont requis.",
+      "sendInviteFailed": "Échec de l’envoi de l’invitation.",
+      "generic": "Une erreur s’est produite."
+    }
+  },
+  "ManageTeamRolesPage": {
+    "metadata": {
+      "title": "Gérer les rôles de l’équipe"
+    },
+    "page": {
+      "title": "Gérer les rôles de l’équipe",
+      "description": "Activez ou désactivez les rôles pour les mettre à jour instantanément. Les Managers ne peuvent pas attribuer le rôle Admin ; seuls les Admins le peuvent."
+    },
+    "table": {
+      "sectionTitle": "Membres de l’équipe",
+      "columns": {
+        "member": "Membre",
+        "action": "Action"
+      },
+      "userFallback": "Utilisateur",
+      "adminOnlyTitle": "Seuls les Admins peuvent attribuer le rôle Admin.",
+      "savingTitle": "Enregistrement...",
+      "removeTitle": "Retirer un membre de l’équipe"
+    },
+    "states": {
+      "loading": "Chargement...",
+      "refreshing": "Chargement des membres de l’équipe...",
+      "saved": "Enregistré",
+      "empty": "Aucun membre d’équipe trouvé pour cet espace de travail."
+    },
+    "errors": {
+      "noWorkspaceTeam": "Impossible de déterminer votre espace de travail.",
+      "noPermission": "Vous n’avez pas l’autorisation de gérer les rôles de l’équipe.",
+      "loadMembers": "Échec du chargement des membres de l’équipe.",
+      "loadMembersHttp": "Échec du chargement des membres de l’équipe (HTTP {status}).",
+      "atLeastOneRole": "Au moins un rôle est requis.",
+      "saveHttp": "Échec de l’enregistrement des modifications (HTTP {status})."
+    }
+  },
+  "AcceptInvitePage": {
+    "metadata": {
+      "title": "Acceptez votre invitation",
+      "description": "Rejoignez votre équipe Faigata, créez votre compte et commencez à collaborer avec votre équipe."
+    },
+    "page": {
+      "title": "Accepter votre invitation",
+      "descriptionWithOrg": "Vous avez été invité à rejoindre {orgName}.",
+      "descriptionWithoutOrg": "Vous avez été invité à rejoindre une équipe Faigata."
+    },
+    "actions": {
+      "dismiss": "Fermer",
+      "tryAgain": "Réessayer",
+      "acceptInvite": "Accepter l’invitation"
+    },
+    "states": {
+      "loadingInvite": "Chargement de votre invitation..."
+    },
+    "success": {
+      "title": "Bienvenue chez {orgName}",
+      "defaultOrg": "votre nouvelle équipe",
+      "description": "Votre compte a été créé et vos rôles ont été attribués. Redirection vers votre tableau de bord..."
+    },
+    "footer": {
+      "loginPrompt": "Vous avez déjà un compte Faigata ? <link>Connectez-vous pour accepter cette invitation</link>"
+    },
+    "validation": {
+      "firstNameRequired": "Le prénom est requis.",
+      "lastNameRequired": "Le nom est requis.",
+      "emailRequired": "L’adresse e-mail est requise.",
+      "passwordRequired": "Le mot de passe est requis.",
+      "passwordMin": "Le mot de passe doit contenir au moins 8 caractères.",
+      "emailMismatch": "Veuillez utiliser la même adresse e-mail que celle à laquelle l’invitation a été envoyée."
+    },
+    "errors": {
+      "invalidLink": {
+        "title": "Lien d’invitation invalide",
+        "message": "Ce lien ne contient pas les informations de l’invitation. Veuillez demander à votre équipe de renvoyer l’invitation."
+      },
+      "loadFailed": {
+        "title": "Impossible de charger l’invitation",
+        "message": "Nous n’avons pas pu charger votre invitation pour le moment. Veuillez vérifier votre connexion et réessayer."
+      },
+      "network": {
+        "title": "Erreur réseau",
+        "message": "Une erreur s’est produite lors de l’acceptation de votre invitation. Veuillez réessayer."
+      },
+      "inviteLoadInvalid": "Cette invitation est introuvable ou n’est plus valide.",
+      "acceptFailed": "Échec de l’acceptation de l’invitation. Veuillez réessayer."
+    },
+    "apiErrors": {
+      "inviteNotFound": {
+        "title": "Invitation introuvable",
+        "message": "Cette invitation est introuvable. Elle a peut-être été supprimée ou le lien est peut-être incomplet."
+      },
+      "inviteAlreadyAccepted": {
+        "title": "Invitation déjà utilisée",
+        "message": "Cette invitation a déjà été acceptée. Essayez de vous connecter avec l’adresse e-mail invitée."
+      },
+      "inviteExpired": {
+        "title": "Invitation expirée",
+        "message": "Cette invitation a expiré. Veuillez demander à votre équipe de vous en envoyer une nouvelle."
+      },
+      "inviteEmailMismatch": {
+        "title": "L’adresse e-mail ne correspond pas",
+        "message": "Veuillez utiliser la même adresse e-mail que celle à laquelle l’invitation a été envoyée."
+      },
+      "authCreateUserFailed": {
+        "title": "Impossible de créer le compte",
+        "message": "Nous n’avons pas pu créer votre compte pour le moment. Veuillez réessayer."
+      },
+      "authUpdateUserFailed": {
+        "title": "Impossible de terminer la configuration",
+        "message": "Nous n’avons pas pu finaliser la configuration de votre compte. Veuillez réessayer."
+      },
+      "inviteAcceptFailed": {
+        "title": "Impossible de rejoindre l’équipe",
+        "message": "Votre compte n’a pas pu être lié à l’équipe pour le moment. Veuillez réessayer ou contacter le support."
+      },
+      "generic": {
+        "title": "Une erreur s’est produite"
+      }
+    }
+  },
+  "DeleteTeamMemberPage": {
+    "metadata": {
+      "title": "Retirer un membre de l’équipe",
+      "description": "Confirmez le retrait d’un membre de l’équipe de cet espace de travail. Cette action est irréversible."
+    },
+    "page": {
+      "title": "Retirer un membre de l’équipe",
+      "description": "Êtes-vous sûr de vouloir retirer <strong>{name}</strong> de cette équipe ?",
+      "warning": "Cela révoquera son accès à cet espace de travail. Cette action est irréversible."
+    },
+    "actions": {
+      "removing": "Suppression...",
+      "removeUser": "Retirer l’utilisateur"
+    },
+    "states": {
+      "loadingWorkspace": "Chargement de l’espace de travail..."
+    },
+    "fallback": {
+      "thisUser": "cet utilisateur"
+    },
+    "preview": {
+      "name": "Nom",
+      "userId": "ID utilisateur"
+    },
+    "errors": {
+      "missingUserId": "ID utilisateur manquant.",
+      "unauthorized": "Vous n’êtes pas connecté, ou votre session a expiré. Veuillez vous reconnecter.",
+      "deleteFailed": "Échec du retrait du membre de l’équipe."
+    }
+  },
+  "BillingPage": {
+    "metadata": {
+      "title": "Facturation",
+      "description": "Gérez la facturation Stripe, y compris les produits, les prix, les factures, les paiements et les clients."
+    },
+    "page": {
+      "title": "Facturation et paiements",
+      "description": "Gérez les programmes de coaching, les factures, les clients et l’activité des paiements au même endroit."
+    },
+    "actions": {
+      "openCard": "Ouvrir {title}"
+    },
+    "cards": {
+      "invoices": {
+        "title": "Factures",
+        "description": "Créez, envoyez et suivez des factures pour des paiements uniques ou récurrents.",
+        "hint": "Payée · Ouverte · En retard · Brouillon"
+      },
+      "products": {
+        "title": "Produits",
+        "description": "Définissez les produits et les prix utilisés pour les factures et les abonnements.",
+        "hint": "Unique · Récurrent"
+      },
+      "payments": {
+        "title": "Paiements",
+        "description": "Surveillez les paiements entrants, ainsi que les transactions échouées ou en attente.",
+        "hint": "Réussi · En attente · Échoué"
+      },
+      "customers": {
+        "title": "Clients",
+        "description": "Gérez les clients Stripe liés aux leads et aux organisations.",
+        "hint": "Informations de facturation · Moyens de paiement"
+      }
+    }
+  },
+  "BillingCustomersPage": {
+    "metadata": {
+      "title": "Clients",
+      "description": "Voir et gérer les clients Stripe. Liez les clients aux leads afin de garder la facturation connectée à votre CRM."
+    },
+    "page": {
+      "title": "Clients",
+      "description": "Clients Stripe de votre compte connecté. Utilisez la recherche dans l’en-tête pour filtrer par nom, e-mail, téléphone ou ID.",
+      "filterApplied": "Filtre : <strong>« {query} »</strong>",
+      "noFilter": "Aucun filtre appliqué."
+    },
+    "actions": {
+      "newCustomer": "Nouveau client",
+      "link": "Lier",
+      "changeLink": "Modifier le lien",
+      "unlink": "Délier",
+      "createCustomer": "Créer un client",
+      "creatingCustomer": "Création…",
+      "linkToLead": "Lier à un lead",
+      "linking": "Liaison…"
+    },
+    "table": {
+      "title": "Clients Stripe",
+      "loading": "Chargement…",
+      "filteredCount": "Affichage de {count} client(s) correspondant à votre filtre",
+      "totalCount": "{count} client(s) affiché(s)",
+      "columns": {
+        "customer": "Client",
+        "created": "Créé",
+        "paymentMethod": "Moyen de paiement",
+        "linkedLead": "Lead lié",
+        "actions": "Actions"
+      }
+    },
+    "paymentMethod": {
+      "onFile": "Enregistré",
+      "none": "Aucun"
+    },
+    "linkedLead": {
+      "linkedLead": "Lead lié",
+      "notLinked": "Non lié"
+    },
+    "empty": {
+      "none": {
+        "title": "Aucun client pour le moment.",
+        "description": "Utilisez <newCustomer>Nouveau client</newCustomer> pour en ajouter un, ou <refresh>Actualiser</refresh> pour charger les dernières données Stripe."
+      },
+      "noMatch": {
+        "title": "Aucun client ne correspond à « {query} ».",
+        "description": "Essayez un autre nom, e-mail, numéro de téléphone ou identifiant client Stripe."
+      }
+    },
+    "leadSearch": {
+      "loading": "Chargement des leads…",
+      "none": "Aucun lead trouvé.",
+      "stage": "Étape : {stage}",
+      "selected": "Sélectionné"
+    },
+    "createModal": {
+      "eyebrow": "Créer un client Stripe",
+      "title": "Nouveau client",
+      "description": "Créez un client dans le compte Stripe connecté et liez-le à un lead.",
+      "fields": {
+        "findLead": "Trouver un lead",
+        "selectLead": "Sélectionner un lead",
+        "customerName": "Nom du client"
+      },
+      "placeholders": {
+        "findLead": "Saisissez le nom du lead, l’e-mail, le téléphone…",
+        "customerName": "ex. ACME GmbH",
+        "email": "name@company.com",
+        "phone": "+49 …"
+      },
+      "help": {
+        "prefill": "La sélection d’un lead préremplira le nom + l’e-mail/téléphone principal."
+      }
+    },
+    "linkModal": {
+      "eyebrow": "Lier un client",
+      "description": "Choisissez un lead à lier à ce client Stripe.",
+      "fields": {
+        "searchLeads": "Rechercher des leads (optionnel)",
+        "selectLead": "Sélectionner un lead"
+      },
+      "placeholders": {
+        "searchLeads": "Saisissez un nom de lead, une entreprise, un e-mail…"
+      },
+      "help": {
+        "search": "Ceci ne concerne que la modale. La recherche globale reste dans l’en-tête."
+      }
+    }
+  },
+  "BillingInvoicesPage": {
+    "metadata": {
+      "title": "Factures",
+      "description": "Voir et gérer les factures Stripe de votre compte connecté."
+    },
+    "page": {
+      "title": "Factures",
+      "description": "Créez, examinez et envoyez des factures synchronisées avec votre compte Stripe connecté.",
+      "filterApplied": "Filtre : <strong>« {query} »</strong>",
+      "noFilter": "Aucun filtre appliqué."
+    },
+    "actions": {
+      "newInvoice": "Nouvelle facture"
+    },
+    "table": {
+      "title": "Factures Stripe",
+      "loading": "Chargement…",
+      "filteredCount": "Affichage de {count} facture(s) correspondant à votre filtre",
+      "totalCount": "{count} facture(s) affichée(s)",
+      "columns": {
+        "invoice": "Facture",
+        "customer": "Client",
+        "status": "Statut",
+        "total": "Total",
+        "created": "Créée",
+        "due": "Échéance",
+        "view": "Voir"
+      }
+    },
+    "invoice": {
+      "number": "#{number}",
+      "stripeId": "Stripe :"
+    },
+    "empty": {
+      "none": {
+        "title": "Aucune facture pour le moment.",
+        "description": "Utilisez <newInvoice>Nouvelle facture</newInvoice> pour en créer une, ou <refresh>Actualiser</refresh> pour charger les dernières données Stripe."
+      },
+      "noMatch": {
+        "title": "Aucune facture ne correspond à « {query} ».",
+        "description": "Essayez un nom de client, un e-mail, un numéro de facture ou un identifiant de facture Stripe."
+      }
+    }
+  },
+  "BillingPaymentsPage": {
+    "metadata": {
+      "title": "Paiements",
+      "description": "Surveillez les paiements entrants, les transactions en attente et les échecs."
+    },
+    "page": {
+      "title": "Paiements",
+      "description": "Voir les paiements synchronisés depuis votre compte Stripe connecté.",
+      "filterApplied": "Filtre : <strong>« {query} »</strong>",
+      "noFilter": "Aucun filtre appliqué."
+    },
+    "table": {
+      "title": "Paiements Stripe",
+      "loading": "Chargement…",
+      "filteredCount": "Affichage de {count} paiement(s) correspondant à votre filtre",
+      "totalCount": "{count} paiement(s)"
+    },
+    "empty": {
+      "none": {
+        "title": "Aucun paiement pour le moment.",
+        "description": "Les paiements apparaîtront ici une fois traités."
+      },
+      "noMatch": {
+        "title": "Aucun paiement ne correspond à « {query} ».",
+        "description": "Essayez une autre recherche."
+      }
+    },
+    "actions": {
+      "open": "Ouvrir →"
+    }
+  },
+  "BillingProductsPage": {
+    "metadata": {
+      "title": "Produits",
+      "description": "Gérez les produits et prix Stripe synchronisés avec votre compte connecté."
+    },
+    "page": {
+      "title": "Produits",
+      "description": "Gérez les produits et les prix synchronisés avec votre compte Stripe connecté.",
+      "filterApplied": "Filtre : <strong>« {query} »</strong>",
+      "noFilter": "Aucun filtre appliqué."
+    },
+    "actions": {
+      "newProduct": "Nouveau produit"
+    },
+    "table": {
+      "title": "Produits Stripe",
+      "loading": "Chargement…",
+      "filteredCount": "Affichage de {count} produit(s) correspondant à votre filtre",
+      "totalCount": "{count} produit(s) affiché(s)",
+      "columns": {
+        "product": "Produit",
+        "status": "Statut",
+        "currentPrice": "Prix actuel",
+        "created": "Créé",
+        "actions": "Actions"
+      }
+    },
+    "price": {
+      "recurringBilling": "Facturation récurrente"
+    },
+    "empty": {
+      "none": {
+        "title": "Aucun produit pour le moment.",
+        "description": "Utilisez <newProduct>Nouveau produit</newProduct> pour en créer un, ou <refresh>Actualiser</refresh> pour synchroniser depuis Stripe."
+      },
+      "noMatch": {
+        "title": "Aucun produit ne correspond à « {query} ».",
+        "description": "Essayez de rechercher un autre nom, une autre description ou un autre identifiant de produit."
+      }
+    }
+  },
+  "BillingFailedPaymentsPage": {
+    "metadata": {
+      "title": "Paiements échoués",
+      "description": "Examinez les paiements échoués ou nécessitant une action."
+    },
+    "page": {
+      "title": "Paiements échoués",
+      "description": "Paiements nécessitant une action, comme les cartes refusées ou les moyens de paiement manquants.",
+      "filterApplied": "Filtre : <strong>« {query} »</strong>",
+      "noFilter": "Aucun filtre appliqué."
+    },
+    "actions": {
+      "backToAll": "Retour à tous les paiements",
+      "open": "Ouvrir le paiement"
+    },
+    "table": {
+      "title": "Paiements échoués",
+      "loading": "Chargement…",
+      "filteredCount": "Affichage de {count} paiement(s) échoué(s) correspondant à votre filtre",
+      "totalCount": "{count} paiement(s) échoué(s)"
+    },
+    "empty": {
+      "none": {
+        "title": "Aucun paiement échoué pour le moment.",
+        "description": "Lorsqu’un paiement échoue, il apparaîtra ici."
+      },
+      "noMatch": {
+        "title": "Aucun paiement échoué ne correspond à « {query} ».",
+        "description": "Essayez un autre e-mail, statut ou identifiant d’intention de paiement."
+      }
+    }
+  },
+  "BillingInvoiceDetailPage": {
+    "metadata": {
+      "title": "Facture",
+      "description": "Voir et gérer une facture Stripe."
+    },
+    "page": {
+      "title": "Détails de la facture"
+    },
+    "header": {
+      "invoiceNumber": "Facture #{number}"
+    },
+    "summary": {
+      "total": "Total :",
+      "created": "Créée :",
+      "due": "Échéance :",
+      "customer": "Client :"
+    },
+    "actions": {
+      "refreshTitle": "Actualiser la facture",
+      "addItem": "Ajouter un article",
+      "addItemTitle": "Ajouter une ligne d’article",
+      "addItemDisabledTitle": "Impossible d’ajouter des articles à une facture clôturée",
+      "finalize": "Finaliser",
+      "send": "Envoyer",
+      "void": "Annuler",
+      "addingItem": "Ajout…",
+      "addItemModal": "Ajouter un article",
+      "backToInvoices": "Retour aux factures"
+    },
+    "links": {
+      "openHostedInvoice": "Ouvrir la facture hébergée ↗",
+      "downloadPdf": "Télécharger le PDF ↗",
+      "hostedUnavailable": "La facture hébergée n’est pas encore disponible.",
+      "pdfUnavailable": "Le PDF n’est pas encore disponible."
+    },
+    "items": {
+      "title": "Lignes d’articles",
+      "description": "Ajoutez des articles, puis finalisez et envoyez. Les articles sont verrouillés après le paiement ou l’annulation.",
+      "empty": "Aucune ligne d’article pour le moment. Cliquez sur <strong>Ajouter un article</strong> pour créer la première.",
+      "fallbackItem": "Article de facture",
+      "table": {
+        "quantity": "Qté"
+      }
+    },
+    "modal": {
+      "title": "Ajouter une ligne d’article",
+      "description": "Utilisez un prix Stripe (récurrent/unique), ou ajoutez un montant personnalisé sans penser en centimes.",
+      "fields": {
+        "mode": "Mode",
+        "priceId": "ID du prix",
+        "quantity": "Quantité"
+      },
+      "modes": {
+        "custom": "Montant personnalisé",
+        "price": "Prix Stripe"
+      },
+      "placeholders": {
+        "priceId": "price_...",
+        "amount": "ex. 99.00"
+      },
+      "help": {
+        "priceId": "Collez un ID de prix Stripe. (Plus tard, vous pourrez créer une interface « choisir produit/prix ».)",
+        "currency": "Astuce : Stripe stockera automatiquement le montant dans la plus petite unité.",
+        "amount": "Saisissez le montant normal (ex. 10.50)."
+      }
+    },
+    "states": {
+      "notFound": "Facture introuvable."
+    }
+  },
+  "BillingNewInvoicePage": {
+    "metadata": {
+      "title": "Nouvelle facture",
+      "description": "Créez une nouvelle facture Stripe pour un client."
+    },
+    "page": {
+      "title": "Nouvelle facture",
+      "description": "Créez une facture dans Stripe, puis ajoutez des lignes d’articles et envoyez-la au client."
+    },
+    "fields": {
+      "selectCustomer": "Sélectionner un client",
+      "collectionMethod": "Méthode de collecte",
+      "daysUntilDue": "Jours avant échéance",
+      "memo": "Mémo (optionnel)"
+    },
+    "collectionMethod": {
+      "sendInvoice": "Envoyer la facture",
+      "chargeAutomatically": "Prélever automatiquement"
+    },
+    "placeholders": {
+      "memo": "Visible pour le client sur la facture."
+    },
+    "actions": {
+      "manage": "Gérer",
+      "manageCustomersTitle": "Gérer les clients",
+      "createInvoice": "Créer la facture"
+    },
+    "states": {
+      "loadingCustomers": "Chargement des clients..."
+    },
+    "help": {
+      "customer": "Astuce : utilisez la recherche globale dans l’en-tête de la page Clients pour trouver rapidement le bon client.",
+      "collectionMethod": "Envoyer la facture = envoyer le lien de la facture par e-mail. Prélever automatiquement = Stripe tente le paiement.",
+      "daysUntilDue": "S’applique uniquement lorsque vous utilisez « Envoyer la facture ».",
+      "submitDisabled": "Sélectionnez un client pour activer « Créer la facture »."
+    }
+  },
+  "BillingPaymentDetailPage": {
+    "metadata": {
+      "title": "Détails du paiement",
+      "description": "Inspectez un paiement et déclenchez des remboursements."
+    },
+    "page": {
+      "title": "Détails du paiement"
+    },
+    "actions": {
+      "back": "Retour aux paiements",
+      "refundPayment": "Rembourser le paiement",
+      "refunding": "Remboursement..."
+    },
+    "help": {
+      "refund": "Les remboursements nécessitent un paiement réussi (le mode test convient)."
+    },
+    "raw": {
+      "title": "Payload Stripe brut"
+    },
+    "states": {
+      "notFound": "Paiement introuvable."
+    }
+  },
+  "BillingProductArchivePage": {
+    "metadata": {
+      "title": "Archiver le produit",
+      "description": "Archivez un produit dans Stripe (le rend inactif)."
+    },
+    "page": {
+      "title": "Archiver le produit",
+      "description": "Cela définit <strong>active=false</strong> dans Stripe. Les factures existantes ne sont pas affectées."
+    },
+    "confirm": {
+      "before": "Êtes-vous sûr de vouloir archiver",
+      "after": " ?",
+      "stripeId": "ID Stripe :"
+    }
+  },
+  "BillingProductDetailPage": {
+    "metadata": {
+      "title": "Produit",
+      "description": "Voir les détails du produit, les prix et la chronologie d’activité."
+    },
+    "header": {
+      "stripeId": "ID Stripe :"
+    },
+    "actions": {
+      "sync": "Synchroniser",
+      "syncTitle": "Synchroniser le catalogue depuis Stripe",
+      "newPrice": "+ Nouveau prix",
+      "createPrice": "Créer un prix"
+    },
+    "states": {
+      "notFound": "Produit introuvable."
+    },
+    "statusCard": {
+      "title": "Statut",
+      "created": "Créé :"
+    },
+    "details": {
+      "title": "Détails"
+    },
+    "prices": {
+      "title": "Prix",
+      "description": "Les prix Stripe sont effectivement immuables. Créez un nouveau prix et archivez l’ancien.",
+      "empty": "Aucun prix pour le moment.",
+      "recurringLabel": "{count} {interval}{count, plural, one {} other {s}}",
+      "recurringType": "Récurrent ({recurringLabel})",
+      "table": {
+        "amount": "Montant",
+        "type": "Type",
+        "status": "Statut",
+        "created": "Créé",
+        "actions": "Actions"
+      }
+    },
+    "activity": {
+      "title": "Chronologie d’activité",
+      "description": "Mises à jour du produit et changements de prix.",
+      "empty": "Aucune activité pour le moment.",
+      "fallbacks": {
+        "product": "Produit"
+      },
+      "types": {
+        "productCreated": "Nouveau produit",
+        "productUpdated": "Produit mis à jour",
+        "productArchived": "Produit archivé",
+        "recurringPriceCreated": "Prix récurrent créé",
+        "oneTimePriceCreated": "Prix unique créé",
+        "priceArchived": "Prix archivé"
+      },
+      "text": {
+        "productCreated": "Nouveau produit : {name}",
+        "nameChanged": "Nom changé en {name}",
+        "descriptionUpdated": "Description mise à jour",
+        "productDetailsChanged": "Détails du produit modifiés",
+        "productArchived": "Défini comme inactif dans Stripe (les factures existantes ne sont pas affectées).",
+        "newPriceCreated": "Nouveau prix créé",
+        "recurringPriceCreated": "{amount} - facturé tous les {count} {interval}{count, plural, one {} other {s}}",
+        "oneTimePriceCreated": "{amount} - paiement unique",
+        "priceArchived": "Prix Stripe archivé : {id}",
+        "productsCount": "{count} produits",
+        "pricesCount": "{count} prix",
+        "catalogSynced": "Catalogue synchronisé",
+        "catalogSyncedWithCounts": "Catalogue synchronisé - {parts}"
+      }
+    },
+    "modal": {
+      "title": "Créer un prix",
+      "description": "Le montant est en centimes (ex. 1000 = 10,00 $).",
+      "fields": {
+        "amountCents": "Montant (centimes)",
+        "interval": "Intervalle",
+        "intervalCount": "Nombre d’intervalles"
+      },
+      "help": {
+        "currency": "Choisissez une devise prise en charge par votre compte Stripe."
+      },
+      "intervals": {
+        "day": "jour",
+        "week": "semaine",
+        "month": "mois",
+        "year": "an"
+      }
+    }
+  },
+  "BillingProductFormPage": {
+    "metadata": {
+      "create": {
+        "title": "Nouveau produit",
+        "description": "Créez un nouveau produit dans Stripe et synchronisez-le avec votre catalogue."
+      },
+      "edit": {
+        "title": "Modifier le produit",
+        "description": "Mettez à jour le nom et la description du produit, puis synchronisez-le avec Stripe."
+      }
+    },
+    "page": {
+      "createTitle": "Nouveau produit",
+      "editTitle": "Modifier le produit",
+      "createDescription": "Crée un produit Stripe et un prix sur votre compte connecté.",
+      "editDescription": "Met à jour le nom et la description du produit Stripe."
+    },
+    "fields": {
+      "billingType": "Type de facturation",
+      "interval": "Intervalle",
+      "intervalCount": "Nombre d’intervalles"
+    },
+    "placeholders": {
+      "name": "ex. Pack de coaching",
+      "description": "Optionnel",
+      "amount": "ex. 19,99"
+    },
+    "price": {
+      "title": "Prix",
+      "description": "Cela créera un prix Stripe pour le produit. Les prix Stripe ne sont généralement pas modifiés ; créez-en un nouveau à la place."
+    },
+    "help": {
+      "amount": "Saisissez en unités principales (ex. 19,99). Nous convertirons en centimes.",
+      "currency": "Envoyé à Stripe sous forme de code en minuscules.",
+      "intervalCount": "ex. 1 mois, 3 mois, etc.",
+      "missingRouteParam": "Astuce : cette page nécessite un id produit dans les paramètres de route."
+    },
+    "intervals": {
+      "day": "Quotidien",
+      "week": "Hebdomadaire",
+      "month": "Mensuel",
+      "year": "Annuel"
+    },
+    "actions": {
+      "createProduct": "Créer le produit",
+      "saveChanges": "Enregistrer les modifications"
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis.",
+      "priceAmountRequired": "Le montant du prix est requis.",
+      "currencyRequired": "La devise est requise.",
+      "missingProductId": "ID produit manquant.",
+      "createResponseMissingProductId": "ID produit manquant dans la réponse de création."
+    }
+  },
+  "RegisterPage": {
+    "metadata": {
+      "title": "Inscription"
+    },
+    "page": {
+      "title": "Créez votre compte Faigata",
+      "subtitle": "Une seule connexion pour vos setters, vos closers et vos revenus de coaching."
+    },
+    "footer": {
+      "alreadyHaveAccount": "Vous avez déjà un compte ?"
+    },
+    "states": {
+      "checkingSession": "Vérification de votre session..."
+    },
+    "errors": {
+      "registrationFailed": "L’inscription a échoué. Veuillez réessayer.",
+      "sessionNotCreated": "Votre compte a été créé, mais Supabase n’a pas créé de session de connexion. Veuillez confirmer votre e-mail, puis continuer depuis la page de connexion.",
+      "userAlreadyExists": "Un compte avec cet e-mail existe déjà.",
+      "passwordTooShort": "Votre mot de passe est trop court.",
+      "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
+      "tooManyRequests": "Trop de tentatives. Veuillez patienter un instant et réessayer.",
+      "network": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",
+      "completeRegistrationFailed": "Votre compte a été créé, mais nous n’avons pas pu terminer la configuration de l’espace de travail. Redirection en cours.",
+      "completeRegistrationUnexpected": "Votre compte a été créé, mais une erreur s’est produite lors de la finalisation de la configuration.",
+      "initializationFailed": "Nous n’avons pas pu vérifier votre session actuelle. Veuillez réessayer.",
+      "unexpected": "Une erreur s’est produite lors de la création de votre compte."
+    }
+  },
+  "LoginPage": {
+    "metadata": {
+      "title": "Connexion"
+    },
+    "page": {
+      "title": "Bon retour sur Faigata",
+      "subtitle": "Connectez-vous pour gérer vos prospects, appels réservés et clients de coaching."
+    },
+    "actions": {
+      "signingIn": "Connexion en cours..."
+    },
+    "footer": {
+      "newToFaigata": "Nouveau sur Faigata ?"
+    },
+    "states": {
+      "loading": "Chargement"
+    },
+    "errors": {
+      "invalidEmailOrPassword": "Adresse e-mail ou mot de passe invalide.",
+      "authConfirmFailed": "La confirmation de l’e-mail a échoué. Veuillez réessayer le lien ou vous connecter manuellement.",
+      "emailNotConfirmed": "Veuillez confirmer votre adresse e-mail avant de vous connecter.",
+      "tooManyRequests": "Trop de tentatives. Veuillez patienter un instant et réessayer.",
+      "network": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",
+      "loginFailed": "La connexion a échoué. Veuillez réessayer.",
+      "afterLoginFailed": "Connexion réussie, mais nous n’avons pas pu terminer la configuration de l’espace de travail. Redirection en cours.",
+      "unexpected": "Une erreur s’est produite lors de votre connexion."
+    }
+  },
+  "BookingLinksPage": {
+    "metadata": {
+      "title": "Pages de réservation",
+      "description": "Affichez et gérez tous vos liens de réservation de consultation au même endroit. Permettez aux prospects de réserver directement du temps sur votre Google Calendar connecté."
+    }
+  },
+  "OnboardingPage": {
+    "metadata": {
+      "title": "Onboarding",
+      "description": "Configurez votre espace de travail, votre équipe, votre pipeline et vos données de leads avant de commencer à utiliser Faigata."
+    },
+    "steps": {
+      "teamSetup": "Configuration de l’équipe",
+      "inviteTeammates": "Inviter des coéquipiers",
+      "customizeLeadData": "Personnaliser les données des leads",
+      "importExistingLeads": "Importer des leads existants",
+      "customizePipeline": "Personnaliser le pipeline",
+      "conversionMetrics": "Métriques de conversion",
+      "finish": "Terminer"
+    },
+    "page": {
+      "title": "Bienvenue sur Lumo",
+      "progress": "Étape {current} sur {total} · {step}",
+      "setupHint": "Nous allons tout configurer pour vous en une minute."
+    },
+    "alerts": {
+      "loginRequired": "Vous devez être connecté pour terminer l’onboarding.",
+      "saveFailed": "L’enregistrement de votre configuration a échoué. Veuillez réessayer.",
+      "unexpected": "Une erreur s’est produite. Veuillez réessayer."
+    },
+    "actions": {
+      "back": "Retour",
+      "goToDashboard": "Aller au tableau de bord",
+      "addAnotherTeammate": "+ Ajouter un autre coéquipier",
+      "addAnotherField": "+ Ajouter un autre champ",
+      "downloadSampleTemplate": "Télécharger un modèle d’exemple",
+      "remove": "Supprimer",
+      "addStage": "+ Ajouter une étape",
+      "addConversionMetric": "+ Ajouter une métrique de conversion"
+    },
+    "teamSetup": {
+      "defaults": {
+        "teamName": "Équipe commerciale"
+      },
+      "fields": {
+        "companyName": "Nom de l’entreprise",
+        "teamName": "Votre première équipe",
+        "timezone": "Fuseau horaire"
+      },
+      "placeholders": {
+        "companyName": "ex. Faigata GmbH",
+        "teamName": "ex. Ventes outbound"
+      },
+      "info": "Votre premier utilisateur sera l’admin de cet espace de travail. Plus tard, vous pourrez ajouter d’autres équipes comme SDR Team, Closers ou CSM."
+    },
+    "invites": {
+      "description": "Invitez les personnes qui utiliseront Lumo avec vous. Vous pourrez toujours en ajouter d’autres plus tard.",
+      "emailPlaceholder": "teammate@company.com"
+    },
+    "customFields": {
+      "description": "Choisissez les données que vous souhaitez suivre pour chaque lead ou prospect. Faites glisser les champs pour les réorganiser.",
+      "defaults": {
+        "industryLabel": "Secteur",
+        "regionLabel": "Région",
+        "regionOptions": "DACH, US, UK, EU, Other",
+        "newFieldLabel": "Nouveau champ"
+      },
+      "fieldTypes": {
+        "text": "Texte",
+        "number": "Nombre",
+        "select": "Liste déroulante",
+        "boolean": "Case à cocher",
+        "url": "URL"
+      },
+      "placeholders": {
+        "fieldLabel": "Libellé du champ (ex. Secteur)",
+        "selectOptions": "Options (séparées par des virgules, ex. SaaS, E-commerce, Agence)"
+      }
+    },
+    "importLeads": {
+      "description": "Vous avez déjà des leads ou des prospects dans une feuille de calcul ? Importez-les maintenant pour que votre équipe puisse reprendre là où elle s’était arrêtée.",
+      "uploadTitle": "Cliquez pour téléverser un CSV / Excel",
+      "uploadSubtitle": "Nous vous guiderons plus tard dans le mapping des colonnes.",
+      "selectedFile": "Fichier sélectionné : {fileName}",
+      "recommendedColumns": {
+        "title": "Colonnes recommandées",
+        "nameEmailCompany": "Nom, E-mail, Entreprise",
+        "stage": "Étape (New / Contacted / Replied / Qualified / ...)",
+        "owner": "Responsable (Prospector / Setter / Closer)",
+        "customFields": "Tous les champs personnalisés que vous venez de définir"
+      }
+    },
+    "pipeline": {
+      "description": "Voici votre pipeline par défaut. Vous pouvez conserver celui que nous recommandons ou renommer les étapes pour les adapter à votre processus.",
+      "defaults": {
+        "new": "Nouveau",
+        "contacted": "Contacté",
+        "replied": "A répondu",
+        "qualified": "Qualifié",
+        "bookedCall": "Appel réservé",
+        "showedUp": "Présent",
+        "offer": "Offre",
+        "closed": "Conclu",
+        "newStage": "Nouvelle étape"
+      }
+    },
+    "conversionMetrics": {
+      "description": "Donnez un nom aux taux de conversion qui comptent pour vous. Chaque métrique compare combien de leads passent d’une étape du pipeline à une autre.",
+      "defaults": {
+        "newMetric": "Nouvelle métrique"
+      },
+      "placeholders": {
+        "metricName": "Nom de la métrique (ex. Taux de réponse, Taux de réservation)"
+      },
+      "fromStage": "De : {stage}",
+      "toStage": "À : {stage}"
+    },
+    "finish": {
+      "readyTitle": "Vous êtes prêt à démarrer",
+      "description": "Nous allons créer {teamName} dans {companyName}, précharger vos champs personnalisés et votre pipeline, et envoyer des invitations à vos coéquipiers.",
+      "fallbacks": {
+        "teamName": "votre équipe commerciale",
+        "companyName": "votre entreprise"
+      },
+      "summary": {
+        "invites": "{count} invitation{count, plural, one {} other {s}} à des coéquipiers",
+        "fields": "{count} champ{count, plural, one {} other {s}} de lead personnalisé{count, plural, one {} other {s}}",
+        "stages": "{count} étape{count, plural, one {} other {s}} du pipeline",
+        "metrics": "{count} métrique{count, plural, one {} other {s}} de conversion"
+      },
+      "nextTitle": "La suite dans Lumo",
+      "nextItems": {
+        "outreach": "Suivez en temps réel l’outreach et les réponses de vos setters",
+        "assignment": "Attribuez automatiquement les leads à fort potentiel à vos meilleurs performeurs",
+        "pipelineHealth": "Donnez aux managers une vision claire de la santé du pipeline"
+      }
+    }
+  }
+}

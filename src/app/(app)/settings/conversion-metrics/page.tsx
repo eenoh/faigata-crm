@@ -1,12 +1,15 @@
-// src/app/(app)/settings/conversion-metrics/page.tsx
 import type { Metadata } from "next";
-import { ConversionMetricDefinitionsSettingsClient } from "@/modules/crm/components/ConversionMetricDefinitionsSettingsClient";
+import { ConversionMetricDefinitionsSettingsClient } from "@/features/crm/components/ConversionMetricDefinitionsSettingsClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Conversion Metrics",
-  description:
-    "Define the conversion metrics you track between pipeline stages.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ConversionMetricDefinitionsSettingsPage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function ConversionMetricsSettingsPage() {
   return <ConversionMetricDefinitionsSettingsClient />;

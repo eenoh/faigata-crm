@@ -1,7 +1,7 @@
 // src/app/api/crm/lead-scoring/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import type { LeadScoringConfig } from "@/modules/crm/scoring/types";
+import type { LeadScoringConfig } from "@/features/crm/scoring/types";
 
 const json = (data: any, status = 200) => NextResponse.json(data, { status });
 
@@ -57,3 +57,4 @@ export async function POST(req: Request) {
 
   return json({ ok: true });
 }
+

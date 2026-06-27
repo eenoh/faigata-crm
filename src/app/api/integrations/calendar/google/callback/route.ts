@@ -1,80 +1,27 @@
 // src/app/api/integrations/calendar/google/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import crypto from "crypto";
+import { serverEnv } from "@/lib/env/server";
+import { resolveGoogleOauthUserId } from "@/features/integrations/google/server/oauth-state";
 
 export const runtime = "nodejs";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const STATE_MAX_AGE_MS = 15 * 60 * 1000; // 15 min
-const UI_HINT_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
+const UI_HINT_MAX_AGE = 60 * 60 * 24 * 90;
 
 function redirect(origin: string, qs: string) {
   return NextResponse.redirect(new URL(`/profile/integrations${qs}`, origin));
-}
-
-function base64urlDecodeUtf8(input: string) {
-  const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = b64.length % 4 ? "=".repeat(4 - (b64.length % 4)) : "";
-  return Buffer.from(b64 + pad, "base64").toString("utf8");
-}
-
-function timingSafeEqualStr(a: string, b: string) {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ab, bb);
-}
-
-function signState(uid: string, nonce: string, ts: number, secret: string) {
-  return crypto
-    .createHmac("sha256", secret)
-    .update(`${uid}.${nonce}.${ts}`)
-    .digest("hex");
 }
 
 function resolveUserIdFromState(
   req: NextRequest,
   returnedState: string | null,
 ) {
-  // 1) cookie-based flow (preferred)
-  const cookieState = req.cookies.get("gc_oauth_state")?.value || null;
-  const cookieUserId = req.cookies.get("gc_oauth_user_id")?.value || null;
-
-  if (cookieState && cookieUserId) {
-    if (!returnedState || returnedState !== cookieState) return null;
-    return cookieUserId;
-  }
-
-  // 2) signed state fallback
-  if (!returnedState) return null;
-
-  let raw: any;
-  try {
-    raw = JSON.parse(base64urlDecodeUtf8(returnedState));
-  } catch {
-    return null;
-  }
-
-  const uid = typeof raw?.uid === "string" ? raw.uid.trim() : "";
-  const nonce = typeof raw?.nonce === "string" ? raw.nonce.trim() : "";
-  const ts = Number(raw?.ts);
-  const sig = typeof raw?.sig === "string" ? raw.sig.trim() : "";
-
-  if (!uid || !nonce || !Number.isFinite(ts) || !sig) return null;
-
-  const secret =
-    process.env.GOOGLE_OAUTH_STATE_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "";
-  if (!secret) return null;
-
-  if (Date.now() - ts > STATE_MAX_AGE_MS) return null;
-
-  const expected = signState(uid, nonce, ts, secret);
-  if (!timingSafeEqualStr(sig, expected)) return null;
-
-  return uid;
+  return resolveGoogleOauthUserId({
+    returnedState,
+    cookieState: req.cookies.get("gc_oauth_state")?.value || null,
+    cookieUserId: req.cookies.get("gc_oauth_user_id")?.value || null,
+  });
 }
 
 async function exchangeCodeForTokens(args: {
@@ -112,9 +59,9 @@ export async function GET(req: NextRequest) {
     if (error) return redirect(origin, `?error=${encodeURIComponent(error)}`);
     if (!code) return redirect(origin, "?error=missing_code");
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const clientId = serverEnv.google.clientId();
+    const clientSecret = serverEnv.google.clientSecret();
+    const redirectUri = serverEnv.google.redirectUri();
 
     if (!clientId || !clientSecret || !redirectUri) {
       return redirect(origin, "?error=server_misconfigured");
@@ -171,16 +118,14 @@ export async function GET(req: NextRequest) {
 
     const res = redirect(origin, "?connected=google");
 
-    // UI hint cookie
     res.cookies.set("calendar_google_connected", "1", {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: serverEnv.isProduction(),
       maxAge: UI_HINT_MAX_AGE,
     });
 
-    // Clear short-lived connect cookies
     res.cookies.set("gc_oauth_state", "", { path: "/", maxAge: 0 });
     res.cookies.set("gc_oauth_user_id", "", { path: "/", maxAge: 0 });
 

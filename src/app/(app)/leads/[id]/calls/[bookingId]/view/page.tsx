@@ -1,22 +1,28 @@
-// src/app/(app)/leads/[id]/calls/[bookingId]/view/page.tsx
 import type { Metadata } from "next";
-import CallDetailClient from "@/modules/crm/components/CallDetailClient";
+import { getTranslations } from "next-intl/server";
+import CallDetailClient from "@/features/crm/components/CallDetailClient";
 
 type PageParams = { id: string; bookingId: string };
-
-// ✅ Next can pass params as Promise
 type PageProps = { params: Promise<PageParams> };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const resolved = await Promise.resolve(params);
+  const leadId = String(resolved?.id ?? "").trim();
+
+  const t = await getTranslations("CallDetailPage.metadata");
+
   return {
-    title: "Call Details",
-    description: `Call details for lead ${id}`,
+    title: t("title"),
+    description: t("description", { id: leadId }),
   };
 }
 
 export default async function CallDetailPage({ params }: PageProps) {
-  const { id, bookingId } = await params;
+  const resolved = await Promise.resolve(params);
+  const id = String(resolved?.id ?? "").trim();
+  const bookingId = String(resolved?.bookingId ?? "").trim();
 
   return (
     <div className="p-6">

@@ -1,12 +1,15 @@
-// src/app/invite/accept/page.tsx
 import type { Metadata } from "next";
-import AcceptInviteClient from "../../../modules/crm/components/AcceptInviteClient";
+import AcceptInviteClient from "@/features/crm/components/AcceptInviteClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Accept your Invitation",
-  description:
-    "Join your Faigata team, create your account, and start working with your team.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("AcceptInvitePage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function Page() {
   return <AcceptInviteClient />;

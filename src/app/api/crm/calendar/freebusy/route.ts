@@ -1,26 +1,19 @@
 // src/app/api/crm/calendar/freebusy/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import {
+  fetchGoogleJson,
+  getGoogleAccessTokenForUser,
+  googleAuthHeaders,
+  isGoogleInvalidCredentials,
+  isGoogleReconnectRequiredError,
+  isGoogleReconnectStatus,
+} from "@/features/crm/server/google-calendar";
+import { getRequestUser } from "@/lib/auth/session";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 const json = (data: any, status = 200) => NextResponse.json(data, { status });
-
-const requireEnv = (name: string) => {
-  const v = process.env[name];
-  if (!v) throw new Error(`missing_env_${name}`);
-  return v;
-};
-
-function supabaseAdmin() {
-  return createClient(
-    requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-    },
-  );
-}
 
 const ALLOWED = new Set(["closer", "manager", "admin"]);
 const hasAccess = (roles: unknown) =>
@@ -33,114 +26,23 @@ const parseIso = (v: string | null) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-const bearer = (req: Request) => {
-  const h =
-    req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  return h.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || "";
-};
-
-const isGoogleAuthError = (payload: any) => {
-  const code = Number(payload?.error?.code ?? 0);
-  const msg = String(payload?.error?.message ?? "").toLowerCase();
-  return code === 401 || code === 403 || msg.includes("invalid credentials");
-};
-
-async function fetchJSON(url: string, init: RequestInit) {
-  const res = await fetch(url, init);
-  const data = await res.json().catch(() => ({}) as any);
-  return { res, data };
-}
-
-async function refreshGoogleAccessToken(refreshToken: string) {
-  const { res, data } = await fetchJSON("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: requireEnv("GOOGLE_CLIENT_ID"),
-      client_secret: requireEnv("GOOGLE_CLIENT_SECRET"),
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }).toString(),
-  });
-
-  if (!res.ok) {
-    if (String(data?.error || "").toLowerCase() === "invalid_grant")
-      throw new Error("host_calendar_reconnect_required");
-    throw new Error(
-      data?.error_description || data?.error || "google_refresh_failed",
-    );
-  }
-
-  const access_token = String(data.access_token || "");
-  const expires_in = Number(data.expires_in || 0);
-  if (!access_token || !expires_in)
-    throw new Error("google_refresh_missing_fields");
-
-  return {
-    access_token,
-    expiry_date: new Date(Date.now() + expires_in * 1000).toISOString(),
-  };
-}
-
-async function getGoogleAccessTokenForUser(
-  admin: ReturnType<typeof supabaseAdmin>,
-  userId: string,
-) {
-  const { data: tok, error } = await admin
-    .from("user_google_calendar_tokens")
-    .select("access_token, refresh_token, expiry_date")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!tok?.refresh_token) return null;
-
-  const expiry = tok.expiry_date ? new Date(tok.expiry_date).getTime() : 0;
-  let accessToken = String(tok.access_token || "");
-
-  if (!accessToken || !expiry || expiry < Date.now() + 60_000) {
-    const refreshed = await refreshGoogleAccessToken(String(tok.refresh_token));
-    accessToken = refreshed.access_token;
-
-    await admin
-      .from("user_google_calendar_tokens")
-      .update({
-        access_token: refreshed.access_token,
-        expiry_date: refreshed.expiry_date,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
-  }
-
-  return accessToken;
-}
-
 type ApiEvent = {
   id: string;
   title: string;
-  start: string; // ISO
-  end: string; // ISO
+  start: string;
+  end: string;
   allDay: boolean;
   location?: string | null;
 };
 
-const googleAuthHeaders = (token: string) => ({
-  Authorization: `Bearer ${token}`,
-  "Content-Type": "application/json",
-});
-
 export async function GET(req: Request) {
   try {
-    const admin = supabaseAdmin();
+    const admin = getSupabaseAdminClient();
+    const auth = await getRequestUser(req);
+    if (!auth.ok) return json({ error: "unauthorized" }, 401);
 
-    const token = bearer(req);
-    if (!token) return json({ error: "unauthorized" }, 401);
+    const userId = auth.user.id;
 
-    const { data: userRes, error: userErr } = await admin.auth.getUser(token);
-    const userId = userRes?.user?.id ?? null;
-    if (userErr || !userId) return json({ error: "unauthorized" }, 401);
-
-    // role gating
     const { data: profile, error: profileErr } = await admin
       .from("profiles")
       .select("role")
@@ -159,25 +61,25 @@ export async function GET(req: Request) {
     const to =
       parseIso(url.searchParams.get("to")) ??
       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    if (to.getTime() <= from.getTime())
+    if (to.getTime() <= from.getTime()) {
       return json({ error: "invalid_range" }, 400);
+    }
 
-    // Google token (refresh if needed)
     let googleAccessToken: string | null = null;
     try {
       googleAccessToken = await getGoogleAccessTokenForUser(admin, userId);
-    } catch (e: any) {
-      if (String(e?.message ?? "") === "host_calendar_reconnect_required") {
+    } catch (error: any) {
+      if (isGoogleReconnectRequiredError(error)) {
         return json({ error: "host_calendar_reconnect_required" }, 409);
       }
-      console.error("[calendar-freebusy] token fetch/refresh error", e);
+      console.error("[calendar-freebusy] token fetch/refresh error", error);
       return json({ error: "token_fetch_failed" }, 500);
     }
-    if (!googleAccessToken)
+    if (!googleAccessToken) {
       return json({ error: "host_calendar_not_connected" }, 409);
+    }
 
-    // 1) freeBusy for busy blocks
-    const { res: fbRes, data: fbJson } = await fetchJSON(
+    const { response: fbRes, data: fbJson } = await fetchGoogleJson(
       "https://www.googleapis.com/calendar/v3/freeBusy",
       {
         method: "POST",
@@ -192,13 +94,20 @@ export async function GET(req: Request) {
     );
 
     if (!fbRes.ok) {
-      if (isGoogleAuthError(fbJson))
+      const errorCode = Number(fbJson?.error?.code ?? 0);
+      const errorMessage = String(fbJson?.error?.message ?? "");
+
+      if (
+        isGoogleReconnectStatus(fbRes.status) ||
+        isGoogleInvalidCredentials(errorCode, errorMessage)
+      ) {
         return json({ error: "host_calendar_reconnect_required" }, 409);
+      }
+
       console.error("[calendar-freebusy] google freeBusy failed", fbJson);
       return json({ error: "google_freebusy_failed" }, 502);
     }
 
-    // 2) events.list for titles
     const eventsUrl = new URL(
       "https://www.googleapis.com/calendar/v3/calendars/primary/events",
     );
@@ -209,13 +118,24 @@ export async function GET(req: Request) {
     eventsUrl.searchParams.set("maxResults", "250");
     eventsUrl.searchParams.set("timeZone", tz);
 
-    const { res: evRes, data: evJson } = await fetchJSON(eventsUrl.toString(), {
-      headers: { Authorization: `Bearer ${googleAccessToken}` },
-    });
+    const { response: evRes, data: evJson } = await fetchGoogleJson(
+      eventsUrl.toString(),
+      {
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      },
+    );
 
     if (!evRes.ok) {
-      if (isGoogleAuthError(evJson))
+      const errorCode = Number(evJson?.error?.code ?? 0);
+      const errorMessage = String(evJson?.error?.message ?? "");
+
+      if (
+        isGoogleReconnectStatus(evRes.status) ||
+        isGoogleInvalidCredentials(errorCode, errorMessage)
+      ) {
         return json({ error: "host_calendar_reconnect_required" }, 409);
+      }
+
       console.error("[calendar-freebusy] google events.list failed", evJson);
       return json({ error: "google_events_failed" }, 502);
     }
@@ -254,7 +174,7 @@ export async function GET(req: Request) {
           location: it?.location ?? null,
         };
       })
-      .filter((e) => e.start && e.end);
+      .filter((event) => event.start && event.end);
 
     return json({
       ok: true,
@@ -264,8 +184,8 @@ export async function GET(req: Request) {
       busy: fbJson?.calendars?.primary?.busy ?? [],
       events,
     });
-  } catch (e: any) {
-    console.error("[calendar-freebusy] unexpected error", e);
-    return json({ error: String(e?.message ?? "internal_error") }, 500);
+  } catch (error: any) {
+    console.error("[calendar-freebusy] unexpected error", error);
+    return json({ error: String(error?.message ?? "internal_error") }, 500);
   }
 }

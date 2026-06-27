@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import BillingCustomersClient from "@/modules/billing/components/BillingCustomersClient";
+import { getTranslations } from "next-intl/server";
+import BillingCustomersClient from "@/features/billing/components/BillingCustomersClient";
 
-export const metadata: Metadata = {
-  title: "Customers",
-  description:
-    "View and manage Stripe customers. Link customers to leads to keep billing connected to your CRM.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingCustomersPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function BillingCustomersPage() {
   return <BillingCustomersClient />;

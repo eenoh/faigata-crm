@@ -1,0 +1,2983 @@
+{
+  "Common": {
+    "actions": {
+      "save": "परिवर्तन सहेजें",
+      "saving": "अपडेट सहेजे जा रहे हैं...",
+      "upload": "फ़ाइल अपलोड करें",
+      "working": "प्रोसेस किया जा रहा है...",
+      "clear": "डेटा साफ़ करें",
+      "refresh": "रीफ़्रेश करें",
+      "cancel": "रद्द करें",
+      "close": "बंद करें",
+      "copy": "कॉपी करें",
+      "continue": "जारी रखें",
+      "view": "विवरण देखें",
+      "edit": "संपादित करें",
+      "delete": "हटाएँ",
+      "archive": "आर्काइव करें"
+    },
+    "brand": {
+      "logoAlt": "फिटनेस कोचिंग CRM लोगो"
+    },
+    "fields": {
+      "firstName": "पहला नाम",
+      "lastName": "अंतिम नाम",
+      "email": "ईमेल पता",
+      "workEmail": "व्यावसायिक ईमेल",
+      "password": "पासवर्ड",
+      "roles": "टीम की भूमिकाएँ"
+    },
+    "auth": {
+      "showPassword": "पासवर्ड दिखाएँ",
+      "hidePassword": "पासवर्ड छिपाएँ",
+      "creatingAccount": "आपका फिटनेस कोचिंग वर्कस्पेस सेट किया जा रहा है...",
+      "logIn": "अपने CRM में लॉग इन करें",
+      "createAccount": "अपना कोचिंग अकाउंट बनाएँ"
+    },
+    "status": {
+      "connected": "कनेक्टेड",
+      "comingSoon": "जल्द आ रहा है",
+      "actionRequired": "कार्रवाई आवश्यक है"
+    },
+    "roles": {
+      "admin": "एडमिन",
+      "manager": "सेल्स मैनेजर",
+      "prospector": "लीड जनरेटर",
+      "setter": "अपॉइंटमेंट सेटर",
+      "closer": "सेल्स क्लोज़र",
+      "member": "टीम सदस्य",
+      "admins": "एडमिन्स"
+    },
+    "states": {
+      "noMessages": "अभी तक कोई बातचीत नहीं।"
+    },
+    "activityTimeline": {
+      "roleLead": "लीड",
+      "roleTeam": "टीम",
+      "joinDetails": "कॉल विवरण",
+      "meetingLink": "कॉल लिंक",
+      "schedulePage": "बुकिंग पेज",
+      "bookingLinkSent": "बुकिंग लिंक भेजा गया: {name}",
+      "actions": {
+        "openGoogleMeet": "Google Meet खोलें",
+        "openCalendarEvent": "कैलेंडर देखें"
+      },
+      "alt": {
+        "newLead": "नई फिटनेस लीड",
+        "leadRejected": "लीड अयोग्य घोषित की गई",
+        "callStatus": "कॉल स्थिति अपडेट",
+        "offerMade": "प्रोग्राम ऑफ़र दिया गया",
+        "closedOnCall": "क्लाइंट ने कॉल पर साइन किया",
+        "callOutcomeUpdate": "कॉल परिणाम अपडेट किया गया",
+        "callBooked": "कंसल्टेशन बुक हुआ",
+        "bookingLinkSent": "बुकिंग लिंक भेजा गया",
+        "pipelineActivity": "पाइपलाइन अपडेट"
+      },
+      "channels": {
+        "dm": "DM",
+        "sms": "SMS",
+        "other": "OTHER",
+        "pipeline": "PIPELINE"
+      }
+    },
+    "languages": {
+      "label": "पसंदीदा भाषा",
+      "help": "सहेजने के बाद अपने कोचिंग CRM में उपयोग की जाने वाली भाषा चुनें।"
+    },
+    "common": {
+      "yes": "हाँ",
+      "no": "नहीं",
+      "select": "चुनें..."
+    }
+  },
+  "BillingCommon": {
+    "actions": {
+      "creating": "भुगतान बनाया जा रहा है...",
+      "archiving": "आर्काइव किया जा रहा है..."
+    },
+    "errors": {
+      "prefix": "भुगतान त्रुटि"
+    },
+    "fields": {
+      "name": "प्रोग्राम / ऑफ़र का नाम",
+      "description": "प्रोग्राम विवरण",
+      "amount": "कीमत",
+      "currency": "मुद्रा",
+      "customer": "क्लाइंट",
+      "phone": "क्लाइंट फ़ोन",
+      "chargeId": "भुगतान आईडी"
+    },
+    "price": {
+      "oneTime": "एकमुश्त भुगतान",
+      "recurring": "मासिक सब्सक्रिप्शन"
+    },
+    "states": {
+      "loading": "भुगतान लोड किए जा रहे हैं..."
+    },
+    "status": {
+      "active": "सक्रिय",
+      "archived": "आर्काइव किया गया"
+    }
+  },
+  "DomainValues": {
+    "fallbacks": {
+      "empty": "—",
+      "unknown": "अज्ञात"
+    },
+    "crm": {
+      "leadType": {
+        "individual": "व्यक्ति",
+        "business": "व्यवसाय"
+      },
+      "gender": {
+        "male": "पुरुष",
+        "female": "महिला"
+      },
+      "contactType": {
+        "email": "ईमेल",
+        "phone": "फ़ोन",
+        "linkedin": "LinkedIn",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "reddit": "Reddit",
+        "twitterX": "Twitter/X",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "tiktok": "TikTok",
+        "youtube": "YouTube",
+        "snapchat": "Snapchat",
+        "discord": "Discord",
+        "slack": "Slack",
+        "wechat": "WeChat",
+        "line": "LINE",
+        "signal": "Signal",
+        "other": "अन्य"
+      },
+      "sourceCategory": {
+        "inbound": "इनबाउंड (ऑर्गेनिक लीड्स)",
+        "outbound": "आउटबाउंड (कोल्ड आउटरीच)",
+        "referral": "क्लाइंट रेफ़रल",
+        "partner": "पार्टनरशिप",
+        "purchased": "पेड लीड्स"
+      },
+      "attendance": {
+        "attended": "उपस्थित हुआ",
+        "noShow": "नहीं आया",
+        "cancelled": "रद्द किया गया",
+        "rescheduled": "पुनर्निर्धारित",
+        "unknown": "अज्ञात"
+      }
+    },
+    "billing": {
+      "paymentStatus": {
+        "succeeded": "भुगतान सफल",
+        "processing": "भुगतान प्रोसेस हो रहा है",
+        "requiresPaymentMethod": "भुगतान विधि आवश्यक है",
+        "requiresConfirmation": "पुष्टि की प्रतीक्षा में",
+        "requiresAction": "कार्रवाई आवश्यक है",
+        "requiresCapture": "कैप्चर की प्रतीक्षा में",
+        "canceled": "भुगतान रद्द किया गया",
+        "failed": "भुगतान विफल"
+      },
+      "invoiceStatus": {
+        "paid": "भुगतान किया गया",
+        "open": "खुला",
+        "draft": "ड्राफ्ट",
+        "void": "रद्द",
+        "uncollectible": "अवसूल्य"
+      }
+    }
+  },
+  "Home": {
+    "title": "Faigata",
+    "description": "अपनी Instagram सेटर पाइपलाइन, बुक की गई कंसल्टेशन और कोचिंग सेल्स को एक ही जगह पर प्रबंधित करें।",
+    "cta": "सेल्स वर्कस्पेस खोलें"
+  },
+  "ProfileSettings": {
+    "metadata": {
+      "title": "प्रोफ़ाइल सेटिंग्स",
+      "description": "अपने व्यक्तिगत विवरण, टीम भूमिका और प्रोफ़ाइल फोटो अपडेट करें।"
+    },
+    "loading": "आपकी प्रोफ़ाइल सेटिंग्स लोड हो रही हैं...",
+    "title": "प्रोफ़ाइल और बिज़नेस सेटिंग्स",
+    "description": "अपने व्यक्तिगत खाते के विवरण और अपने फिटनेस कोचिंग बिज़नेस ब्रांडिंग को प्रबंधित करें।",
+    "integrations": "इंटीग्रेशन्स",
+    "accountUpdated": "आपकी प्रोफ़ाइल अपडेट कर दी गई है।",
+    "organization": {
+      "title": "बिज़नेस सेटिंग्स",
+      "description": "अपने कोचिंग बिज़नेस का नाम, लोगो और शेड्यूलिंग पेजों पर उपयोग होने वाला ब्रांड रंग अपडेट करें।",
+      "adminOnly": "केवल एडमिन ही बिज़नेस सेटिंग्स बदल सकते हैं। यदि आपको ये विवरण अपडेट करने हैं तो अपने अकाउंट ओनर या एडमिन से संपर्क करें।",
+      "updated": "बिज़नेस सेटिंग्स अपडेट कर दी गई हैं।",
+      "logoFallback": "लोगो",
+      "companyLogo": "बिज़नेस लोगो",
+      "logoHelp": "PNG या JPG इमेज अपलोड करें। स्क्वायर लोगो सबसे अच्छा काम करता है।",
+      "uploadLogo": "लोगो अपलोड करें",
+      "uploadingLogo": "लोगो अपलोड हो रहा है...",
+      "companyName": "बिज़नेस का नाम",
+      "primaryColor": "ब्रांड रंग",
+      "colorHelp": "यह रंग आपके वर्कस्पेस में बटन, हाइलाइट्स और अन्य ब्रांडेड एलिमेंट्स के लिए उपयोग किया जाता है।",
+      "preview": "प्रीव्यू",
+      "save": "बिज़नेस सेटिंग्स सहेजें"
+    },
+    "profile": {
+      "picture": "प्रोफ़ाइल फोटो",
+      "pictureHelp": "लगभग 5 MB तक की PNG या JPG इमेज अपलोड करें।",
+      "uploadPhoto": "नई फोटो अपलोड करें",
+      "uploadingPhoto": "फोटो अपलोड हो रही है...",
+      "emailHelp": "यह उस ईमेल पते को बदलता है जिसका उपयोग आप लॉग इन करने के लिए करते हैं। परिवर्तन पूरा करने से पहले आपको नए ईमेल की पुष्टि करनी पड़ सकती है।",
+      "newPassword": "नया पासवर्ड",
+      "confirmNewPassword": "नया पासवर्ड पुष्टि करें",
+      "passwordPlaceholder": "अपने वर्तमान पासवर्ड को बनाए रखने के लिए खाली छोड़ दें",
+      "save": "प्रोफ़ाइल परिवर्तन सहेजें",
+      "avatarFallback": "U"
+    },
+    "errors": {
+      "notSignedIn": "आप लॉग इन नहीं हैं।",
+      "loadProfile": "हम आपकी प्रोफ़ाइल लोड नहीं कर सके।",
+      "loadProfileUnexpected": "आपकी प्रोफ़ाइल लोड करते समय कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+      "uploadAvatar": "हम आपकी प्रोफ़ाइल फोटो अपलोड नहीं कर सके।",
+      "uploadAvatarSignedUrl": "आपकी फोटो अपलोड हो गई, लेकिन हम इसके लिए प्रीव्यू लिंक नहीं बना सके।",
+      "uploadAvatarSave": "आपकी फोटो अपलोड हो गई, लेकिन हम इसे आपकी प्रोफ़ाइल में सहेज नहीं सके।",
+      "uploadAvatarUnexpected": "आपकी प्रोफ़ाइल फोटो अपलोड करते समय कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+      "saveProfile": "हम आपकी प्रोफ़ाइल परिवर्तन सहेज नहीं सके।",
+      "passwordMismatch": "नया पासवर्ड और पुष्टि पासवर्ड मेल नहीं खाते।",
+      "saveAuthEmailPassword": "हम आपका ईमेल और पासवर्ड अपडेट नहीं कर सके।",
+      "saveAuthEmail": "हम आपका ईमेल अपडेट नहीं कर सके।",
+      "saveAuthPassword": "हम आपका पासवर्ड अपडेट नहीं कर सके।",
+      "saveProfileUnexpected": "आपकी प्रोफ़ाइल सहेजते समय कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+      "orgAdminOnly": "केवल एडमिन ही बिज़नेस सेटिंग्स अपडेट कर सकते हैं।",
+      "loadOrganization": "हम आपकी बिज़नेस सेटिंग्स लोड नहीं कर सके।",
+      "saveOrganization": "हम आपकी बिज़नेस सेटिंग्स सहेज नहीं सके।",
+      "saveOrganizationUnexpected": "बिज़नेस सेटिंग्स सहेजते समय कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+      "missingOrganizationId": "आपकी बिज़नेस आईडी नहीं मिली, इसलिए यह परिवर्तन पूरा नहीं किया जा सका।",
+      "uploadLogo": "हम आपका बिज़नेस लोगो अपलोड नहीं कर सके।",
+      "uploadLogoSignedUrl": "आपका लोगो अपलोड हो गया, लेकिन हम इसके लिए प्रीव्यू लिंक नहीं बना सके।",
+      "uploadLogoSave": "आपका लोगो अपलोड हो गया, लेकिन हम इसे आपकी बिज़नेस सेटिंग्स में सहेज नहीं सके।",
+      "uploadLogoUnexpected": "लोगो अपलोड करते समय कुछ गलत हो गया। कृपया पुनः प्रयास करें।"
+    }
+  },
+  "Integrations": {
+    "metadata": {
+      "title": "इंटीग्रेशन्स",
+      "description": "अपने कैलेंडर और भुगतान टूल्स को कनेक्ट करें ताकि संभावित ग्राहक कॉल बुक कर सकें, आपकी टीम संगठित रह सके और आप भुगतान प्राप्त कर सकें।"
+    },
+    "errors": {
+      "loadStatus": "हम आपकी इंटीग्रेशन स्थिति लोड नहीं कर सके। कृपया पेज रीफ़्रेश करें और फिर से प्रयास करें।",
+      "loadRoles": "हम बिलिंग इंटीग्रेशन्स के लिए आपकी अनुमतियाँ सत्यापित नहीं कर सके। कृपया पेज रीफ़्रेश करें और फिर से प्रयास करें।",
+      "disconnectCalendar": "हम आपका कैलेंडर डिस्कनेक्ट नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "disconnectStripe": "हम Stripe को डिस्कनेक्ट नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "connectStart": "हम कनेक्शन प्रक्रिया शुरू नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "missingAuthUrl": "हम कनेक्शन प्रक्रिया शुरू नहीं कर सके क्योंकि कोई ऑथराइज़ेशन लिंक प्राप्त नहीं हुआ।"
+    },
+    "title": "इंटीग्रेशन्स",
+    "description": "उन टूल्स को कनेक्ट करें जिनका आपका फिटनेस कोचिंग बिज़नेस उपयोग करता है — कॉल बुक करने, कैलेंडर प्रबंधित करने, लीड्स के साथ फॉलो-अप करने और भुगतान एकत्र करने के लिए।",
+    "googleReconnectNotice": "आपके Google Calendar को फिर से कनेक्ट करने की आवश्यकता है ताकि बुकिंग पेज आपकी उपलब्धता जांच सकें। जारी रखने के लिए \"Google Calendar पुनः कनेक्ट करें\" पर क्लिक करें।",
+    "connectionFailed": "कनेक्शन विफल: {error}",
+    "sections": {
+      "calendarTitle": "कैलेंडर कनेक्शन",
+      "calendarDescription": "एक कैलेंडर कनेक्ट करें ताकि लीड्स और क्लाइंट आपकी वास्तविक उपलब्धता के आधार पर कॉल बुक कर सकें।",
+      "emailTitle": "ईमेल कनेक्शन",
+      "emailDescription": "फॉलो-अप भेजने और लीड वार्तालाप को एक ही जगह पर रखने के लिए अपना ईमेल इनबॉक्स कनेक्ट करें।",
+      "billingTitle": "बिलिंग कनेक्शन",
+      "billingDescription": "कोचिंग प्रोग्राम बेचने, भुगतान लिंक या इनवॉइस भेजने और भुगतान ट्रैक करने के लिए Stripe कनेक्ट करें।"
+    },
+    "providers": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "उपलब्ध समय स्लॉट दिखाने और बुक की गई कॉल्स को अपने कैलेंडर में स्वचालित रूप से जोड़ने के लिए Google Calendar का उपयोग करें।",
+        "badge": "Google Calendar उपयोगकर्ताओं के लिए सबसे अच्छा",
+        "connect": "Google Calendar कनेक्ट करें",
+        "disconnect": "Google Calendar डिस्कनेक्ट करें",
+        "reconnect": "Google Calendar पुनः कनेक्ट करें",
+        "helperConnected": "आपका Google Calendar कनेक्ट है और उपलब्धता जांचने व बुक की गई कॉल्स प्रबंधित करने के लिए उपयोग किया जा सकता है।",
+        "helperDisconnected": "Google Calendar कनेक्ट करें ताकि आपके बुकिंग पेज उपलब्ध समय स्लॉट दिखा सकें और स्वचालित रूप से इवेंट बना सकें।",
+        "helperReconnect": "उपलब्धता जांच और बुकिंग पेज सिंक को बहाल करने के लिए Google Calendar पुनः कनेक्ट करें।"
+      },
+      "outlookCalendar": {
+        "name": "Outlook / Microsoft 365 Calendar",
+        "description": "उपलब्ध समय स्लॉट दिखाने और बुक की गई कॉल्स को अपने कैलेंडर में स्वचालित रूप से जोड़ने के लिए Outlook Calendar का उपयोग करें।",
+        "badge": "Outlook और Microsoft 365 उपयोगकर्ताओं के लिए सबसे अच्छा",
+        "connect": "Outlook / Microsoft 365 Calendar कनेक्ट करें",
+        "disconnect": "Outlook / Microsoft 365 Calendar डिस्कनेक्ट करें",
+        "helperConnected": "आपका Outlook कैलेंडर कनेक्ट है और उपलब्धता जांचने व बुक की गई कॉल्स प्रबंधित करने के लिए उपयोग किया जा सकता है।",
+        "helperDisconnected": "Outlook Calendar कनेक्ट करें ताकि आपके बुकिंग पेज उपलब्ध समय स्लॉट दिखा सकें और स्वचालित रूप से इवेंट बना सकें।"
+      },
+      "gmail": {
+        "name": "Gmail / Google Workspace",
+        "description": "ऐप के अंदर से लीड ईमेल भेजें और ट्रैक करें।",
+        "badge": "Gmail या Google Workspace एक्सेस आवश्यक",
+        "connect": "Gmail / Google Workspace कनेक्ट करें",
+        "disconnect": "Gmail / Google Workspace डिस्कनेक्ट करें",
+        "helperConnected": "यह इनबॉक्स कनेक्ट है और लीड संचार भेजने और लॉग करने के लिए उपयोग किया जा सकता है।",
+        "helperDisconnected": "आपसे एक्सेस की अनुमति देने के लिए कहा जाएगा। इसका उपयोग केवल लीड संचार भेजने और लॉग करने के लिए किया जाता है।"
+      },
+      "outlookMail": {
+        "name": "Outlook / Microsoft 365 Mail",
+        "description": "अपने Outlook इनबॉक्स से ऐप के अंदर लीड ईमेल भेजें और ट्रैक करें।",
+        "badge": "Outlook या Microsoft 365 एक्सेस आवश्यक",
+        "connect": "Outlook / Microsoft 365 Mail कनेक्ट करें",
+        "disconnect": "Outlook / Microsoft 365 Mail डिस्कनेक्ट करें",
+        "helperConnected": "यह इनबॉक्स कनेक्ट है और लीड संचार भेजने और लॉग करने के लिए उपयोग किया जा सकता है।",
+        "helperDisconnected": "आपसे एक्सेस की अनुमति देने के लिए कहा जाएगा। इसका उपयोग केवल लीड संचार भेजने और लॉग करने के लिए किया जाता है।"
+      },
+      "stripe": {
+        "name": "Stripe (Test)",
+        "description": "ऑफ़र बनाने, इनवॉइस या भुगतान लिंक भेजने, भुगतान एकत्र करने और भुगतान स्थिति ट्रैक करने के लिए Stripe कनेक्ट करें।",
+        "badge": "भुगतान",
+        "connect": "Stripe (Test) कनेक्ट करें",
+        "disconnect": "Stripe डिस्कनेक्ट करें",
+        "helperConnected": "Stripe इस वर्कस्पेस से टेस्ट मोड में कनेक्ट है।",
+        "helperDisconnected": "आपको टेस्ट मोड में एक्सेस स्वीकृत करने के लिए Stripe पर रीडायरेक्ट किया जाएगा।"
+      }
+    }
+  },
+  "ProductSuite": {
+    "metadata": {
+      "title": "Lumo",
+      "description": "उन वर्कस्पेस को खोलें जिनका उपयोग आपकी फिटनेस कोचिंग टीम लीड्स, बुक की गई कॉल्स, क्लाइंट्स और भुगतानों को प्रबंधित करने के लिए करती है।"
+    },
+    "errors": {
+      "loadTeams": "हम आपके वर्कस्पेस लोड नहीं कर सके। कृपया पेज रीफ़्रेश करें और फिर से प्रयास करें।",
+      "openTeam": "हम उस वर्कस्पेस को खोल नहीं सके। कृपया फिर से प्रयास करें।"
+    },
+    "title": "Lumo",
+    "emptySummary": "आपके पास अभी कोई कोचिंग वर्कस्पेस नहीं है।",
+    "memberSummary": "आप {count} वर्कस्पेस के सदस्य हैं।",
+    "addTeam": "+ वर्कस्पेस जोड़ें",
+    "loading": "आपके वर्कस्पेस लोड हो रहे हैं...",
+    "noTeams": "आप अभी किसी भी कोचिंग वर्कस्पेस का हिस्सा नहीं हैं।",
+    "noTeamsCtaPrefix": "क्लिक करें",
+    "addTeamLabel": "वर्कस्पेस जोड़ें",
+    "noTeamsCtaSuffix": "अपना पहला कोचिंग वर्कस्पेस बनाने के लिए।",
+    "opening": "वर्कस्पेस खोला जा रहा है...",
+    "openDashboard": "वर्कस्पेस खोलें",
+    "table": {
+      "title": "आपके वर्कस्पेस",
+      "description": "लीड्स, कॉल्स, क्लाइंट्स और भुगतानों को प्रबंधित करने के लिए एक वर्कस्पेस चुनें।",
+      "columns": {
+        "teamName": "वर्कस्पेस का नाम",
+        "role": "आपकी भूमिका",
+        "open": "खोलें"
+      }
+    }
+  },
+  "ProductSuiteHeader": {
+    "productName": "Lumo",
+    "profileSettings": "बिज़नेस और अकाउंट सेटिंग्स"
+  },
+  "ProductSuiteSidebar": {
+    "logout": "लॉग आउट",
+    "loggingOut": "लॉग आउट किया जा रहा है...",
+    "expandSidebar": "साइडबार फैलाएँ",
+    "collapseSidebar": "साइडबार समेटें",
+    "nav": {
+      "crm": "CRM"
+    }
+  },
+  "AppSidebar": {
+    "nav": {
+      "dashboard": "डैशबोर्ड",
+      "leads": "लीड्स",
+      "home": "होम",
+      "pipeline": "पाइपलाइन",
+      "settings": "सेटिंग्स",
+      "calendar": "कैलेंडर",
+      "billing": "बिलिंग"
+    },
+    "brand": {
+      "logoAlt": "Lumo CRM लोगो",
+      "productName": "Lumo"
+    },
+    "workspaceLabel": "वर्कस्पेस:",
+    "expandSidebar": "साइडबार फैलाएँ",
+    "collapseSidebar": "साइडबार समेटें"
+  },
+  "AppHeader": {
+    "kicker": "Lumo",
+    "sections": {
+      "default": "CRM"
+    },
+    "search": {
+      "placeholders": {
+        "niches": "निचेस या व्यवसाय खोजें...",
+        "default": "लीड्स, क्लाइंट्स या व्यवसाय खोजें..."
+      },
+      "clearSearch": "खोज साफ़ करें"
+    },
+    "calendarReconnect": {
+      "text": "Google Calendar पुनः कनेक्ट करें",
+      "title": "अपने बुकिंग पेज को काम करते रहने के लिए Google Calendar पुनः कनेक्ट करें"
+    },
+    "notifications": {
+      "ariaLabel": "सूचनाएँ",
+      "title": "रिमाइंडर",
+      "checking": "जाँचा जा रहा है...",
+      "openCount": "{count} खुले",
+      "empty": "अभी कोई रिमाइंडर नहीं है।"
+    },
+    "profile": {
+      "you": "आप",
+      "initialsFallback": "U",
+      "menuAriaLabel": "प्रोफ़ाइल मेनू खोलें",
+      "menuTitle": "प्रोफ़ाइल मेनू खोलें",
+      "logout": "लॉग आउट"
+    },
+    "reminders": {
+      "noReply48h": "आपके अंतिम संदेश के 48 घंटे बाद भी कोई उत्तर नहीं आया।",
+      "noReply4d": "आपके अंतिम संदेश के 4 दिनों बाद भी कोई उत्तर नहीं आया।",
+      "noReply1w": "आपके अंतिम संदेश के 1 सप्ताह बाद भी कोई उत्तर नहीं आया।",
+      "stageStuck": "\"{stage}\" चरण में 3 दिनों से अधिक समय से है।",
+      "fallbackLeadInStage": "\"{stage}\" चरण में लीड",
+      "pipelineFallback": "पाइपलाइन"
+    }
+  },
+  "Dashboard": {
+    "metadata": {
+      "title": "डैशबोर्ड"
+    },
+    "common": {
+      "leadSingular": "लीड",
+      "leadPlural": "लीड्स"
+    },
+    "errors": {
+      "unauthorized": "आप अधिकृत नहीं हैं। आपका सेशन टोकन अनुपस्थित है।",
+      "requestFailed": "रिक्वेस्ट विफल हो गई ({status})।",
+      "failedToLoad": "हम आपका डैशबोर्ड लोड नहीं कर सके।"
+    },
+    "loading": {
+      "dashboard": "डैशबोर्ड लोड हो रहा है..."
+    },
+    "page": {
+      "title": "डैशबोर्ड",
+      "subtitle": "अपना लीड फ्लो, टीम गतिविधि, बुक की गई कॉल्स और ध्यान देने योग्य चीज़ें देखें।"
+    },
+    "status": {
+      "live": "लाइव",
+      "updating": "अपडेट हो रहा है..."
+    },
+    "filters": {
+      "team": "टीम",
+      "me": "मैं",
+      "days30": "पिछले 30 दिन",
+      "days90": "पिछले 90 दिन",
+      "days120": "पिछले 120 दिन",
+      "daily": "दैनिक",
+      "weekly": "साप्ताहिक",
+      "monthly": "मासिक",
+      "scopeTeam": "दिखाया जा रहा है: टीम",
+      "scopeMe": "दिखाया जा रहा है: मैं"
+    },
+    "kpis": {
+      "leads": "कुल लीड्स",
+      "newLeads7d": "नई लीड्स (पिछले 7 दिन)",
+      "messagesSent7d": "भेजे गए संदेश (पिछले 7 दिन)",
+      "bookings7d": "बुकिंग्स (पिछले 7 दिन)",
+      "showRate30d": "शो रेट (पिछले 30 दिन)",
+      "closeRate30d": "क्लोज़ रेट (पिछले 30 दिन)",
+      "last30d": "पिछले 30 दिन: {value}",
+      "basedOnOutcomes": "बुकिंग परिणामों के आधार पर"
+    },
+    "funnel": {
+      "title": "पाइपलाइन फ़नल",
+      "subtitleNeedStages": "कन्वर्ज़न मेट्रिक्स देखने के लिए कम से कम 2 पाइपलाइन चरण जोड़ें।",
+      "subtitleInteractive": "उसका कन्वर्ज़न और ड्रॉप-ऑफ विवरण देखने के लिए किसी चरण पर क्लिक करें।",
+      "configureStages": "चरण कॉन्फ़िगर करें →",
+      "noStages": "अभी तक कोई पाइपलाइन चरण नहीं जोड़ा गया है।",
+      "onlyOneStage": "आपके पास केवल <strong>{count}</strong> चरण है। कन्वर्ज़न इनसाइट्स अनलॉक करने के लिए एक और चरण जोड़ें।",
+      "tipLabel": "सुझाव:",
+      "tipText": "अधिक विवरण देखने के लिए किसी चरण पर क्लिक करें।",
+      "showTable": "तालिका दिखाएँ",
+      "hideTable": "तालिका छिपाएँ",
+      "ariaLabel": "पाइपलाइन फ़नल",
+      "convShort": "कन्व",
+      "targetShort": "लक्ष्य",
+      "dropShort": "ड्रॉप",
+      "stageBadge": "चरण {current} / {total}",
+      "stageLeadCount": "इस चरण में {count} {count, plural, one {लीड} other {लीड्स}}।",
+      "nextLabel": "अगला कदम:",
+      "conversion": "कन्वर्ज़न",
+      "dropOff": "ड्रॉप-ऑफ",
+      "targetLong": "लक्ष्य: {value}%",
+      "tableTitle": "चरण-दर-चरण प्रदर्शन",
+      "table": {
+        "transition": "ट्रांज़िशन",
+        "label": "लेबल",
+        "conversion": "कन्वर्ज़न",
+        "dropOff": "ड्रॉप-ऑफ",
+        "empty": "कन्वर्ज़न मेट्रिक्स देखने के लिए कम से कम 2 पाइपलाइन चरण जोड़ें।"
+      },
+      "overallConversionLabel": "कुल कन्वर्ज़न:",
+      "biggestDropLabel": "सबसे बड़ा ड्रॉप:"
+    },
+    "activity": {
+      "title": "गतिविधि",
+      "subtitle": "जोड़ी गई लीड्स बनाम आउटबाउंड संदेश (पाइपलाइन अपडेट शामिल नहीं)। इस अवधि का कुल: {leads} लीड्स, {messages} संदेश।",
+      "empty": "इस समय सीमा के लिए कोई गतिविधि डेटा उपलब्ध नहीं है।",
+      "legendLeads": "जोड़ी गई लीड्स",
+      "legendMessages": "भेजे गए संदेश",
+      "tip": "सुझाव: एक ही अवधि के लिए जोड़ी गई लीड्स और भेजे गए संदेशों की तुलना करने हेतु चार्ट पर होवर करें।"
+    },
+    "attention": {
+      "title": "ध्यान आवश्यक",
+      "subtitle": "उच्च-प्राथमिकता वाली लीड्स जिनमें हाल की कोई गतिविधि नहीं है।",
+      "openPipeline": "पाइपलाइन खोलें →",
+      "empty": "अभी किसी लीड पर ध्यान देने की आवश्यकता नहीं है।",
+      "unnamedLead": "बेनाम लीड",
+      "stageLabel": "चरण:",
+      "lastActivityLabel": "अंतिम गतिविधि:",
+      "score": "स्कोर {score}"
+    },
+    "bookings": {
+      "title": "आगामी बुकिंग्स",
+      "subtitle": "अगले 14 दिन",
+      "empty": "कोई आगामी बुकिंग नहीं है।",
+      "bookingFallback": "बुकिंग",
+      "scheduled": "निर्धारित"
+    },
+    "feed": {
+      "title": "हाल की फ़ीड",
+      "subtitle": "ताज़ा गतिविधि",
+      "empty": "अभी तक कोई हाल की गतिविधि नहीं है।",
+      "types": {
+        "lead": "लीड",
+        "booking": "बुकिंग",
+        "message": "संदेश"
+      }
+    }
+  },
+  "LeadsPage": {
+    "metadata": {
+      "title": "लीड्स"
+    },
+    "page": {
+      "title": "लीड्स",
+      "loading": "आपकी लीड्स लोड हो रही हैं...",
+      "showingFiltered": "आपकी पहुँच में मौजूद कुल {total} लीड्स में से {visible} दिखाई जा रही हैं।",
+      "showingAll": "आपकी पहुँच में मौजूद कुल {total} लीड्स दिखाई जा रही हैं।"
+    },
+    "columns": {
+      "score": "स्कोर",
+      "leadName": "लीड का नाम",
+      "nicheIndustry": "निच / इंडस्ट्री",
+      "leadType": "लीड प्रकार",
+      "gender": "लिंग",
+      "city": "शहर",
+      "region": "क्षेत्र / राज्य",
+      "country": "देश",
+      "postalCode": "पिन कोड",
+      "primaryContactType": "प्राथमिक संपर्क प्रकार",
+      "primaryContact": "प्राथमिक संपर्क",
+      "sourceCategory": "स्रोत श्रेणी",
+      "sourceName": "स्रोत नाम",
+      "stage": "चरण"
+    },
+    "actions": {
+      "addLeads": "+ लीड्स जोड़ें",
+      "log": "लॉग",
+      "sortBy": "{label} के अनुसार क्रमबद्ध करें",
+      "logMessages": "आउटबाउंड या इनबाउंड संदेश लॉग करें",
+      "viewDetails": "विवरण देखें",
+      "editLead": "लीड संपादित करें",
+      "deleteLead": "लीड हटाएँ"
+    },
+    "empty": {
+      "noWorkspace": "आप अभी किसी वर्कस्पेस में नहीं हैं। इस पेज को किसी वर्कस्पेस से खोलें या पहले ऑनबोर्डिंग पूरा करें।",
+      "noLeads": "अभी कोई लीड नहीं है, या जिन तक आपकी पहुँच है वे उपलब्ध नहीं हैं।",
+      "addFirstLead": "अपनी पहली लीड बनाने के लिए <strong>+ लीड्स जोड़ें</strong> पर क्लिक करें।",
+      "noMatch": "“{query}” से मेल खाने वाली कोई लीड नहीं मिली।",
+      "tryDifferentSearch": "किसी दूसरे नाम, फ़ील्ड वैल्यू या चरण से खोजने का प्रयास करें।"
+    }
+  },
+  "PipelinePage": {
+    "metadata": {
+      "title": "पाइपलाइन",
+      "description": "अपनी पाइपलाइन देखें और Kanban बोर्ड पर लीड्स को चरणों के बीच स्थानांतरित करें।"
+    },
+    "page": {
+      "title": "पाइपलाइन",
+      "description": "लीड्स का चरण अपडेट करने के लिए उन्हें कॉलम्स के बीच ड्रैग और ड्रॉप करें।"
+    },
+    "stage": {
+      "leadCount": "{count} लीड{count, plural, one {} other {s}}",
+      "conversion": "{value}% कन्वर्ज़न",
+      "empty": "यहाँ एक लीड ड्रैग करें"
+    },
+    "leadFallback": "लीड {id}...",
+    "score": {
+      "title": "कम < {low} | उच्च ≥ {high}"
+    },
+    "stageChangeLog": "चरण \"{fromStage}\" से बदलकर \"{toStage}\" कर दिया गया"
+  },
+  "LeadMessagesPage": {
+    "metadata": {
+      "title": "लीड वार्तालाप",
+      "description": "इस लीड के साथ इनबाउंड और आउटबाउंड बातचीत को ट्रैक करें।"
+    },
+    "page": {
+      "title": "इस लीड के लिए वार्तालाप लॉग करें",
+      "description": "इनबाउंड और आउटबाउंड गतिविधि को ट्रैक करें ताकि आपको हमेशा नवीनतम संपर्क-बिंदु पता रहे।",
+      "leadLabel": "लीड:",
+      "stageLabel": "चरण:",
+      "unassigned": "असाइन नहीं किया गया"
+    },
+    "actions": {
+      "backToLead": "लीड पर वापस जाएँ",
+      "logMessage": "संदेश लॉग करें",
+      "openLeadDetail": "लीड विवरण खोलें"
+    },
+    "form": {
+      "directionOutbound": "आउटबाउंड",
+      "directionInbound": "इनबाउंड",
+      "placeholderOutbound": "आपने इस लीड को क्या भेजा?",
+      "placeholderInboundExisting": "लीड ने कैसे जवाब दिया?",
+      "placeholderInboundFirst": "लीड ने आपको क्या संदेश भेजा?"
+    },
+    "timeline": {
+      "title": "गतिविधि टाइमलाइन",
+      "subtitle": "संदेश और पाइपलाइन इवेंट्स।",
+      "events": {
+        "leadCreated": "नई लीड जोड़ी गई: {leadLabel}",
+        "leadRejected": "{oldSetterName} ने इस लीड को अस्वीकार कर {newSetterName} को पुनः असाइन कर दिया। पिछली कुल अस्वीकृतियाँ: {previousRejectionCount, plural, =0 {कोई नहीं} one {#} other {#}}।",
+        "otherSetter": "दूसरा सेटर",
+        "callAttendanceUpdated": "कॉल स्थिति अपडेट हुई: {previousStatus} → {nextStatus}",
+        "offerRemoved": "ऑफ़र हटाया गया",
+        "offerMade": "ऑफ़र दिया गया: {productTitle}",
+        "closedOnCallRemoved": "कॉल पर क्लोज़ हटाया गया",
+        "closedOnCall": "कॉल पर क्लोज़: {productTitle}",
+        "callBooked": "कॉल बुक हुई → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "मीटिंग जॉइन करें: {meetLink}"
+      }
+    },
+    "states": {
+      "loading": "लोड हो रहा है...",
+      "leadNotFound": "लीड नहीं मिली।"
+    },
+    "fallback": {
+      "pipelineLead": "पाइपलाइन में लीड",
+      "pipeline": "पाइपलाइन",
+      "leadInStage": "\"{stage}\" चरण में लीड"
+    }
+  },
+  "NewLeadPage": {
+    "metadata": {
+      "title": "लीड जोड़ें",
+      "description": "मैन्युअली नई लीड बनाएँ या CSV फ़ाइल से लीड्स इम्पोर्ट करें।"
+    },
+    "page": {
+      "title": "लीड्स जोड़ें",
+      "description": "एक लीड मैन्युअली जोड़ें या CSV फ़ाइल से कई लीड्स इम्पोर्ट करें।"
+    },
+    "sections": {
+      "pipeline": "पाइपलाइन चरण",
+      "coreDetails": "मुख्य विवरण",
+      "additionalDetails": "अतिरिक्त विवरण",
+      "csvImport": "CSV से इम्पोर्ट करें"
+    },
+    "fields": {
+      "city": "शहर",
+      "region": "क्षेत्र / राज्य",
+      "country": "देश",
+      "postalCode": "पिन कोड",
+      "primaryContact": "प्राथमिक संपर्क"
+    },
+    "placeholders": {
+      "leadName": "उदा. John Smith / Acme Fitness",
+      "link": "https://example.com"
+    },
+    "actions": {
+      "createLead": "लीड बनाएँ",
+      "creating": "बनाया जा रहा है...",
+      "importRows": "{count} पंक्ति{count, plural, one {} other {याँ}} इम्पोर्ट करें",
+      "importing": "इम्पोर्ट किया जा रहा है..."
+    },
+    "csv": {
+      "dropTitle": "अपनी CSV फ़ाइल यहाँ ड्रैग और ड्रॉप करें",
+      "dropSubtitle": "या फ़ाइल चुनने के लिए क्लिक करें",
+      "selectedFile": "चयनित फ़ाइल: {name}",
+      "checking": "CSV संरचना जाँची जा रही है...",
+      "valid": "CSV सही लग रही है। {count} पंक्ति{count, plural, one {} other {याँ}} इम्पोर्ट के लिए तैयार हैं।",
+      "validHelp": "आप अपनी कस्टम फ़ील्ड्स और मानक लीड फ़ील्ड्स दोनों इम्पोर्ट कर सकते हैं।",
+      "invalidTitle": "CSV कॉलम मेल नहीं खाते।",
+      "idlePrefix": "अनुमत कस्टम कॉलम:",
+      "idleCore": "अनुमत मुख्य कॉलम: Lead Name, Niche / Industry, Lead Type, Gender, City, Region, Country, Postal Code, Primary Contact Type, Primary Contact, Source Category, Source Name.",
+      "emptyRows": "CSV फ़ाइल में कोई डेटा पंक्तियाँ नहीं हैं।",
+      "fileType": "कृपया .csv फ़ाइल अपलोड करें।",
+      "readFailed": "हम CSV फ़ाइल पढ़ नहीं सके।",
+      "parseFailed": "हम CSV फ़ाइल पार्स नहीं कर सके।",
+      "unknownColumns": "अज्ञात कॉलम: {columns}।",
+      "importResult": "{success} पंक्ति{success, plural, one {} other {याँ}} इम्पोर्ट हुईं{failed, plural, =0 {.} other {, {failed} विफल रहीं।}}",
+      "importRowFailed": "एक पंक्ति इम्पोर्ट नहीं हो सकी। कृपया फिर से प्रयास करें।"
+    },
+    "states": {
+      "noStages": "कोई चरण उपलब्ध नहीं है",
+      "noNiches": "इस वर्कस्पेस के लिए कोई निच सक्षम नहीं है",
+      "enableNiches": "लीड बनाने से पहले Settings में niches सक्षम करें।"
+    },
+    "errors": {
+      "title": "लीड बनाई नहीं जा सकी",
+      "dismiss": "बंद करें",
+      "missingTeam": "कोई वर्कस्पेस नहीं मिला। कृपया यह पेज अपने वर्कस्पेस से खोलें।",
+      "missingUser": "आपका यूज़र अकाउंट पहचाना नहीं जा सका। कृपया फिर से साइन इन करें और प्रयास करें।",
+      "missingStage": "कृपया एक पाइपलाइन चरण चुनें।",
+      "missingStageForImport": "इम्पोर्ट करने से पहले कृपया एक पाइपलाइन चरण चुनें।",
+      "sessionExpired": "आपका सेशन समाप्त हो गया है। पेज रीफ़्रेश करें और फिर से साइन इन करें।",
+      "createFailed": "हम लीड नहीं बना सके। कृपया फिर से प्रयास करें।"
+    },
+    "common": {
+      "yes": "हाँ",
+      "select": "चुनें..."
+    }
+  },
+  "LeadDetailPage": {
+    "metadata": {
+      "title": "लीड विवरण"
+    },
+    "page": {
+      "createdOn": "{date} को बनाया गया"
+    },
+    "sections": {
+      "leadScore": "लीड स्कोर",
+      "pipelineStage": "पाइपलाइन चरण",
+      "assigned": "असाइन किया गया",
+      "coreDetails": "मुख्य विवरण",
+      "additionalFields": "अतिरिक्त फ़ील्ड्स",
+      "notes": "नोट्स",
+      "activityTimeline": "गतिविधि टाइमलाइन"
+    },
+    "fields": {
+      "prospector": "प्रॉस्पेक्टर",
+      "setter": "सेटर",
+      "closer": "क्लोज़र",
+      "location": "लोकेशन",
+      "primaryContact": "प्राथमिक संपर्क"
+    },
+    "score": {
+      "unscored": "स्कोर नहीं किया गया",
+      "scored": "स्कोर किया गया",
+      "low": "कम",
+      "medium": "मध्यम",
+      "high": "उच्च",
+      "updated": "{date} को अपडेट किया गया",
+      "noScoreYet": "इस लीड का अभी तक कोई स्कोर नहीं है। Settings → Lead scoring में लीड स्कोरिंग कॉन्फ़िगर करें।"
+    },
+    "additionalFields": {
+      "none": "इस वर्कस्पेस के लिए अभी तक कोई कस्टम फ़ील्ड कॉन्फ़िगर नहीं की गई है।"
+    },
+    "notes": {
+      "description": "इस लीड के बारे में आंतरिक नोट्स। ये नोट्स केवल आपकी टीम को दिखाई देंगे।",
+      "none": "अभी कोई नोट्स नहीं हैं।"
+    },
+    "timeline": {
+      "newestOnTop": "सबसे नई गतिविधि सबसे ऊपर दिखाई जाती है।",
+      "events": {
+        "leadCreated": "नई लीड जोड़ी गई: {leadLabel}",
+        "leadRejected": "{oldSetterName} ने इस लीड को अस्वीकार कर {newSetterName} को पुनः असाइन कर दिया",
+        "otherSetter": "दूसरा सेटर",
+        "callAttendanceUpdated": "कॉल स्थिति अपडेट हुई: {previousStatus} → {nextStatus}",
+        "offerRemoved": "ऑफ़र हटाया गया",
+        "offerMade": "ऑफ़र दिया गया: {productTitle}",
+        "closedOnCallRemoved": "कॉल पर क्लोज़ हटाया गया",
+        "closedOnCall": "कॉल पर क्लोज़: {productTitle}",
+        "callBooked": "कॉल बुक हुई → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "मीटिंग जॉइन करें: {meetLink}"
+      }
+    },
+    "actions": {
+      "calls": "कॉल्स",
+      "callsLoading": "कॉल्स लोड हो रही हैं...",
+      "callsTitle": "सभी बुक की गई कॉल्स के परिणाम देखें और ट्रैक करें",
+      "bookingLink": "बुकिंग लिंक",
+      "bookingLinkTitle": "इस लीड के लिए एक यूनिक बुकिंग लिंक बनाएँ",
+      "reject": "अस्वीकार करें",
+      "rejecting": "अस्वीकार किया जा रहा है...",
+      "rejectTitle": "इस लीड को अस्वीकार कर किसी अन्य टीम सदस्य को पुनः असाइन करें",
+      "delete": "हटाएँ",
+      "logNewMessage": "नया संदेश लॉग करें"
+    },
+    "alerts": {
+      "rejectFailedTitle": "लीड अस्वीकार नहीं की जा सकी",
+      "bookingLinksLoadFailedTitle": "बुकिंग लिंक लोड नहीं हो सके",
+      "bookingLinkCreateFailedTitle": "बुकिंग लिंक नहीं बनाया जा सका",
+      "bookingLinkCreatedTitle": "बुकिंग लिंक बन गया"
+    },
+    "reject": {
+      "modalTitle": "लीड अस्वीकार करें?",
+      "modalMessage": "यह लीड किसी अन्य टीम सदस्य को पुनः असाइन कर दी जाएगी और यह बदलाव टाइमलाइन में लॉग किया जाएगा।",
+      "confirm": "लीड अस्वीकार करें",
+      "errors": {
+        "failed": "लीड अस्वीकार करने में विफल"
+      }
+    },
+    "booking": {
+      "modalAriaLabel": "बुकिंग लिंक बनाएँ",
+      "modalTitle": "बुकिंग लिंक बनाएँ",
+      "modalDescription": "नीचे एक schedule page चुनें। हम इस लीड के लिए एक यूनिक invite जनरेट करेंगे और उसे टाइमलाइन में लॉग करेंगे।",
+      "latestLink": "नवीनतम लिंक",
+      "schedulePage": "शेड्यूल पेज",
+      "host": "होस्ट",
+      "emptyTitle": "अभी कोई schedule pages नहीं हैं",
+      "emptyDescription": "इस लीड के लिए बुकिंग लिंक जनरेट करने हेतु पहले एक schedule page बनाएँ।",
+      "createSchedulePage": "Schedule page बनाएँ",
+      "notNow": "अभी नहीं",
+      "loadingSchedulePages": "Schedule pages लोड हो रहे हैं...",
+      "creating": "बनाया जा रहा है...",
+      "createAndCopy": "बनाएँ और कॉपी करें",
+      "columns": {
+        "schedulePage": "शेड्यूल पेज",
+        "type": "प्रकार",
+        "host": "होस्ट",
+        "action": "कार्रवाई"
+      },
+      "success": {
+        "createdAndCopied": "बुकिंग लिंक बनाया गया और आपके क्लिपबोर्ड पर कॉपी कर दिया गया।",
+        "createdCopyManual": "बुकिंग लिंक बन गया। इसे latest link बॉक्स से मैन्युअली कॉपी करें।",
+        "copied": "बुकिंग लिंक आपके क्लिपबोर्ड पर कॉपी कर दिया गया।",
+        "copyFailedManual": "कॉपी विफल — कृपया लिंक को मैन्युअली कॉपी करें।"
+      },
+      "errors": {
+        "leadIdMustBeUuid": "Invite बनाने के लिए lead ID एक वैध UUID होनी चाहिए।",
+        "inviteCreatedButNoUrl": "Invite बन गया, लेकिन कोई URL वापस नहीं मिला। { url } लौटाने के लिए /api/crm/booking-invite अपडेट करें।",
+        "createFailed": "बुकिंग invite बनाने में विफल",
+        "loadSchedulePages": "Schedule pages लोड करने में विफल"
+      }
+    },
+    "states": {
+      "loading": "लोड हो रहा है..."
+    },
+    "fallback": {
+      "leadInPipeline": "पाइपलाइन में लीड",
+      "pipeline": "पाइपलाइन",
+      "leadInStage": "\"{stage}\" चरण में लीड"
+    },
+    "empty": {
+      "missingLeadId": "रूट पैरामीटर्स में lead ID अनुपस्थित है। अपना dynamic segment name जाँचें।",
+      "leadNotFound": "लीड नहीं मिली।"
+    }
+  },
+  "DeleteLeadPage": {
+    "metadata": {
+      "title": "लीड हटाएँ",
+      "description": "इस लीड को अपने वर्कस्पेस से स्थायी रूप से हटाएँ।"
+    },
+    "errors": {
+      "missingTeamOrLeadId": "हम आपकी टीम या lead ID निर्धारित नहीं कर सके।",
+      "loadFailed": "हम इस लीड को लोड नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "workspaceMismatch": "यह लीड आपके वर्तमान वर्कस्पेस से संबंधित नहीं है।",
+      "deleteFailed": "लीड हटाने में विफल। कृपया फिर से प्रयास करें।",
+      "noWorkspaceContext": "हम वर्कस्पेस कॉन्टेक्स्ट से आपकी टीम निर्धारित नहीं कर सके। कृपया यह पेज अपने वर्कस्पेस से खोलें या सहायता से संपर्क करें।",
+      "leadNotFound": "लीड नहीं मिली।"
+    },
+    "header": {
+      "title": "क्या इस लीड को हटाएँ?",
+      "description": "यह कार्रवाई स्थायी है और इसे वापस नहीं किया जा सकता। इस लीड का सारा डेटा <strong>वर्तमान वर्कस्पेस</strong> से हटा दिया जाएगा।"
+    },
+    "preview": {
+      "title": "लीड प्रीव्यू",
+      "description": "हटाने से पहले नीचे लीड का विवरण देखें।",
+      "stage": "चरण"
+    },
+    "core": {
+      "title": "मुख्य विवरण",
+      "description": "ये मान लीड के मुख्य कॉलम्स में संग्रहित होते हैं।"
+    },
+    "additional": {
+      "title": "अतिरिक्त फ़ील्ड्स",
+      "description": "ये इस वर्कस्पेस के लिए कॉन्फ़िगर की गई कस्टम फ़ील्ड्स हैं।",
+      "none": "इस वर्कस्पेस में अभी तक कोई कस्टम लीड फ़ील्ड नहीं है।"
+    },
+    "fields": {
+      "location": "लोकेशन",
+      "primaryContact": "प्राथमिक संपर्क"
+    },
+    "actions": {
+      "deleting": "हटाया जा रहा है...",
+      "deleteLead": "लीड हटाएँ"
+    }
+  },
+  "EditLeadPage": {
+    "metadata": {
+      "title": "लीड संपादित करें",
+      "description": "इस लीड से संबंधित विवरण और जानकारी अपडेट करें।"
+    },
+    "page": {
+      "title": "लीड संपादित करें",
+      "description": "लीड के मुख्य विवरण, चरण, और आपकी टीम द्वारा ट्रैक की जाने वाली किसी भी कस्टम फ़ील्ड को अपडेट करें।"
+    },
+    "errorBox": {
+      "title": "परिवर्तन सहेजे नहीं जा सके"
+    },
+    "errors": {
+      "generic": "कुछ गलत हो गया। कृपया फिर से प्रयास करें।",
+      "sessionExpired": "आपका सेशन समाप्त हो गया। कृपया पेज रीफ़्रेश करें और फिर से साइन इन करें।",
+      "forbidden": "आपको इस लीड को संपादित करने की अनुमति नहीं है।",
+      "notFound": "यह लीड नहीं मिली।",
+      "workspaceMismatch": "यह लीड आपके वर्तमान वर्कस्पेस से संबंधित नहीं है।",
+      "genderRequiredForIndividual": "जब Lead Type Individual हो, तब Gender आवश्यक है।",
+      "primaryContactRequired": "प्राथमिक संपर्क मान खाली नहीं हो सकता।",
+      "invalidNiche": "कृपया अपनी टीम के लिए सक्षम एक वैध niche चुनें।",
+      "invalidStage": "कृपया एक वैध पाइपलाइन चरण चुनें।",
+      "missingWorkspaceOrLeadId": "हम आपका वर्कस्पेस या lead ID निर्धारित नहीं कर सके।",
+      "loadFailed": "हम यह लीड लोड नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "saveFailed": "परिवर्तन सहेजना विफल रहा। कृपया फिर से प्रयास करें।",
+      "noWorkspaceContext": "हम वर्कस्पेस कॉन्टेक्स्ट से आपकी टीम निर्धारित नहीं कर सके। कृपया यह पेज अपने वर्कस्पेस से खोलें या सहायता से संपर्क करें।"
+    },
+    "validation": {
+      "stageRequired": "पाइपलाइन चरण आवश्यक है।",
+      "leadNameRequired": "लीड का नाम आवश्यक है।",
+      "nicheRequired": "निच / इंडस्ट्री आवश्यक है।",
+      "genderRequired": "Individuals के लिए Gender आवश्यक है।",
+      "countryRequired": "देश आवश्यक है।",
+      "regionRequired": "राज्य / क्षेत्र आवश्यक है।",
+      "cityRequired": "शहर आवश्यक है।",
+      "primaryContactTypeRequired": "प्राथमिक संपर्क प्रकार आवश्यक है।",
+      "primaryContactValueRequired": "प्राथमिक संपर्क मान आवश्यक है।",
+      "sourceCategoryRequired": "स्रोत श्रेणी आवश्यक है।",
+      "sourceNameRequired": "स्रोत नाम आवश्यक है।"
+    },
+    "sections": {
+      "coreDetails": "मुख्य विवरण",
+      "location": "लोकेशन",
+      "contact": "संपर्क",
+      "source": "स्रोत",
+      "customFields": "कस्टम फ़ील्ड्स",
+      "notes": "नोट्स"
+    },
+    "fields": {
+      "niche": "निच",
+      "selectNiche": "एक निच चुनें",
+      "country": "देश",
+      "region": "राज्य / क्षेत्र",
+      "city": "शहर",
+      "postalCode": "ZIP / पिन कोड",
+      "pipelineStage": "पाइपलाइन चरण"
+    },
+    "placeholders": {
+      "firstName": "उदा. Alex",
+      "lastName": "उदा. Johnson",
+      "leadName": "उदा. Alex Johnson या Acme Inc.",
+      "country": "उदा. United States",
+      "region": "उदा. California",
+      "city": "उदा. San Diego",
+      "postalCode": "उदा. 92101"
+    },
+    "contact": {
+      "tip": "सुझाव: सोशल लिंक के लिए जहाँ संभव हो पूरा प्रोफ़ाइल URL पेस्ट करें।",
+      "valueLabel": {
+        "email": "ईमेल पता",
+        "phone": "फ़ोन नंबर",
+        "linkedin": "LinkedIn प्रोफ़ाइल URL",
+        "instagram": "Instagram प्रोफ़ाइल URL",
+        "facebook": "Facebook प्रोफ़ाइल URL",
+        "reddit": "Reddit प्रोफ़ाइल URL",
+        "twitter_x": "Twitter/X प्रोफ़ाइल URL",
+        "whatsapp": "WhatsApp नंबर या wa.me लिंक",
+        "telegram": "Telegram यूज़रनेम या लिंक",
+        "tiktok": "TikTok प्रोफ़ाइल URL",
+        "youtube": "YouTube चैनल URL",
+        "snapchat": "Snapchat यूज़रनेम",
+        "discord": "Discord हैंडल या Invite लिंक",
+        "slack": "Slack वर्कस्पेस/यूज़र (या संदेश लिंक)",
+        "wechat": "WeChat ID",
+        "line": "LINE ID",
+        "signal": "Signal नंबर",
+        "other": "संपर्क मान"
+      },
+      "placeholder": {
+        "email": "उदा. alex@company.com",
+        "phone": "उदा. +1 555 123 4567",
+        "linkedin": "उदा. https://www.linkedin.com/in/username",
+        "instagram": "उदा. https://instagram.com/username",
+        "facebook": "उदा. https://facebook.com/username",
+        "reddit": "उदा. https://reddit.com/u/username",
+        "twitter_x": "उदा. https://x.com/username",
+        "whatsapp": "उदा. +1 555 123 4567 या https://wa.me/15551234567",
+        "telegram": "उदा. @username या https://t.me/username",
+        "tiktok": "उदा. https://www.tiktok.com/@username",
+        "youtube": "उदा. https://www.youtube.com/@channel",
+        "snapchat": "उदा. username",
+        "discord": "उदा. username#1234 या https://discord.gg/xxxx",
+        "slack": "उदा. workspace या message link",
+        "wechat": "उदा. wechat_id",
+        "line": "उदा. line_id",
+        "signal": "उदा. +1 555 123 4567",
+        "other": "उदा. link, handle, या identifier"
+      }
+    },
+    "notes": {
+      "description": "इस लीड के बारे में आंतरिक नोट्स। केवल आपकी टीम को दिखाई देंगे।",
+      "placeholder": "ऐसा संदर्भ, आपत्तियाँ, व्यक्तिगत विवरण, या कुछ भी जोड़ें जो आपकी टीम को यह डील बंद करने में मदद करे।"
+    },
+    "actions": {
+      "saveChanges": "परिवर्तन सहेजें"
+    },
+    "niche": {
+      "unknown": "अज्ञात निच",
+      "archivedSuffix": "(आर्काइव / अब सक्षम नहीं)",
+      "archivedHelp": "यह लीड अभी भी एक archived niche को संदर्भित करती है। आप इसे रख सकते हैं या वर्तमान में सक्षम niche चुन सकते हैं।"
+    },
+    "common": {
+      "optional": "वैकल्पिक"
+    }
+  },
+  "CallsListPage": {
+    "metadata": {
+      "title": "कॉल्स",
+      "description": "इस लीड से संबंधित सभी कॉल्स देखें।"
+    },
+    "page": {
+      "title": "कॉल्स",
+      "description": "इस लीड के लिए बुक की गई कॉल्स।",
+      "filteredDescription": "इस लीड के लिए कुल {total} कॉल्स में से {shown} दिखाई जा रही हैं।"
+    },
+    "errors": {
+      "missingLeadId": "लीड ID अनुपस्थित है।",
+      "invalidLeadId": "अमान्य लीड ID।",
+      "notSignedIn": "साइन इन नहीं है।",
+      "noTeam": "आपके यूज़र के लिए कोई टीम नहीं मिली।",
+      "missingSessionToken": "सेशन टोकन अनुपस्थित है।",
+      "loadFailed": "कॉल्स लोड करने में विफल"
+    },
+    "table": {
+      "date": "तारीख",
+      "time": "समय",
+      "attendance": "उपस्थिति",
+      "offer": "ऑफ़र",
+      "closed": "क्लोज़्ड",
+      "productService": "उत्पाद / सेवा"
+    },
+    "actions": {
+      "backToLead": "लीड पर वापस जाएँ",
+      "viewCallDetails": "कॉल विवरण देखें",
+      "editCallTracking": "कॉल ट्रैकिंग संपादित करें"
+    },
+    "states": {
+      "noCalls": "अभी तक कोई कॉल बुक नहीं हुई है।",
+      "noMatches": "कोई मेल नहीं मिला",
+      "tryDifferentSearch": {
+        "before": "कोई अलग खोज आज़माएँ, जैसे",
+        "after": "या किसी उत्पाद का नाम।"
+      }
+    },
+    "searchExamples": {
+      "attended": "attended",
+      "noShow": "no show"
+    },
+    "product": {
+      "notFound": "उत्पाद नहीं मिला"
+    },
+    "footer": {
+      "help": "नोट्स/आउटकम पढ़ने के लिए <view>View</view> का उपयोग करें, या ट्रैकिंग अपडेट करने के लिए <edit>Edit</edit> का।"
+    }
+  },
+  "CallDetailPage": {
+    "metadata": {
+      "title": "कॉल विवरण",
+      "description": "इस कॉल का विवरण और परिणाम देखें।"
+    },
+    "page": {
+      "title": "कॉल विवरण"
+    },
+    "errors": {
+      "missingLeadId": "लीड ID अनुपस्थित है।",
+      "missingBookingId": "बुकिंग ID अनुपस्थित है।",
+      "invalidLeadId": "अमान्य लीड ID।",
+      "invalidBookingId": "अमान्य बुकिंग ID।",
+      "notSignedIn": "साइन इन नहीं है।",
+      "noTeam": "कोई टीम नहीं मिली।",
+      "missingSessionToken": "सेशन टोकन अनुपस्थित है।",
+      "loadFailed": "कॉल विवरण लोड करने में विफल",
+      "selectProductForOffer": "यदि कोई ऑफ़र दिया गया था, तो कृपया कोई उत्पाद या सेवा चुनें।",
+      "saveFailed": "कॉल परिणाम सहेजने में विफल।"
+    },
+    "fields": {
+      "attendance": "उपस्थिति",
+      "offerMade": "ऑफ़र दिया गया",
+      "closedOnCall": "कॉल पर क्लोज़ हुआ",
+      "product": "उत्पाद / सेवा",
+      "notes": "नोट्स",
+      "notesPlaceholder": "कॉल के परिणाम, आपत्तियों, निर्णयों या फ़ॉलो-अप चरणों के बारे में नोट्स जोड़ें।"
+    },
+    "actions": {
+      "backToCalls": "कॉल्स पर वापस जाएँ",
+      "saveOutcome": "परिणाम सहेजें"
+    },
+    "chips": {
+      "attendance": "उपस्थिति: {status}",
+      "offer": "ऑफ़र: {value}",
+      "closed": "क्लोज़्ड: {value}",
+      "productSelected": "उत्पाद चुना गया"
+    },
+    "products": {
+      "archivedSuffix": "(आर्काइव किया गया)",
+      "states": {
+        "loading": "उत्पाद लोड हो रहे हैं...",
+        "unavailable": "उत्पाद उपलब्ध नहीं हैं"
+      },
+      "errors": {
+        "loadFailed": "उत्पाद लोड करने में विफल।",
+        "unauthorized": "आपको उत्पाद देखने की अनुमति नहीं है।",
+        "forbidden": "आपके पास उत्पाद देखने की अनुमति नहीं है।",
+        "noConnectedStripeAccount": "इस टीम के लिए कोई कनेक्टेड Stripe अकाउंट नहीं मिला।"
+      }
+    },
+    "productCard": {
+      "title": "उत्पाद / सेवा",
+      "description": "इस कॉल के दौरान ऑफ़र की गई उत्पाद या सेवा चुनें।",
+      "help": "यह केवल तब आवश्यक है जब Offer Made सक्षम हो।"
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "Closed on Call केवल तब उपलब्ध है जब कॉल अटेंड की गई हो।",
+      "markAttendedToEnable": "इस विकल्प को सक्षम करने के लिए कॉल को attended चिह्नित करें।"
+    },
+    "footer": {
+      "tip": "इस कॉल को अपडेट करने के लिए <save>Save Outcome</save> पर क्लिक करें।"
+    },
+    "states": {
+      "notFound": "कॉल नहीं मिली।",
+      "noNotes": "अभी कोई नोट्स नहीं हैं।"
+    }
+  },
+  "CallOutcomePage": {
+    "metadata": {
+      "title": "कॉल परिणाम",
+      "description": "उपस्थिति, ऑफ़र दिया गया या नहीं, और क्या लीड कॉल पर क्लोज़ हुई—इसे ट्रैक करें।"
+    },
+    "page": {
+      "title": "कॉल परिणाम"
+    },
+    "errors": {
+      "invalidLeadId": "अमान्य लीड ID।",
+      "invalidBookingId": "अमान्य बुकिंग ID।",
+      "notSignedIn": "साइन इन नहीं है।",
+      "noTeam": "कोई टीम नहीं मिली।",
+      "missingSessionToken": "सेशन टोकन अनुपस्थित है।",
+      "loadFailed": "बुकिंग लोड करने में विफल।",
+      "saveFailed": "सहेजने में विफल।",
+      "selectProductForOffer": "ऑफ़र के लिए कृपया कोई उत्पाद चुनें।"
+    },
+    "success": {
+      "saved": "सहेजा गया।"
+    },
+    "chips": {
+      "attendance": "उपस्थिति: {status}",
+      "offer": "ऑफ़र: {value}",
+      "closed": "क्लोज़्ड: {value}",
+      "productSelected": "उत्पाद चुना गया"
+    },
+    "fields": {
+      "attendance": "उपस्थिति",
+      "offerMade": "ऑफ़र दिया गया",
+      "closedOnCall": "कॉल पर क्लोज़ हुआ",
+      "product": "उत्पाद",
+      "notes": "नोट्स",
+      "notesPlaceholder": "कॉल में क्या हुआ उसका संक्षिप्त सारांश..."
+    },
+    "actions": {
+      "backToCalls": "कॉल्स पर वापस जाएँ",
+      "saveOutcome": "परिणाम सहेजें"
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "यह केवल तब अर्थपूर्ण है जब उपस्थिति Attended हो।",
+      "markAttendedToEnable": "इसे सक्षम करने के लिए उपस्थिति को Attended चिह्नित करें।"
+    },
+    "productCard": {
+      "title": "ऑफ़र उत्पाद / सेवा",
+      "description": "चुनें कि आपने इस कॉल पर कौन-सा Stripe उत्पाद ऑफ़र किया था।",
+      "help": "इसे लीड activity timeline में लॉग किया जाएगा।"
+    },
+    "products": {
+      "archivedSuffix": "आर्काइव किया गया",
+      "states": {
+        "loading": "उत्पाद लोड हो रहे हैं...",
+        "unavailable": "उत्पाद उपलब्ध नहीं हैं"
+      },
+      "errors": {
+        "unauthorized": "Billing उत्पाद लोड करने की अनुमति नहीं है।",
+        "forbidden": "आपको इस workspace के लिए billing उत्पाद लोड करने की अनुमति नहीं है।",
+        "noConnectedStripeAccount": "चयनित mode में इस workspace के लिए कोई connected Stripe account नहीं मिला।",
+        "loadFailed": "उत्पाद लोड करने में विफल।"
+      }
+    },
+    "footer": {
+      "tip": "सुझाव: कॉल का परिणाम सेट करें, फिर <save>Save Outcome</save> पर क्लिक करें।"
+    },
+    "states": {
+      "notFound": "बुकिंग नहीं मिली।"
+    }
+  },
+  "CalendarPage": {
+    "metadata": {
+      "title": "कैलेंडर",
+      "description": "अपना व्यक्तिगत कैलेंडर, उपलब्धता और बुक की गई कॉल्स एक ही जगह पर देखें।"
+    },
+    "page": {
+      "title": "कैलेंडर",
+      "description": "Discovery calls, sales calls, client check-ins और अन्य appointments के लिए अपना व्यक्तिगत शेड्यूल एक सरल साप्ताहिक दृश्य में देखें।"
+    },
+    "meta": {
+      "timesShownIn": "समय {tz} में दिखाए गए हैं"
+    },
+    "actions": {
+      "prev": "पिछला",
+      "today": "आज",
+      "next": "अगला",
+      "retry": "फिर से प्रयास करें",
+      "openIntegrations": "Integrations खोलें",
+      "goToLogin": "लॉगिन पर जाएँ"
+    },
+    "labels": {
+      "time": "समय",
+      "allDay": "पूरा दिन",
+      "today": "आज"
+    },
+    "states": {
+      "loading": "आपका कैलेंडर लोड हो रहा है..."
+    },
+    "headerAlert": {
+      "reconnect": {
+        "text": "Google Calendar दोबारा कनेक्ट करें",
+        "title": "अपनी व्यक्तिगत bookings और availability को अद्यतित रखने के लिए Integrations में Google Calendar दोबारा कनेक्ट करें।"
+      },
+      "unauthorized": {
+        "text": "सेशन समाप्त हो गया",
+        "title": "आप साइन इन नहीं हैं, या आपका सेशन समाप्त हो गया है। अपने कैलेंडर तक पहुँचने के लिए कृपया फिर से लॉग इन करें।"
+      },
+      "loadFailed": {
+        "text": "कैलेंडर लोड नहीं हो सका"
+      },
+      "generic": {
+        "text": "कैलेंडर त्रुटि"
+      }
+    },
+    "errors": {
+      "reconnectRequired": {
+        "title": "दोबारा कनेक्शन आवश्यक",
+        "message": "आपकी व्यक्तिगत availability और events लोड करने के लिए आपका Google Calendar connection फिर से कनेक्ट करना होगा।"
+      },
+      "notConnected": {
+        "title": "कैलेंडर कनेक्ट नहीं है",
+        "message": "इस पेज पर अपना व्यक्तिगत schedule और bookings देखने के लिए Integrations में Google Calendar कनेक्ट करें।"
+      },
+      "unauthorized": {
+        "title": "सेशन समाप्त हो गया",
+        "message": "आप साइन इन नहीं हैं, या आपका सेशन समाप्त हो गया है। अपना कैलेंडर लोड करने के लिए कृपया फिर से लॉग इन करें।"
+      },
+      "loadFailed": {
+        "title": "कैलेंडर लोड नहीं हो सका",
+        "message": "हम अभी आपका कैलेंडर डेटा लोड नहीं कर सके। यह आमतौर पर अस्थायी होता है। कृपया फिर से प्रयास करें।"
+      },
+      "generic": {
+        "title": "कुछ गड़बड़ हो गई",
+        "message": "कैलेंडर लोड करते समय एक अप्रत्याशित त्रुटि हुई। कृपया फिर से प्रयास करें।"
+      },
+      "codeLabel": "त्रुटि कोड:"
+    },
+    "footer": {
+      "help": "यह पेज केवल आपका व्यक्तिगत कैलेंडर दिखाता है, जिसमें आपकी availability, booked calls और scheduled appointments शामिल हैं।"
+    }
+  },
+  "SettingsPage": {
+    "metadata": {
+      "title": "सेटिंग्स",
+      "description": "अपने coaching workspace को कॉन्फ़िगर करें, lead tracking fields प्रबंधित करें, और अपनी profile तथा account settings अपडेट करें।"
+    },
+    "loading": {
+      "workspace": {
+        "title": "Workspace लोड हो रहा है...",
+        "subtitle": "आपकी coaching team और workspace context ढूँढा जा रहा है।"
+      },
+      "auth": {
+        "title": "आपका सेशन जाँचा जा रहा है...",
+        "subtitle": "आपके अकाउंट का सत्यापन किया जा रहा है।"
+      },
+      "profile": {
+        "title": "सेटिंग्स लोड हो रही हैं...",
+        "subtitle": "आपकी profile, भूमिका और permissions प्राप्त की जा रही हैं।"
+      },
+      "idle": {
+        "title": "लोड हो रहा है...",
+        "subtitle": "कृपया प्रतीक्षा करें।"
+      }
+    },
+    "unavailable": {
+      "title": "सेटिंग्स उपलब्ध नहीं हैं",
+      "description": "हम आपके अकाउंट के लिए कोई workspace या profile नहीं ढूँढ सके। कृपया यह पेज अपने workspace के अंदर से खोलें या support से संपर्क करें।"
+    },
+    "page": {
+      "title": "सेटिंग्स",
+      "description": "कॉन्फ़िगर करें कि आपका coaching CRM आपके और आपकी टीम के लिए कैसे काम करे।"
+    },
+    "cards": {
+      "leadFields": {
+        "title": "लीड फ़ील्ड्स",
+        "description": "चुनें कि आपकी टीम हर लीड के लिए कौन-सी custom fields ट्रैक करती है, पहली outreach से लेकर closed deal तक।"
+      },
+      "leadScoring": {
+        "title": "लीड स्कोरिंग",
+        "description": "सेट करें कि lead details और activity कैसे एक score में बदलें ताकि प्राथमिकता बेहतर हो सके।"
+      },
+      "niches": {
+        "title": "निचेस",
+        "description": "अपनी टीम द्वारा लक्षित coaching niches प्रबंधित करें और custom niche विकल्प बनाएँ।"
+      },
+      "pipelineStages": {
+        "title": "पाइपलाइन चरण",
+        "description": "उन चरणों को परिभाषित और पुनः क्रमित करें जिनसे आपकी leads पहले संपर्क से closed client तक गुजरती हैं।"
+      },
+      "conversionMetrics": {
+        "title": "कन्वर्ज़न मेट्रिक्स",
+        "description": "Reply rate, booking rate, show rate और close rate जैसे प्रमुख sales metrics बनाएँ और ट्रैक करें।"
+      },
+      "schedulePages": {
+        "title": "बुकिंग पेज",
+        "description": "Discovery calls, sales calls और अन्य appointments के लिए booking links बनाएँ और प्रबंधित करें।"
+      },
+      "inviteTeamMembers": {
+        "title": "टीम सदस्यों को आमंत्रित करें",
+        "description": "टीम सदस्यों को आमंत्रित करें और Appointment Setter, Sales Closer, Sales Manager या Admin जैसी भूमिकाएँ असाइन करें।"
+      },
+      "manageTeamRoles": {
+        "title": "टीम भूमिकाएँ प्रबंधित करें",
+        "description": "मौजूदा टीम सदस्यों की भूमिकाएँ अपडेट करें। Managers उपयोगकर्ताओं को Admin नहीं बना सकते।"
+      }
+    },
+    "logout": {
+      "button": "लॉग आउट"
+    }
+  },
+  "LeadFieldsSettingsPage": {
+    "metadata": {
+      "title": "लीड फ़ील्ड्स",
+      "description": "चुनें कि आपकी coaching टीम कौन-सी lead fields ट्रैक करना चाहती है।"
+    },
+    "page": {
+      "title": "लीड फ़ील्ड्स",
+      "description": "हर lead के लिए core fields आवश्यक हैं। यदि आपकी टीम sales process के दौरान अधिक विवरण कैप्चर करना चाहती है, तो नीचे अतिरिक्त fields जोड़ें।"
+    },
+    "states": {
+      "loading": "लोड हो रहा है...",
+      "saved": "परिवर्तन सहेजे गए",
+      "rememberToSave": "अपने परिवर्तन सहेजना न भूलें।"
+    },
+    "systemSection": {
+      "title": "आवश्यक सिस्टम फ़ील्ड्स",
+      "description": "ये core fields आपकी leads को सुसंगत रखती हैं और आपके workspace में filtering, reporting और handoffs को विश्वसनीय बनाती हैं।",
+      "locked": "लॉक्ड"
+    },
+    "badges": {
+      "required": "आवश्यक",
+      "optional": "वैकल्पिक"
+    },
+    "fieldTypes": {
+      "text": "टेक्स्ट",
+      "number": "संख्या",
+      "select": "ड्रॉपडाउन",
+      "boolean": "चेकबॉक्स",
+      "link": "लिंक (URL)"
+    },
+    "systemFields": {
+      "leadName": {
+        "label": "लीड नाम",
+        "note": "हर lead के लिए आवश्यक।"
+      },
+      "nicheIndustry": {
+        "label": "कोचिंग निच",
+        "note": "निच और ऑफ़र प्रकार के अनुसार leads को segment करने में मदद करता है।"
+      },
+      "leadType": {
+        "label": "लीड प्रकार",
+        "note": "चुनें कि lead एक individual prospect है या business।"
+      },
+      "gender": {
+        "label": "लिंग",
+        "note": "केवल तब आवश्यक जब lead type Individual हो।"
+      },
+      "country": {
+        "label": "देश",
+        "note": "Reporting, territory assignment और location-based filtering का समर्थन करता है।"
+      },
+      "region": {
+        "label": "राज्य / क्षेत्र",
+        "note": "Routing accuracy बेहतर करता है और filtering को अधिक सटीक बनाता है।"
+      },
+      "city": {
+        "label": "शहर",
+        "note": "Local targeting, territory views और साफ़ lead lists के लिए उपयोगी।"
+      },
+      "postalCode": {
+        "label": "ZIP / पिन कोड",
+        "note": "वैकल्पिक, लेकिन service areas और अधिक सटीक local targeting के लिए उपयोगी।"
+      },
+      "primaryContactType": {
+        "label": "प्राथमिक संपर्क प्रकार",
+        "note": "आप lead से कैसे संपर्क करेंगे, जैसे email, phone, या social media।"
+      },
+      "primaryContactValue": {
+        "label": "प्राथमिक संपर्क मान",
+        "note": "वास्तविक email address, phone number, या profile link।"
+      },
+      "sourceCategory": {
+        "label": "स्रोत श्रेणी",
+        "note": "Lead कैसे आई, जैसे inbound, outbound, referral, या partner।"
+      },
+      "sourceName": {
+        "label": "स्रोत नाम",
+        "note": "Lead कहाँ से आई, जैसे Instagram, Facebook, YouTube, या landing page।"
+      }
+    },
+    "customFields": {
+      "title": "कस्टम फ़ील्ड्स",
+      "description": "ऐसी वैकल्पिक fields जोड़ें जिन्हें आपकी टीम leads के लिए ट्रैक करना चाहती है।",
+      "newFieldLabel": "नई फ़ील्ड",
+      "untitled": "बिना शीर्षक",
+      "dropdownOptions": "ड्रॉपडाउन विकल्प",
+      "empty": {
+        "title": "अभी कोई custom fields नहीं हैं।",
+        "description": "Goal, Objection, Budget, Fitness Level, Program Interest, या Assigned Setter जैसी fields जोड़ें।"
+      }
+    },
+    "placeholders": {
+      "fieldLabel": "लेबल (उदा. Budget)",
+      "dropdownOptions": "उदा. Low, Medium, High"
+    },
+    "actions": {
+      "addField": "+ फ़ील्ड जोड़ें",
+      "remove": "हटाएँ",
+      "saveChanges": "परिवर्तन सहेजें"
+    },
+    "errors": {
+      "loadFailed": "हम आपकी lead field configuration लोड नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "missingTeam": "Workspace अनुपस्थित है। यह पेज आपके workspace के अंदर से खोला जाना चाहिए।",
+      "reservedKey": "Field key \"{key}\" किसी system field से टकराती है। कृपया इसे फिर से generate करें।",
+      "duplicateKey": "Field key \"{key}\" डुप्लिकेट है। Keys अद्वितीय होनी चाहिए।",
+      "saveFailed": "आपकी fields सहेजना विफल रहा। कृपया फिर से प्रयास करें।"
+    },
+    "empty": {
+      "noTeam": {
+        "title": "कोई workspace उपलब्ध नहीं",
+        "description": "हम आपका workspace निर्धारित नहीं कर सके। कृपया यह पेज अपने workspace के अंदर से खोलें या support से संपर्क करें।"
+      }
+    }
+  },
+  "LeadScoringSettingsPage": {
+    "metadata": {
+      "title": "लीड स्कोरिंग",
+      "description": "परिभाषित करें कि आपकी coaching leads को कैसे स्कोर किया जाता है।"
+    },
+    "page": {
+      "title": "लीड स्कोरिंग",
+      "description": "अपनी lead fields को weights दें ताकि CRM हर lead के लिए 0–100 का score निकाल सके। Save करने पर सभी मौजूदा leads के scores भी दोबारा calculate होंगे।"
+    },
+    "states": {
+      "loading": "लोड हो रहा है...",
+      "saved": "स्कोरिंग नियम सहेजे गए",
+      "savedWithRecomputed": "स्कोरिंग नियम सहेजे गए — {count} लीड{count, plural, one {} other {s}} अपडेट हुईं",
+      "recomputeFailed": "ध्यान दें: {count} लीड{count, plural, one {} other {s}} दोबारा compute नहीं हो सकीं। वे leads अगली activity या stage change के बाद फिर अपडेट होंगी।"
+    },
+    "actions": {
+      "save": "स्कोरिंग नियम सहेजें",
+      "saving": "सहेजा जा रहा है और पुनः गणना की जा रही है..."
+    },
+    "errors": {
+      "noTeamInWorkspace": "कोई workspace नहीं मिला।",
+      "loadFailed": "Lead scoring settings लोड करने में विफल।",
+      "saveFailed": "सहेजना विफल रहा। कृपया फिर से प्रयास करें।"
+    },
+    "empty": {
+      "noTeam": {
+        "description": "हम आपका workspace निर्धारित नहीं कर सके। कृपया यह पेज अपने workspace से खोलें या support से संपर्क करें।"
+      },
+      "noFields": {
+        "description": "आपके पास अभी कोई lead fields नहीं हैं। पहले उन्हें <path>Settings → Lead Fields</path> में बनाएँ।"
+      }
+    },
+    "fieldCard": {
+      "typeLabel": "प्रकार: {type}",
+      "optionWeights": "विकल्प वेट्स",
+      "optionWeightsHelp": "चयन होने पर हर विकल्प अपने points जोड़ता है।",
+      "pointsShort": "pts"
+    },
+    "thresholds": {
+      "title": "स्कोर थ्रेशहोल्ड्स",
+      "description": "नियंत्रित करें कि scores को कब <low>low</low>, <medium>medium</medium>, या <high>high</high> माना जाए।",
+      "lowLabel": "Low / लाल cutoff",
+      "lowHelp": "इससे नीचे के scores को <low>low</low> माना जाता है।",
+      "highLabel": "High / हरा cutoff",
+      "highHelp": "इससे बराबर या अधिक scores को <high>high</high> माना जाता है। इनके बीच सब कुछ <medium>medium</medium> है।"
+    },
+    "tip": {
+      "title": "सुझाव",
+      "description": "100 से थोड़ा buffer नीचे छोड़ें, क्योंकि reply tracking, pipeline movement या अन्य activity जैसी automations आपके manual scoring के ऊपर अतिरिक्त points जोड़ सकती हैं।"
+    }
+  },
+  "NicheSettingsPage": {
+    "metadata": {
+      "title": "निचेस",
+      "description": "अपने वर्तमान workspace में उपलब्ध coaching niches को प्रबंधित करें।"
+    },
+    "page": {
+      "title": "निचेस",
+      "description": "यह आपका साझा niche catalog है। प्रत्येक workspace चुन सकता है कि वह किन niches का उपयोग करना चाहता है।",
+      "currentTeam": "वर्तमान workspace: {teamName}",
+      "unnamedTeam": "बिना नाम का workspace",
+      "searchSummary": "खोज: “{search}” · {count} परिणाम{count, plural, one {} other {}}"
+    },
+    "howItWorks": {
+      "title": "यह कैसे काम करता है",
+      "step1": {
+        "title": "1. निचेस चुनें",
+        "description": "इस workspace के लिए niches को सक्षम या अक्षम करने हेतु checkboxes का उपयोग करें।"
+      },
+      "step2": {
+        "title": "2. बदलाव सहेजें",
+        "description": "आपका workspace केवल उन्हीं चुनी गई niches का उपयोग करेगा जिन्हें आप save करेंगे।"
+      },
+      "step3": {
+        "title": "3. इन्हें leads में उपयोग करें",
+        "description": "सहेजी गई niches, leads बनाते या संपादित करते समय niche dropdown में दिखाई देंगी।"
+      }
+    },
+    "catalog": {
+      "title": "सभी निचेस",
+      "description": "इस सूची की हर niche किसी भी workspace में उपयोग की जा सकती है। चुनें कि इस workspace को किन niches तक पहुँच होनी चाहिए।",
+      "noSearchResults": "आपकी खोज से कोई niche मेल नहीं खाई।",
+      "empty": "अभी तक कोई niches उपलब्ध नहीं हैं।",
+      "createdBy": "मूल रूप से {organizationName} द्वारा बनाई गई।",
+      "sharedNiche": "साझा niche।"
+    },
+    "enabled": {
+      "title": "इस workspace के लिए सक्षम",
+      "description": "जब आपकी टीम leads बनाएगी या संपादित करेगी, तब ये niches उपलब्ध होंगी।",
+      "empty": "अभी तक कोई niche सक्षम नहीं है।"
+    },
+    "create": {
+      "title": "नई niche बनाएँ",
+      "description": "नई niches साझा catalog में जोड़ी जाती हैं और तुरंत इस workspace के लिए सक्षम हो जाती हैं। यदि niche पहले से मौजूद है, तो इसे केवल इस workspace के लिए सक्षम कर दिया जाएगा।",
+      "fieldLabel": "Niche नाम",
+      "placeholder": "उदाहरण: Online fitness coaches"
+    },
+    "actions": {
+      "saveChanges": "बदलाव सहेजें",
+      "everythingSaved": "सब कुछ सहेजा गया है",
+      "creating": "बनाया जा रहा है...",
+      "createNiche": "Niche बनाएँ"
+    },
+    "feedback": {
+      "saved": "आपके workspace की niches सहेज दी गईं।",
+      "alreadyExistsSelected": "\"{name}\" पहले से मौजूद है, इसलिए इसे इस workspace के लिए सक्षम कर दिया गया।",
+      "alreadyExistedEnabled": "\"{name}\" पहले से मौजूद थी और इस workspace के लिए सक्षम कर दी गई।",
+      "createdAndAdded": "\"{name}\" बनाई गई और इस workspace में जोड़ दी गई।"
+    },
+    "errors": {
+      "noTeam": "हम आपका वर्तमान workspace निर्धारित नहीं कर सके।",
+      "loadFailed": "Niches लोड करने में विफल।",
+      "saveFailed": "Niches सहेजने में विफल।",
+      "enterName": "कृपया एक niche नाम दर्ज करें।",
+      "createFailed": "Niche बनाने में विफल।"
+    }
+  },
+  "PipelineStagesSettingsPage": {
+    "metadata": {
+      "title": "पाइपलाइन चरण",
+      "description": "अपनी coaching sales pipeline के चरणों को परिभाषित और व्यवस्थित करें।"
+    },
+    "page": {
+      "title": "पाइपलाइन चरण",
+      "description": "अपनी sales pipeline के चरण सेट करें और चुनें कि leads किस क्रम में आगे बढ़ें।"
+    },
+    "loading": {
+      "workspace": {
+        "title": "Workspace लोड हो रहा है...",
+        "subtitle": "आपके workspace और permissions की जाँच की जा रही है।"
+      },
+      "stages": {
+        "title": "पाइपलाइन चरण लोड हो रहे हैं...",
+        "subtitle": "आपका सहेजा गया pipeline setup प्राप्त किया जा रहा है।"
+      },
+      "idle": {
+        "title": "लोड हो रहा है..."
+      }
+    },
+    "states": {
+      "saved": "पाइपलाइन चरण सहेजे गए"
+    },
+    "tips": {
+      "title": "यह कैसे काम करता है",
+      "description": "इन चरणों का उपयोग आपके pipeline, lead views, filters और reporting में होता है। क्रम बदलने के लिए arrows का उपयोग करें, फिर अपने बदलाव सहेजें।"
+    },
+    "placeholders": {
+      "stageName": "चरण का नाम"
+    },
+    "defaults": {
+      "newStage": "नया चरण {number}"
+    },
+    "actions": {
+      "addStage": "+ चरण जोड़ें",
+      "saveStages": "चरण सहेजें",
+      "remove": "हटाएँ",
+      "moveUp": "चरण ऊपर ले जाएँ",
+      "moveDown": "चरण नीचे ले जाएँ"
+    },
+    "errors": {
+      "loadFailed": "पाइपलाइन चरण लोड करने में विफल।",
+      "missingTeam": "Workspace अनुपस्थित है। यह पेज आपके workspace के भीतर से खोला जाना चाहिए।",
+      "atLeastOneStage": "सहेजने से पहले कम से कम एक चरण जोड़ें।",
+      "stageNameRequired": "हर चरण का एक नाम होना चाहिए।",
+      "stageNamesUnique": "चरणों के नाम अद्वितीय होने चाहिए।",
+      "saveFailed": "आपके pipeline stages सहेजने में विफल। कृपया फिर से प्रयास करें।"
+    },
+    "empty": {
+      "noTeam": {
+        "description": "हम आपका workspace निर्धारित नहीं कर सके। कृपया यह पेज अपने workspace से खोलें या support से संपर्क करें।"
+      },
+      "noStages": "अभी तक कोई pipeline stage नहीं है।"
+    }
+  },
+  "ConversionMetricDefinitionsSettingsPage": {
+    "metadata": {
+      "title": "कन्वर्ज़न मेट्रिक्स",
+      "description": "वे conversion metrics परिभाषित करें जिन्हें आपकी टीम pipeline stages के बीच ट्रैक करती है।"
+    },
+    "page": {
+      "title": "कन्वर्ज़न मेट्रिक्स",
+      "description": "वे conversion metrics परिभाषित करें जिन्हें आप ट्रैक करना चाहते हैं। प्रत्येक metric तुलना करती है कि कितनी leads एक pipeline stage से दूसरी stage तक जाती हैं।"
+    },
+    "loading": {
+      "workspace": {
+        "title": "Workspace लोड हो रहा है...",
+        "subtitle": "आपके workspace और permissions की जाँच की जा रही है।"
+      },
+      "definitions": {
+        "title": "Conversion metrics लोड हो रही हैं...",
+        "subtitle": "आपकी सहेजी गई conversion metric definitions प्राप्त की जा रही हैं।"
+      },
+      "idle": {
+        "title": "लोड हो रहा है..."
+      }
+    },
+    "states": {
+      "saved": "Conversion metrics सहेजी गईं",
+      "rememberToSave": "अपने बदलाव सहेजना न भूलें।"
+    },
+    "tips": {
+      "title": "यह कैसे काम करता है",
+      "description": "Reply rate, booking rate या show rate जैसी stage-to-stage metrics बनाएँ। ये definitions आपकी टीम को सबसे महत्वपूर्ण pipeline conversions ट्रैक करने में मदद करती हैं।",
+      "needStages": "Conversion metrics बनाने से पहले कम से कम 2 pipeline stages जोड़ें।"
+    },
+    "fields": {
+      "fromStageOption": "से: {stage}",
+      "toStageOption": "तक: {stage}",
+      "targetRate": "लक्ष्य %",
+      "targetRateTitle": "लक्ष्य दर (0–100)"
+    },
+    "placeholders": {
+      "metricName": "Metric का नाम (जैसे Reply rate, Booking rate)",
+      "targetRate": "लक्ष्य %"
+    },
+    "defaults": {
+      "newMetric": "नई conversion metric"
+    },
+    "actions": {
+      "addMetric": "+ Conversion Metric जोड़ें",
+      "saveMetrics": "Metrics सहेजें",
+      "remove": "हटाएँ"
+    },
+    "errors": {
+      "loadFailed": "Conversion metrics लोड करने में विफल।",
+      "missingTeam": "Workspace अनुपस्थित है। यह पेज आपके workspace के भीतर से खोला जाना चाहिए।",
+      "atLeastOneMetric": "सहेजने से पहले कम से कम एक conversion metric जोड़ें।",
+      "metricFieldsRequired": "हर metric के लिए नाम और मान्य from/to stages आवश्यक हैं।",
+      "targetRateRange": "लक्ष्य दर 0 से 100 के बीच होनी चाहिए।",
+      "saveFailed": "आपकी conversion metrics सहेजने में विफल। कृपया फिर से प्रयास करें।"
+    },
+    "empty": {
+      "noTeam": {
+        "description": "हम आपका workspace निर्धारित नहीं कर सके। कृपया यह पेज अपने workspace के भीतर से खोलें या support से संपर्क करें।"
+      },
+      "noMetrics": {
+        "title": "अभी तक कोई conversion metrics नहीं हैं।",
+        "description": "अपने sales process के अनुसार Reply Rate, Booking Rate या Show Rate जैसी metrics जोड़ें।"
+      }
+    }
+  },
+  "SchedulePagesSettingsPage": {
+    "page": {
+      "title": "बुकिंग पेज",
+      "description": "ऐसे booking links बनाएँ जिनका उपयोग leads आपके connected Google Calendar पर calls schedule करने के लिए कर सकें।"
+    },
+    "loading": {
+      "workspace": {
+        "title": "Workspace लोड हो रहा है...",
+        "subtitle": "आपका workspace context खोजा जा रहा है।"
+      },
+      "auth": {
+        "title": "आपका सेशन जाँचा जा रहा है...",
+        "subtitle": "आपका अकाउंट सत्यापित किया जा रहा है।"
+      },
+      "links": {
+        "title": "Booking pages लोड हो रहे हैं...",
+        "subtitle": "आपके booking links प्राप्त किए जा रहे हैं।"
+      },
+      "idle": {
+        "title": "लोड हो रहा है...",
+        "subtitle": "कृपया प्रतीक्षा करें।"
+      }
+    },
+    "dialog": {
+      "title": "Booking page का प्रकार चुनें",
+      "description": "चुनें कि यह booking link कैसे काम करे। आप one-on-one, group या round robin booking flows बना सकते हैं।"
+    },
+    "types": {
+      "oneOnOne": {
+        "label": "वन-ऑन-वन",
+        "description": "Leads सीधे आपके साथ या किसी एक विशिष्ट team member के साथ booking कर सकते हैं।"
+      },
+      "group": {
+        "label": "ग्रुप",
+        "description": "जब कई team members को एक ही call में शामिल होना हो, तब इसका उपयोग करें।"
+      },
+      "roundRobin": {
+        "label": "राउंड रॉबिन",
+        "description": "Bookings को team members के pool में अपने-आप वितरित करें। High-volume inbound के लिए आदर्श।"
+      }
+    },
+    "badges": {
+      "oneOnOne": "1:1",
+      "group": "ग्रुप",
+      "roundRobin": "राउंड रॉबिन"
+    },
+    "table": {
+      "schedulePage": "Booking page",
+      "publicLink": "Public link",
+      "color": "रंग",
+      "actions": "क्रियाएँ",
+      "noDescription": "कोई विवरण नहीं",
+      "publicBookingPage": "सार्वजनिक booking page",
+      "createdAtTitle": "{date} को {time} पर बनाया गया"
+    },
+    "actions": {
+      "createSchedulePage": "Booking Page बनाएँ",
+      "deleteSchedulePage": "Booking page हटाएँ"
+    },
+    "errors": {
+      "verifySessionFailed": "आपका सेशन सत्यापित करने में विफल। कृपया पेज refresh करें।",
+      "noTeam": "कोई workspace नहीं मिला। यह पेज अपने workspace के अंदर से खोलें।",
+      "noUserFound": "कोई user नहीं मिला। कृपया फिर से लॉग इन करें।",
+      "loadFailed": "Booking pages लोड करने में विफल।",
+      "loadUnexpected": "Booking pages लोड करते समय एक अप्रत्याशित त्रुटि हुई।"
+    },
+    "empty": {
+      "unavailable": "Booking pages प्रबंधित करने के लिए आपको एक workspace और profile चाहिए। यदि यह गलत लगता है तो support से संपर्क करें।",
+      "noPages": {
+        "title": "अभी तक कोई booking pages नहीं हैं।",
+        "description": "अपना पहला booking link सेट करने के लिए <strong>Create Booking Page</strong> पर क्लिक करें।"
+      }
+    }
+  },
+  "DeleteSchedulePage": {
+    "metadata": {
+      "title": "Booking Page हटाएँ",
+      "description": "इस booking page को हटाने की पुष्टि करें। इससे booking page छिप जाएगा, लेकिन मौजूदा bookings बनी रहेंगी।"
+    },
+    "page": {
+      "title": "Booking page हटाएँ",
+      "description": "इससे booking page छिप जाएगा। मौजूदा bookings बनी रहेंगी।"
+    },
+    "states": {
+      "loading": "लोड हो रहा है...",
+      "alreadyDeleted": "यह booking page पहले ही हटाया जा चुका है।"
+    },
+    "confirm": {
+      "message": "क्या आप वाकई <strong>{name}</strong> को हटाना चाहते हैं?",
+      "warning": "इससे booking page <strong>disable</strong> हो जाएगा। आप इसे UI से undo नहीं कर पाएँगे।"
+    },
+    "preview": {
+      "title": "Booking page preview",
+      "name": "नाम",
+      "slug": "Slug"
+    },
+    "actions": {
+      "deleting": "हटाया जा रहा है...",
+      "delete": "Booking Page हटाएँ"
+    },
+    "errors": {
+      "notFound": "हमें वह booking page नहीं मिली, या आपके पास उसकी पहुँच नहीं है।",
+      "missingTeamOrId": "हम आपका workspace या booking page ID निर्धारित नहीं कर सके।",
+      "loadFailed": "Booking page लोड करने में विफल।",
+      "deleteFailed": "Booking page हटाने में विफल।"
+    },
+    "fallback": {
+      "thisSchedulePage": "यह booking page"
+    }
+  },
+  "CreateSchedulePage": {
+    "metadata": {
+      "title": "Booking Page बनाएँ",
+      "description": "अपने CRM में एक नया booking page बनाएँ। Meeting type चुनें, custom URL सेट करें, और अपने public booking link के लिए primary color चुनें।"
+    },
+    "page": {
+      "title": "Booking Page बनाएँ",
+      "description": "एक नाम, URL और primary color चुनें। फिर booking type के अनुसार शामिल किए जाने वाले closers चुनें।"
+    },
+    "common": {
+      "error": "त्रुटि",
+      "minutes": "मिनट",
+      "min": "मिनट",
+      "hours": "घंटे",
+      "days": "दिन"
+    },
+    "defaults": {
+      "confirmHeading": "आपकी booking हो गई!",
+      "confirmSubheading": "हमने आपके email पर calendar invite भेज दिया है।"
+    },
+    "fields": {
+      "meetingName": "Meeting नाम",
+      "publicSlug": "Public URL slug",
+      "descriptionOptional": "विवरण (वैकल्पिक)",
+      "bufferBefore": "पहले",
+      "bufferAfter": "बाद में",
+      "minNotice": "न्यूनतम सूचना समय",
+      "maxNotice": "अधिकतम सूचना समय",
+      "startTime": "शुरुआती समय",
+      "endTime": "समाप्ति समय",
+      "days": "दिन",
+      "primaryColor": "मुख्य रंग"
+    },
+    "placeholders": {
+      "meetingName": "Fitness Strategy Call",
+      "publicSlug": "fitness-strategy-call",
+      "description": "अपने लिए उपयुक्त समय चुनें। पुष्टि के बाद हम आपको एक calendar invite भेजेंगे।"
+    },
+    "help": {
+      "publicSlug": "यह वह shareable link बन जाता है जिसे आप leads को भेजते हैं।"
+    },
+    "sections": {
+      "duration": {
+        "title": "अवधि",
+        "description": "चुनें कि यह meeting कितनी देर की होनी चाहिए।"
+      },
+      "buffers": {
+        "title": "बफ़र्स"
+      },
+      "bookingWindow": {
+        "title": "Booking window"
+      },
+      "availability": {
+        "title": "उपलब्धता"
+      }
+    },
+    "availability": {
+      "businessHours": "Business hours (दिन और समय सीमा चुनें)",
+      "twentyFourSeven": "24/7 (leads किसी भी समय booking कर सकते हैं)",
+      "daysHelp": "उपलब्धता lead के timezone में इन दिनों और समयों तक सीमित रहेगी।",
+      "none": "कोई नहीं"
+    },
+    "preview": {
+      "alwaysOpen": "24/7"
+    },
+    "actions": {
+      "create": "Booking Page बनाएँ",
+      "creating": "बनाया जा रहा है..."
+    },
+    "errors": {
+      "nameRequired": "कृपया अपने booking page को एक नाम दें।",
+      "slugRequired": "Slug खाली नहीं हो सकता।",
+      "durationMin": "अवधि कम से कम 5 मिनट होनी चाहिए।",
+      "invalidTimes": "कृपया मान्य start और end times सेट करें।",
+      "endAfterStart": "End time, start time के बाद होना चाहिए।",
+      "pickDay": "उपलब्धता के लिए कृपया कम से कम एक दिन चुनें।",
+      "pickOneOnOneCloser": "कृपया चुनें कि यह one-on-one meeting किसके साथ है।",
+      "pickPrimaryCloser": "कृपया एक primary closer चुनें।",
+      "groupNeedsTwo": "Group booking page के लिए कृपया कम से कम 2 closers चुनें।",
+      "roundRobinNeedsOne": "Round robin के लिए कृपया कम से कम 1 closer चुनें।",
+      "createFailed": "Booking page बनाने में विफल।",
+      "groupHostsSaveFailed": "Page बन गया, लेकिन group hosts सहेजने में विफलता हुई।",
+      "roundRobinSaveFailed": "Page बन गया, लेकिन round robin pool सहेजने में विफलता हुई।",
+      "unexpected": "अप्रत्याशित त्रुटि"
+    },
+    "weekdays": {
+      "mon": "सोम",
+      "tue": "मंगल",
+      "wed": "बुध",
+      "thu": "गुरु",
+      "fri": "शुक्र",
+      "sat": "शनि",
+      "sun": "रवि"
+    },
+    "hostSelection": {
+      "unnamedUser": "बिना नाम का user",
+      "emptyClosers": "भूमिका <strong>Closer</strong> वाले कोई teammates नहीं मिले।",
+      "oneOnOne": {
+        "label": "Host (Closer)",
+        "help": "Lead सीधे इस closer के साथ booking करता है।"
+      },
+      "group": {
+        "label": "आवश्यक closers (जिनकी उपस्थिति अनिवार्य है)",
+        "primaryCloser": "Primary closer (lead पर assigned)",
+        "selectAttendees": "आवश्यक attendees चुनें",
+        "primaryBadge": "प्राथमिक",
+        "help": "उपलब्धता सभी चुने गए calendars के overlap पर आधारित होती है।"
+      },
+      "roundRobin": {
+        "label": "Round robin closers (pool)",
+        "selectPool": "चुनें कि कौन-से closers assign किए जा सकते हैं",
+        "help": "Leads को वे समय दिखेंगे जब <strong>कम से कम एक</strong> closer उपलब्ध हो। Booking होने पर एक उपलब्ध closer को यादृच्छिक रूप से assign किया जाएगा।"
+      }
+    },
+    "previewCard": {
+      "header": {
+        "title": "Booking Page का प्रीव्यू",
+        "description": "Public booking page का एक प्रारंभिक preview।"
+      },
+      "bookingType": {
+        "oneOnOne": "1:1",
+        "group": "ग्रुप",
+        "roundRobin": "राउंड रॉबिन"
+      },
+      "meta": {
+        "bookingWith": "{orgName} के साथ booking · {bookingType} · {duration} मिनट",
+        "secureScheduling": "सुरक्षित scheduling"
+      },
+      "defaults": {
+        "meetingName": "Fitness Strategy Call",
+        "description": "अपने लिए उपयुक्त समय चुनें। पुष्टि के बाद हम आपको calendar invite भेजेंगे।"
+      },
+      "body": {
+        "yourDetails": "आपकी जानकारी",
+        "pickTime": "एक समय चुनें",
+        "firstName": "पहला नाम",
+        "email": "name@example.com",
+        "daysEnabled": "सक्षम दिन: <days />",
+        "duration": "अवधि: {value} मिनट",
+        "bufferBefore": "पहले का buffer: {value} मिनट",
+        "bufferAfter": "बाद का buffer: {value} मिनट",
+        "minNotice": "न्यूनतम सूचना समय: {value} घंटे",
+        "maxNotice": "अधिकतम सूचना समय: {value} दिन",
+        "noticeWindow": "Notice window:",
+        "noticeWindowValue": "न्यूनतम {minNoticeHours}h · अधिकतम {maxNoticeDays} दिन",
+        "availabilityAlways": "उपलब्धता: 24/7",
+        "availabilityWindow": "उपलब्धता: {days} · {hours}"
+      },
+      "footer": {
+        "note": "पेज कैसा दिखेगा इसका preview।",
+        "poweredBy": "Powered by <strong>Faigata</strong>"
+      }
+    }
+  },
+  "PublicBookingPage": {
+    "types": {
+      "one_on_one": "1:1",
+      "group": "ग्रुप",
+      "round_robin": "राउंड रॉबिन"
+    },
+    "weekdays": {
+      "sun": "रवि",
+      "mon": "सोम",
+      "tue": "मंगल",
+      "wed": "बुध",
+      "thu": "गुरु",
+      "fri": "शुक्र",
+      "sat": "शनि"
+    },
+    "partsOfDay": {
+      "night": "रात",
+      "morning": "सुबह",
+      "afternoon": "दोपहर",
+      "evening": "शाम"
+    },
+    "states": {
+      "checkingAvailabilityTitle": "उपलब्धता जाँची जा रही है",
+      "checkingAvailabilitySubtitle": "इसमें आमतौर पर केवल एक सेकंड लगता है।"
+    },
+    "header": {
+      "bookingWith": "{orgName} के साथ booking · {type}{duration, plural, =0 {} other { · {duration} मिनट}}{hostsCount}",
+      "hostsCount": " · {count} hosts",
+      "secureScheduling": "सुरक्षित scheduling",
+      "generalLinkNotice": "नोट: यह एक सामान्य booking link लगती है, व्यक्तिगत invite नहीं।",
+      "defaultDescription": "अपने लिए उपयुक्त तारीख और समय चुनें। पुष्टि के बाद हम आपको calendar invite भेजेंगे।",
+      "noticeWindow": "Notice window:",
+      "noticeWindowValue": "न्यूनतम {minNoticeHours}h · अधिकतम {maxNoticeDays} दिन",
+      "availabilityAlways": "उपलब्धता: 24/7",
+      "availabilityDaily": "प्रतिदिन",
+      "availabilityWindow": "उपलब्धता: {days} · {start}–{end}"
+    },
+    "details": {
+      "title": "आपकी जानकारी",
+      "firstName": "पहला नाम",
+      "firstNamePlaceholder": "Jane",
+      "email": "ईमेल",
+      "emailPlaceholder": "jane@example.com",
+      "validEmail": "कृपया एक मान्य email address दर्ज करें।",
+      "selected": "चयनित",
+      "pickToContinue": "जारी रखने के लिए एक तारीख और समय चुनें।",
+      "bookingConfirmed": "Booking की पुष्टि हो गई",
+      "bookingSaved": "आपकी booking सहेज ली गई है।",
+      "continue": "जारी रखें",
+      "booking": "Booking हो रही है...",
+      "groupAvailabilityHelp": "इस meeting के लिए उपलब्धता सभी आवश्यक hosts के calendars के आधार पर गणना की जाती है।",
+      "singleAvailabilityHelp": "उपलब्धता host के connected Google Calendar से ली जाती है।"
+    },
+    "calendar": {
+      "chooseDate": "एक तारीख चुनें",
+      "localTimezone": "समय आपके स्थानीय timezone में दिखाए जाते हैं",
+      "previousWeek": "पिछला सप्ताह",
+      "nextWeek": "अगला सप्ताह",
+      "chooseTime": "एक समय चुनें",
+      "beforeEarliestDate": "यह तारीख सबसे पहले book की जा सकने वाली तारीख ({minDate}) से पहले है।",
+      "outsideWindow": "यह तारीख booking window ({maxNoticeDays} दिन) से बाहर है।",
+      "noSlotsTitle": "इस दिन के लिए कोई उपलब्ध समय स्लॉट नहीं है।",
+      "noSlotsDescription": "कोई दूसरी तारीख आज़माएँ — host या hosts पूरी तरह व्यस्त या अनुपलब्ध हो सकते हैं।",
+      "showMore": "और समय दिखाएँ",
+      "tip": "सुझाव: disabled times आपकी notice window (न्यूनतम {minNoticeHours}h / अधिकतम {maxNoticeDays} दिन) से बाहर हैं।"
+    },
+    "errors": {
+      "loadAvailability": "हम उपलब्धता लोड नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "availabilityInternal": "हम अभी उपलब्धता जाँच नहीं कर सके। कृपया पेज refresh करें और फिर से प्रयास करें।",
+      "linkNotFound": "यह booking link अब मौजूद नहीं है।",
+      "inviteInvalid": "यह invite link अब मान्य नहीं है।",
+      "hostCalendarNotConnected": "Host ने अभी तक अपना calendar connect नहीं किया है।",
+      "hostCalendarReconnectRequired": "उपलब्धता दिखाने के लिए host को अपना Google Calendar फिर से connect करना होगा।",
+      "loadAvailabilitySoon": "हम अभी उपलब्धता लोड नहीं कर सके। कृपया थोड़ी देर में फिर से प्रयास करें।",
+      "firstNameRequired": "कृपया अपना पहला नाम दर्ज करें।",
+      "validEmailRequired": "कृपया एक मान्य email address दर्ज करें।",
+      "slotOutsideAvailability": "यह समय इस booking link की उपलब्धता के बाहर है।",
+      "bookingFailed": "Booking पूरी करने में विफल।"
+    },
+    "footer": {
+      "poweredBy": "Powered by <strong>Faigata</strong>"
+    }
+  },
+  "InviteTeamMembersPage": {
+    "metadata": {
+      "title": "टीम सदस्यों को आमंत्रित करें"
+    },
+    "page": {
+      "title": "टीम सदस्यों को आमंत्रित करें",
+      "description": "एक निमंत्रण भेजें और एक या अधिक भूमिकाएँ असाइन करें।",
+      "managerNote": "आप Manager हैं, इसलिए आप Admin role असाइन नहीं कर सकते। यह केवल Admins कर सकते हैं।"
+    },
+    "placeholders": {
+      "email": "new.member@company.com"
+    },
+    "actions": {
+      "sendInvite": "निमंत्रण भेजें",
+      "sending": "भेजा जा रहा है..."
+    },
+    "states": {
+      "loading": "Workspace और permissions लोड हो रहे हैं...",
+      "noPermission": "आपके पास team members को invite करने की अनुमति नहीं है।",
+      "inviteSent": "निमंत्रण भेज दिया गया!"
+    },
+    "errors": {
+      "loadPermissions": "Permissions लोड करने में विफल। कृपया पेज refresh करें।",
+      "emailAndRoleRequired": "एक email address और कम से कम एक role आवश्यक है।",
+      "sendInviteFailed": "निमंत्रण भेजने में विफल।",
+      "generic": "कुछ गड़बड़ हो गई।"
+    }
+  },
+  "ManageTeamRolesPage": {
+    "metadata": {
+      "title": "टीम भूमिकाएँ प्रबंधित करें"
+    },
+    "page": {
+      "title": "टीम भूमिकाएँ प्रबंधित करें",
+      "description": "Roles को तुरंत अपडेट करने के लिए उन्हें toggle करें। Managers Admin role असाइन नहीं कर सकते; यह केवल Admins कर सकते हैं।"
+    },
+    "table": {
+      "sectionTitle": "टीम सदस्य",
+      "columns": {
+        "member": "सदस्य",
+        "action": "क्रिया"
+      },
+      "userFallback": "उपयोगकर्ता",
+      "adminOnlyTitle": "केवल Admins ही Admin role असाइन कर सकते हैं।",
+      "savingTitle": "सहेजा जा रहा है...",
+      "removeTitle": "टीम सदस्य हटाएँ"
+    },
+    "states": {
+      "loading": "लोड हो रहा है...",
+      "refreshing": "टीम सदस्य लोड हो रहे हैं...",
+      "saved": "सहेजा गया",
+      "empty": "इस workspace के लिए कोई team members नहीं मिले।"
+    },
+    "errors": {
+      "noWorkspaceTeam": "आपका workspace निर्धारित नहीं किया जा सका।",
+      "noPermission": "आपके पास team roles प्रबंधित करने की अनुमति नहीं है।",
+      "loadMembers": "Team members लोड करने में विफल।",
+      "loadMembersHttp": "Team members लोड करने में विफल (HTTP {status})।",
+      "atLeastOneRole": "कम से कम एक role आवश्यक है।",
+      "saveHttp": "बदलाव सहेजने में विफल (HTTP {status})।"
+    }
+  },
+  "AcceptInvitePage": {
+    "metadata": {
+      "title": "अपने निमंत्रण को स्वीकार करें",
+      "description": "अपनी Faigata टीम में शामिल हों, अपना खाता बनाएं और अपनी टीम के साथ सहयोग शुरू करें।"
+    },
+    "page": {
+      "title": "अपने निमंत्रण को स्वीकार करें",
+      "descriptionWithOrg": "आपको {orgName} में शामिल होने के लिए आमंत्रित किया गया है।",
+      "descriptionWithoutOrg": "आपको एक Faigata टीम में शामिल होने के लिए आमंत्रित किया गया है।"
+    },
+    "actions": {
+      "dismiss": "खारिज करें",
+      "tryAgain": "फिर से प्रयास करें",
+      "acceptInvite": "निमंत्रण स्वीकार करें"
+    },
+    "states": {
+      "loadingInvite": "आपका निमंत्रण लोड हो रहा है..."
+    },
+    "success": {
+      "title": "{orgName} में आपका स्वागत है",
+      "defaultOrg": "आपकी नई टीम",
+      "description": "आपका खाता बना दिया गया है और आपकी भूमिकाएँ निर्धारित कर दी गई हैं। आपको आपके डैशबोर्ड पर पुनर्निर्देशित किया जा रहा है..."
+    },
+    "footer": {
+      "loginPrompt": "क्या आपके पास पहले से Faigata खाता है? <link>इस निमंत्रण को स्वीकार करने के लिए लॉग इन करें</link>"
+    },
+    "validation": {
+      "firstNameRequired": "पहला नाम आवश्यक है।",
+      "lastNameRequired": "अंतिम नाम आवश्यक है।",
+      "emailRequired": "ईमेल आवश्यक है।",
+      "passwordRequired": "पासवर्ड आवश्यक है।",
+      "passwordMin": "पासवर्ड कम से कम 8 अक्षरों का होना चाहिए।",
+      "emailMismatch": "कृपया वही ईमेल पता उपयोग करें जिस पर निमंत्रण भेजा गया था।"
+    },
+    "errors": {
+      "invalidLink": {
+        "title": "अमान्य निमंत्रण लिंक",
+        "message": "इस लिंक में निमंत्रण की जानकारी नहीं है। कृपया अपनी टीम से निमंत्रण दोबारा भेजने के लिए कहें।"
+      },
+      "loadFailed": {
+        "title": "निमंत्रण लोड नहीं हो सका",
+        "message": "अभी आपका निमंत्रण लोड नहीं किया जा सका। कृपया अपना इंटरनेट कनेक्शन जांचें और फिर से प्रयास करें।"
+      },
+      "network": {
+        "title": "नेटवर्क त्रुटि",
+        "message": "आपका निमंत्रण स्वीकार करते समय कुछ गलत हो गया। कृपया फिर से प्रयास करें।"
+      },
+      "inviteLoadInvalid": "यह निमंत्रण नहीं मिला या अब मान्य नहीं है।",
+      "acceptFailed": "निमंत्रण स्वीकार करने में विफल। कृपया फिर से प्रयास करें।"
+    },
+    "apiErrors": {
+      "inviteNotFound": {
+        "title": "निमंत्रण नहीं मिला",
+        "message": "यह निमंत्रण नहीं मिला। हो सकता है इसे हटा दिया गया हो या लिंक अधूरा हो।"
+      },
+      "inviteAlreadyAccepted": {
+        "title": "निमंत्रण पहले ही उपयोग किया जा चुका है",
+        "message": "यह निमंत्रण पहले ही स्वीकार किया जा चुका है। आमंत्रित ईमेल पते से लॉग इन करने का प्रयास करें।"
+      },
+      "inviteExpired": {
+        "title": "निमंत्रण समाप्त हो गया",
+        "message": "यह निमंत्रण समाप्त हो चुका है। कृपया अपनी टीम से नया निमंत्रण भेजने के लिए कहें।"
+      },
+      "inviteEmailMismatch": {
+        "title": "ईमेल मेल नहीं खाता",
+        "message": "कृपया वही ईमेल पता उपयोग करें जिस पर निमंत्रण भेजा गया था।"
+      },
+      "authCreateUserFailed": {
+        "title": "खाता नहीं बनाया जा सका",
+        "message": "अभी आपका खाता नहीं बनाया जा सका। कृपया फिर से प्रयास करें।"
+      },
+      "authUpdateUserFailed": {
+        "title": "सेटअप पूरा नहीं हो सका",
+        "message": "आपका खाता सेटअप पूरा नहीं किया जा सका। कृपया फिर से प्रयास करें।"
+      },
+      "inviteAcceptFailed": {
+        "title": "टीम में शामिल नहीं हो सके",
+        "message": "अभी आपका खाता टीम से जोड़ा नहीं जा सका। कृपया फिर से प्रयास करें या सहायता से संपर्क करें।"
+      },
+      "generic": {
+        "title": "कुछ गलत हो गया"
+      }
+    }
+  },
+  "DeleteTeamMemberPage": {
+    "metadata": {
+      "title": "टीम सदस्य हटाएं",
+      "description": "इस कार्यक्षेत्र से किसी टीम सदस्य को हटाने की पुष्टि करें। यह क्रिया वापस नहीं ली जा सकती।"
+    },
+    "page": {
+      "title": "टीम सदस्य हटाएं",
+      "description": "क्या आप वाकई <strong>{name}</strong> को इस टीम से हटाना चाहते हैं?",
+      "warning": "इससे उनकी इस कार्यक्षेत्र तक पहुंच समाप्त हो जाएगी। यह क्रिया वापस नहीं ली जा सकती।"
+    },
+    "actions": {
+      "removing": "हटाया जा रहा है...",
+      "removeUser": "उपयोगकर्ता हटाएं"
+    },
+    "states": {
+      "loadingWorkspace": "कार्यस्थल लोड हो रहा है..."
+    },
+    "fallback": {
+      "thisUser": "यह उपयोगकर्ता"
+    },
+    "preview": {
+      "name": "नाम",
+      "userId": "उपयोगकर्ता आईडी"
+    },
+    "errors": {
+      "missingUserId": "उपयोगकर्ता आईडी अनुपस्थित है।",
+      "unauthorized": "आप साइन इन नहीं हैं या आपका सत्र समाप्त हो गया है। कृपया फिर से लॉग इन करें।",
+      "deleteFailed": "टीम सदस्य हटाने में विफल।"
+    }
+  },
+  "BillingPage": {
+    "metadata": {
+      "title": "बिलिंग",
+      "description": "Stripe बिलिंग प्रबंधित करें, जिसमें उत्पाद, कीमतें, चालान, भुगतान और ग्राहक शामिल हैं।"
+    },
+    "page": {
+      "title": "बिलिंग और भुगतान",
+      "description": "कोचिंग प्रोग्राम, चालान, ग्राहकों और भुगतान गतिविधि को एक ही स्थान पर प्रबंधित करें।"
+    },
+    "actions": {
+      "openCard": "{title} खोलें"
+    },
+    "cards": {
+      "invoices": {
+        "title": "चालान",
+        "description": "एक बार या आवर्ती शुल्क के लिए चालान बनाएं, भेजें और ट्रैक करें।",
+        "hint": "भुगतान किया गया · खुला · अतिदेय · ड्राफ्ट"
+      },
+      "products": {
+        "title": "उत्पाद",
+        "description": "चालान और सदस्यताओं के लिए उपयोग किए जाने वाले उत्पाद और कीमतें परिभाषित करें।",
+        "hint": "एक बार · आवर्ती"
+      },
+      "payments": {
+        "title": "भुगतान",
+        "description": "आने वाले भुगतान के साथ-साथ असफल या लंबित लेनदेन की निगरानी करें।",
+        "hint": "सफल · लंबित · असफल"
+      },
+      "customers": {
+        "title": "ग्राहक",
+        "description": "लीड और संगठनों से जुड़े Stripe ग्राहकों का प्रबंधन करें।",
+        "hint": "बिलिंग विवरण · भुगतान विधियाँ"
+      }
+    }
+  },
+  "BillingCustomersPage": {
+    "metadata": {
+      "title": "ग्राहक",
+      "description": "Stripe ग्राहकों को देखें और प्रबंधित करें। ग्राहकों को लीड से जोड़ें ताकि बिलिंग आपके CRM से जुड़ी रहे।"
+    },
+    "page": {
+      "title": "ग्राहक",
+      "description": "आपके जुड़े Stripe खाते के ग्राहक। नाम, ईमेल, फोन या आईडी से फ़िल्टर करने के लिए हेडर खोज का उपयोग करें।",
+      "filterApplied": "फ़िल्टर: <strong>“{query}”</strong>",
+      "noFilter": "कोई फ़िल्टर लागू नहीं है।"
+    },
+    "actions": {
+      "newCustomer": "नया ग्राहक",
+      "link": "लिंक करें",
+      "changeLink": "लिंक बदलें",
+      "unlink": "अनलिंक करें",
+      "createCustomer": "ग्राहक बनाएं",
+      "creatingCustomer": "बनाया जा रहा है…",
+      "linkToLead": "लीड से लिंक करें",
+      "linking": "लिंक किया जा रहा है…"
+    },
+    "table": {
+      "title": "Stripe ग्राहक",
+      "loading": "लोड हो रहा है…",
+      "filteredCount": "आपके फ़िल्टर से मेल खाने वाले {count} ग्राहक दिखाए जा रहे हैं",
+      "totalCount": "{count} ग्राहक दिखाए गए",
+      "columns": {
+        "customer": "ग्राहक",
+        "created": "बनाया गया",
+        "paymentMethod": "भुगतान विधि",
+        "linkedLead": "जुड़ी हुई लीड",
+        "actions": "क्रियाएँ"
+      }
+    },
+    "paymentMethod": {
+      "onFile": "सहेजा गया",
+      "none": "कोई नहीं"
+    },
+    "linkedLead": {
+      "linkedLead": "जुड़ी हुई लीड",
+      "notLinked": "लिंक नहीं किया गया"
+    },
+    "empty": {
+      "none": {
+        "title": "अभी कोई ग्राहक नहीं है।",
+        "description": "एक जोड़ने के लिए <newCustomer>नया ग्राहक</newCustomer> उपयोग करें, या नवीनतम Stripe डेटा लोड करने के लिए <refresh>रीफ़्रेश</refresh> करें।"
+      },
+      "noMatch": {
+        "title": "कोई ग्राहक “{query}” से मेल नहीं खाता।",
+        "description": "किसी अन्य नाम, ईमेल, फोन नंबर या Stripe ग्राहक आईडी से प्रयास करें।"
+      }
+    },
+    "leadSearch": {
+      "loading": "लीड लोड हो रही हैं…",
+      "none": "कोई लीड नहीं मिली।",
+      "stage": "चरण: {stage}",
+      "selected": "चयनित"
+    },
+    "createModal": {
+      "eyebrow": "Stripe ग्राहक बनाएं",
+      "title": "नया ग्राहक",
+      "description": "जुड़े हुए Stripe खाते में एक ग्राहक बनाएं और उसे एक लीड से लिंक करें।",
+      "fields": {
+        "findLead": "लीड खोजें",
+        "selectLead": "लीड चुनें",
+        "customerName": "ग्राहक का नाम"
+      },
+      "placeholders": {
+        "findLead": "लीड का नाम, ईमेल, फोन टाइप करें…",
+        "customerName": "जैसे ACME GmbH",
+        "email": "name@company.com",
+        "phone": "+49 …"
+      },
+      "help": {
+        "prefill": "लीड चुनने पर नाम और प्राथमिक ईमेल/फोन स्वतः भर जाएगा।"
+      }
+    },
+    "linkModal": {
+      "eyebrow": "ग्राहक लिंक करें",
+      "description": "इस Stripe ग्राहक को लिंक करने के लिए एक लीड चुनें।",
+      "fields": {
+        "searchLeads": "लीड खोजें (वैकल्पिक)",
+        "selectLead": "लीड चुनें"
+      },
+      "placeholders": {
+        "searchLeads": "लीड का नाम, कंपनी, ईमेल टाइप करें…"
+      },
+      "help": {
+        "search": "यह केवल इस मोडल के लिए है। ग्लोबल सर्च हेडर में रहेगा।"
+      }
+    }
+  },
+  "BillingInvoicesPage": {
+    "metadata": {
+      "title": "चालान",
+      "description": "आपके जुड़े Stripe खाते के चालानों को देखें और प्रबंधित करें।"
+    },
+    "page": {
+      "title": "चालान",
+      "description": "अपने जुड़े Stripe खाते के साथ सिंक किए गए चालान बनाएं, समीक्षा करें और भेजें।",
+      "filterApplied": "फ़िल्टर: <strong>“{query}”</strong>",
+      "noFilter": "कोई फ़िल्टर लागू नहीं है।"
+    },
+    "actions": {
+      "newInvoice": "नया चालान"
+    },
+    "table": {
+      "title": "Stripe चालान",
+      "loading": "लोड हो रहा है…",
+      "filteredCount": "आपके फ़िल्टर से मेल खाने वाले {count} चालान दिखाए जा रहे हैं",
+      "totalCount": "{count} चालान दिखाए गए",
+      "columns": {
+        "invoice": "चालान",
+        "customer": "ग्राहक",
+        "status": "स्थिति",
+        "total": "कुल",
+        "created": "बनाया गया",
+        "due": "देय",
+        "view": "देखें"
+      }
+    },
+    "invoice": {
+      "number": "#{number}",
+      "stripeId": "Stripe:"
+    },
+    "empty": {
+      "none": {
+        "title": "अभी कोई चालान नहीं है।",
+        "description": "एक बनाने के लिए <newInvoice>नया चालान</newInvoice> उपयोग करें, या नवीनतम Stripe डेटा लोड करने के लिए <refresh>रीफ़्रेश</refresh> करें।"
+      },
+      "noMatch": {
+        "title": "कोई चालान “{query}” से मेल नहीं खाता।",
+        "description": "ग्राहक का नाम, ईमेल, चालान नंबर या Stripe चालान आईडी से प्रयास करें।"
+      }
+    }
+  },
+  "BillingPaymentsPage": {
+    "metadata": {
+      "title": "भुगतान",
+      "description": "आने वाले भुगतान, लंबित लेनदेन और विफलताओं की निगरानी करें।"
+    },
+    "page": {
+      "title": "भुगतान",
+      "description": "अपने जुड़े Stripe खाते से सिंक किए गए भुगतान देखें।",
+      "filterApplied": "फ़िल्टर: <strong>“{query}”</strong>",
+      "noFilter": "कोई फ़िल्टर लागू नहीं है।"
+    },
+    "table": {
+      "title": "Stripe भुगतान",
+      "loading": "लोड हो रहा है…",
+      "filteredCount": "आपके फ़िल्टर से मेल खाने वाले {count} भुगतान दिखाए जा रहे हैं",
+      "totalCount": "{count} भुगतान"
+    },
+    "empty": {
+      "none": {
+        "title": "अभी कोई भुगतान नहीं है।",
+        "description": "प्रसंस्करण के बाद भुगतान यहां दिखाई देंगे।"
+      },
+      "noMatch": {
+        "title": "कोई भुगतान “{query}” से मेल नहीं खाता।",
+        "description": "कोई अन्य खोज प्रयास करें।"
+      }
+    },
+    "actions": {
+      "open": "खोलें →"
+    }
+  },
+  "BillingProductsPage": {
+    "metadata": {
+      "title": "उत्पाद",
+      "description": "अपने जुड़े हुए खाते के साथ सिंक किए गए Stripe उत्पादों और कीमतों का प्रबंधन करें।"
+    },
+    "page": {
+      "title": "उत्पाद",
+      "description": "अपने जुड़े Stripe खाते के साथ सिंक किए गए उत्पादों और कीमतों का प्रबंधन करें।",
+      "filterApplied": "फ़िल्टर: <strong>“{query}”</strong>",
+      "noFilter": "कोई फ़िल्टर लागू नहीं है।"
+    },
+    "actions": {
+      "newProduct": "नया उत्पाद"
+    },
+    "table": {
+      "title": "Stripe उत्पाद",
+      "loading": "लोड हो रहा है…",
+      "filteredCount": "आपके फ़िल्टर से मेल खाने वाले {count} उत्पाद दिखाए जा रहे हैं",
+      "totalCount": "{count} उत्पाद दिखाए गए",
+      "columns": {
+        "product": "उत्पाद",
+        "status": "स्थिति",
+        "currentPrice": "वर्तमान मूल्य",
+        "created": "बनाया गया",
+        "actions": "क्रियाएँ"
+      }
+    },
+    "price": {
+      "recurringBilling": "आवर्ती बिलिंग"
+    },
+    "empty": {
+      "none": {
+        "title": "अभी कोई उत्पाद नहीं है।",
+        "description": "एक बनाने के लिए <newProduct>नया उत्पाद</newProduct> उपयोग करें, या Stripe से सिंक करने के लिए <refresh>रीफ़्रेश</refresh> करें।"
+      },
+      "noMatch": {
+        "title": "कोई उत्पाद “{query}” से मेल नहीं खाता।",
+        "description": "किसी अन्य नाम, विवरण या उत्पाद आईडी से खोजने का प्रयास करें।"
+      }
+    }
+  },
+  "BillingFailedPaymentsPage": {
+    "metadata": {
+      "title": "विफल भुगतान",
+      "description": "विफल या कार्रवाई की आवश्यकता वाले भुगतानों की समीक्षा करें।"
+    },
+    "page": {
+      "title": "विफल भुगतान",
+      "description": "वे भुगतान जिन्हें कार्रवाई की आवश्यकता है, जैसे अस्वीकृत कार्ड या भुगतान विधि का अभाव।",
+      "filterApplied": "फ़िल्टर: <strong>“{query}”</strong>",
+      "noFilter": "कोई फ़िल्टर लागू नहीं है।"
+    },
+    "actions": {
+      "backToAll": "सभी भुगतानों पर वापस जाएँ",
+      "open": "भुगतान खोलें"
+    },
+    "table": {
+      "title": "विफल भुगतान",
+      "loading": "लोड हो रहा है…",
+      "filteredCount": "आपके फ़िल्टर से मेल खाने वाले {count} विफल भुगतान दिखाए जा रहे हैं",
+      "totalCount": "{count} विफल भुगतान"
+    },
+    "empty": {
+      "none": {
+        "title": "अभी कोई विफल भुगतान नहीं है।",
+        "description": "जब कोई भुगतान विफल होगा, तो वह यहाँ दिखाई देगा।"
+      },
+      "noMatch": {
+        "title": "कोई विफल भुगतान “{query}” से मेल नहीं खाता।",
+        "description": "किसी अन्य ईमेल, स्थिति या भुगतान इंटेंट आईडी से प्रयास करें।"
+      }
+    }
+  },
+  "BillingInvoiceDetailPage": {
+    "metadata": {
+      "title": "चालान",
+      "description": "Stripe चालान देखें और प्रबंधित करें।"
+    },
+    "page": {
+      "title": "चालान विवरण"
+    },
+    "header": {
+      "invoiceNumber": "चालान #{number}"
+    },
+    "summary": {
+      "total": "कुल:",
+      "created": "बनाया गया:",
+      "due": "देय:",
+      "customer": "ग्राहक:"
+    },
+    "actions": {
+      "refreshTitle": "चालान रीफ़्रेश करें",
+      "addItem": "आइटम जोड़ें",
+      "addItemTitle": "लाइन आइटम जोड़ें",
+      "addItemDisabledTitle": "बंद चालान में आइटम नहीं जोड़ सकते",
+      "finalize": "अंतिम रूप दें",
+      "send": "भेजें",
+      "void": "रद्द करें",
+      "addingItem": "जोड़ा जा रहा है…",
+      "addItemModal": "आइटम जोड़ें",
+      "backToInvoices": "चालानों पर वापस जाएँ"
+    },
+    "links": {
+      "openHostedInvoice": "होस्टेड चालान खोलें ↗",
+      "downloadPdf": "PDF डाउनलोड करें ↗",
+      "hostedUnavailable": "होस्टेड चालान अभी उपलब्ध नहीं है।",
+      "pdfUnavailable": "PDF अभी उपलब्ध नहीं है।"
+    },
+    "items": {
+      "title": "लाइन आइटम",
+      "description": "आइटम जोड़ें, फिर अंतिम रूप दें और भेजें। भुगतान या रद्द करने के बाद आइटम लॉक हो जाते हैं।",
+      "empty": "अभी कोई लाइन आइटम नहीं है। पहला बनाने के लिए <strong>आइटम जोड़ें</strong> पर क्लिक करें।",
+      "fallbackItem": "चालान आइटम",
+      "table": {
+        "quantity": "मात्रा"
+      }
+    },
+    "modal": {
+      "title": "लाइन आइटम जोड़ें",
+      "description": "Stripe Price (आवर्ती/एक बार) का उपयोग करें, या बिना सेंट्स के बारे में सोचे कस्टम राशि जोड़ें।",
+      "fields": {
+        "mode": "मोड",
+        "priceId": "प्राइस आईडी",
+        "quantity": "मात्रा"
+      },
+      "modes": {
+        "custom": "कस्टम राशि",
+        "price": "Stripe प्राइस"
+      },
+      "placeholders": {
+        "priceId": "price_...",
+        "amount": "जैसे 99.00"
+      },
+      "help": {
+        "priceId": "Stripe प्राइस आईडी पेस्ट करें। (बाद में आप “उत्पाद/कीमत चुनें” UI बना सकते हैं।)",
+        "currency": "सुझाव: Stripe राशि को अपने आप सबसे छोटी इकाई में संग्रहीत करेगा।",
+        "amount": "सामान्य राशि दर्ज करें (जैसे 10.50)।"
+      }
+    },
+    "states": {
+      "notFound": "चालान नहीं मिला।"
+    }
+  },
+  "BillingNewInvoicePage": {
+    "metadata": {
+      "title": "नया चालान",
+      "description": "किसी ग्राहक के लिए नया Stripe चालान बनाएं।"
+    },
+    "page": {
+      "title": "नया चालान",
+      "description": "Stripe में एक चालान बनाएं, फिर लाइन आइटम जोड़ें और उसे ग्राहक को भेजें।"
+    },
+    "fields": {
+      "selectCustomer": "एक ग्राहक चुनें",
+      "collectionMethod": "संग्रह विधि",
+      "daysUntilDue": "देय होने तक के दिन",
+      "memo": "ज्ञापन (वैकल्पिक)"
+    },
+    "collectionMethod": {
+      "sendInvoice": "चालान भेजें",
+      "chargeAutomatically": "स्वचालित रूप से शुल्क लें"
+    },
+    "placeholders": {
+      "memo": "चालान पर ग्राहक को दिखाई देगा।"
+    },
+    "actions": {
+      "manage": "प्रबंधित करें",
+      "manageCustomersTitle": "ग्राहकों का प्रबंधन करें",
+      "createInvoice": "चालान बनाएं"
+    },
+    "states": {
+      "loadingCustomers": "ग्राहक लोड हो रहे हैं..."
+    },
+    "help": {
+      "customer": "सुझाव: सही ग्राहक को जल्दी खोजने के लिए Customers पेज पर ग्लोबल हेडर खोज का उपयोग करें।",
+      "collectionMethod": "चालान भेजें = चालान लिंक ईमेल किया जाएगा। स्वचालित रूप से शुल्क लें = Stripe भुगतान का प्रयास करेगा।",
+      "daysUntilDue": "यह केवल \"चालान भेजें\" का उपयोग करने पर लागू होता है।",
+      "submitDisabled": "\"चालान बनाएं\" सक्षम करने के लिए एक ग्राहक चुनें।"
+    }
+  },
+  "BillingPaymentDetailPage": {
+    "metadata": {
+      "title": "भुगतान विवरण",
+      "description": "किसी भुगतान की जाँच करें और रिफंड शुरू करें।"
+    },
+    "page": {
+      "title": "भुगतान विवरण"
+    },
+    "actions": {
+      "back": "भुगतानों पर वापस जाएँ",
+      "refundPayment": "भुगतान रिफंड करें",
+      "refunding": "रिफंड किया जा रहा है..."
+    },
+    "help": {
+      "refund": "रिफंड के लिए सफल भुगतान आवश्यक है (टेस्ट मोड भी मान्य है)।"
+    },
+    "raw": {
+      "title": "रॉ Stripe पेलोड"
+    },
+    "states": {
+      "notFound": "भुगतान नहीं मिला।"
+    }
+  },
+  "BillingProductArchivePage": {
+    "metadata": {
+      "title": "उत्पाद संग्रहित करें",
+      "description": "Stripe में किसी उत्पाद को संग्रहित करें (इसे निष्क्रिय सेट करता है)।"
+    },
+    "page": {
+      "title": "उत्पाद संग्रहित करें",
+      "description": "यह Stripe में <strong>active=false</strong> सेट करता है। मौजूदा चालान प्रभावित नहीं होंगे।"
+    },
+    "confirm": {
+      "before": "क्या आप वाकई संग्रहित करना चाहते हैं",
+      "after": "?",
+      "stripeId": "Stripe आईडी:"
+    }
+  },
+  "BillingProductDetailPage": {
+    "metadata": {
+      "title": "उत्पाद",
+      "description": "उत्पाद विवरण, कीमतें और गतिविधि टाइमलाइन देखें।"
+    },
+    "header": {
+      "stripeId": "Stripe आईडी:"
+    },
+    "actions": {
+      "sync": "सिंक करें",
+      "syncTitle": "Stripe से कैटलॉग सिंक करें",
+      "newPrice": "+ नई कीमत",
+      "createPrice": "कीमत बनाएं"
+    },
+    "states": {
+      "notFound": "उत्पाद नहीं मिला।"
+    },
+    "statusCard": {
+      "title": "स्थिति",
+      "created": "बनाया गया:"
+    },
+    "details": {
+      "title": "विवरण"
+    },
+    "prices": {
+      "title": "कीमतें",
+      "description": "Stripe कीमतें प्रभावी रूप से अपरिवर्तनीय होती हैं। नई कीमत बनाएं और पुरानी को संग्रहित करें।",
+      "empty": "अभी कोई कीमत नहीं है।",
+      "recurringLabel": "{count} {interval}{count, plural, one {} other {s}}",
+      "recurringType": "आवर्ती ({recurringLabel})",
+      "table": {
+        "amount": "राशि",
+        "type": "प्रकार",
+        "status": "स्थिति",
+        "created": "बनाया गया",
+        "actions": "क्रियाएँ"
+      }
+    },
+    "activity": {
+      "title": "गतिविधि टाइमलाइन",
+      "description": "उत्पाद अपडेट और कीमत में बदलाव।",
+      "empty": "अभी कोई गतिविधि नहीं है।",
+      "fallbacks": {
+        "product": "उत्पाद"
+      },
+      "types": {
+        "productCreated": "नया उत्पाद",
+        "productUpdated": "उत्पाद अपडेट किया गया",
+        "productArchived": "उत्पाद संग्रहित किया गया",
+        "recurringPriceCreated": "आवर्ती कीमत बनाई गई",
+        "oneTimePriceCreated": "एक बार की कीमत बनाई गई",
+        "priceArchived": "कीमत संग्रहित की गई"
+      },
+      "text": {
+        "productCreated": "नया उत्पाद: {name}",
+        "nameChanged": "नाम बदलकर {name} कर दिया गया",
+        "descriptionUpdated": "विवरण अपडेट किया गया",
+        "productDetailsChanged": "उत्पाद विवरण बदले गए",
+        "productArchived": "Stripe में निष्क्रिय सेट किया गया (मौजूदा चालान प्रभावित नहीं होते)।",
+        "newPriceCreated": "नई कीमत बनाई गई",
+        "recurringPriceCreated": "{amount} - हर {count} {interval}{count, plural, one {} other {s}} पर बिल किया जाता है",
+        "oneTimePriceCreated": "{amount} - एक बार का शुल्क",
+        "priceArchived": "Stripe कीमत संग्रहित की गई: {id}",
+        "productsCount": "{count} उत्पाद",
+        "pricesCount": "{count} कीमतें",
+        "catalogSynced": "कैटलॉग सिंक किया गया",
+        "catalogSyncedWithCounts": "कैटलॉग सिंक किया गया - {parts}"
+      }
+    },
+    "modal": {
+      "title": "कीमत बनाएं",
+      "description": "राशि सेंट्स में है (जैसे 1000 = $10.00)।",
+      "fields": {
+        "amountCents": "राशि (सेंट्स)",
+        "interval": "अंतराल",
+        "intervalCount": "अंतराल संख्या"
+      },
+      "help": {
+        "currency": "अपने Stripe खाते द्वारा समर्थित मुद्रा चुनें।"
+      },
+      "intervals": {
+        "day": "दिन",
+        "week": "सप्ताह",
+        "month": "महीना",
+        "year": "वर्ष"
+      }
+    }
+  },
+  "BillingProductFormPage": {
+    "metadata": {
+      "create": {
+        "title": "नया उत्पाद",
+        "description": "Stripe में नया उत्पाद बनाएं और उसे अपने कैटलॉग में सिंक करें।"
+      },
+      "edit": {
+        "title": "उत्पाद संपादित करें",
+        "description": "उत्पाद का नाम और विवरण अपडेट करें, फिर Stripe से सिंक करें।"
+      }
+    },
+    "page": {
+      "createTitle": "नया उत्पाद",
+      "editTitle": "उत्पाद संपादित करें",
+      "createDescription": "आपके जुड़े खाते पर एक Stripe उत्पाद और कीमत बनाता है।",
+      "editDescription": "Stripe उत्पाद का नाम और विवरण अपडेट करता है।"
+    },
+    "fields": {
+      "billingType": "बिलिंग प्रकार",
+      "interval": "अंतराल",
+      "intervalCount": "अंतराल संख्या"
+    },
+    "placeholders": {
+      "name": "जैसे Coaching Package",
+      "description": "वैकल्पिक",
+      "amount": "जैसे 19.99"
+    },
+    "price": {
+      "title": "कीमत",
+      "description": "यह उत्पाद के लिए एक Stripe कीमत बनाएगा। Stripe कीमतें सामान्यतः संपादित नहीं की जातीं; इसके बजाय नई बनाएं।"
+    },
+    "help": {
+      "amount": "बड़ी इकाइयों में दर्ज करें (जैसे 19.99)। हम इसे सेंट्स में बदल देंगे।",
+      "currency": "Stripe को लोअरकेस कोड के रूप में भेजा जाता है।",
+      "intervalCount": "जैसे 1 महीना, 3 महीने, आदि।",
+      "missingRouteParam": "सुझाव: इस पेज के लिए route params में product id आवश्यक है।"
+    },
+    "intervals": {
+      "day": "दैनिक",
+      "week": "साप्ताहिक",
+      "month": "मासिक",
+      "year": "वार्षिक"
+    },
+    "actions": {
+      "createProduct": "उत्पाद बनाएं",
+      "saveChanges": "परिवर्तन सहेजें"
+    },
+    "errors": {
+      "nameRequired": "नाम आवश्यक है।",
+      "priceAmountRequired": "कीमत की राशि आवश्यक है।",
+      "currencyRequired": "मुद्रा आवश्यक है।",
+      "missingProductId": "उत्पाद आईडी अनुपस्थित है।",
+      "createResponseMissingProductId": "बनाने वाले उत्तर में उत्पाद आईडी अनुपस्थित है।"
+    }
+  },
+  "RegisterPage": {
+    "metadata": {
+      "title": "पंजीकरण करें"
+    },
+    "page": {
+      "title": "अपना Faigata खाता बनाएं",
+      "subtitle": "आपके setters, closers और coaching revenue के लिए एक ही लॉगिन।"
+    },
+    "footer": {
+      "alreadyHaveAccount": "क्या आपके पास पहले से खाता है?"
+    },
+    "states": {
+      "checkingSession": "आपका सत्र जाँचा जा रहा है..."
+    },
+    "errors": {
+      "registrationFailed": "पंजीकरण विफल हुआ। कृपया फिर से प्रयास करें।",
+      "sessionNotCreated": "आपका खाता बन गया, लेकिन Supabase ने लॉगिन सत्र नहीं बनाया। कृपया अपना ईमेल पुष्टि करें, फिर लॉगिन पेज से आगे बढ़ें।",
+      "userAlreadyExists": "इस ईमेल के साथ एक खाता पहले से मौजूद है।",
+      "passwordTooShort": "आपका पासवर्ड बहुत छोटा है।",
+      "invalidEmail": "कृपया एक मान्य ईमेल पता दर्ज करें।",
+      "tooManyRequests": "बहुत अधिक प्रयास हुए। कृपया थोड़ी देर प्रतीक्षा करें और फिर से प्रयास करें।",
+      "network": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें और फिर से प्रयास करें।",
+      "completeRegistrationFailed": "आपका खाता बन गया, लेकिन हम workspace setup पूरा नहीं कर सके। अब आपको पुनर्निर्देशित किया जा रहा है।",
+      "completeRegistrationUnexpected": "आपका खाता बन गया, लेकिन setup पूरा करते समय कुछ गलत हो गया।",
+      "initializationFailed": "हम आपके वर्तमान सत्र की पुष्टि नहीं कर सके। कृपया फिर से प्रयास करें।",
+      "unexpected": "आपका खाता बनाते समय कुछ गलत हो गया।"
+    }
+  },
+  "LoginPage": {
+    "metadata": {
+      "title": "लॉगिन"
+    },
+    "page": {
+      "title": "Faigata में आपका फिर से स्वागत है",
+      "subtitle": "अपने prospects, booked calls और coaching clients को प्रबंधित करने के लिए लॉग इन करें।"
+    },
+    "actions": {
+      "signingIn": "आपको लॉग इन किया जा रहा है..."
+    },
+    "footer": {
+      "newToFaigata": "Faigata में नए हैं?"
+    },
+    "states": {
+      "loading": "लोड हो रहा है"
+    },
+    "errors": {
+      "invalidEmailOrPassword": "अमान्य ईमेल या पासवर्ड।",
+      "authConfirmFailed": "ईमेल पुष्टि विफल हुई। कृपया लिंक को फिर से आज़माएँ या मैन्युअली साइन इन करें।",
+      "emailNotConfirmed": "साइन इन करने से पहले कृपया अपना ईमेल पता पुष्टि करें।",
+      "tooManyRequests": "बहुत अधिक प्रयास हुए। कृपया थोड़ी देर प्रतीक्षा करें और फिर से प्रयास करें।",
+      "network": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें और फिर से प्रयास करें।",
+      "loginFailed": "लॉगिन विफल हुआ। कृपया फिर से प्रयास करें।",
+      "afterLoginFailed": "लॉगिन सफल रहा, लेकिन हम workspace setup पूरा नहीं कर सके। अब आपको पुनर्निर्देशित किया जा रहा है।",
+      "unexpected": "आपको साइन इन करते समय कुछ गलत हो गया।"
+    }
+  },
+  "BookingLinksPage": {
+    "metadata": {
+      "title": "शेड्यूल पेज",
+      "description": "अपनी सभी consultation booking links को एक ही स्थान पर देखें और प्रबंधित करें। Prospects को अपने जुड़े Google Calendar पर सीधे समय बुक करने दें।"
+    }
+  },
+  "OnboardingPage": {
+    "metadata": {
+      "title": "ऑनबोर्डिंग",
+      "description": "Faigata का उपयोग शुरू करने से पहले अपना workspace, टीम, pipeline और lead data सेट करें।"
+    },
+    "steps": {
+      "teamSetup": "टीम सेटअप",
+      "inviteTeammates": "टीम साथियों को आमंत्रित करें",
+      "customizeLeadData": "लीड डेटा अनुकूलित करें",
+      "importExistingLeads": "मौजूदा लीड आयात करें",
+      "customizePipeline": "पाइपलाइन अनुकूलित करें",
+      "conversionMetrics": "रूपांतरण मेट्रिक्स",
+      "finish": "समाप्त करें"
+    },
+    "page": {
+      "title": "Lumo में आपका स्वागत है",
+      "progress": "चरण {current} / {total} · {step}",
+      "setupHint": "हम आपको एक मिनट में पूरी तरह सेट कर देंगे।"
+    },
+    "alerts": {
+      "loginRequired": "ऑनबोर्डिंग पूरा करने के लिए आपको लॉग इन होना होगा।",
+      "saveFailed": "आपका सेटअप सहेजना विफल हुआ। कृपया फिर से प्रयास करें।",
+      "unexpected": "कुछ गलत हो गया। कृपया फिर से प्रयास करें।"
+    },
+    "actions": {
+      "back": "वापस",
+      "goToDashboard": "डैशबोर्ड पर जाएँ",
+      "addAnotherTeammate": "+ एक और टीम साथी जोड़ें",
+      "addAnotherField": "+ एक और फ़ील्ड जोड़ें",
+      "downloadSampleTemplate": "नमूना टेम्पलेट डाउनलोड करें",
+      "remove": "हटाएँ",
+      "addStage": "+ चरण जोड़ें",
+      "addConversionMetric": "+ रूपांतरण मेट्रिक जोड़ें"
+    },
+    "teamSetup": {
+      "defaults": {
+        "teamName": "सेल्स टीम"
+      },
+      "fields": {
+        "companyName": "कंपनी का नाम",
+        "teamName": "आपकी पहली टीम",
+        "timezone": "समय क्षेत्र"
+      },
+      "placeholders": {
+        "companyName": "जैसे Faigata GmbH",
+        "teamName": "जैसे Outbound Sales"
+      },
+      "info": "आपका पहला उपयोगकर्ता इस workspace का व्यवस्थापक होगा। बाद में आप SDR Team, Closers या CSM जैसी और टीमें जोड़ सकते हैं।"
+    },
+    "invites": {
+      "description": "उन लोगों को आमंत्रित करें जो आपके साथ Lumo का उपयोग करेंगे। आप बाद में हमेशा और जोड़ सकते हैं।",
+      "emailPlaceholder": "teammate@company.com"
+    },
+    "customFields": {
+      "description": "वह डेटा चुनें जिसे आप हर lead या prospect पर ट्रैक करना चाहते हैं। फ़ील्ड्स का क्रम बदलने के लिए उन्हें खींचें।",
+      "defaults": {
+        "industryLabel": "उद्योग",
+        "regionLabel": "क्षेत्र",
+        "regionOptions": "DACH, US, UK, EU, Other",
+        "newFieldLabel": "नई फ़ील्ड"
+      },
+      "fieldTypes": {
+        "text": "पाठ",
+        "number": "संख्या",
+        "select": "ड्रॉपडाउन",
+        "boolean": "चेकबॉक्स",
+        "url": "URL"
+      },
+      "placeholders": {
+        "fieldLabel": "फ़ील्ड लेबल (जैसे उद्योग)",
+        "selectOptions": "विकल्प (अल्पविराम से अलग, जैसे SaaS, E-commerce, Agency)"
+      }
+    },
+    "importLeads": {
+      "description": "क्या आपके पास पहले से spreadsheet में leads या prospects हैं? उन्हें अभी आयात करें ताकि आपकी टीम वहीं से शुरू कर सके जहाँ वे रुके थे।",
+      "uploadTitle": "CSV / Excel अपलोड करने के लिए क्लिक करें",
+      "uploadSubtitle": "हम बाद में columns mapping में आपकी मदद करेंगे।",
+      "selectedFile": "चयनित फ़ाइल: {fileName}",
+      "recommendedColumns": {
+        "title": "अनुशंसित कॉलम",
+        "nameEmailCompany": "नाम, ईमेल, कंपनी",
+        "stage": "चरण (New / Contacted / Replied / Qualified / ...)",
+        "owner": "मालिक (Prospector / Setter / Closer)",
+        "customFields": "वे सभी custom fields जो आपने अभी परिभाषित किए"
+      }
+    },
+    "pipeline": {
+      "description": "यह आपकी default pipeline है। आप हमारी सुझाई गई pipeline रख सकते हैं या अपने process के अनुसार stages का नाम बदल सकते हैं।",
+      "defaults": {
+        "new": "नया",
+        "contacted": "संपर्क किया गया",
+        "replied": "उत्तर दिया गया",
+        "qualified": "योग्य",
+        "bookedCall": "कॉल बुक की गई",
+        "showedUp": "उपस्थित हुआ",
+        "offer": "ऑफ़र",
+        "closed": "बंद",
+        "newStage": "नया चरण"
+      }
+    },
+    "conversionMetrics": {
+      "description": "उन conversion rates को नाम दें जिनकी आपको परवाह है। हर metric यह तुलना करता है कि कितनी leads pipeline के एक चरण से दूसरे चरण तक जाती हैं।",
+      "defaults": {
+        "newMetric": "नया मेट्रिक"
+      },
+      "placeholders": {
+        "metricName": "मेट्रिक नाम (जैसे Reply rate, Booking rate)"
+      },
+      "fromStage": "से: {stage}",
+      "toStage": "तक: {stage}"
+    },
+    "finish": {
+      "readyTitle": "आप तैयार हैं",
+      "description": "हम {companyName} के अंदर {teamName} बनाएंगे, आपके custom fields और pipeline को पहले से लोड करेंगे, और आपके टीम साथियों को आमंत्रण भेजेंगे।",
+      "fallbacks": {
+        "teamName": "आपकी सेल्स टीम",
+        "companyName": "आपकी कंपनी"
+      },
+      "summary": {
+        "invites": "{count} टीम साथी आमंत्रण{count, plural, one {} other {s}}",
+        "fields": "{count} कस्टम लीड फ़ील्ड{count, plural, one {} other {s}}",
+        "stages": "{count} पाइपलाइन चरण{count, plural, one {} other {s}}",
+        "metrics": "{count} रूपांतरण मेट्रिक{count, plural, one {} other {s}}"
+      },
+      "nextTitle": "Lumo में आगे",
+      "nextItems": {
+        "outreach": "setters की outreach और replies को रीयल टाइम में ट्रैक करें",
+        "assignment": "उच्च क्षमता वाली leads को आपके सर्वश्रेष्ठ performers को ऑटो-असाइन करें",
+        "pipelineHealth": "प्रबंधकों को pipeline health का स्पष्ट दृश्य दें"
+      }
+    }
+  }
+}

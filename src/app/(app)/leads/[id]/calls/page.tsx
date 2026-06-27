@@ -1,21 +1,23 @@
-// src/app/(app)/leads/[id]/calls/page.tsx
-import CallsListClient from "@/modules/crm/components/CallsListClient";
 import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Call List",
-  description: "Overview of all the Calls that where made with this Lead",
-};
+import { getTranslations } from "next-intl/server";
+import CallsListClient from "@/features/crm/components/CallsListClient";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default async function LeadCallsPage({ params }: Props) {
-  // Next.js provides `params` as a Promise in this setup
-  const { id } = await params;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("CallsListPage.metadata");
 
-  const leadId = decodeURIComponent(String(id ?? "")).trim();
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
+
+export default async function LeadCallsPage({ params }: Props) {
+  const resolved = await Promise.resolve(params);
+  const leadId = decodeURIComponent(String(resolved?.id ?? "")).trim();
 
   return <CallsListClient leadId={leadId} />;
 }

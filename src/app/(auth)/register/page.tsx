@@ -1,12 +1,15 @@
-// src/app/register/page.tsx
 import type { Metadata } from "next";
 import { RegisterPageClient } from "../../../components/RegisterPageClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Register",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("RegisterPage");
+
+  return {
+    title: t("metadata.title"),
+  };
+}
 
 export default function RegisterPage() {
-  // This is a Server Component that just renders the client one
   return <RegisterPageClient />;
 }

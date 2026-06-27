@@ -97,7 +97,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             .maybeSingle();
 
           if (teamError) logErr("[Workspace] teams select failed", teamError);
-          else teamName = team?.name ?? null;
+          else teamName = typeof team?.name === "string" ? team.name : null;
         }
 
         if (!cancelled) setState({ userId, teamId, teamName, loading: false });

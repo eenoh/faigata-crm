@@ -1,12 +1,15 @@
-// src/app/(app)/leads/[id]/messages/page.tsx
 import type { Metadata } from "next";
-import { LeadMessagesClient } from "../../../../../modules/crm/components/LeadMessagesClient";
+import { getTranslations } from "next-intl/server";
+import { LeadMessagesClient } from "@/features/crm/components/LeadMessagesClient";
 
-export const metadata: Metadata = {
-  title: "Log Lead Conversations",
-  description:
-    "Track outbound and inbound conversations with a specific lead.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("LeadMessagesPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function LeadMessagesPage() {
   return <LeadMessagesClient />;

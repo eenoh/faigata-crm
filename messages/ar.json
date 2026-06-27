@@ -1,0 +1,2983 @@
+{
+  "Common": {
+    "actions": {
+      "save": "حفظ التغييرات",
+      "saving": "جارٍ حفظ التحديثات...",
+      "upload": "رفع ملف",
+      "working": "جارٍ المعالجة...",
+      "clear": "مسح البيانات",
+      "refresh": "تحديث",
+      "cancel": "إلغاء",
+      "close": "إغلاق",
+      "copy": "نسخ",
+      "continue": "متابعة",
+      "view": "عرض التفاصيل",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "archive": "أرشفة"
+    },
+    "brand": {
+      "logoAlt": "شعار نظام إدارة علاقات العملاء للتدريب الرياضي"
+    },
+    "fields": {
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "email": "البريد الإلكتروني",
+      "workEmail": "البريد الإلكتروني للعمل",
+      "password": "كلمة المرور",
+      "roles": "أدوار الفريق"
+    },
+    "auth": {
+      "showPassword": "إظهار كلمة المرور",
+      "hidePassword": "إخفاء كلمة المرور",
+      "creatingAccount": "جارٍ إعداد مساحة عمل التدريب الرياضي الخاصة بك...",
+      "logIn": "تسجيل الدخول إلى نظام CRM",
+      "createAccount": "إنشاء حساب التدريب الخاص بك"
+    },
+    "status": {
+      "connected": "متصل",
+      "comingSoon": "قريباً",
+      "actionRequired": "مطلوب إجراء"
+    },
+    "roles": {
+      "admin": "مدير",
+      "manager": "مدير مبيعات",
+      "prospector": "مولّد عملاء محتملين",
+      "setter": "محدد مواعيد",
+      "closer": "مختتم صفقات",
+      "member": "عضو فريق",
+      "admins": "المديرون"
+    },
+    "states": {
+      "noMessages": "لا توجد محادثات بعد."
+    },
+    "activityTimeline": {
+      "roleLead": "عميل محتمل",
+      "roleTeam": "الفريق",
+      "joinDetails": "تفاصيل المكالمة",
+      "meetingLink": "رابط المكالمة",
+      "schedulePage": "صفحة الحجز",
+      "bookingLinkSent": "تم إرسال رابط الحجز: {name}",
+      "actions": {
+        "openGoogleMeet": "فتح Google Meet",
+        "openCalendarEvent": "عرض التقويم"
+      },
+      "alt": {
+        "newLead": "عميل محتمل جديد",
+        "leadRejected": "تم استبعاد العميل المحتمل",
+        "callStatus": "تحديث حالة المكالمة",
+        "offerMade": "تم تقديم عرض البرنامج",
+        "closedOnCall": "تم إغلاق الصفقة أثناء المكالمة",
+        "callOutcomeUpdate": "تم تحديث نتيجة المكالمة",
+        "callBooked": "تم حجز استشارة",
+        "bookingLinkSent": "تم إرسال رابط الحجز",
+        "pipelineActivity": "تحديث مسار المبيعات"
+      },
+      "channels": {
+        "dm": "رسائل خاصة",
+        "sms": "رسائل نصية",
+        "other": "أخرى",
+        "pipeline": "المسار"
+      }
+    },
+    "languages": {
+      "label": "اللغة المفضلة",
+      "help": "اختر اللغة المستخدمة في نظام CRM بعد الحفظ."
+    },
+    "common": {
+      "yes": "نعم",
+      "no": "لا",
+      "select": "اختر..."
+    }
+  },
+  "BillingCommon": {
+    "actions": {
+      "creating": "جارٍ إنشاء عملية الدفع...",
+      "archiving": "جارٍ الأرشفة..."
+    },
+    "errors": {
+      "prefix": "خطأ في الدفع"
+    },
+    "fields": {
+      "name": "اسم البرنامج / العرض",
+      "description": "تفاصيل البرنامج",
+      "amount": "السعر",
+      "currency": "العملة",
+      "customer": "العميل",
+      "phone": "هاتف العميل",
+      "chargeId": "معرّف الدفع"
+    },
+    "price": {
+      "oneTime": "دفع لمرة واحدة",
+      "recurring": "اشتراك شهري"
+    },
+    "states": {
+      "loading": "جارٍ تحميل المدفوعات..."
+    },
+    "status": {
+      "active": "نشط",
+      "archived": "مؤرشف"
+    }
+  },
+  "DomainValues": {
+    "fallbacks": {
+      "empty": "—",
+      "unknown": "غير معروف"
+    },
+    "crm": {
+      "leadType": {
+        "individual": "فرد",
+        "business": "شركة"
+      },
+      "gender": {
+        "male": "ذكر",
+        "female": "أنثى"
+      },
+      "contactType": {
+        "email": "بريد إلكتروني",
+        "phone": "هاتف",
+        "linkedin": "لينكد إن",
+        "instagram": "إنستغرام",
+        "facebook": "فيسبوك",
+        "reddit": "ريديت",
+        "twitterX": "تويتر/X",
+        "whatsapp": "واتساب",
+        "telegram": "تيليغرام",
+        "tiktok": "تيك توك",
+        "youtube": "يوتيوب",
+        "snapchat": "سناب شات",
+        "discord": "ديسكورد",
+        "slack": "سلاك",
+        "wechat": "وي تشات",
+        "line": "لاين",
+        "signal": "سيغنال",
+        "other": "أخرى"
+      },
+      "sourceCategory": {
+        "inbound": "وارد (عملاء عضويون)",
+        "outbound": "صادر (تواصل بارد)",
+        "referral": "إحالة عميل",
+        "partner": "شراكة",
+        "purchased": "عملاء مدفوعون"
+      },
+      "attendance": {
+        "attended": "حضر",
+        "noShow": "لم يحضر",
+        "cancelled": "أُلغي",
+        "rescheduled": "أُعيد الجدولة",
+        "unknown": "غير معروف"
+      }
+    },
+    "billing": {
+      "paymentStatus": {
+        "succeeded": "تم الدفع بنجاح",
+        "processing": "جارٍ معالجة الدفع",
+        "requiresPaymentMethod": "مطلوب وسيلة دفع",
+        "requiresConfirmation": "بانتظار التأكيد",
+        "requiresAction": "مطلوب إجراء",
+        "requiresCapture": "بانتظار التحصيل",
+        "canceled": "تم إلغاء الدفع",
+        "failed": "فشل الدفع"
+      },
+      "invoiceStatus": {
+        "paid": "مدفوع",
+        "open": "مفتوح",
+        "draft": "مسودة",
+        "void": "ملغى",
+        "uncollectible": "غير قابل للتحصيل"
+      }
+    }
+  },
+  "Home": {
+    "title": "فايغاتا",
+    "description": "قم بإدارة مسار العملاء من إنستغرام، والمكالمات المحجوزة، ومبيعات التدريب في مكان واحد.",
+    "cta": "فتح مساحة عمل المبيعات"
+  },
+  "ProfileSettings": {
+    "metadata": {
+      "title": "إعدادات الملف الشخصي",
+      "description": "قم بتحديث بياناتك الشخصية، ودورك في الفريق، وصورة الملف الشخصي."
+    },
+    "loading": "جارٍ تحميل إعدادات الملف الشخصي...",
+    "title": "إعدادات الملف الشخصي والعمل",
+    "description": "إدارة تفاصيل حسابك الشخصية وهوية عملك في التدريب الرياضي.",
+    "integrations": "التكاملات",
+    "accountUpdated": "تم تحديث ملفك الشخصي.",
+    "organization": {
+      "title": "إعدادات العمل",
+      "description": "قم بتحديث اسم عملك التدريبي، الشعار، ولون العلامة التجارية المستخدم في صفحات الحجز.",
+      "adminOnly": "يمكن للمديرين فقط تغيير إعدادات العمل. تواصل مع مالك الحساب أو المدير إذا كنت بحاجة إلى تحديث هذه البيانات.",
+      "updated": "تم تحديث إعدادات العمل.",
+      "logoFallback": "شعار",
+      "companyLogo": "شعار العمل",
+      "logoHelp": "قم برفع صورة PNG أو JPG. يفضل أن يكون الشعار مربع الشكل.",
+      "uploadLogo": "رفع الشعار",
+      "uploadingLogo": "جارٍ رفع الشعار...",
+      "companyName": "اسم العمل",
+      "primaryColor": "لون العلامة التجارية",
+      "colorHelp": "يُستخدم هذا اللون للأزرار والعناصر المميزة في مساحة العمل.",
+      "preview": "معاينة",
+      "save": "حفظ إعدادات العمل"
+    },
+    "profile": {
+      "picture": "صورة الملف الشخصي",
+      "pictureHelp": "قم برفع صورة PNG أو JPG بحجم يصل إلى حوالي 5 ميغابايت.",
+      "uploadPhoto": "رفع صورة جديدة",
+      "uploadingPhoto": "جارٍ رفع الصورة...",
+      "emailHelp": "سيؤدي هذا إلى تغيير عنوان البريد الإلكتروني المستخدم لتسجيل الدخول. قد تحتاج إلى التحقق من البريد الإلكتروني الجديد قبل اكتمال التغيير.",
+      "newPassword": "كلمة مرور جديدة",
+      "confirmNewPassword": "تأكيد كلمة المرور الجديدة",
+      "passwordPlaceholder": "اتركه فارغًا للاحتفاظ بكلمة المرور الحالية",
+      "save": "حفظ تغييرات الملف الشخصي",
+      "avatarFallback": "U"
+    },
+    "errors": {
+      "notSignedIn": "أنت غير مسجل الدخول.",
+      "loadProfile": "تعذر تحميل ملفك الشخصي.",
+      "loadProfileUnexpected": "حدث خطأ أثناء تحميل ملفك الشخصي. يرجى المحاولة مرة أخرى.",
+      "uploadAvatar": "تعذر رفع صورة الملف الشخصي.",
+      "uploadAvatarSignedUrl": "تم رفع الصورة، ولكن تعذر إنشاء رابط معاينة لها.",
+      "uploadAvatarSave": "تم رفع الصورة، ولكن تعذر حفظها في ملفك الشخصي.",
+      "uploadAvatarUnexpected": "حدث خطأ أثناء رفع صورة الملف الشخصي. يرجى المحاولة مرة أخرى.",
+      "saveProfile": "تعذر حفظ تغييرات الملف الشخصي.",
+      "passwordMismatch": "كلمة المرور الجديدة وتأكيدها غير متطابقين.",
+      "saveAuthEmailPassword": "تعذر تحديث البريد الإلكتروني وكلمة المرور.",
+      "saveAuthEmail": "تعذر تحديث البريد الإلكتروني.",
+      "saveAuthPassword": "تعذر تحديث كلمة المرور.",
+      "saveProfileUnexpected": "حدث خطأ أثناء حفظ الملف الشخصي. يرجى المحاولة مرة أخرى.",
+      "orgAdminOnly": "يمكن للمديرين فقط تحديث إعدادات العمل.",
+      "loadOrganization": "تعذر تحميل إعدادات العمل.",
+      "saveOrganization": "تعذر حفظ إعدادات العمل.",
+      "saveOrganizationUnexpected": "حدث خطأ أثناء حفظ إعدادات العمل. يرجى المحاولة مرة أخرى.",
+      "missingOrganizationId": "معرّف العمل مفقود، لذلك لم يتم إكمال هذا التغيير.",
+      "uploadLogo": "تعذر رفع شعار العمل.",
+      "uploadLogoSignedUrl": "تم رفع الشعار، ولكن تعذر إنشاء رابط معاينة له.",
+      "uploadLogoSave": "تم رفع الشعار، ولكن تعذر حفظه في إعدادات العمل.",
+      "uploadLogoUnexpected": "حدث خطأ أثناء رفع الشعار. يرجى المحاولة مرة أخرى."
+    }
+  },
+  "Integrations": {
+    "metadata": {
+      "title": "التكاملات",
+      "description": "قم بربط أدوات التقويم والدفع حتى يتمكن العملاء المحتملون من حجز المكالمات، ويبقى فريقك منظماً، ويمكنك تحصيل المدفوعات."
+    },
+    "errors": {
+      "loadStatus": "تعذر تحميل حالة التكاملات. يرجى تحديث الصفحة والمحاولة مرة أخرى.",
+      "loadRoles": "تعذر التحقق من صلاحياتك لتكاملات الدفع. يرجى تحديث الصفحة والمحاولة مرة أخرى.",
+      "disconnectCalendar": "تعذر فصل التقويم. يرجى المحاولة مرة أخرى.",
+      "disconnectStripe": "تعذر فصل Stripe. يرجى المحاولة مرة أخرى.",
+      "connectStart": "تعذر بدء عملية الاتصال. يرجى المحاولة مرة أخرى.",
+      "missingAuthUrl": "تعذر بدء عملية الاتصال لأنه لم يتم إرجاع رابط التفويض."
+    },
+    "title": "التكاملات",
+    "description": "قم بربط الأدوات التي يستخدمها عملك التدريبي لحجز المكالمات، إدارة التقويم، متابعة العملاء، وتحصيل المدفوعات.",
+    "googleReconnectNotice": "يجب إعادة ربط Google Calendar حتى تتمكن صفحات الحجز من التحقق من التوفر. اضغط \"إعادة ربط Google Calendar\" للمتابعة.",
+    "connectionFailed": "فشل الاتصال: {error}",
+    "sections": {
+      "calendarTitle": "اتصالات التقويم",
+      "calendarDescription": "قم بربط تقويم حتى يتمكن العملاء من حجز المواعيد بناءً على توفرّك الفعلي.",
+      "emailTitle": "اتصالات البريد الإلكتروني",
+      "emailDescription": "قم بربط بريدك الإلكتروني لإرسال المتابعات والحفاظ على المحادثات في مكان واحد.",
+      "billingTitle": "اتصالات الدفع",
+      "billingDescription": "قم بربط Stripe لبيع البرامج، إرسال الفواتير أو روابط الدفع، وتتبع المدفوعات."
+    },
+    "providers": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "استخدم Google Calendar لعرض الأوقات المتاحة وإضافة المكالمات المحجوزة تلقائياً.",
+        "badge": "الأفضل لمستخدمي Google Calendar",
+        "connect": "ربط Google Calendar",
+        "disconnect": "فصل Google Calendar",
+        "reconnect": "إعادة ربط Google Calendar",
+        "helperConnected": "تم ربط Google Calendar ويمكن استخدامه للتحقق من التوفر وإدارة الحجوزات.",
+        "helperDisconnected": "قم بربط Google Calendar لعرض الأوقات المتاحة وإنشاء الأحداث تلقائياً.",
+        "helperReconnect": "أعد ربط Google Calendar لاستعادة التحقق من التوفر ومزامنة الحجز."
+      },
+      "outlookCalendar": {
+        "name": "Outlook / Microsoft 365 Calendar",
+        "description": "استخدم Outlook Calendar لعرض الأوقات المتاحة وإضافة المكالمات المحجوزة تلقائياً.",
+        "badge": "الأفضل لمستخدمي Outlook وMicrosoft 365",
+        "connect": "ربط Outlook / Microsoft 365 Calendar",
+        "disconnect": "فصل Outlook / Microsoft 365 Calendar",
+        "helperConnected": "تم ربط تقويم Outlook ويمكن استخدامه لإدارة الحجوزات.",
+        "helperDisconnected": "قم بربط Outlook Calendar لعرض الأوقات المتاحة وإنشاء الأحداث تلقائياً."
+      },
+      "gmail": {
+        "name": "Gmail / Google Workspace",
+        "description": "إرسال وتتبع رسائل العملاء من داخل التطبيق.",
+        "badge": "يتطلب Gmail أو Google Workspace",
+        "connect": "ربط Gmail / Google Workspace",
+        "disconnect": "فصل Gmail / Google Workspace",
+        "helperConnected": "تم ربط البريد ويمكن استخدامه لإرسال وتسجيل التواصل.",
+        "helperDisconnected": "سيُطلب منك منح الإذن. يُستخدم فقط لإرسال وتسجيل التواصل."
+      },
+      "outlookMail": {
+        "name": "Outlook / Microsoft 365 Mail",
+        "description": "إرسال وتتبع الرسائل من بريد Outlook داخل التطبيق.",
+        "badge": "يتطلب Outlook أو Microsoft 365",
+        "connect": "ربط Outlook / Microsoft 365 Mail",
+        "disconnect": "فصل Outlook / Microsoft 365 Mail",
+        "helperConnected": "تم ربط البريد ويمكن استخدامه لإرسال وتسجيل التواصل.",
+        "helperDisconnected": "سيُطلب منك منح الإذن. يُستخدم فقط لإرسال وتسجيل التواصل."
+      },
+      "stripe": {
+        "name": "Stripe (وضع تجريبي)",
+        "description": "قم بربط Stripe لإنشاء العروض، إرسال الفواتير أو روابط الدفع، تحصيل المدفوعات، وتتبع حالتها.",
+        "badge": "المدفوعات",
+        "connect": "ربط Stripe (تجريبي)",
+        "disconnect": "فصل Stripe",
+        "helperConnected": "تم ربط Stripe في مساحة العمل هذه في وضع الاختبار.",
+        "helperDisconnected": "سيتم تحويلك إلى Stripe للموافقة على الوصول في وضع الاختبار."
+      }
+    }
+  },
+  "ProductSuite": {
+    "metadata": {
+      "title": "Lumo",
+      "description": "افتح مساحات العمل التي يستخدمها فريق التدريب الرياضي لديك لإدارة العملاء المحتملين، والمكالمات المحجوزة، والعملاء، والمدفوعات."
+    },
+    "errors": {
+      "loadTeams": "تعذر تحميل مساحات العمل الخاصة بك. يرجى تحديث الصفحة والمحاولة مرة أخرى.",
+      "openTeam": "تعذر فتح مساحة العمل هذه. يرجى المحاولة مرة أخرى."
+    },
+    "title": "Lumo",
+    "emptySummary": "ليس لديك أي مساحات عمل تدريبية حتى الآن.",
+    "memberSummary": "أنت عضو في {count} مساحة عمل{count, plural, one {} other {}}.",
+    "addTeam": "+ إضافة مساحة عمل",
+    "loading": "جارٍ تحميل مساحات العمل الخاصة بك...",
+    "noTeams": "أنت لست جزءًا من أي مساحة عمل تدريبية حتى الآن.",
+    "noTeamsCtaPrefix": "انقر",
+    "addTeamLabel": "إضافة مساحة عمل",
+    "noTeamsCtaSuffix": "لإنشاء أول مساحة عمل تدريبية لك.",
+    "opening": "جارٍ فتح مساحة العمل...",
+    "openDashboard": "فتح مساحة العمل",
+    "table": {
+      "title": "مساحات العمل الخاصة بك",
+      "description": "اختر مساحة عمل لإدارة العملاء المحتملين، والمكالمات، والعملاء، والمدفوعات.",
+      "columns": {
+        "teamName": "اسم مساحة العمل",
+        "role": "دورك",
+        "open": "فتح"
+      }
+    }
+  },
+  "ProductSuiteHeader": {
+    "productName": "Lumo",
+    "profileSettings": "إعدادات العمل والحساب"
+  },
+  "ProductSuiteSidebar": {
+    "logout": "تسجيل الخروج",
+    "loggingOut": "جارٍ تسجيل الخروج...",
+    "expandSidebar": "توسيع الشريط الجانبي",
+    "collapseSidebar": "طي الشريط الجانبي",
+    "nav": {
+      "crm": "CRM"
+    }
+  },
+  "AppSidebar": {
+    "nav": {
+      "dashboard": "لوحة التحكم",
+      "leads": "العملاء المحتملون",
+      "home": "الرئيسية",
+      "pipeline": "مسار المبيعات",
+      "settings": "الإعدادات",
+      "calendar": "التقويم",
+      "billing": "الفوترة"
+    },
+    "brand": {
+      "logoAlt": "شعار Lumo CRM",
+      "productName": "Lumo"
+    },
+    "workspaceLabel": "مساحة العمل:",
+    "expandSidebar": "توسيع الشريط الجانبي",
+    "collapseSidebar": "طي الشريط الجانبي"
+  },
+  "AppHeader": {
+    "kicker": "Lumo",
+    "sections": {
+      "default": "CRM"
+    },
+    "search": {
+      "placeholders": {
+        "niches": "ابحث عن مجالات أو شركات...",
+        "default": "ابحث عن عملاء محتملين أو عملاء أو شركات..."
+      },
+      "clearSearch": "مسح البحث"
+    },
+    "calendarReconnect": {
+      "text": "إعادة ربط Google Calendar",
+      "title": "أعد ربط Google Calendar للحفاظ على عمل صفحات الحجز الخاصة بك"
+    },
+    "notifications": {
+      "ariaLabel": "الإشعارات",
+      "title": "التذكيرات",
+      "checking": "جارٍ التحقق...",
+      "openCount": "{count} مفتوح",
+      "empty": "لا توجد تذكيرات حالياً."
+    },
+    "profile": {
+      "you": "أنت",
+      "initialsFallback": "U",
+      "menuAriaLabel": "فتح قائمة الملف الشخصي",
+      "menuTitle": "فتح قائمة الملف الشخصي",
+      "logout": "تسجيل الخروج"
+    },
+    "reminders": {
+      "noReply48h": "لا يوجد رد خلال 48 ساعة بعد آخر رسالة منك.",
+      "noReply4d": "لا يوجد رد خلال 4 أيام بعد آخر رسالة منك.",
+      "noReply1w": "لا يوجد رد خلال أسبوع بعد آخر رسالة منك.",
+      "stageStuck": "في المرحلة \"{stage}\" لأكثر من 3 أيام.",
+      "fallbackLeadInStage": "عميل محتمل في مرحلة \"{stage}\"",
+      "pipelineFallback": "مسار المبيعات"
+    }
+  },
+  "Dashboard": {
+    "metadata": {
+      "title": "لوحة التحكم"
+    },
+    "common": {
+      "leadSingular": "عميل محتمل",
+      "leadPlural": "عملاء محتملون"
+    },
+    "errors": {
+      "unauthorized": "غير مصرح لك. رمز الجلسة الخاص بك مفقود.",
+      "requestFailed": "فشل الطلب ({status}).",
+      "failedToLoad": "تعذر تحميل لوحة التحكم الخاصة بك."
+    },
+    "loading": {
+      "dashboard": "جارٍ تحميل لوحة التحكم..."
+    },
+    "page": {
+      "title": "لوحة التحكم",
+      "subtitle": "اطلع على تدفق العملاء المحتملين، ونشاط الفريق، والمكالمات المحجوزة، والعناصر التي تحتاج إلى اهتمام."
+    },
+    "status": {
+      "live": "مباشر",
+      "updating": "جارٍ التحديث..."
+    },
+    "filters": {
+      "team": "الفريق",
+      "me": "أنا",
+      "days30": "آخر 30 يومًا",
+      "days90": "آخر 90 يومًا",
+      "days120": "آخر 120 يومًا",
+      "daily": "يومي",
+      "weekly": "أسبوعي",
+      "monthly": "شهري",
+      "scopeTeam": "المعروض: الفريق",
+      "scopeMe": "المعروض: أنا"
+    },
+    "kpis": {
+      "leads": "إجمالي العملاء المحتملين",
+      "newLeads7d": "العملاء المحتملون الجدد (آخر 7 أيام)",
+      "messagesSent7d": "الرسائل المرسلة (آخر 7 أيام)",
+      "bookings7d": "الحجوزات (آخر 7 أيام)",
+      "showRate30d": "معدل الحضور (آخر 30 يومًا)",
+      "closeRate30d": "معدل الإغلاق (آخر 30 يومًا)",
+      "last30d": "آخر 30 يومًا: {value}",
+      "basedOnOutcomes": "استنادًا إلى نتائج الحجوزات"
+    },
+    "funnel": {
+      "title": "قمع مسار المبيعات",
+      "subtitleNeedStages": "أضف مرحلتين على الأقل في مسار المبيعات لعرض مقاييس التحويل.",
+      "subtitleInteractive": "انقر على مرحلة لعرض تفاصيل التحويل والتسرب الخاصة بها.",
+      "configureStages": "إعداد المراحل ←",
+      "noStages": "لم تتم إضافة أي مراحل إلى مسار المبيعات بعد.",
+      "onlyOneStage": "لديك فقط <strong>{count}</strong> مرحلة. أضف مرحلة أخرى لفتح رؤى التحويل.",
+      "tipLabel": "نصيحة:",
+      "tipText": "انقر على مرحلة لرؤية المزيد من التفاصيل.",
+      "showTable": "إظهار الجدول",
+      "hideTable": "إخفاء الجدول",
+      "ariaLabel": "قمع مسار المبيعات",
+      "convShort": "التحويل",
+      "targetShort": "الهدف",
+      "dropShort": "التسرب",
+      "stageBadge": "المرحلة {current} من {total}",
+      "stageLeadCount": "{count} {count, plural, one {عميل محتمل} other {عملاء محتملون}} في هذه المرحلة.",
+      "nextLabel": "الخطوة التالية:",
+      "conversion": "التحويل",
+      "dropOff": "التسرب",
+      "targetLong": "الهدف: {value}%",
+      "tableTitle": "الأداء من مرحلة إلى مرحلة",
+      "table": {
+        "transition": "الانتقال",
+        "label": "التسمية",
+        "conversion": "التحويل",
+        "dropOff": "التسرب",
+        "empty": "أضف مرحلتين على الأقل في مسار المبيعات لعرض مقاييس التحويل."
+      },
+      "overallConversionLabel": "إجمالي التحويل:",
+      "biggestDropLabel": "أكبر تسرب:"
+    },
+    "activity": {
+      "title": "النشاط",
+      "subtitle": "العملاء المحتملون المضافون مقابل الرسائل الصادرة (باستثناء تحديثات المسار). إجمالي هذا النطاق: {leads} عملاء محتملون، {messages} رسائل.",
+      "empty": "لا توجد بيانات نشاط متاحة لهذا النطاق الزمني.",
+      "legendLeads": "العملاء المحتملون المضافون",
+      "legendMessages": "الرسائل المرسلة",
+      "tip": "نصيحة: مرر المؤشر فوق الرسم البياني لمقارنة العملاء المحتملين المضافين والرسائل المرسلة خلال نفس الفترة."
+    },
+    "attention": {
+      "title": "يحتاج إلى اهتمام",
+      "subtitle": "عملاء محتملون ذوو أولوية عالية بدون نشاط حديث.",
+      "openPipeline": "فتح مسار المبيعات ←",
+      "empty": "لا يوجد أي عميل محتمل يحتاج إلى اهتمام حالياً.",
+      "unnamedLead": "عميل محتمل بدون اسم",
+      "stageLabel": "المرحلة:",
+      "lastActivityLabel": "آخر نشاط:",
+      "score": "النتيجة {score}"
+    },
+    "bookings": {
+      "title": "الحجوزات القادمة",
+      "subtitle": "الأيام الـ14 القادمة",
+      "empty": "لا توجد حجوزات قادمة.",
+      "bookingFallback": "حجز",
+      "scheduled": "مجدول"
+    },
+    "feed": {
+      "title": "آخر المستجدات",
+      "subtitle": "أحدث الأنشطة",
+      "empty": "لا توجد أنشطة حديثة بعد.",
+      "types": {
+        "lead": "عميل محتمل",
+        "booking": "حجز",
+        "message": "رسالة"
+      }
+    }
+  },
+  "LeadsPage": {
+    "metadata": {
+      "title": "العملاء المحتملون"
+    },
+    "page": {
+      "title": "العملاء المحتملون",
+      "loading": "جارٍ تحميل العملاء المحتملين...",
+      "showingFiltered": "يتم عرض {visible} من أصل {total} من العملاء المحتملين الذين لديك صلاحية الوصول إليهم.",
+      "showingAll": "يتم عرض {total} من العملاء المحتملين الذين لديك صلاحية الوصول إليهم."
+    },
+    "columns": {
+      "score": "التقييم",
+      "leadName": "اسم العميل المحتمل",
+      "nicheIndustry": "المجال / الصناعة",
+      "leadType": "نوع العميل المحتمل",
+      "gender": "الجنس",
+      "city": "المدينة",
+      "region": "المنطقة / الولاية",
+      "country": "الدولة",
+      "postalCode": "الرمز البريدي",
+      "primaryContactType": "نوع جهة الاتصال الأساسية",
+      "primaryContact": "جهة الاتصال الأساسية",
+      "sourceCategory": "فئة المصدر",
+      "sourceName": "اسم المصدر",
+      "stage": "المرحلة"
+    },
+    "actions": {
+      "addLeads": "+ إضافة عملاء محتملين",
+      "log": "سجل",
+      "sortBy": "ترتيب حسب {label}",
+      "logMessages": "تسجيل الرسائل الصادرة أو الواردة",
+      "viewDetails": "عرض التفاصيل",
+      "editLead": "تعديل العميل المحتمل",
+      "deleteLead": "حذف العميل المحتمل"
+    },
+    "empty": {
+      "noWorkspace": "أنت لست ضمن مساحة عمل بعد. افتح هذه الصفحة من داخل مساحة عمل أو أكمل الإعداد الأولي أولاً.",
+      "noLeads": "لا يوجد عملاء محتملون بعد، أو لا يوجد أي منهم لديك صلاحية الوصول إليه.",
+      "addFirstLead": "انقر على <strong>+ إضافة عملاء محتملين</strong> لإنشاء أول عميل محتمل.",
+      "noMatch": "لا يوجد عملاء محتملون يطابقون “{query}”.",
+      "tryDifferentSearch": "جرّب البحث باسم مختلف أو قيمة حقل مختلفة أو مرحلة مختلفة."
+    }
+  },
+  "PipelinePage": {
+    "metadata": {
+      "title": "مسار المبيعات",
+      "description": "اعرض مسار المبيعات الخاص بك وانقل العملاء المحتملين بين المراحل باستخدام لوحة كانبان."
+    },
+    "page": {
+      "title": "مسار المبيعات",
+      "description": "اسحب العملاء المحتملين وأفلتهم بين الأعمدة لتحديث مرحلتهم."
+    },
+    "stage": {
+      "leadCount": "{count} عميل محتمل{count, plural, one {} other {}}",
+      "conversion": "تحويل {value}%",
+      "empty": "اسحب عميلاً محتملاً إلى هنا"
+    },
+    "leadFallback": "العميل المحتمل {id}...",
+    "score": {
+      "title": "منخفض < {low} | مرتفع ≥ {high}"
+    },
+    "stageChangeLog": "تم تغيير المرحلة من \"{fromStage}\" إلى \"{toStage}\""
+  },
+  "LeadMessagesPage": {
+    "metadata": {
+      "title": "محادثات العميل المحتمل",
+      "description": "تتبع المحادثات الواردة والصادرة مع هذا العميل المحتمل."
+    },
+    "page": {
+      "title": "تسجيل المحادثات لهذا العميل المحتمل",
+      "description": "تتبع الأنشطة الواردة والصادرة حتى تعرف دائمًا آخر نقطة تواصل.",
+      "leadLabel": "العميل المحتمل:",
+      "stageLabel": "المرحلة:",
+      "unassigned": "غير مخصص"
+    },
+    "actions": {
+      "backToLead": "العودة إلى العميل المحتمل",
+      "logMessage": "تسجيل رسالة",
+      "openLeadDetail": "فتح تفاصيل العميل المحتمل"
+    },
+    "form": {
+      "directionOutbound": "صادرة",
+      "directionInbound": "واردة",
+      "placeholderOutbound": "ماذا أرسلت لهذا العميل المحتمل؟",
+      "placeholderInboundExisting": "كيف رد العميل المحتمل؟",
+      "placeholderInboundFirst": "ما الرسالة التي أرسلها لك العميل المحتمل؟"
+    },
+    "timeline": {
+      "title": "الجدول الزمني للنشاط",
+      "subtitle": "الرسائل وأحداث مسار المبيعات.",
+      "events": {
+        "leadCreated": "تمت إضافة عميل محتمل جديد: {leadLabel}",
+        "leadRejected": "قام {oldSetterName} برفض هذا العميل المحتمل وإعادة تعيينه إلى {newSetterName}. إجمالي مرات الرفض السابقة: {previousRejectionCount, plural, =0 {لا يوجد} one {#} other {#}}.",
+        "otherSetter": "محدد مواعيد آخر",
+        "callAttendanceUpdated": "تم تحديث حالة المكالمة: {previousStatus} ← {nextStatus}",
+        "offerRemoved": "تمت إزالة العرض",
+        "offerMade": "تم تقديم عرض: {productTitle}",
+        "closedOnCallRemoved": "تمت إزالة حالة الإغلاق أثناء المكالمة",
+        "closedOnCall": "تم الإغلاق أثناء المكالمة: {productTitle}",
+        "callBooked": "تم حجز مكالمة ← {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "الانضمام إلى الاجتماع: {meetLink}"
+      }
+    },
+    "states": {
+      "loading": "جارٍ التحميل...",
+      "leadNotFound": "لم يتم العثور على العميل المحتمل."
+    },
+    "fallback": {
+      "pipelineLead": "عميل محتمل في مسار المبيعات",
+      "pipeline": "مسار المبيعات",
+      "leadInStage": "عميل محتمل في مرحلة \"{stage}\""
+    }
+  },
+  "NewLeadPage": {
+    "metadata": {
+      "title": "إضافة عميل محتمل",
+      "description": "أنشئ عميلاً محتملاً جديدًا يدويًا أو استورد العملاء المحتملين من ملف CSV."
+    },
+    "page": {
+      "title": "إضافة عملاء محتملين",
+      "description": "أضف عميلاً محتملاً واحدًا يدويًا أو استورد عدة عملاء محتملين من ملف CSV."
+    },
+    "sections": {
+      "pipeline": "مرحلة مسار المبيعات",
+      "coreDetails": "التفاصيل الأساسية",
+      "additionalDetails": "تفاصيل إضافية",
+      "csvImport": "استيراد من CSV"
+    },
+    "fields": {
+      "city": "المدينة",
+      "region": "المنطقة / الولاية",
+      "country": "الدولة",
+      "postalCode": "الرمز البريدي",
+      "primaryContact": "جهة الاتصال الأساسية"
+    },
+    "placeholders": {
+      "leadName": "مثال: John Smith / Acme Fitness",
+      "link": "https://example.com"
+    },
+    "actions": {
+      "createLead": "إنشاء عميل محتمل",
+      "creating": "جارٍ الإنشاء...",
+      "importRows": "استيراد {count} صف{count, plural, one {} other {وف}}",
+      "importing": "جارٍ الاستيراد..."
+    },
+    "csv": {
+      "dropTitle": "اسحب وأفلت ملف CSV هنا",
+      "dropSubtitle": "أو انقر لاختيار ملف",
+      "selectedFile": "الملف المحدد: {name}",
+      "checking": "جارٍ التحقق من بنية CSV...",
+      "valid": "ملف CSV يبدو صحيحًا. {count} صف{count, plural, one {} other {وف}} جاهز للاستيراد.",
+      "validHelp": "يمكنك استيراد الحقول المخصصة والحقول القياسية للعملاء المحتملين.",
+      "invalidTitle": "أعمدة CSV غير متطابقة.",
+      "idlePrefix": "الأعمدة المخصصة المسموح بها:",
+      "idleCore": "الأعمدة الأساسية المسموح بها: اسم العميل المحتمل، المجال / الصناعة، نوع العميل المحتمل، الجنس، المدينة، المنطقة، الدولة، الرمز البريدي، نوع جهة الاتصال الأساسية، جهة الاتصال الأساسية، فئة المصدر، اسم المصدر.",
+      "emptyRows": "ملف CSV لا يحتوي على أي صفوف بيانات.",
+      "fileType": "يرجى رفع ملف بصيغة .csv.",
+      "readFailed": "تعذر قراءة ملف CSV.",
+      "parseFailed": "تعذر تحليل ملف CSV.",
+      "unknownColumns": "أعمدة غير معروفة: {columns}.",
+      "importResult": "تم استيراد {success} صف{success, plural, one {} other {وف}}{failed, plural, =0 {.} other {، وفشل {failed}.}}",
+      "importRowFailed": "تعذر استيراد أحد الصفوف. يرجى المحاولة مرة أخرى."
+    },
+    "states": {
+      "noStages": "لا توجد مراحل متاحة",
+      "noNiches": "لا توجد مجالات مفعلة لمساحة العمل هذه",
+      "enableNiches": "قم بتفعيل المجالات في الإعدادات قبل إنشاء عميل محتمل."
+    },
+    "errors": {
+      "title": "تعذر إنشاء العميل المحتمل",
+      "dismiss": "إغلاق",
+      "missingTeam": "لم يتم العثور على مساحة عمل. يرجى فتح هذه الصفحة من داخل مساحة العمل الخاصة بك.",
+      "missingUser": "تعذر تحديد حساب المستخدم الخاص بك. يرجى تسجيل الدخول مرة أخرى ثم المحاولة.",
+      "missingStage": "يرجى تحديد مرحلة في مسار المبيعات.",
+      "missingStageForImport": "يرجى تحديد مرحلة في مسار المبيعات قبل الاستيراد.",
+      "sessionExpired": "انتهت صلاحية جلستك. حدّث الصفحة وسجّل الدخول مرة أخرى.",
+      "createFailed": "تعذر إنشاء العميل المحتمل. يرجى المحاولة مرة أخرى."
+    },
+    "common": {
+      "yes": "نعم",
+      "select": "اختر..."
+    }
+  },
+  "LeadDetailPage": {
+    "metadata": {
+      "title": "تفاصيل العميل المحتمل"
+    },
+    "page": {
+      "createdOn": "تم الإنشاء في {date}"
+    },
+    "sections": {
+      "leadScore": "تقييم العميل المحتمل",
+      "pipelineStage": "مرحلة مسار المبيعات",
+      "assigned": "مُعيَّن إلى",
+      "coreDetails": "التفاصيل الأساسية",
+      "additionalFields": "حقول إضافية",
+      "notes": "ملاحظات",
+      "activityTimeline": "الجدول الزمني للنشاط"
+    },
+    "fields": {
+      "prospector": "مولّد العملاء المحتملين",
+      "setter": "محدد المواعيد",
+      "closer": "مختتم الصفقات",
+      "location": "الموقع",
+      "primaryContact": "جهة الاتصال الأساسية"
+    },
+    "score": {
+      "unscored": "غير مقيّم",
+      "scored": "تم التقييم",
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "updated": "تم التحديث {date}",
+      "noScoreYet": "لا يوجد تقييم لهذا العميل المحتمل حتى الآن. قم بإعداد تقييم العملاء المحتملين في الإعدادات ← تقييم العملاء المحتملين."
+    },
+    "additionalFields": {
+      "none": "لم يتم إعداد أي حقول مخصصة لمساحة العمل هذه بعد."
+    },
+    "notes": {
+      "description": "ملاحظات داخلية حول هذا العميل المحتمل. هذه الملاحظات مرئية لفريقك فقط.",
+      "none": "لا توجد ملاحظات بعد."
+    },
+    "timeline": {
+      "newestOnTop": "يظهر أحدث نشاط في الأعلى.",
+      "events": {
+        "leadCreated": "تمت إضافة عميل محتمل جديد: {leadLabel}",
+        "leadRejected": "قام {oldSetterName} برفض هذا العميل المحتمل وإعادة تعيينه إلى {newSetterName}",
+        "otherSetter": "محدد مواعيد آخر",
+        "callAttendanceUpdated": "تم تحديث حالة المكالمة: {previousStatus} ← {nextStatus}",
+        "offerRemoved": "تمت إزالة العرض",
+        "offerMade": "تم تقديم عرض: {productTitle}",
+        "closedOnCallRemoved": "تمت إزالة حالة الإغلاق أثناء المكالمة",
+        "closedOnCall": "تم الإغلاق أثناء المكالمة: {productTitle}",
+        "callBooked": "تم حجز مكالمة ← {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "الانضمام إلى الاجتماع: {meetLink}"
+      }
+    },
+    "actions": {
+      "calls": "المكالمات",
+      "callsLoading": "جارٍ تحميل المكالمات...",
+      "callsTitle": "عرض وتتبع نتائج جميع المكالمات المحجوزة",
+      "bookingLink": "رابط الحجز",
+      "bookingLinkTitle": "إنشاء رابط حجز فريد لهذا العميل المحتمل",
+      "reject": "رفض",
+      "rejecting": "جارٍ الرفض...",
+      "rejectTitle": "رفض هذا العميل المحتمل وإعادة تعيينه إلى عضو آخر في الفريق",
+      "delete": "حذف",
+      "logNewMessage": "تسجيل رسالة جديدة"
+    },
+    "alerts": {
+      "rejectFailedTitle": "تعذر رفض العميل المحتمل",
+      "bookingLinksLoadFailedTitle": "تعذر تحميل روابط الحجز",
+      "bookingLinkCreateFailedTitle": "تعذر إنشاء رابط الحجز",
+      "bookingLinkCreatedTitle": "تم إنشاء رابط الحجز"
+    },
+    "reject": {
+      "modalTitle": "رفض العميل المحتمل؟",
+      "modalMessage": "سيتم إعادة تعيين هذا العميل المحتمل إلى عضو آخر في الفريق وسيتم تسجيل التغيير في الجدول الزمني.",
+      "confirm": "رفض العميل المحتمل",
+      "errors": {
+        "failed": "فشل رفض العميل المحتمل"
+      }
+    },
+    "booking": {
+      "modalAriaLabel": "إنشاء رابط حجز",
+      "modalTitle": "إنشاء رابط حجز",
+      "modalDescription": "اختر صفحة حجز أدناه. سننشئ دعوة فريدة لهذا العميل المحتمل ونسجلها في الجدول الزمني.",
+      "latestLink": "أحدث رابط",
+      "schedulePage": "صفحة الحجز",
+      "host": "المضيف",
+      "emptyTitle": "لا توجد صفحات حجز بعد",
+      "emptyDescription": "أنشئ صفحة حجز أولاً حتى تتمكن من إنشاء رابط حجز لهذا العميل المحتمل.",
+      "createSchedulePage": "إنشاء صفحة حجز",
+      "notNow": "ليس الآن",
+      "loadingSchedulePages": "جارٍ تحميل صفحات الحجز...",
+      "creating": "جارٍ الإنشاء...",
+      "createAndCopy": "إنشاء ونسخ",
+      "columns": {
+        "schedulePage": "صفحة الحجز",
+        "type": "النوع",
+        "host": "المضيف",
+        "action": "الإجراء"
+      },
+      "success": {
+        "createdAndCopied": "تم إنشاء رابط الحجز ونسخه إلى الحافظة.",
+        "createdCopyManual": "تم إنشاء رابط الحجز. انسخه يدويًا من مربع أحدث رابط.",
+        "copied": "تم نسخ رابط الحجز إلى الحافظة.",
+        "copyFailedManual": "فشل النسخ — يرجى نسخ الرابط يدويًا."
+      },
+      "errors": {
+        "leadIdMustBeUuid": "يجب أن يكون معرّف العميل المحتمل UUID صالحًا لإنشاء دعوة.",
+        "inviteCreatedButNoUrl": "تم إنشاء الدعوة، ولكن لم يتم إرجاع أي رابط. حدّث ‎/api/crm/booking-invite‎ لإرجاع { url }.",
+        "createFailed": "فشل إنشاء دعوة الحجز",
+        "loadSchedulePages": "فشل تحميل صفحات الحجز"
+      }
+    },
+    "states": {
+      "loading": "جارٍ التحميل..."
+    },
+    "fallback": {
+      "leadInPipeline": "عميل محتمل في مسار المبيعات",
+      "pipeline": "مسار المبيعات",
+      "leadInStage": "عميل محتمل في مرحلة \"{stage}\""
+    },
+    "empty": {
+      "missingLeadId": "معرّف العميل المحتمل مفقود من معلمات المسار. تحقق من اسم الجزء الديناميكي.",
+      "leadNotFound": "لم يتم العثور على العميل المحتمل."
+    }
+  },
+  "DeleteLeadPage": {
+    "metadata": {
+      "title": "حذف العميل المحتمل",
+      "description": "احذف هذا العميل المحتمل نهائيًا من مساحة العمل الخاصة بك."
+    },
+    "errors": {
+      "missingTeamOrLeadId": "تعذر تحديد معرّف الفريق أو العميل المحتمل.",
+      "loadFailed": "تعذر تحميل هذا العميل المحتمل. يرجى المحاولة مرة أخرى.",
+      "workspaceMismatch": "هذا العميل المحتمل لا ينتمي إلى مساحة العمل الحالية.",
+      "deleteFailed": "فشل حذف العميل المحتمل. يرجى المحاولة مرة أخرى.",
+      "noWorkspaceContext": "تعذر تحديد فريقك من سياق مساحة العمل. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم.",
+      "leadNotFound": "لم يتم العثور على العميل المحتمل."
+    },
+    "header": {
+      "title": "هل تريد حذف هذا العميل المحتمل؟",
+      "description": "هذا الإجراء نهائي ولا يمكن التراجع عنه. ستتم إزالة جميع بيانات هذا العميل المحتمل من <strong>مساحة العمل الحالية</strong>."
+    },
+    "preview": {
+      "title": "معاينة العميل المحتمل",
+      "description": "راجع تفاصيل العميل المحتمل أدناه قبل الحذف.",
+      "stage": "المرحلة"
+    },
+    "core": {
+      "title": "التفاصيل الأساسية",
+      "description": "يتم تخزين هذه القيم في الأعمدة الرئيسية للعميل المحتمل."
+    },
+    "additional": {
+      "title": "حقول إضافية",
+      "description": "هذه حقول مخصصة تم إعدادها لمساحة العمل هذه.",
+      "none": "لا تحتوي مساحة العمل هذه على أي حقول مخصصة للعملاء المحتملين حتى الآن."
+    },
+    "fields": {
+      "location": "الموقع",
+      "primaryContact": "جهة الاتصال الأساسية"
+    },
+    "actions": {
+      "deleting": "جارٍ الحذف...",
+      "deleteLead": "حذف العميل المحتمل"
+    }
+  },
+  "EditLeadPage": {
+    "metadata": {
+      "title": "تعديل العميل المحتمل",
+      "description": "حدّث التفاصيل والمعلومات المرتبطة بهذا العميل المحتمل."
+    },
+    "page": {
+      "title": "تعديل العميل المحتمل",
+      "description": "حدّث التفاصيل الأساسية للعميل المحتمل، والمرحلة، وأي حقول مخصصة يتابعها فريقك."
+    },
+    "errorBox": {
+      "title": "تعذر حفظ التغييرات"
+    },
+    "errors": {
+      "generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "sessionExpired": "انتهت جلستك. يرجى تحديث الصفحة وتسجيل الدخول مرة أخرى.",
+      "forbidden": "ليس لديك إذن لتعديل هذا العميل المحتمل.",
+      "notFound": "تعذر العثور على هذا العميل المحتمل.",
+      "workspaceMismatch": "هذا العميل المحتمل لا ينتمي إلى مساحة العمل الحالية.",
+      "genderRequiredForIndividual": "الجنس مطلوب عندما يكون نوع العميل المحتمل فردًا.",
+      "primaryContactRequired": "لا يمكن أن تكون قيمة جهة الاتصال الأساسية فارغة.",
+      "invalidNiche": "يرجى اختيار مجال صالح ومفعّل لفريقك.",
+      "invalidStage": "يرجى اختيار مرحلة صالحة في مسار المبيعات.",
+      "missingWorkspaceOrLeadId": "تعذر تحديد مساحة العمل أو معرّف العميل المحتمل.",
+      "loadFailed": "تعذر تحميل هذا العميل المحتمل. يرجى المحاولة مرة أخرى.",
+      "saveFailed": "فشل حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+      "noWorkspaceContext": "تعذر تحديد فريقك من سياق مساحة العمل. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+    },
+    "validation": {
+      "stageRequired": "مرحلة مسار المبيعات مطلوبة.",
+      "leadNameRequired": "اسم العميل المحتمل مطلوب.",
+      "nicheRequired": "المجال / الصناعة مطلوب.",
+      "genderRequired": "الجنس مطلوب للأفراد.",
+      "countryRequired": "الدولة مطلوبة.",
+      "regionRequired": "الولاية / المنطقة مطلوبة.",
+      "cityRequired": "المدينة مطلوبة.",
+      "primaryContactTypeRequired": "نوع جهة الاتصال الأساسية مطلوب.",
+      "primaryContactValueRequired": "قيمة جهة الاتصال الأساسية مطلوبة.",
+      "sourceCategoryRequired": "فئة المصدر مطلوبة.",
+      "sourceNameRequired": "اسم المصدر مطلوب."
+    },
+    "sections": {
+      "coreDetails": "التفاصيل الأساسية",
+      "location": "الموقع",
+      "contact": "جهة الاتصال",
+      "source": "المصدر",
+      "customFields": "الحقول المخصصة",
+      "notes": "ملاحظات"
+    },
+    "fields": {
+      "niche": "المجال",
+      "selectNiche": "اختر مجالاً",
+      "country": "الدولة",
+      "region": "الولاية / المنطقة",
+      "city": "المدينة",
+      "postalCode": "ZIP / الرمز البريدي",
+      "pipelineStage": "مرحلة مسار المبيعات"
+    },
+    "placeholders": {
+      "firstName": "مثال: Alex",
+      "lastName": "مثال: Johnson",
+      "leadName": "مثال: Alex Johnson أو Acme Inc.",
+      "country": "مثال: الولايات المتحدة",
+      "region": "مثال: كاليفورنيا",
+      "city": "مثال: سان دييغو",
+      "postalCode": "مثال: 92101"
+    },
+    "contact": {
+      "tip": "نصيحة: بالنسبة للروابط الاجتماعية، الصق رابط الملف الشخصي الكامل متى أمكن.",
+      "valueLabel": {
+        "email": "عنوان البريد الإلكتروني",
+        "phone": "رقم الهاتف",
+        "linkedin": "رابط ملف LinkedIn",
+        "instagram": "رابط ملف Instagram",
+        "facebook": "رابط ملف Facebook",
+        "reddit": "رابط ملف Reddit",
+        "twitter_x": "رابط ملف Twitter/X",
+        "whatsapp": "رقم WhatsApp أو رابط wa.me",
+        "telegram": "اسم مستخدم Telegram أو الرابط",
+        "tiktok": "رابط ملف TikTok",
+        "youtube": "رابط قناة YouTube",
+        "snapchat": "اسم مستخدم Snapchat",
+        "discord": "معرّف Discord أو رابط الدعوة",
+        "slack": "مساحة عمل/مستخدم Slack (أو رابط الرسالة)",
+        "wechat": "معرّف WeChat",
+        "line": "معرّف LINE",
+        "signal": "رقم Signal",
+        "other": "قيمة جهة الاتصال"
+      },
+      "placeholder": {
+        "email": "مثال: alex@company.com",
+        "phone": "مثال: +1 555 123 4567",
+        "linkedin": "مثال: https://www.linkedin.com/in/username",
+        "instagram": "مثال: https://instagram.com/username",
+        "facebook": "مثال: https://facebook.com/username",
+        "reddit": "مثال: https://reddit.com/u/username",
+        "twitter_x": "مثال: https://x.com/username",
+        "whatsapp": "مثال: +1 555 123 4567 أو https://wa.me/15551234567",
+        "telegram": "مثال: @username أو https://t.me/username",
+        "tiktok": "مثال: https://www.tiktok.com/@username",
+        "youtube": "مثال: https://www.youtube.com/@channel",
+        "snapchat": "مثال: username",
+        "discord": "مثال: username#1234 أو https://discord.gg/xxxx",
+        "slack": "مثال: workspace أو رابط رسالة",
+        "wechat": "مثال: wechat_id",
+        "line": "مثال: line_id",
+        "signal": "مثال: +1 555 123 4567",
+        "other": "مثال: رابط أو اسم مستخدم أو معرّف"
+      }
+    },
+    "notes": {
+      "description": "ملاحظات داخلية حول هذا العميل المحتمل. مرئية لفريقك فقط.",
+      "placeholder": "أضف سياقًا، أو اعتراضات، أو تفاصيل شخصية، أو أي شيء آخر يساعد فريقك على إتمام هذه الصفقة."
+    },
+    "actions": {
+      "saveChanges": "حفظ التغييرات"
+    },
+    "niche": {
+      "unknown": "مجال غير معروف",
+      "archivedSuffix": "(مؤرشف / لم يعد مفعّلًا)",
+      "archivedHelp": "لا يزال هذا العميل المحتمل يشير إلى مجال مؤرشف. يمكنك الإبقاء عليه أو اختيار مجال مفعّل حاليًا."
+    },
+    "common": {
+      "optional": "اختياري"
+    }
+  },
+  "CallsListPage": {
+    "metadata": {
+      "title": "المكالمات",
+      "description": "اعرض جميع المكالمات المرتبطة بهذا العميل المحتمل."
+    },
+    "page": {
+      "title": "المكالمات",
+      "description": "المكالمات المحجوزة لهذا العميل المحتمل.",
+      "filteredDescription": "يتم عرض {shown} من أصل {total} من المكالمات لهذا العميل المحتمل."
+    },
+    "errors": {
+      "missingLeadId": "معرّف العميل المحتمل مفقود.",
+      "invalidLeadId": "معرّف العميل المحتمل غير صالح.",
+      "notSignedIn": "لم يتم تسجيل الدخول.",
+      "noTeam": "لم يتم العثور على فريق لهذا المستخدم.",
+      "missingSessionToken": "رمز الجلسة مفقود.",
+      "loadFailed": "فشل تحميل المكالمات"
+    },
+    "table": {
+      "date": "التاريخ",
+      "time": "الوقت",
+      "attendance": "الحضور",
+      "offer": "العرض",
+      "closed": "تم الإغلاق",
+      "productService": "المنتج / الخدمة"
+    },
+    "actions": {
+      "backToLead": "العودة إلى العميل المحتمل",
+      "viewCallDetails": "عرض تفاصيل المكالمة",
+      "editCallTracking": "تعديل تتبع المكالمة"
+    },
+    "states": {
+      "noCalls": "لا توجد مكالمات محجوزة بعد.",
+      "noMatches": "لا توجد نتائج مطابقة",
+      "tryDifferentSearch": {
+        "before": "جرّب بحثًا مختلفًا، مثل",
+        "after": "أو اسم منتج."
+      }
+    },
+    "searchExamples": {
+      "attended": "حضر",
+      "noShow": "لم يحضر"
+    },
+    "product": {
+      "notFound": "لم يتم العثور على المنتج"
+    },
+    "footer": {
+      "help": "استخدم <view>عرض</view> لقراءة الملاحظات/النتائج، أو <edit>تعديل</edit> لتحديث التتبع."
+    }
+  },
+  "CallDetailPage": {
+    "metadata": {
+      "title": "تفاصيل المكالمة",
+      "description": "اعرض تفاصيل هذه المكالمة ونتيجتها."
+    },
+    "page": {
+      "title": "تفاصيل المكالمة"
+    },
+    "errors": {
+      "missingLeadId": "معرّف العميل المحتمل مفقود.",
+      "missingBookingId": "معرّف الحجز مفقود.",
+      "invalidLeadId": "معرّف العميل المحتمل غير صالح.",
+      "invalidBookingId": "معرّف الحجز غير صالح.",
+      "notSignedIn": "لم يتم تسجيل الدخول.",
+      "noTeam": "لم يتم العثور على فريق.",
+      "missingSessionToken": "رمز الجلسة مفقود.",
+      "loadFailed": "فشل تحميل تفاصيل المكالمة",
+      "selectProductForOffer": "يرجى اختيار منتج أو خدمة عند تقديم عرض.",
+      "saveFailed": "فشل حفظ نتيجة المكالمة."
+    },
+    "fields": {
+      "attendance": "الحضور",
+      "offerMade": "تم تقديم عرض",
+      "closedOnCall": "تم الإغلاق أثناء المكالمة",
+      "product": "المنتج / الخدمة",
+      "notes": "ملاحظات",
+      "notesPlaceholder": "أضف ملاحظات حول نتيجة المكالمة، أو الاعتراضات، أو القرارات، أو خطوات المتابعة."
+    },
+    "actions": {
+      "backToCalls": "العودة إلى المكالمات",
+      "saveOutcome": "حفظ النتيجة"
+    },
+    "chips": {
+      "attendance": "الحضور: {status}",
+      "offer": "العرض: {value}",
+      "closed": "الإغلاق: {value}",
+      "productSelected": "تم اختيار المنتج"
+    },
+    "products": {
+      "archivedSuffix": "(مؤرشف)",
+      "states": {
+        "loading": "جارٍ تحميل المنتجات...",
+        "unavailable": "المنتجات غير متاحة"
+      },
+      "errors": {
+        "loadFailed": "فشل تحميل المنتجات.",
+        "unauthorized": "غير مصرح لك بعرض المنتجات.",
+        "forbidden": "ليس لديك إذن لعرض المنتجات.",
+        "noConnectedStripeAccount": "لم يتم العثور على حساب Stripe متصل لهذا الفريق."
+      }
+    },
+    "productCard": {
+      "title": "المنتج / الخدمة",
+      "description": "اختر المنتج أو الخدمة التي تم عرضها أثناء هذه المكالمة.",
+      "help": "مطلوب فقط عند تفعيل خيار تم تقديم عرض."
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "خيار تم الإغلاق أثناء المكالمة متاح فقط إذا تم حضور المكالمة.",
+      "markAttendedToEnable": "حدّد أن المكالمة قد حُضرت لتفعيل هذا الخيار."
+    },
+    "footer": {
+      "tip": "انقر على <save>حفظ النتيجة</save> لتحديث هذه المكالمة."
+    },
+    "states": {
+      "notFound": "لم يتم العثور على المكالمة.",
+      "noNotes": "لا توجد ملاحظات بعد."
+    }
+  },
+  "CallOutcomePage": {
+    "metadata": {
+      "title": "نتيجة المكالمة",
+      "description": "تتبع الحضور، وما إذا تم تقديم عرض، وما إذا تم إغلاق الصفقة أثناء المكالمة."
+    },
+    "page": {
+      "title": "نتيجة المكالمة"
+    },
+    "errors": {
+      "invalidLeadId": "معرّف العميل المحتمل غير صالح.",
+      "invalidBookingId": "معرّف الحجز غير صالح.",
+      "notSignedIn": "لم يتم تسجيل الدخول.",
+      "noTeam": "لم يتم العثور على فريق.",
+      "missingSessionToken": "رمز الجلسة مفقود.",
+      "loadFailed": "فشل تحميل الحجز.",
+      "saveFailed": "فشل الحفظ.",
+      "selectProductForOffer": "يرجى اختيار منتج للعرض."
+    },
+    "success": {
+      "saved": "تم الحفظ."
+    },
+    "chips": {
+      "attendance": "الحضور: {status}",
+      "offer": "العرض: {value}",
+      "closed": "الإغلاق: {value}",
+      "productSelected": "تم اختيار المنتج"
+    },
+    "fields": {
+      "attendance": "الحضور",
+      "offerMade": "تم تقديم عرض",
+      "closedOnCall": "تم الإغلاق أثناء المكالمة",
+      "product": "المنتج",
+      "notes": "ملاحظات",
+      "notesPlaceholder": "ملخص سريع لما حدث أثناء المكالمة..."
+    },
+    "actions": {
+      "backToCalls": "العودة إلى المكالمات",
+      "saveOutcome": "حفظ النتيجة"
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "يكون ذا معنى فقط عندما تكون حالة الحضور: حضر.",
+      "markAttendedToEnable": "حدّد الحضور على أنه حضر لتفعيل هذا الخيار."
+    },
+    "productCard": {
+      "title": "منتج / خدمة العرض",
+      "description": "اختر منتج Stripe الذي قمت بعرضه في هذه المكالمة.",
+      "help": "سيتم تسجيل ذلك في الجدول الزمني لنشاط العميل المحتمل."
+    },
+    "products": {
+      "archivedSuffix": "مؤرشف",
+      "states": {
+        "loading": "جارٍ تحميل المنتجات...",
+        "unavailable": "المنتجات غير متاحة"
+      },
+      "errors": {
+        "unauthorized": "غير مصرح لك بتحميل منتجات الفوترة.",
+        "forbidden": "غير مسموح لك بتحميل منتجات الفوترة لمساحة العمل هذه.",
+        "noConnectedStripeAccount": "لم يتم العثور على حساب Stripe متصل لمساحة العمل هذه في الوضع المحدد.",
+        "loadFailed": "فشل تحميل المنتجات."
+      }
+    },
+    "footer": {
+      "tip": "نصيحة: حدّد نتيجة المكالمة، ثم انقر على <save>حفظ النتيجة</save>."
+    },
+    "states": {
+      "notFound": "لم يتم العثور على الحجز."
+    }
+  },
+  "CalendarPage": {
+    "metadata": {
+      "title": "التقويم",
+      "description": "اعرض تقويمك الشخصي، وتوفرك، والمكالمات المحجوزة في مكان واحد."
+    },
+    "page": {
+      "title": "التقويم",
+      "description": "اعرض جدولك الشخصي لمكالمات الاستكشاف، ومكالمات المبيعات، ومتابعات العملاء، والمواعيد الأخرى في عرض أسبوعي بسيط."
+    },
+    "meta": {
+      "timesShownIn": "الأوقات المعروضة حسب {tz}"
+    },
+    "actions": {
+      "prev": "السابق",
+      "today": "اليوم",
+      "next": "التالي",
+      "retry": "إعادة المحاولة",
+      "openIntegrations": "فتح التكاملات",
+      "goToLogin": "الانتقال إلى تسجيل الدخول"
+    },
+    "labels": {
+      "time": "الوقت",
+      "allDay": "طوال اليوم",
+      "today": "اليوم"
+    },
+    "states": {
+      "loading": "جارٍ تحميل التقويم الخاص بك..."
+    },
+    "headerAlert": {
+      "reconnect": {
+        "text": "إعادة ربط Google Calendar",
+        "title": "أعد ربط Google Calendar من صفحة التكاملات للحفاظ على تحديث حجوزاتك الشخصية وتوفرك."
+      },
+      "unauthorized": {
+        "text": "انتهت الجلسة",
+        "title": "أنت غير مسجل الدخول، أو انتهت جلستك. يرجى تسجيل الدخول مرة أخرى للوصول إلى التقويم."
+      },
+      "loadFailed": {
+        "text": "فشل تحميل التقويم"
+      },
+      "generic": {
+        "text": "خطأ في التقويم"
+      }
+    },
+    "errors": {
+      "reconnectRequired": {
+        "title": "إعادة الربط مطلوبة",
+        "message": "يجب إعادة ربط Google Calendar لتحميل توفرك الشخصي والأحداث."
+      },
+      "notConnected": {
+        "title": "التقويم غير متصل",
+        "message": "قم بربط Google Calendar من صفحة التكاملات لعرض جدولك الشخصي وحجوزاتك في هذه الصفحة."
+      },
+      "unauthorized": {
+        "title": "انتهت الجلسة",
+        "message": "أنت غير مسجل الدخول، أو انتهت جلستك. يرجى تسجيل الدخول مرة أخرى لتحميل التقويم."
+      },
+      "loadFailed": {
+        "title": "فشل تحميل التقويم",
+        "message": "تعذر علينا تحميل بيانات التقويم حالياً. يكون هذا عادةً مؤقتاً. يرجى المحاولة مرة أخرى."
+      },
+      "generic": {
+        "title": "حدث خطأ ما",
+        "message": "حدث خطأ غير متوقع أثناء تحميل التقويم. يرجى المحاولة مرة أخرى."
+      },
+      "codeLabel": "رمز الخطأ:"
+    },
+    "footer": {
+      "help": "تعرض هذه الصفحة تقويمك الشخصي فقط، بما في ذلك توفرك، والمكالمات المحجوزة، والمواعيد المجدولة."
+    }
+  },
+  "SettingsPage": {
+    "metadata": {
+      "title": "الإعدادات",
+      "description": "قم بإعداد مساحة عمل التدريب الخاصة بك، وإدارة حقول تتبع العملاء المحتملين، وتحديث الملف الشخصي وإعدادات الحساب."
+    },
+    "loading": {
+      "workspace": {
+        "title": "جارٍ تحميل مساحة العمل...",
+        "subtitle": "جارٍ العثور على فريق التدريب وسياق مساحة العمل."
+      },
+      "auth": {
+        "title": "جارٍ التحقق من جلستك...",
+        "subtitle": "جارٍ التحقق من حسابك."
+      },
+      "profile": {
+        "title": "جارٍ تحميل الإعدادات...",
+        "subtitle": "جارٍ جلب الملف الشخصي، والدور، والصلاحيات."
+      },
+      "idle": {
+        "title": "جارٍ التحميل...",
+        "subtitle": "يرجى الانتظار."
+      }
+    },
+    "unavailable": {
+      "title": "الإعدادات غير متاحة",
+      "description": "تعذر علينا العثور على مساحة عمل أو ملف شخصي لحسابك. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+    },
+    "page": {
+      "title": "الإعدادات",
+      "description": "قم بإعداد كيفية عمل نظام CRM التدريبي لك ولفريقك."
+    },
+    "cards": {
+      "leadFields": {
+        "title": "حقول العملاء المحتملين",
+        "description": "اختر الحقول المخصصة التي يتتبعها فريقك لكل عميل محتمل، من أول تواصل حتى إغلاق الصفقة."
+      },
+      "leadScoring": {
+        "title": "تقييم العملاء المحتملين",
+        "description": "قم بإعداد كيفية تحويل تفاصيل العميل المحتمل ونشاطه إلى تقييم لتحسين ترتيب الأولويات."
+      },
+      "niches": {
+        "title": "المجالات",
+        "description": "أدر المجالات التدريبية التي يستهدفها فريقك وأنشئ خيارات مجالات مخصصة."
+      },
+      "pipelineStages": {
+        "title": "مراحل مسار المبيعات",
+        "description": "حدّد وأعد ترتيب المراحل التي يمر بها العملاء المحتملون، من أول تواصل حتى إغلاق العميل."
+      },
+      "conversionMetrics": {
+        "title": "مقاييس التحويل",
+        "description": "أنشئ وتتبع مؤشرات المبيعات الأساسية مثل معدل الرد، ومعدل الحجز، ومعدل الحضور، ومعدل الإغلاق."
+      },
+      "schedulePages": {
+        "title": "صفحات الحجز",
+        "description": "أنشئ وأدر روابط الحجز لمكالمات الاستكشاف، ومكالمات المبيعات، والمواعيد الأخرى."
+      },
+      "inviteTeamMembers": {
+        "title": "دعوة أعضاء الفريق",
+        "description": "ادعُ أعضاء الفريق وعيّن الأدوار مثل محدد المواعيد، أو مختتم الصفقات، أو مدير المبيعات، أو المدير."
+      },
+      "manageTeamRoles": {
+        "title": "إدارة أدوار الفريق",
+        "description": "حدّث أدوار أعضاء الفريق الحاليين. لا يمكن للمديرين ترقية المستخدمين إلى مدير."
+      }
+    },
+    "logout": {
+      "button": "تسجيل الخروج"
+    }
+  },
+  "LeadFieldsSettingsPage": {
+    "metadata": {
+      "title": "حقول العملاء المحتملين",
+      "description": "اختر حقول العملاء المحتملين التي يريد فريق التدريب الخاص بك تتبعها."
+    },
+    "page": {
+      "title": "حقول العملاء المحتملين",
+      "description": "الحقول الأساسية مطلوبة لكل عميل محتمل. أضف حقولاً إضافية أدناه إذا كان فريقك يريد جمع تفاصيل أكثر خلال عملية المبيعات."
+    },
+    "states": {
+      "loading": "جارٍ التحميل...",
+      "saved": "تم حفظ التغييرات",
+      "rememberToSave": "لا تنسَ حفظ تغييراتك."
+    },
+    "systemSection": {
+      "title": "حقول النظام المطلوبة",
+      "description": "تحافظ هذه الحقول الأساسية على اتساق العملاء المحتملين وتجعل التصفية، والتقارير، وعمليات التسليم بين أعضاء الفريق أكثر موثوقية في مساحة العمل.",
+      "locked": "مقفل"
+    },
+    "badges": {
+      "required": "مطلوب",
+      "optional": "اختياري"
+    },
+    "fieldTypes": {
+      "text": "نص",
+      "number": "رقم",
+      "select": "قائمة منسدلة",
+      "boolean": "مربع اختيار",
+      "link": "رابط (URL)"
+    },
+    "systemFields": {
+      "leadName": {
+        "label": "اسم العميل المحتمل",
+        "note": "مطلوب لكل عميل محتمل."
+      },
+      "nicheIndustry": {
+        "label": "مجال التدريب",
+        "note": "يساعدك على تقسيم العملاء المحتملين حسب المجال ونوع العرض."
+      },
+      "leadType": {
+        "label": "نوع العميل المحتمل",
+        "note": "اختر ما إذا كان العميل المحتمل فرداً أو نشاطاً تجارياً."
+      },
+      "gender": {
+        "label": "الجنس",
+        "note": "مطلوب فقط عندما يكون نوع العميل المحتمل فرداً."
+      },
+      "country": {
+        "label": "الدولة",
+        "note": "يدعم التقارير، وتوزيع المناطق، والتصفية حسب الموقع."
+      },
+      "region": {
+        "label": "الولاية / المنطقة",
+        "note": "يحسن دقة التوجيه ويجعل التصفية أكثر دقة."
+      },
+      "city": {
+        "label": "المدينة",
+        "note": "مفيد للاستهداف المحلي، وعرض المناطق، وتنظيم قوائم العملاء المحتملين."
+      },
+      "postalCode": {
+        "label": "ZIP / الرمز البريدي",
+        "note": "اختياري، لكنه مفيد لمناطق الخدمة والاستهداف المحلي الأكثر دقة."
+      },
+      "primaryContactType": {
+        "label": "نوع جهة الاتصال الأساسية",
+        "note": "كيف ستتواصل مع العميل المحتمل، مثل البريد الإلكتروني أو الهاتف أو وسائل التواصل الاجتماعي."
+      },
+      "primaryContactValue": {
+        "label": "قيمة جهة الاتصال الأساسية",
+        "note": "عنوان البريد الإلكتروني الفعلي، أو رقم الهاتف، أو رابط الملف الشخصي."
+      },
+      "sourceCategory": {
+        "label": "فئة المصدر",
+        "note": "كيفية دخول العميل المحتمل، مثل وارد أو صادر أو إحالة أو شريك."
+      },
+      "sourceName": {
+        "label": "اسم المصدر",
+        "note": "من أين جاء العميل المحتمل، مثل Instagram أو Facebook أو YouTube أو صفحة هبوط."
+      }
+    },
+    "customFields": {
+      "title": "الحقول المخصصة",
+      "description": "أضف حقولاً اختيارية يريد فريقك تتبعها للعملاء المحتملين.",
+      "newFieldLabel": "حقل جديد",
+      "untitled": "بدون عنوان",
+      "dropdownOptions": "خيارات القائمة المنسدلة",
+      "empty": {
+        "title": "لا توجد حقول مخصصة بعد.",
+        "description": "أضف حقولاً مثل الهدف، أو الاعتراض، أو الميزانية، أو مستوى اللياقة، أو الاهتمام بالبرنامج، أو محدد المواعيد المعيّن."
+      }
+    },
+    "placeholders": {
+      "fieldLabel": "التسمية (مثال: الميزانية)",
+      "dropdownOptions": "مثال: منخفض، متوسط، مرتفع"
+    },
+    "actions": {
+      "addField": "+ إضافة حقل",
+      "remove": "إزالة",
+      "saveChanges": "حفظ التغييرات"
+    },
+    "errors": {
+      "loadFailed": "تعذر علينا تحميل إعدادات حقول العملاء المحتملين. يرجى المحاولة مرة أخرى.",
+      "missingTeam": "مساحة العمل مفقودة. يجب فتح هذه الصفحة من داخل مساحة العمل.",
+      "reservedKey": "مفتاح الحقل \"{key}\" يتعارض مع حقل نظام. يرجى إعادة إنشائه.",
+      "duplicateKey": "مفتاح الحقل \"{key}\" مكرر. يجب أن تكون المفاتيح فريدة.",
+      "saveFailed": "فشل حفظ الحقول الخاصة بك. يرجى المحاولة مرة أخرى."
+    },
+    "empty": {
+      "noTeam": {
+        "title": "لا توجد مساحة عمل متاحة",
+        "description": "تعذر علينا تحديد مساحة العمل الخاصة بك. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+      }
+    }
+  },
+  "LeadScoringSettingsPage": {
+    "metadata": {
+      "title": "تقييم العملاء المحتملين",
+      "description": "حدّد كيفية تقييم العملاء المحتملين في نشاطك التدريبي."
+    },
+    "page": {
+      "title": "تقييم العملاء المحتملين",
+      "description": "قم بتعيين أوزان لحقول العملاء المحتملين حتى يتمكن نظام CRM من احتساب تقييم من 0 إلى 100 لكل عميل محتمل. سيؤدي الحفظ أيضًا إلى إعادة احتساب التقييمات لجميع العملاء المحتملين الحاليين."
+    },
+    "states": {
+      "loading": "جارٍ التحميل...",
+      "saved": "تم حفظ قواعد التقييم",
+      "savedWithRecomputed": "تم حفظ قواعد التقييم — وتم تحديث {count} عميل محتمل{count, plural, one {} other {}}",
+      "recomputeFailed": "تنبيه: فشل إعادة احتساب {count} عميل محتمل{count, plural, one {} other {}}. سيتم تحديث هؤلاء العملاء مرة أخرى بعد النشاط التالي أو تغيير المرحلة."
+    },
+    "actions": {
+      "save": "حفظ قواعد التقييم",
+      "saving": "جارٍ الحفظ وإعادة الاحتساب..."
+    },
+    "errors": {
+      "noTeamInWorkspace": "لم يتم العثور على مساحة عمل.",
+      "loadFailed": "فشل تحميل إعدادات تقييم العملاء المحتملين.",
+      "saveFailed": "فشل الحفظ. يرجى المحاولة مرة أخرى."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "تعذر علينا تحديد مساحة العمل الخاصة بك. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+      },
+      "noFields": {
+        "description": "ليس لديك أي حقول للعملاء المحتملين حتى الآن. أنشئها أولاً من <path>الإعدادات ← حقول العملاء المحتملين</path>."
+      }
+    },
+    "fieldCard": {
+      "typeLabel": "النوع: {type}",
+      "optionWeights": "أوزان الخيارات",
+      "optionWeightsHelp": "يضيف كل خيار نقاطه الخاصة عند اختياره.",
+      "pointsShort": "نقطة"
+    },
+    "thresholds": {
+      "title": "حدود التقييم",
+      "description": "تحكم في الوقت الذي يتم فيه اعتبار التقييمات <low>منخفضة</low>، أو <medium>متوسطة</medium>، أو <high>مرتفعة</high>.",
+      "lowLabel": "حد المنخفض / الأحمر",
+      "lowHelp": "أي تقييم أقل من هذا يُعتبر <low>منخفضًا</low>.",
+      "highLabel": "حد المرتفع / الأخضر",
+      "highHelp": "أي تقييم يساوي هذا الحد أو يزيد عليه يُعتبر <high>مرتفعًا</high>. وكل ما بينهما يُعتبر <medium>متوسطًا</medium>."
+    },
+    "tip": {
+      "title": "نصيحة",
+      "description": "اترك هامشًا بسيطًا تحت 100، لأن الأتمتة مثل تتبع الردود، أو التنقل في مسار المبيعات، أو الأنشطة الأخرى قد تضيف نقاطًا إضافية فوق التقييم اليدوي."
+    }
+  },
+  "NicheSettingsPage": {
+    "metadata": {
+      "title": "المجالات",
+      "description": "أدر المجالات التدريبية المتاحة لمساحة العمل الحالية."
+    },
+    "page": {
+      "title": "المجالات",
+      "description": "هذا هو كتالوج المجالات المشترك لديك. يمكن لكل مساحة عمل اختيار المجالات التي تريد استخدامها.",
+      "currentTeam": "مساحة العمل الحالية: {teamName}",
+      "unnamedTeam": "مساحة عمل بدون اسم",
+      "searchSummary": "البحث: “{search}” · {count} نتيجة{count, plural, one {} other {}}"
+    },
+    "howItWorks": {
+      "title": "كيف يعمل",
+      "step1": {
+        "title": "1. اختر المجالات",
+        "description": "استخدم مربعات الاختيار لتفعيل أو تعطيل المجالات لهذه المساحة."
+      },
+      "step2": {
+        "title": "2. احفظ التغييرات",
+        "description": "لن تستخدم مساحة العمل إلا المجالات المحددة بعد الحفظ."
+      },
+      "step3": {
+        "title": "3. استخدمها في العملاء المحتملين",
+        "description": "ستظهر المجالات المحفوظة في القائمة المنسدلة للمجالات عند إنشاء أو تعديل العملاء المحتملين."
+      }
+    },
+    "catalog": {
+      "title": "جميع المجالات",
+      "description": "يمكن استخدام كل مجال في هذه القائمة من قبل أي مساحة عمل. اختر المجالات التي يجب أن تكون هذه المساحة قادرة على الوصول إليها.",
+      "noSearchResults": "لم يتم العثور على مجالات تطابق بحثك.",
+      "empty": "لا توجد مجالات متاحة بعد.",
+      "createdBy": "تم إنشاؤه أصلًا بواسطة {organizationName}.",
+      "sharedNiche": "مجال مشترك."
+    },
+    "enabled": {
+      "title": "مفعّلة لهذه المساحة",
+      "description": "ستكون هذه المجالات متاحة عندما يقوم فريقك بإنشاء أو تعديل العملاء المحتملين.",
+      "empty": "لا توجد مجالات مفعّلة بعد."
+    },
+    "create": {
+      "title": "إنشاء مجال",
+      "description": "تُضاف المجالات الجديدة إلى الكتالوج المشترك ويتم تفعيلها لهذه المساحة فورًا. إذا كان المجال موجودًا بالفعل، فسيتم فقط تفعيله لهذه المساحة بدلاً من ذلك.",
+      "fieldLabel": "اسم المجال",
+      "placeholder": "مثال: مدربو اللياقة عبر الإنترنت"
+    },
+    "actions": {
+      "saveChanges": "حفظ التغييرات",
+      "everythingSaved": "تم حفظ كل شيء",
+      "creating": "جارٍ الإنشاء...",
+      "createNiche": "إنشاء مجال"
+    },
+    "feedback": {
+      "saved": "تم حفظ مجالات مساحة العمل الخاصة بك.",
+      "alreadyExistsSelected": "المجال \"{name}\" موجود بالفعل، لذلك تم تفعيله لهذه المساحة بدلاً من ذلك.",
+      "alreadyExistedEnabled": "المجال \"{name}\" كان موجودًا بالفعل وتم تفعيله لهذه المساحة.",
+      "createdAndAdded": "تم إنشاء المجال \"{name}\" وإضافته إلى هذه المساحة."
+    },
+    "errors": {
+      "noTeam": "تعذر علينا تحديد مساحة العمل الحالية.",
+      "loadFailed": "فشل تحميل المجالات.",
+      "saveFailed": "فشل حفظ المجالات.",
+      "enterName": "يرجى إدخال اسم المجال.",
+      "createFailed": "فشل إنشاء المجال."
+    }
+  },
+  "PipelineStagesSettingsPage": {
+    "metadata": {
+      "title": "مراحل مسار المبيعات",
+      "description": "حدّد ونظّم مراحل مسار المبيعات في نشاطك التدريبي."
+    },
+    "page": {
+      "title": "مراحل مسار المبيعات",
+      "description": "قم بإعداد مراحل مسار المبيعات وحدد الترتيب الذي ينتقل خلاله العملاء المحتملون بينها."
+    },
+    "loading": {
+      "workspace": {
+        "title": "جارٍ تحميل مساحة العمل...",
+        "subtitle": "جارٍ التحقق من مساحة العمل والصلاحيات."
+      },
+      "stages": {
+        "title": "جارٍ تحميل مراحل مسار المبيعات...",
+        "subtitle": "جارٍ جلب إعدادات مسار المبيعات المحفوظة."
+      },
+      "idle": {
+        "title": "جارٍ التحميل..."
+      }
+    },
+    "states": {
+      "saved": "تم حفظ مراحل مسار المبيعات"
+    },
+    "tips": {
+      "title": "كيف يعمل",
+      "description": "تُستخدم هذه المراحل عبر مسار المبيعات، وعروض العملاء المحتملين، والفلاتر، والتقارير. استخدم الأسهم لإعادة ترتيبها، ثم احفظ التغييرات."
+    },
+    "placeholders": {
+      "stageName": "اسم المرحلة"
+    },
+    "defaults": {
+      "newStage": "مرحلة جديدة {number}"
+    },
+    "actions": {
+      "addStage": "+ إضافة مرحلة",
+      "saveStages": "حفظ المراحل",
+      "remove": "إزالة",
+      "moveUp": "نقل المرحلة للأعلى",
+      "moveDown": "نقل المرحلة للأسفل"
+    },
+    "errors": {
+      "loadFailed": "فشل تحميل مراحل مسار المبيعات.",
+      "missingTeam": "مساحة العمل مفقودة. يجب فتح هذه الصفحة من داخل مساحة العمل.",
+      "atLeastOneStage": "أضف مرحلة واحدة على الأقل قبل الحفظ.",
+      "stageNameRequired": "كل مرحلة تحتاج إلى اسم.",
+      "stageNamesUnique": "يجب أن تكون أسماء المراحل فريدة.",
+      "saveFailed": "فشل حفظ مراحل مسار المبيعات. يرجى المحاولة مرة أخرى."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "تعذر علينا تحديد مساحة العمل الخاصة بك. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+      },
+      "noStages": "لا توجد مراحل لمسار المبيعات بعد."
+    }
+  },
+  "ConversionMetricDefinitionsSettingsPage": {
+    "metadata": {
+      "title": "مقاييس التحويل",
+      "description": "حدّد مقاييس التحويل التي يتتبعها فريقك بين مراحل مسار المبيعات."
+    },
+    "page": {
+      "title": "مقاييس التحويل",
+      "description": "حدّد مقاييس التحويل التي تريد تتبعها. كل مقياس يقارن عدد العملاء المحتملين الذين ينتقلون من مرحلة في مسار المبيعات إلى مرحلة أخرى."
+    },
+    "loading": {
+      "workspace": {
+        "title": "جارٍ تحميل مساحة العمل...",
+        "subtitle": "جارٍ التحقق من مساحة العمل والصلاحيات."
+      },
+      "definitions": {
+        "title": "جارٍ تحميل مقاييس التحويل...",
+        "subtitle": "جارٍ جلب تعريفات مقاييس التحويل المحفوظة."
+      },
+      "idle": {
+        "title": "جارٍ التحميل..."
+      }
+    },
+    "states": {
+      "saved": "تم حفظ مقاييس التحويل",
+      "rememberToSave": "لا تنسَ حفظ تغييراتك."
+    },
+    "tips": {
+      "title": "كيف يعمل",
+      "description": "أنشئ مقاييس مسماة بين المراحل مثل معدل الرد، أو معدل الحجز، أو معدل الحضور. تساعد هذه التعريفات فريقك على تتبع أهم التحويلات في مسار المبيعات.",
+      "needStages": "أضف مرحلتين على الأقل في مسار المبيعات قبل إنشاء مقاييس التحويل."
+    },
+    "fields": {
+      "fromStageOption": "من: {stage}",
+      "toStageOption": "إلى: {stage}",
+      "targetRate": "النسبة المستهدفة %",
+      "targetRateTitle": "النسبة المستهدفة (0–100)"
+    },
+    "placeholders": {
+      "metricName": "اسم المقياس (مثال: معدل الرد، معدل الحجز)",
+      "targetRate": "النسبة المستهدفة %"
+    },
+    "defaults": {
+      "newMetric": "مقياس تحويل جديد"
+    },
+    "actions": {
+      "addMetric": "+ إضافة مقياس تحويل",
+      "saveMetrics": "حفظ المقاييس",
+      "remove": "إزالة"
+    },
+    "errors": {
+      "loadFailed": "فشل تحميل مقاييس التحويل.",
+      "missingTeam": "مساحة العمل مفقودة. يجب فتح هذه الصفحة من داخل مساحة العمل.",
+      "atLeastOneMetric": "أضف مقياس تحويل واحدًا على الأقل قبل الحفظ.",
+      "metricFieldsRequired": "كل مقياس يحتاج إلى اسم ومراحل من/إلى صالحة.",
+      "targetRateRange": "يجب أن تكون النسبة المستهدفة بين 0 و100.",
+      "saveFailed": "فشل حفظ مقاييس التحويل. يرجى المحاولة مرة أخرى."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "تعذر علينا تحديد مساحة العمل الخاصة بك. يرجى فتح هذه الصفحة من داخل مساحة العمل أو التواصل مع الدعم."
+      },
+      "noMetrics": {
+        "title": "لا توجد مقاييس تحويل بعد.",
+        "description": "أضف مقاييس مثل معدل الرد، أو معدل الحجز، أو معدل الحضور بما يتوافق مع عملية المبيعات لديك."
+      }
+    }
+  },
+  "SchedulePagesSettingsPage": {
+    "page": {
+      "title": "صفحات الحجز",
+      "description": "أنشئ روابط حجز يمكن للعملاء المحتملين استخدامها لجدولة المكالمات على Google Calendar المتصل لديك."
+    },
+    "loading": {
+      "workspace": {
+        "title": "جارٍ تحميل مساحة العمل...",
+        "subtitle": "جارٍ العثور على سياق مساحة العمل."
+      },
+      "auth": {
+        "title": "جارٍ التحقق من جلستك...",
+        "subtitle": "جارٍ التحقق من حسابك."
+      },
+      "links": {
+        "title": "جارٍ تحميل صفحات الحجز...",
+        "subtitle": "جارٍ جلب روابط الحجز الخاصة بك."
+      },
+      "idle": {
+        "title": "جارٍ التحميل...",
+        "subtitle": "يرجى الانتظار."
+      }
+    },
+    "dialog": {
+      "title": "اختر نوع صفحة الحجز",
+      "description": "اختر كيف يجب أن يعمل رابط الحجز هذا. يمكنك إنشاء تدفقات حجز فردية، أو جماعية، أو بالتوزيع الدوري."
+    },
+    "types": {
+      "oneOnOne": {
+        "label": "فردي",
+        "description": "يمكن للعملاء المحتملين الحجز مباشرة معك أو مع عضو فريق محدد."
+      },
+      "group": {
+        "label": "جماعي",
+        "description": "استخدم هذا عندما يحتاج عدة أعضاء من الفريق إلى الانضمام إلى نفس المكالمة."
+      },
+      "roundRobin": {
+        "label": "توزيع دوري",
+        "description": "وزّع الحجوزات تلقائيًا على مجموعة من أعضاء الفريق. مثالي للحجم الكبير من العملاء الواردين."
+      }
+    },
+    "badges": {
+      "oneOnOne": "1:1",
+      "group": "جماعي",
+      "roundRobin": "توزيع دوري"
+    },
+    "table": {
+      "schedulePage": "صفحة الحجز",
+      "publicLink": "الرابط العام",
+      "color": "اللون",
+      "actions": "الإجراءات",
+      "noDescription": "لا يوجد وصف",
+      "publicBookingPage": "صفحة حجز عامة",
+      "createdAtTitle": "تم الإنشاء {date} في {time}"
+    },
+    "actions": {
+      "createSchedulePage": "إنشاء صفحة حجز",
+      "deleteSchedulePage": "حذف صفحة الحجز"
+    },
+    "errors": {
+      "verifySessionFailed": "فشل التحقق من جلستك. يرجى تحديث الصفحة.",
+      "noTeam": "لم يتم العثور على مساحة عمل. افتح هذه الصفحة من داخل مساحة العمل.",
+      "noUserFound": "لم يتم العثور على مستخدم. يرجى تسجيل الدخول مرة أخرى.",
+      "loadFailed": "فشل تحميل صفحات الحجز.",
+      "loadUnexpected": "حدث خطأ غير متوقع أثناء تحميل صفحات الحجز."
+    },
+    "empty": {
+      "unavailable": "تحتاج إلى مساحة عمل وملف شخصي لإدارة صفحات الحجز. تواصل مع الدعم إذا بدا هذا غير صحيح.",
+      "noPages": {
+        "title": "لا توجد صفحات حجز بعد.",
+        "description": "انقر على <strong>إنشاء صفحة حجز</strong> لإعداد أول رابط حجز."
+      }
+    }
+  },
+  "DeleteSchedulePage": {
+    "metadata": {
+      "title": "حذف صفحة الحجز",
+      "description": "أكد حذف صفحة الحجز هذه. سيؤدي ذلك إلى إخفاء صفحة الحجز مع الاحتفاظ بالحجوزات الحالية."
+    },
+    "page": {
+      "title": "حذف صفحة الحجز",
+      "description": "سيؤدي هذا إلى إخفاء صفحة الحجز. ستبقى الحجوزات الحالية كما هي."
+    },
+    "states": {
+      "loading": "جارٍ التحميل...",
+      "alreadyDeleted": "تم حذف صفحة الحجز هذه بالفعل."
+    },
+    "confirm": {
+      "message": "هل أنت متأكد أنك تريد حذف <strong>{name}</strong>؟",
+      "warning": "سيؤدي هذا إلى <strong>تعطيل</strong> صفحة الحجز. لن تتمكن من التراجع عن ذلك من خلال الواجهة."
+    },
+    "preview": {
+      "title": "معاينة صفحة الحجز",
+      "name": "الاسم",
+      "slug": "المعرّف المختصر"
+    },
+    "actions": {
+      "deleting": "جارٍ الحذف...",
+      "delete": "حذف صفحة الحجز"
+    },
+    "errors": {
+      "notFound": "تعذر علينا العثور على صفحة الحجز هذه، أو أنك لا تملك صلاحية الوصول إليها.",
+      "missingTeamOrId": "تعذر علينا تحديد مساحة العمل أو معرّف صفحة الحجز.",
+      "loadFailed": "فشل تحميل صفحة الحجز.",
+      "deleteFailed": "فشل حذف صفحة الحجز."
+    },
+    "fallback": {
+      "thisSchedulePage": "صفحة الحجز هذه"
+    }
+  },
+  "CreateSchedulePage": {
+    "metadata": {
+      "title": "إنشاء صفحة حجز",
+      "description": "أنشئ صفحة حجز جديدة في نظام CRM الخاص بك. اختر نوع الاجتماع، واضبط رابط URL مخصصًا، وحدد لونًا أساسيًا للرابط العام."
+    },
+    "page": {
+      "title": "إنشاء صفحة حجز",
+      "description": "اختر اسمًا، ورابط URL، ولونًا أساسيًا. ثم حدّد أي المختِمين سيتم تضمينهم بناءً على نوع الحجز."
+    },
+    "common": {
+      "error": "خطأ",
+      "minutes": "دقائق",
+      "min": "د",
+      "hours": "ساعات",
+      "days": "أيام"
+    },
+    "defaults": {
+      "confirmHeading": "تم حجزك!",
+      "confirmSubheading": "لقد أرسلنا دعوة تقويم إلى بريدك الإلكتروني."
+    },
+    "fields": {
+      "meetingName": "اسم الاجتماع",
+      "publicSlug": "المعرّف المختصر للرابط العام",
+      "descriptionOptional": "الوصف (اختياري)",
+      "bufferBefore": "قبل",
+      "bufferAfter": "بعد",
+      "minNotice": "الحد الأدنى للإشعار",
+      "maxNotice": "الحد الأقصى للإشعار",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "days": "الأيام",
+      "primaryColor": "اللون الأساسي"
+    },
+    "placeholders": {
+      "meetingName": "مكالمة استراتيجية لياقة",
+      "publicSlug": "fitness-strategy-call",
+      "description": "اختر وقتًا يناسبك. سنرسل دعوة تقويم بعد التأكيد."
+    },
+    "help": {
+      "publicSlug": "سيصبح هذا هو الرابط القابل للمشاركة الذي ترسله إلى العملاء المحتملين."
+    },
+    "sections": {
+      "duration": {
+        "title": "المدة",
+        "description": "اختر المدة التي يجب أن يستغرقها هذا الاجتماع."
+      },
+      "buffers": {
+        "title": "الفواصل الزمنية"
+      },
+      "bookingWindow": {
+        "title": "نافذة الحجز"
+      },
+      "availability": {
+        "title": "التوفر"
+      }
+    },
+    "availability": {
+      "businessHours": "ساعات العمل (اختر الأيام ونافذة زمنية)",
+      "twentyFourSeven": "24/7 (يمكن للعملاء الحجز في أي وقت)",
+      "daysHelp": "سيقتصر التوفر على هذه الأيام والأوقات حسب المنطقة الزمنية للعميل المحتمل.",
+      "none": "لا شيء"
+    },
+    "preview": {
+      "alwaysOpen": "24/7"
+    },
+    "actions": {
+      "create": "إنشاء صفحة حجز",
+      "creating": "جارٍ الإنشاء..."
+    },
+    "errors": {
+      "nameRequired": "يرجى إعطاء صفحة الحجز اسمًا.",
+      "slugRequired": "لا يمكن أن يكون المعرّف المختصر فارغًا.",
+      "durationMin": "يجب أن تكون المدة 5 دقائق على الأقل.",
+      "invalidTimes": "يرجى تحديد وقت بدء وانتهاء صالحين.",
+      "endAfterStart": "يجب أن يكون وقت الانتهاء بعد وقت البدء.",
+      "pickDay": "يرجى اختيار يوم واحد على الأقل للتوفر.",
+      "pickOneOnOneCloser": "يرجى اختيار من ستكون معه هذه الجلسة الفردية.",
+      "pickPrimaryCloser": "يرجى اختيار المختِم الأساسي.",
+      "groupNeedsTwo": "يرجى اختيار مختِمين اثنين على الأقل لصفحة حجز جماعي.",
+      "roundRobinNeedsOne": "يرجى اختيار مختِم واحد على الأقل للتوزيع الدوري.",
+      "createFailed": "فشل إنشاء صفحة الحجز.",
+      "groupHostsSaveFailed": "تم إنشاء الصفحة، لكن فشل حفظ مضيفي المجموعة.",
+      "roundRobinSaveFailed": "تم إنشاء الصفحة، لكن فشل حفظ مجموعة التوزيع الدوري.",
+      "unexpected": "خطأ غير متوقع"
+    },
+    "weekdays": {
+      "mon": "الاثنين",
+      "tue": "الثلاثاء",
+      "wed": "الأربعاء",
+      "thu": "الخميس",
+      "fri": "الجمعة",
+      "sat": "السبت",
+      "sun": "الأحد"
+    },
+    "hostSelection": {
+      "unnamedUser": "مستخدم بدون اسم",
+      "emptyClosers": "لم يتم العثور على أي زملاء في الفريق بدور <strong>مختِم</strong>.",
+      "oneOnOne": {
+        "label": "المضيف (المختِم)",
+        "help": "يقوم العميل المحتمل بالحجز مباشرة مع هذا المختِم."
+      },
+      "group": {
+        "label": "المختِمون المطلوبون (يجب أن يحضروا)",
+        "primaryCloser": "المختِم الأساسي (المعيّن على العميل المحتمل)",
+        "selectAttendees": "اختر الحضور المطلوبين",
+        "primaryBadge": "أساسي",
+        "help": "يتم احتساب التوفر بناءً على التداخل بين جميع التقويمات المحددة."
+      },
+      "roundRobin": {
+        "label": "مختِمو التوزيع الدوري (المجموعة)",
+        "selectPool": "اختر المختِمين الذين يمكن تعيينهم",
+        "help": "سيرى العملاء المحتملون الأوقات التي يكون فيها <strong>مختِم واحد على الأقل</strong> متاحًا. عند إجراء الحجز، يتم تعيين أحد المختِمين المتاحين عشوائيًا."
+      }
+    },
+    "previewCard": {
+      "header": {
+        "title": "معاينة صفحة الحجز",
+        "description": "معاينة تقريبية لشكل صفحة الحجز العامة."
+      },
+      "bookingType": {
+        "oneOnOne": "1:1",
+        "group": "جماعي",
+        "roundRobin": "توزيع دوري"
+      },
+      "meta": {
+        "bookingWith": "الحجز مع {orgName} · {bookingType} · {duration} دقيقة",
+        "secureScheduling": "جدولة آمنة"
+      },
+      "defaults": {
+        "meetingName": "مكالمة استراتيجية لياقة",
+        "description": "اختر وقتًا يناسبك. سنرسل دعوة تقويم بعد التأكيد."
+      },
+      "body": {
+        "yourDetails": "بياناتك",
+        "pickTime": "اختر وقتًا",
+        "firstName": "الاسم الأول",
+        "email": "name@example.com",
+        "daysEnabled": "الأيام المفعّلة: <days />",
+        "duration": "المدة: {value} دقيقة",
+        "bufferBefore": "الفاصل قبل: {value} دقيقة",
+        "bufferAfter": "الفاصل بعد: {value} دقيقة",
+        "minNotice": "الحد الأدنى للإشعار: {value} ساعة",
+        "maxNotice": "الحد الأقصى للإشعار: {value} يوم",
+        "noticeWindow": "نافذة الإشعار:",
+        "noticeWindowValue": "{minNoticeHours} ساعة كحد أدنى · {maxNoticeDays} يوم كحد أقصى",
+        "availabilityAlways": "التوفر: 24/7",
+        "availabilityWindow": "التوفر: {days} · {hours}"
+      },
+      "footer": {
+        "note": "معاينة لشكل الصفحة.",
+        "poweredBy": "مشغّل بواسطة <strong>Faigata</strong>"
+      }
+    }
+  },
+  "PublicBookingPage": {
+    "types": {
+      "one_on_one": "1:1",
+      "group": "جماعي",
+      "round_robin": "توزيع دوري"
+    },
+    "weekdays": {
+      "sun": "الأحد",
+      "mon": "الاثنين",
+      "tue": "الثلاثاء",
+      "wed": "الأربعاء",
+      "thu": "الخميس",
+      "fri": "الجمعة",
+      "sat": "السبت"
+    },
+    "partsOfDay": {
+      "night": "الليل",
+      "morning": "الصباح",
+      "afternoon": "بعد الظهر",
+      "evening": "المساء"
+    },
+    "states": {
+      "checkingAvailabilityTitle": "جارٍ التحقق من التوفر",
+      "checkingAvailabilitySubtitle": "يستغرق هذا عادةً ثانية واحدة فقط."
+    },
+    "header": {
+      "bookingWith": "الحجز مع {orgName} · {type}{duration, plural, =0 {} other { · {duration} دقيقة}}{hostsCount}",
+      "hostsCount": " · {count} مضيفين",
+      "secureScheduling": "جدولة آمنة",
+      "generalLinkNotice": "ملاحظة: يبدو أن هذا رابط حجز عام، وليس دعوة مخصصة.",
+      "defaultDescription": "اختر تاريخًا ووقتًا يناسبك. سنرسل دعوة تقويم بعد التأكيد.",
+      "noticeWindow": "نافذة الإشعار:",
+      "noticeWindowValue": "{minNoticeHours} ساعة كحد أدنى · {maxNoticeDays} يوم كحد أقصى",
+      "availabilityAlways": "التوفر: 24/7",
+      "availabilityDaily": "يوميًا",
+      "availabilityWindow": "التوفر: {days} · {start}–{end}"
+    },
+    "details": {
+      "title": "بياناتك",
+      "firstName": "الاسم الأول",
+      "firstNamePlaceholder": "Jane",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "jane@example.com",
+      "validEmail": "يرجى إدخال عنوان بريد إلكتروني صالح.",
+      "selected": "تم الاختيار",
+      "pickToContinue": "اختر تاريخًا ووقتًا للمتابعة.",
+      "bookingConfirmed": "تم تأكيد الحجز",
+      "bookingSaved": "تم حفظ حجزك.",
+      "continue": "متابعة",
+      "booking": "جارٍ الحجز...",
+      "groupAvailabilityHelp": "يتم احتساب التوفر عبر تقاويم جميع المضيفين المطلوبين لهذا الاجتماع.",
+      "singleAvailabilityHelp": "يتم سحب التوفر من Google Calendar المتصل الخاص بالمضيف."
+    },
+    "calendar": {
+      "chooseDate": "اختر تاريخًا",
+      "localTimezone": "الأوقات المعروضة حسب منطقتك الزمنية المحلية",
+      "previousWeek": "الأسبوع السابق",
+      "nextWeek": "الأسبوع التالي",
+      "chooseTime": "اختر وقتًا",
+      "beforeEarliestDate": "هذا التاريخ يسبق أول تاريخ متاح للحجز ({minDate}).",
+      "outsideWindow": "هذا التاريخ خارج نافذة الحجز ({maxNoticeDays} يومًا).",
+      "noSlotsTitle": "لا توجد أوقات متاحة لهذا اليوم.",
+      "noSlotsDescription": "جرّب تاريخًا آخر — قد يكون المضيف أو المضيفون مشغولين بالكامل أو غير متاحين.",
+      "showMore": "عرض المزيد من الأوقات",
+      "tip": "نصيحة: الأوقات المعطلة تقع خارج نافذة الإشعار الخاصة بك ({minNoticeHours} ساعة كحد أدنى / {maxNoticeDays} يوم كحد أقصى)."
+    },
+    "errors": {
+      "loadAvailability": "تعذر علينا تحميل التوفر. يرجى المحاولة مرة أخرى.",
+      "availabilityInternal": "تعذر علينا التحقق من التوفر الآن. يرجى تحديث الصفحة والمحاولة مرة أخرى.",
+      "linkNotFound": "رابط الحجز هذا لم يعد موجودًا.",
+      "inviteInvalid": "رابط الدعوة هذا لم يعد صالحًا.",
+      "hostCalendarNotConnected": "لم يقم المضيف بربط التقويم الخاص به بعد.",
+      "hostCalendarReconnectRequired": "يحتاج المضيف إلى إعادة ربط Google Calendar لإظهار التوفر.",
+      "loadAvailabilitySoon": "تعذر علينا تحميل التوفر الآن. يرجى المحاولة مرة أخرى بعد قليل.",
+      "firstNameRequired": "يرجى إدخال الاسم الأول.",
+      "validEmailRequired": "يرجى إدخال عنوان بريد إلكتروني صالح.",
+      "slotOutsideAvailability": "هذا الوقت خارج نطاق التوفر الخاص برابط الحجز هذا.",
+      "bookingFailed": "فشل إكمال الحجز."
+    },
+    "footer": {
+      "poweredBy": "مشغّل بواسطة <strong>Faigata</strong>"
+    }
+  },
+  "InviteTeamMembersPage": {
+    "metadata": {
+      "title": "دعوة أعضاء الفريق"
+    },
+    "page": {
+      "title": "دعوة أعضاء الفريق",
+      "description": "أرسل دعوة وعيّن دورًا واحدًا أو أكثر.",
+      "managerNote": "أنت مدير، لذلك لا يمكنك تعيين دور المدير العام. يمكن للمديرين العامين فقط القيام بذلك."
+    },
+    "placeholders": {
+      "email": "new.member@company.com"
+    },
+    "actions": {
+      "sendInvite": "إرسال الدعوة",
+      "sending": "جارٍ الإرسال..."
+    },
+    "states": {
+      "loading": "جارٍ تحميل مساحة العمل والصلاحيات...",
+      "noPermission": "ليس لديك صلاحية لدعوة أعضاء الفريق.",
+      "inviteSent": "تم إرسال الدعوة!"
+    },
+    "errors": {
+      "loadPermissions": "فشل تحميل الصلاحيات. يرجى تحديث الصفحة.",
+      "emailAndRoleRequired": "عنوان البريد الإلكتروني ودور واحد على الأقل مطلوبان.",
+      "sendInviteFailed": "فشل إرسال الدعوة.",
+      "generic": "حدث خطأ ما."
+    }
+  },
+  "ManageTeamRolesPage": {
+    "metadata": {
+      "title": "إدارة أدوار الفريق"
+    },
+    "page": {
+      "title": "إدارة أدوار الفريق",
+      "description": "قم بتبديل الأدوار لتحديثها فورًا. لا يمكن للمديرين تعيين دور المدير العام؛ فقط المديرون العامون يمكنهم ذلك."
+    },
+    "table": {
+      "sectionTitle": "أعضاء الفريق",
+      "columns": {
+        "member": "العضو",
+        "action": "الإجراء"
+      },
+      "userFallback": "مستخدم",
+      "adminOnlyTitle": "يمكن للمديرين العامين فقط تعيين دور المدير العام.",
+      "savingTitle": "جارٍ الحفظ...",
+      "removeTitle": "إزالة عضو الفريق"
+    },
+    "states": {
+      "loading": "جارٍ التحميل...",
+      "refreshing": "جارٍ تحميل أعضاء الفريق...",
+      "saved": "تم الحفظ",
+      "empty": "لم يتم العثور على أعضاء فريق في مساحة العمل هذه."
+    },
+    "errors": {
+      "noWorkspaceTeam": "تعذر تحديد مساحة العمل الخاصة بك.",
+      "noPermission": "ليس لديك صلاحية لإدارة أدوار الفريق.",
+      "loadMembers": "فشل تحميل أعضاء الفريق.",
+      "loadMembersHttp": "فشل تحميل أعضاء الفريق (HTTP {status}).",
+      "atLeastOneRole": "مطلوب دور واحد على الأقل.",
+      "saveHttp": "فشل حفظ التغييرات (HTTP {status})."
+    }
+  },
+  "AcceptInvitePage": {
+    "metadata": {
+      "title": "قبول دعوتك",
+      "description": "انضم إلى فريق Faigata الخاص بك، وأنشئ حسابك، وابدأ التعاون مع فريقك."
+    },
+    "page": {
+      "title": "قبول دعوتك",
+      "descriptionWithOrg": "تمت دعوتك للانضمام إلى {orgName}.",
+      "descriptionWithoutOrg": "تمت دعوتك للانضمام إلى فريق Faigata."
+    },
+    "actions": {
+      "dismiss": "إغلاق",
+      "tryAgain": "إعادة المحاولة",
+      "acceptInvite": "قبول الدعوة"
+    },
+    "states": {
+      "loadingInvite": "جارٍ تحميل دعوتك..."
+    },
+    "success": {
+      "title": "مرحبًا بك في {orgName}",
+      "defaultOrg": "فريقك الجديد",
+      "description": "تم إنشاء حسابك وتعيين أدوارك. جارٍ تحويلك إلى لوحة التحكم..."
+    },
+    "footer": {
+      "loginPrompt": "هل لديك حساب Faigata بالفعل؟ <link>سجّل الدخول لقبول هذه الدعوة</link>"
+    },
+    "validation": {
+      "firstNameRequired": "الاسم الأول مطلوب.",
+      "lastNameRequired": "اسم العائلة مطلوب.",
+      "emailRequired": "البريد الإلكتروني مطلوب.",
+      "passwordRequired": "كلمة المرور مطلوبة.",
+      "passwordMin": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+      "emailMismatch": "يرجى استخدام نفس عنوان البريد الإلكتروني الذي أُرسلت إليه الدعوة."
+    },
+    "errors": {
+      "invalidLink": {
+        "title": "رابط دعوة غير صالح",
+        "message": "هذا الرابط يفتقد معلومات الدعوة. يرجى طلب إعادة إرسال الدعوة من فريقك."
+      },
+      "loadFailed": {
+        "title": "تعذر تحميل الدعوة",
+        "message": "تعذر علينا تحميل دعوتك الآن. يرجى التحقق من الاتصال والمحاولة مرة أخرى."
+      },
+      "network": {
+        "title": "خطأ في الشبكة",
+        "message": "حدث خطأ أثناء قبول دعوتك. يرجى المحاولة مرة أخرى."
+      },
+      "inviteLoadInvalid": "تعذر العثور على هذه الدعوة أو أنها لم تعد صالحة.",
+      "acceptFailed": "فشل قبول الدعوة. يرجى المحاولة مرة أخرى."
+    },
+    "apiErrors": {
+      "inviteNotFound": {
+        "title": "لم يتم العثور على الدعوة",
+        "message": "تعذر العثور على هذه الدعوة. قد تكون أزيلت، أو قد يكون الرابط غير مكتمل."
+      },
+      "inviteAlreadyAccepted": {
+        "title": "تم استخدام الدعوة بالفعل",
+        "message": "تم قبول هذه الدعوة بالفعل. جرّب تسجيل الدخول باستخدام عنوان البريد الإلكتروني المدعو."
+      },
+      "inviteExpired": {
+        "title": "انتهت صلاحية الدعوة",
+        "message": "انتهت صلاحية هذه الدعوة. يرجى طلب دعوة جديدة من فريقك."
+      },
+      "inviteEmailMismatch": {
+        "title": "البريد الإلكتروني غير مطابق",
+        "message": "يرجى استخدام نفس عنوان البريد الإلكتروني الذي أُرسلت إليه الدعوة."
+      },
+      "authCreateUserFailed": {
+        "title": "تعذر إنشاء الحساب",
+        "message": "تعذر علينا إنشاء حسابك الآن. يرجى المحاولة مرة أخرى."
+      },
+      "authUpdateUserFailed": {
+        "title": "تعذر إكمال الإعداد",
+        "message": "تعذر علينا إكمال إعداد حسابك. يرجى المحاولة مرة أخرى."
+      },
+      "inviteAcceptFailed": {
+        "title": "تعذر الانضمام إلى الفريق",
+        "message": "تعذر ربط حسابك بالفريق الآن. يرجى المحاولة مرة أخرى أو التواصل مع الدعم."
+      },
+      "generic": {
+        "title": "حدث خطأ ما"
+      }
+    }
+  },
+  "DeleteTeamMemberPage": {
+    "metadata": {
+      "title": "إزالة عضو فريق",
+      "description": "أكد إزالة عضو فريق من مساحة العمل هذه. لا يمكن التراجع عن هذا الإجراء."
+    },
+    "page": {
+      "title": "إزالة عضو الفريق",
+      "description": "هل أنت متأكد أنك تريد إزالة <strong>{name}</strong> من هذا الفريق؟",
+      "warning": "سيؤدي هذا إلى إلغاء وصوله إلى مساحة العمل هذه. لا يمكن التراجع عن هذا الإجراء."
+    },
+    "actions": {
+      "removing": "جارٍ الإزالة...",
+      "removeUser": "إزالة المستخدم"
+    },
+    "states": {
+      "loadingWorkspace": "جارٍ تحميل مساحة العمل..."
+    },
+    "fallback": {
+      "thisUser": "هذا المستخدم"
+    },
+    "preview": {
+      "name": "الاسم",
+      "userId": "معرّف المستخدم"
+    },
+    "errors": {
+      "missingUserId": "معرّف المستخدم مفقود.",
+      "unauthorized": "أنت غير مسجل الدخول، أو انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+      "deleteFailed": "فشلت إزالة عضو الفريق."
+    }
+  },
+  "BillingPage": {
+    "metadata": {
+      "title": "الفوترة",
+      "description": "إدارة فوترة Stripe، بما في ذلك المنتجات، والأسعار، والفواتير، والمدفوعات، والعملاء."
+    },
+    "page": {
+      "title": "الفوترة والمدفوعات",
+      "description": "أدر برامج التدريب، والفواتير، والعملاء، ونشاط المدفوعات في مكان واحد."
+    },
+    "actions": {
+      "openCard": "فتح {title}"
+    },
+    "cards": {
+      "invoices": {
+        "title": "الفواتير",
+        "description": "أنشئ الفواتير وأرسلها وتتبعها للرسوم لمرة واحدة أو المتكررة.",
+        "hint": "مدفوعة · مفتوحة · متأخرة · مسودة"
+      },
+      "products": {
+        "title": "المنتجات",
+        "description": "حدّد المنتجات والأسعار المستخدمة للفواتير والاشتراكات.",
+        "hint": "مرة واحدة · متكرر"
+      },
+      "payments": {
+        "title": "المدفوعات",
+        "description": "راقب المدفوعات الواردة، بالإضافة إلى المعاملات الفاشلة أو المعلقة.",
+        "hint": "ناجحة · معلقة · فاشلة"
+      },
+      "customers": {
+        "title": "العملاء",
+        "description": "أدر عملاء Stripe المرتبطين بالعملاء المحتملين والمؤسسات.",
+        "hint": "تفاصيل الفوترة · وسائل الدفع"
+      }
+    }
+  },
+  "BillingCustomersPage": {
+    "metadata": {
+      "title": "العملاء",
+      "description": "اعرض وأدر عملاء Stripe. اربط العملاء بالعملاء المحتملين للحفاظ على اتصال الفوترة بنظام CRM الخاص بك."
+    },
+    "page": {
+      "title": "العملاء",
+      "description": "عملاء Stripe للحساب المتصل لديك. استخدم البحث في الترويسة للتصفية حسب الاسم أو البريد الإلكتروني أو الهاتف أو المعرّف.",
+      "filterApplied": "عامل التصفية: <strong>“{query}”</strong>",
+      "noFilter": "لم يتم تطبيق أي عامل تصفية."
+    },
+    "actions": {
+      "newCustomer": "عميل جديد",
+      "link": "ربط",
+      "changeLink": "تغيير الربط",
+      "unlink": "إلغاء الربط",
+      "createCustomer": "إنشاء عميل",
+      "creatingCustomer": "جارٍ الإنشاء…",
+      "linkToLead": "ربط بعميل محتمل",
+      "linking": "جارٍ الربط…"
+    },
+    "table": {
+      "title": "عملاء Stripe",
+      "loading": "جارٍ التحميل…",
+      "filteredCount": "يتم عرض {count} عميل مطابق لعامل التصفية",
+      "totalCount": "يتم عرض {count} عميل",
+      "columns": {
+        "customer": "العميل",
+        "created": "تاريخ الإنشاء",
+        "paymentMethod": "وسيلة الدفع",
+        "linkedLead": "العميل المحتمل المرتبط",
+        "actions": "الإجراءات"
+      }
+    },
+    "paymentMethod": {
+      "onFile": "محفوظة",
+      "none": "لا يوجد"
+    },
+    "linkedLead": {
+      "linkedLead": "عميل محتمل مرتبط",
+      "notLinked": "غير مرتبط"
+    },
+    "empty": {
+      "none": {
+        "title": "لا يوجد عملاء بعد.",
+        "description": "استخدم <newCustomer>عميل جديد</newCustomer> لإضافة عميل، أو <refresh>تحديث</refresh> لتحميل أحدث بيانات Stripe."
+      },
+      "noMatch": {
+        "title": "لا يوجد عملاء يطابقون “{query}”.",
+        "description": "جرّب اسمًا مختلفًا، أو بريدًا إلكترونيًا، أو رقم هاتف، أو معرّف عميل Stripe."
+      }
+    },
+    "leadSearch": {
+      "loading": "جارٍ تحميل العملاء المحتملين…",
+      "none": "لم يتم العثور على عملاء محتملين.",
+      "stage": "المرحلة: {stage}",
+      "selected": "تم الاختيار"
+    },
+    "createModal": {
+      "eyebrow": "إنشاء عميل Stripe",
+      "title": "عميل جديد",
+      "description": "أنشئ عميلاً في حساب Stripe المتصل واربطه بعميل محتمل.",
+      "fields": {
+        "findLead": "العثور على عميل محتمل",
+        "selectLead": "اختيار عميل محتمل",
+        "customerName": "اسم العميل"
+      },
+      "placeholders": {
+        "findLead": "اكتب اسم العميل المحتمل، أو البريد الإلكتروني، أو الهاتف…",
+        "customerName": "مثال: ACME GmbH",
+        "email": "name@company.com",
+        "phone": "+49 …"
+      },
+      "help": {
+        "prefill": "سيؤدي اختيار عميل محتمل إلى تعبئة الاسم + البريد الإلكتروني/الهاتف الأساسيين تلقائيًا."
+      }
+    },
+    "linkModal": {
+      "eyebrow": "ربط العميل",
+      "description": "اختر عميلاً محتملاً لربط عميل Stripe هذا به.",
+      "fields": {
+        "searchLeads": "البحث في العملاء المحتملين (اختياري)",
+        "selectLead": "اختيار عميل محتمل"
+      },
+      "placeholders": {
+        "searchLeads": "اكتب اسم عميل محتمل، أو شركة، أو بريدًا إلكترونيًا…"
+      },
+      "help": {
+        "search": "هذا خاص بالنافذة المنبثقة فقط. يبقى البحث العام في الترويسة."
+      }
+    }
+  },
+  "BillingInvoicesPage": {
+    "metadata": {
+      "title": "الفواتير",
+      "description": "اعرض وأدر فواتير Stripe للحساب المتصل لديك."
+    },
+    "page": {
+      "title": "الفواتير",
+      "description": "أنشئ الفواتير وراجعها وأرسلها المتزامنة مع حساب Stripe المتصل لديك.",
+      "filterApplied": "عامل التصفية: <strong>“{query}”</strong>",
+      "noFilter": "لم يتم تطبيق أي عامل تصفية."
+    },
+    "actions": {
+      "newInvoice": "فاتورة جديدة"
+    },
+    "table": {
+      "title": "فواتير Stripe",
+      "loading": "جارٍ التحميل…",
+      "filteredCount": "يتم عرض {count} فاتورة مطابقة لعامل التصفية",
+      "totalCount": "يتم عرض {count} فاتورة",
+      "columns": {
+        "invoice": "الفاتورة",
+        "customer": "العميل",
+        "status": "الحالة",
+        "total": "الإجمالي",
+        "created": "تاريخ الإنشاء",
+        "due": "تاريخ الاستحقاق",
+        "view": "عرض"
+      }
+    },
+    "invoice": {
+      "number": "#{number}",
+      "stripeId": "Stripe:"
+    },
+    "empty": {
+      "none": {
+        "title": "لا توجد فواتير بعد.",
+        "description": "استخدم <newInvoice>فاتورة جديدة</newInvoice> لإنشاء واحدة، أو <refresh>تحديث</refresh> لتحميل أحدث بيانات Stripe."
+      },
+      "noMatch": {
+        "title": "لا توجد فواتير تطابق “{query}”.",
+        "description": "جرّب اسم عميل، أو بريدًا إلكترونيًا، أو رقم فاتورة، أو معرّف فاتورة Stripe."
+      }
+    }
+  },
+  "BillingPaymentsPage": {
+    "metadata": {
+      "title": "المدفوعات",
+      "description": "راقب المدفوعات الواردة، والمعاملات المعلقة، والإخفاقات."
+    },
+    "page": {
+      "title": "المدفوعات",
+      "description": "اعرض المدفوعات المتزامنة من حساب Stripe المتصل لديك.",
+      "filterApplied": "عامل التصفية: <strong>“{query}”</strong>",
+      "noFilter": "لم يتم تطبيق أي عامل تصفية."
+    },
+    "table": {
+      "title": "مدفوعات Stripe",
+      "loading": "جارٍ التحميل…",
+      "filteredCount": "يتم عرض {count} دفعة مطابقة لعامل التصفية",
+      "totalCount": "{count} دفعة"
+    },
+    "empty": {
+      "none": {
+        "title": "لا توجد مدفوعات بعد.",
+        "description": "ستظهر المدفوعات هنا بمجرد معالجتها."
+      },
+      "noMatch": {
+        "title": "لا توجد مدفوعات تطابق “{query}”.",
+        "description": "جرّب بحثًا آخر."
+      }
+    },
+    "actions": {
+      "open": "فتح ←"
+    }
+  },
+  "BillingProductsPage": {
+    "metadata": {
+      "title": "المنتجات",
+      "description": "أدر منتجات وأسعار Stripe المتزامنة مع حسابك المتصل."
+    },
+    "page": {
+      "title": "المنتجات",
+      "description": "أدر المنتجات والأسعار المتزامنة مع حساب Stripe المتصل لديك.",
+      "filterApplied": "عامل التصفية: <strong>“{query}”</strong>",
+      "noFilter": "لم يتم تطبيق أي عامل تصفية."
+    },
+    "actions": {
+      "newProduct": "منتج جديد"
+    },
+    "table": {
+      "title": "منتجات Stripe",
+      "loading": "جارٍ التحميل…",
+      "filteredCount": "يتم عرض {count} منتج مطابق لعامل التصفية",
+      "totalCount": "يتم عرض {count} منتج",
+      "columns": {
+        "product": "المنتج",
+        "status": "الحالة",
+        "currentPrice": "السعر الحالي",
+        "created": "تاريخ الإنشاء",
+        "actions": "الإجراءات"
+      }
+    },
+    "price": {
+      "recurringBilling": "فوترة متكررة"
+    },
+    "empty": {
+      "none": {
+        "title": "لا توجد منتجات بعد.",
+        "description": "استخدم <newProduct>منتج جديد</newProduct> لإنشاء واحد، أو <refresh>تحديث</refresh> للمزامنة من Stripe."
+      },
+      "noMatch": {
+        "title": "لا توجد منتجات تطابق “{query}”.",
+        "description": "جرّب البحث باسم مختلف، أو وصف، أو معرّف منتج."
+      }
+    }
+  },
+  "BillingFailedPaymentsPage": {
+    "metadata": {
+      "title": "المدفوعات الفاشلة",
+      "description": "راجع المدفوعات الفاشلة أو التي تتطلب إجراء."
+    },
+    "page": {
+      "title": "المدفوعات الفاشلة",
+      "description": "المدفوعات التي تحتاج إلى إجراء، مثل البطاقات المرفوضة أو وسائل الدفع المفقودة.",
+      "filterApplied": "عامل التصفية: <strong>“{query}”</strong>",
+      "noFilter": "لم يتم تطبيق أي عامل تصفية."
+    },
+    "actions": {
+      "backToAll": "العودة إلى جميع المدفوعات",
+      "open": "فتح الدفعة"
+    },
+    "table": {
+      "title": "المدفوعات الفاشلة",
+      "loading": "جارٍ التحميل…",
+      "filteredCount": "يتم عرض {count} دفعة فاشلة مطابقة لعامل التصفية",
+      "totalCount": "{count} دفعة فاشلة"
+    },
+    "empty": {
+      "none": {
+        "title": "لا توجد مدفوعات فاشلة بعد.",
+        "description": "عندما تفشل دفعة، ستظهر هنا."
+      },
+      "noMatch": {
+        "title": "لا توجد مدفوعات فاشلة تطابق “{query}”.",
+        "description": "جرّب بريدًا إلكترونيًا مختلفًا، أو حالة مختلفة، أو معرّف intent للدفع."
+      }
+    }
+  },
+  "BillingInvoiceDetailPage": {
+    "metadata": {
+      "title": "الفاتورة",
+      "description": "اعرض وأدر فاتورة Stripe."
+    },
+    "page": {
+      "title": "تفاصيل الفاتورة"
+    },
+    "header": {
+      "invoiceNumber": "الفاتورة رقم #{number}"
+    },
+    "summary": {
+      "total": "الإجمالي:",
+      "created": "تاريخ الإنشاء:",
+      "due": "تاريخ الاستحقاق:",
+      "customer": "العميل:"
+    },
+    "actions": {
+      "refreshTitle": "تحديث الفاتورة",
+      "addItem": "إضافة بند",
+      "addItemTitle": "إضافة بند سطر",
+      "addItemDisabledTitle": "لا يمكن إضافة بنود إلى فاتورة مغلقة",
+      "finalize": "اعتماد نهائي",
+      "send": "إرسال",
+      "void": "إلغاء",
+      "addingItem": "جارٍ الإضافة…",
+      "addItemModal": "إضافة بند",
+      "backToInvoices": "العودة إلى الفواتير"
+    },
+    "links": {
+      "openHostedInvoice": "فتح الفاتورة المستضافة ↗",
+      "downloadPdf": "تنزيل PDF ↗",
+      "hostedUnavailable": "الفاتورة المستضافة غير متاحة بعد.",
+      "pdfUnavailable": "ملف PDF غير متاح بعد."
+    },
+    "items": {
+      "title": "بنود السطر",
+      "description": "أضف البنود، ثم اعتمد الفاتورة وأرسلها. تُقفل البنود بعد الدفع أو الإلغاء.",
+      "empty": "لا توجد بنود سطر بعد. انقر على <strong>إضافة بند</strong> لإنشاء أول بند.",
+      "fallbackItem": "بند فاتورة",
+      "table": {
+        "quantity": "الكمية"
+      }
+    },
+    "modal": {
+      "title": "إضافة بند سطر",
+      "description": "استخدم Stripe Price (متكرر/مرة واحدة)، أو أضف مبلغًا مخصصًا دون التفكير بالسنتات.",
+      "fields": {
+        "mode": "الوضع",
+        "priceId": "معرّف السعر",
+        "quantity": "الكمية"
+      },
+      "modes": {
+        "custom": "مبلغ مخصص",
+        "price": "سعر Stripe"
+      },
+      "placeholders": {
+        "priceId": "price_...",
+        "amount": "مثال: 99.00"
+      },
+      "help": {
+        "priceId": "الصق معرّف سعر Stripe. (لاحقًا يمكنك بناء واجهة “اختيار منتج/سعر”).",
+        "currency": "نصيحة: سيقوم Stripe بتخزين المبلغ بأصغر وحدة تلقائيًا.",
+        "amount": "أدخل المبلغ العادي (مثال: 10.50)."
+      }
+    },
+    "states": {
+      "notFound": "لم يتم العثور على الفاتورة."
+    }
+  },
+  "BillingNewInvoicePage": {
+    "metadata": {
+      "title": "فاتورة جديدة",
+      "description": "أنشئ فاتورة Stripe جديدة لعميل."
+    },
+    "page": {
+      "title": "فاتورة جديدة",
+      "description": "أنشئ فاتورة في Stripe، ثم أضف بنود السطر وأرسلها إلى العميل."
+    },
+    "fields": {
+      "selectCustomer": "اختر عميلاً",
+      "collectionMethod": "طريقة التحصيل",
+      "daysUntilDue": "عدد الأيام حتى الاستحقاق",
+      "memo": "مذكرة (اختياري)"
+    },
+    "collectionMethod": {
+      "sendInvoice": "إرسال الفاتورة",
+      "chargeAutomatically": "التحصيل تلقائيًا"
+    },
+    "placeholders": {
+      "memo": "مرئية للعميل على الفاتورة."
+    },
+    "actions": {
+      "manage": "إدارة",
+      "manageCustomersTitle": "إدارة العملاء",
+      "createInvoice": "إنشاء فاتورة"
+    },
+    "states": {
+      "loadingCustomers": "جارٍ تحميل العملاء..."
+    },
+    "help": {
+      "customer": "نصيحة: استخدم البحث العام في ترويسة صفحة العملاء للعثور بسرعة على العميل المطلوب.",
+      "collectionMethod": "إرسال الفاتورة = إرسال رابط الفاتورة عبر البريد الإلكتروني. التحصيل تلقائيًا = يحاول Stripe تنفيذ الدفع.",
+      "daysUntilDue": "ينطبق فقط عند استخدام \"إرسال الفاتورة\".",
+      "submitDisabled": "اختر عميلاً لتفعيل \"إنشاء فاتورة\"."
+    }
+  },
+  "BillingPaymentDetailPage": {
+    "metadata": {
+      "title": "تفاصيل الدفع",
+      "description": "افحص دفعة وقم بتشغيل عمليات الاسترداد."
+    },
+    "page": {
+      "title": "تفاصيل الدفع"
+    },
+    "actions": {
+      "back": "العودة إلى المدفوعات",
+      "refundPayment": "استرداد الدفعة",
+      "refunding": "جارٍ الاسترداد..."
+    },
+    "help": {
+      "refund": "تتطلب عمليات الاسترداد دفعة ناجحة (وضع الاختبار مقبول)."
+    },
+    "raw": {
+      "title": "حمولة Stripe الخام"
+    },
+    "states": {
+      "notFound": "لم يتم العثور على الدفعة."
+    }
+  },
+  "BillingProductArchivePage": {
+    "metadata": {
+      "title": "أرشفة المنتج",
+      "description": "أرشف منتجًا في Stripe (بتعيينه غير نشط)."
+    },
+    "page": {
+      "title": "أرشفة المنتج",
+      "description": "سيؤدي هذا إلى تعيين <strong>active=false</strong> في Stripe. لن تتأثر الفواتير الحالية."
+    },
+    "confirm": {
+      "before": "هل أنت متأكد أنك تريد أرشفة",
+      "after": "؟",
+      "stripeId": "معرّف Stripe:"
+    }
+  },
+  "BillingProductDetailPage": {
+    "metadata": {
+      "title": "المنتج",
+      "description": "اعرض تفاصيل المنتج، والأسعار، والجدول الزمني للنشاط."
+    },
+    "header": {
+      "stripeId": "معرّف Stripe:"
+    },
+    "actions": {
+      "sync": "مزامنة",
+      "syncTitle": "مزامنة الكتالوج من Stripe",
+      "newPrice": "+ سعر جديد",
+      "createPrice": "إنشاء سعر"
+    },
+    "states": {
+      "notFound": "لم يتم العثور على المنتج."
+    },
+    "statusCard": {
+      "title": "الحالة",
+      "created": "تاريخ الإنشاء:"
+    },
+    "details": {
+      "title": "التفاصيل"
+    },
+    "prices": {
+      "title": "الأسعار",
+      "description": "أسعار Stripe غير قابلة للتعديل فعليًا. أنشئ سعرًا جديدًا وأرشف القديم.",
+      "empty": "لا توجد أسعار بعد.",
+      "recurringLabel": "{count} {interval}{count, plural, one {} other {}}",
+      "recurringType": "متكرر ({recurringLabel})",
+      "table": {
+        "amount": "المبلغ",
+        "type": "النوع",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء",
+        "actions": "الإجراءات"
+      }
+    },
+    "activity": {
+      "title": "الجدول الزمني للنشاط",
+      "description": "تحديثات المنتج وتغييرات الأسعار.",
+      "empty": "لا يوجد نشاط بعد.",
+      "fallbacks": {
+        "product": "منتج"
+      },
+      "types": {
+        "productCreated": "منتج جديد",
+        "productUpdated": "تم تحديث المنتج",
+        "productArchived": "تمت أرشفة المنتج",
+        "recurringPriceCreated": "تم إنشاء سعر متكرر",
+        "oneTimePriceCreated": "تم إنشاء سعر لمرة واحدة",
+        "priceArchived": "تمت أرشفة السعر"
+      },
+      "text": {
+        "productCreated": "منتج جديد: {name}",
+        "nameChanged": "تم تغيير الاسم إلى {name}",
+        "descriptionUpdated": "تم تحديث الوصف",
+        "productDetailsChanged": "تم تغيير تفاصيل المنتج",
+        "productArchived": "تم تعيينه كغير نشط في Stripe (لن تتأثر الفواتير الحالية).",
+        "newPriceCreated": "تم إنشاء سعر جديد",
+        "recurringPriceCreated": "{amount} - تتم الفوترة كل {count} {interval}{count, plural, one {} other {}}",
+        "oneTimePriceCreated": "{amount} - رسوم لمرة واحدة",
+        "priceArchived": "تمت أرشفة سعر Stripe: {id}",
+        "productsCount": "{count} منتجات",
+        "pricesCount": "{count} أسعار",
+        "catalogSynced": "تمت مزامنة الكتالوج",
+        "catalogSyncedWithCounts": "تمت مزامنة الكتالوج - {parts}"
+      }
+    },
+    "modal": {
+      "title": "إنشاء سعر",
+      "description": "المبلغ بالسنتات (مثال: 1000 = ‏$10.00).",
+      "fields": {
+        "amountCents": "المبلغ (بالسنتات)",
+        "interval": "الفترة",
+        "intervalCount": "عدد الفترات"
+      },
+      "help": {
+        "currency": "اختر عملة مدعومة من حساب Stripe الخاص بك."
+      },
+      "intervals": {
+        "day": "يوم",
+        "week": "أسبوع",
+        "month": "شهر",
+        "year": "سنة"
+      }
+    }
+  },
+  "BillingProductFormPage": {
+    "metadata": {
+      "create": {
+        "title": "منتج جديد",
+        "description": "أنشئ منتجًا جديدًا في Stripe وقم بمزامنته مع الكتالوج الخاص بك."
+      },
+      "edit": {
+        "title": "تعديل المنتج",
+        "description": "حدّث اسم المنتج ووصفه، ثم قم بالمزامنة مع Stripe."
+      }
+    },
+    "page": {
+      "createTitle": "منتج جديد",
+      "editTitle": "تعديل المنتج",
+      "createDescription": "ينشئ منتجًا وسعرًا في Stripe على حسابك المتصل.",
+      "editDescription": "يحدّث اسم منتج Stripe ووصفه."
+    },
+    "fields": {
+      "billingType": "نوع الفوترة",
+      "interval": "الفترة",
+      "intervalCount": "عدد الفترات"
+    },
+    "placeholders": {
+      "name": "مثال: باقة تدريب",
+      "description": "اختياري",
+      "amount": "مثال: 19.99"
+    },
+    "price": {
+      "title": "السعر",
+      "description": "سيؤدي هذا إلى إنشاء سعر Stripe للمنتج. عادةً لا يتم تعديل أسعار Stripe؛ بل يتم إنشاء سعر جديد بدلاً من ذلك."
+    },
+    "help": {
+      "amount": "أدخل المبلغ بالوحدات الرئيسية (مثال: 19.99). سنحوّله إلى سنتات.",
+      "currency": "يتم إرساله إلى Stripe كرمز بأحرف صغيرة.",
+      "intervalCount": "مثال: شهر واحد، 3 أشهر، إلخ.",
+      "missingRouteParam": "نصيحة: تتطلب هذه الصفحة معرّف منتج في معلمات المسار."
+    },
+    "intervals": {
+      "day": "يومي",
+      "week": "أسبوعي",
+      "month": "شهري",
+      "year": "سنوي"
+    },
+    "actions": {
+      "createProduct": "إنشاء منتج",
+      "saveChanges": "حفظ التغييرات"
+    },
+    "errors": {
+      "nameRequired": "الاسم مطلوب.",
+      "priceAmountRequired": "مبلغ السعر مطلوب.",
+      "currencyRequired": "العملة مطلوبة.",
+      "missingProductId": "معرّف المنتج مفقود.",
+      "createResponseMissingProductId": "استجابة الإنشاء تفتقد معرّف المنتج."
+    }
+  },
+  "RegisterPage": {
+    "metadata": {
+      "title": "التسجيل"
+    },
+    "page": {
+      "title": "أنشئ حساب Faigata الخاص بك",
+      "subtitle": "تسجيل دخول واحد لمنسقي المواعيد، والمختِمين، وإيرادات التدريب."
+    },
+    "footer": {
+      "alreadyHaveAccount": "هل لديك حساب بالفعل؟"
+    },
+    "states": {
+      "checkingSession": "جارٍ التحقق من جلستك..."
+    },
+    "errors": {
+      "registrationFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى.",
+      "sessionNotCreated": "تم إنشاء حسابك، لكن Supabase لم ينشئ جلسة تسجيل دخول. يرجى تأكيد بريدك الإلكتروني، ثم المتابعة من صفحة تسجيل الدخول.",
+      "userAlreadyExists": "يوجد حساب بهذا البريد الإلكتروني بالفعل.",
+      "passwordTooShort": "كلمة المرور قصيرة جدًا.",
+      "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح.",
+      "tooManyRequests": "عدد كبير جدًا من المحاولات. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.",
+      "network": "خطأ في الشبكة. يرجى التحقق من الاتصال والمحاولة مرة أخرى.",
+      "completeRegistrationFailed": "تم إنشاء حسابك، لكن تعذر علينا إكمال إعداد مساحة العمل. جارٍ تحويلك الآن.",
+      "completeRegistrationUnexpected": "تم إنشاء حسابك، لكن حدث خطأ أثناء إكمال الإعداد.",
+      "initializationFailed": "تعذر علينا التحقق من جلستك الحالية. يرجى المحاولة مرة أخرى.",
+      "unexpected": "حدث خطأ أثناء إنشاء حسابك."
+    }
+  },
+  "LoginPage": {
+    "metadata": {
+      "title": "تسجيل الدخول"
+    },
+    "page": {
+      "title": "مرحبًا بعودتك إلى Faigata",
+      "subtitle": "سجّل الدخول لإدارة العملاء المحتملين، والمكالمات المحجوزة، وعملاء التدريب."
+    },
+    "actions": {
+      "signingIn": "جارٍ تسجيل دخولك..."
+    },
+    "footer": {
+      "newToFaigata": "جديد على Faigata؟"
+    },
+    "states": {
+      "loading": "جارٍ التحميل"
+    },
+    "errors": {
+      "invalidEmailOrPassword": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      "authConfirmFailed": "فشل تأكيد البريد الإلكتروني. يرجى تجربة الرابط مرة أخرى أو تسجيل الدخول يدويًا.",
+      "emailNotConfirmed": "يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول.",
+      "tooManyRequests": "عدد كبير جدًا من المحاولات. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.",
+      "network": "خطأ في الشبكة. يرجى التحقق من الاتصال والمحاولة مرة أخرى.",
+      "loginFailed": "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
+      "afterLoginFailed": "تم تسجيل الدخول بنجاح، لكن تعذر علينا إكمال إعداد مساحة العمل. جارٍ تحويلك الآن.",
+      "unexpected": "حدث خطأ أثناء تسجيل دخولك."
+    }
+  },
+  "BookingLinksPage": {
+    "metadata": {
+      "title": "صفحات الحجز",
+      "description": "اعرض وأدر جميع روابط حجز الاستشارات الخاصة بك في مكان واحد. دع العملاء المحتملين يحجزون الوقت مباشرة على Google Calendar المتصل لديك."
+    }
+  },
+  "OnboardingPage": {
+    "metadata": {
+      "title": "الإعداد الأولي",
+      "description": "قم بإعداد مساحة العمل، والفريق، ومسار المبيعات، وبيانات العملاء المحتملين قبل البدء في استخدام Faigata."
+    },
+    "steps": {
+      "teamSetup": "إعداد الفريق",
+      "inviteTeammates": "دعوة الزملاء",
+      "customizeLeadData": "تخصيص بيانات العملاء المحتملين",
+      "importExistingLeads": "استيراد العملاء المحتملين الحاليين",
+      "customizePipeline": "تخصيص مسار المبيعات",
+      "conversionMetrics": "مقاييس التحويل",
+      "finish": "إنهاء"
+    },
+    "page": {
+      "title": "مرحبًا بك في Lumo",
+      "progress": "الخطوة {current} من {total} · {step}",
+      "setupHint": "سنجهز كل شيء لك بالكامل خلال دقيقة."
+    },
+    "alerts": {
+      "loginRequired": "تحتاج إلى تسجيل الدخول لإكمال الإعداد الأولي.",
+      "saveFailed": "فشل حفظ إعداداتك. يرجى المحاولة مرة أخرى.",
+      "unexpected": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    },
+    "actions": {
+      "back": "رجوع",
+      "goToDashboard": "الانتقال إلى لوحة التحكم",
+      "addAnotherTeammate": "+ إضافة زميل آخر",
+      "addAnotherField": "+ إضافة حقل آخر",
+      "downloadSampleTemplate": "تنزيل نموذج تجريبي",
+      "remove": "إزالة",
+      "addStage": "+ إضافة مرحلة",
+      "addConversionMetric": "+ إضافة مقياس تحويل"
+    },
+    "teamSetup": {
+      "defaults": {
+        "teamName": "فريق المبيعات"
+      },
+      "fields": {
+        "companyName": "اسم الشركة",
+        "teamName": "فريقك الأول",
+        "timezone": "المنطقة الزمنية"
+      },
+      "placeholders": {
+        "companyName": "مثال: Faigata GmbH",
+        "teamName": "مثال: المبيعات الصادرة"
+      },
+      "info": "سيكون أول مستخدم هو المدير العام لهذه المساحة. لاحقًا يمكنك إضافة فرق أخرى مثل فريق SDR، أو المختِمين، أو CSM."
+    },
+    "invites": {
+      "description": "ادعُ الأشخاص الذين سيستخدمون Lumo معك. يمكنك دائمًا إضافة المزيد لاحقًا.",
+      "emailPlaceholder": "teammate@company.com"
+    },
+    "customFields": {
+      "description": "اختر البيانات التي تريد تتبعها لكل عميل محتمل أو prospect. اسحب الحقول لإعادة ترتيبها.",
+      "defaults": {
+        "industryLabel": "الصناعة",
+        "regionLabel": "المنطقة",
+        "regionOptions": "DACH, US, UK, EU, Other",
+        "newFieldLabel": "حقل جديد"
+      },
+      "fieldTypes": {
+        "text": "نص",
+        "number": "رقم",
+        "select": "قائمة منسدلة",
+        "boolean": "مربع اختيار",
+        "url": "رابط URL"
+      },
+      "placeholders": {
+        "fieldLabel": "تسمية الحقل (مثال: الصناعة)",
+        "selectOptions": "الخيارات (مفصولة بفواصل، مثال: SaaS, E-commerce, Agency)"
+      }
+    },
+    "importLeads": {
+      "description": "هل لديك بالفعل عملاء محتملون أو prospects في جدول بيانات؟ استوردهم الآن حتى يتمكن فريقك من المتابعة من حيث توقفوا.",
+      "uploadTitle": "انقر لرفع CSV / Excel",
+      "uploadSubtitle": "سنرشدك لاحقًا خلال مطابقة الأعمدة.",
+      "selectedFile": "الملف المحدد: {fileName}",
+      "recommendedColumns": {
+        "title": "الأعمدة الموصى بها",
+        "nameEmailCompany": "الاسم، البريد الإلكتروني، الشركة",
+        "stage": "المرحلة (جديد / تم التواصل / تم الرد / مؤهل / ...)",
+        "owner": "المالك (مولّد العملاء المحتملين / محدد المواعيد / مختِم)",
+        "customFields": "أي حقول مخصصة قمت بتعريفها للتو"
+      }
+    },
+    "pipeline": {
+      "description": "هذا هو مسار المبيعات الافتراضي لديك. يمكنك الاحتفاظ بالمقترح الذي نوصي به أو إعادة تسمية المراحل بما يتوافق مع عمليتك.",
+      "defaults": {
+        "new": "جديد",
+        "contacted": "تم التواصل",
+        "replied": "تم الرد",
+        "qualified": "مؤهل",
+        "bookedCall": "تم حجز مكالمة",
+        "showedUp": "حضر",
+        "offer": "عرض",
+        "closed": "تم الإغلاق",
+        "newStage": "مرحلة جديدة"
+      }
+    },
+    "conversionMetrics": {
+      "description": "امنح أسماء لمعدلات التحويل التي تهمك. يقارن كل مقياس عدد العملاء المحتملين الذين ينتقلون من مرحلة في مسار المبيعات إلى أخرى.",
+      "defaults": {
+        "newMetric": "مقياس جديد"
+      },
+      "placeholders": {
+        "metricName": "اسم المقياس (مثال: معدل الرد، معدل الحجز)"
+      },
+      "fromStage": "من: {stage}",
+      "toStage": "إلى: {stage}"
+    },
+    "finish": {
+      "readyTitle": "أنت جاهز للانطلاق",
+      "description": "سننشئ {teamName} داخل {companyName}، ونحمّل الحقول المخصصة ومسار المبيعات مسبقًا، ونرسل الدعوات إلى زملائك.",
+      "fallbacks": {
+        "teamName": "فريق المبيعات الخاص بك",
+        "companyName": "شركتك"
+      },
+      "summary": {
+        "invites": "{count} دعوة زميل{count, plural, one {} other {}}",
+        "fields": "{count} حقل عميل محتمل مخصص{count, plural, one {} other {}}",
+        "stages": "{count} مرحلة في مسار المبيعات{count, plural, one {} other {}}",
+        "metrics": "{count} مقياس تحويل{count, plural, one {} other {}}"
+      },
+      "nextTitle": "ما التالي في Lumo",
+      "nextItems": {
+        "outreach": "تتبع تواصل منسقي المواعيد والردود في الوقت الفعلي",
+        "assignment": "تعيين العملاء المحتملين ذوي الإمكانات العالية تلقائيًا إلى أفضل المؤدين لديك",
+        "pipelineHealth": "منح المديرين رؤية واضحة لصحة مسار المبيعات"
+      }
+    }
+  }
+}

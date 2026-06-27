@@ -1,12 +1,15 @@
-// src/app/(app)/settings/lead-scoring/page.tsx
 import type { Metadata } from "next";
+import { LeadScoringSettingsClient } from "@/features/crm/components/LeadScoringSettingsClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Lead Scoring",
-  description: "Define your Lead Scoring Criteria",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("LeadScoringSettingsPage");
 
-import { LeadScoringSettingsClient } from "@/modules/crm/components/LeadScoringSettingsClient";
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function LeadScoringPage() {
   return <LeadScoringSettingsClient />;

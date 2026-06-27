@@ -3,8 +3,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 type ProviderId = "google" | "outlook";
 
@@ -14,19 +15,30 @@ type IntegrationStatus = {
   billing: { stripe: boolean };
 };
 
+type ErrorMessageKey =
+  | "loadStatus"
+  | "loadRoles"
+  | "disconnectCalendar"
+  | "disconnectStripe"
+  | "connectStart"
+  | "missingAuthUrl";
+
 const EMPTY_STATUS: IntegrationStatus = {
   calendar: { google: false, outlook: false },
   email: { google: false, outlook: false },
   billing: { stripe: false },
 };
 
+const actionArea = "mt-4 flex flex-col gap-2";
+const helperArea = "min-h-[32px]";
+
 const GC_RECONNECT_FLAG_KEY = "faigatacrm.googleCalendarReconnectRequired";
 
 const calendarProviders = [
   {
     id: "google" as const,
-    name: "Google Calendar",
-    description: "Used by most SaaS and startup teams.",
+    nameKey: "providers.googleCalendar.name",
+    descriptionKey: "providers.googleCalendar.description",
     connectHref: "/api/integrations/calendar/google/connect",
     badgeBg: "bg-indigo-50",
     badgeText: "text-indigo-700",
@@ -34,11 +46,18 @@ const calendarProviders = [
     buttonHoverBg: "hover:bg-indigo-700",
     buttonText: "text-white",
     enabled: true,
+    badgeKey: "providers.googleCalendar.badge",
+    connectKey: "providers.googleCalendar.connect",
+    disconnectKey: "providers.googleCalendar.disconnect",
+    reconnectKey: "providers.googleCalendar.reconnect",
+    helperConnectedKey: "providers.googleCalendar.helperConnected",
+    helperDisconnectedKey: "providers.googleCalendar.helperDisconnected",
+    helperReconnectKey: "providers.googleCalendar.helperReconnect",
   },
   {
     id: "outlook" as const,
-    name: "Outlook / Microsoft 365 Calendar",
-    description: "Common in corporate and enterprise environments.",
+    nameKey: "providers.outlookCalendar.name",
+    descriptionKey: "providers.outlookCalendar.description",
     connectHref: "/api/integrations/calendar/outlook/connect",
     badgeBg: "bg-sky-50",
     badgeText: "text-sky-700",
@@ -46,14 +65,19 @@ const calendarProviders = [
     buttonHoverBg: "hover:bg-sky-700",
     buttonText: "text-white",
     enabled: false,
+    badgeKey: "providers.outlookCalendar.badge",
+    connectKey: "providers.outlookCalendar.connect",
+    disconnectKey: "providers.outlookCalendar.disconnect",
+    helperConnectedKey: "providers.outlookCalendar.helperConnected",
+    helperDisconnectedKey: "providers.outlookCalendar.helperDisconnected",
   },
 ];
 
 const emailProviders = [
   {
     id: "google" as const,
-    name: "Gmail / Google Workspace",
-    description: "Send and log emails directly from FaigataCRM.",
+    nameKey: "providers.gmail.name",
+    descriptionKey: "providers.gmail.description",
     connectHref: "/api/integrations/email/google/connect",
     badgeBg: "bg-emerald-50",
     badgeText: "text-emerald-700",
@@ -61,11 +85,16 @@ const emailProviders = [
     buttonHoverBg: "hover:bg-emerald-700",
     buttonText: "text-white",
     enabled: false,
+    badgeKey: "providers.gmail.badge",
+    connectKey: "providers.gmail.connect",
+    disconnectKey: "providers.gmail.disconnect",
+    helperConnectedKey: "providers.gmail.helperConnected",
+    helperDisconnectedKey: "providers.gmail.helperDisconnected",
   },
   {
     id: "outlook" as const,
-    name: "Outlook / Microsoft 365 Mail",
-    description: "Use your Outlook inbox inside FaigataCRM.",
+    nameKey: "providers.outlookMail.name",
+    descriptionKey: "providers.outlookMail.description",
     connectHref: "/api/integrations/email/outlook/connect",
     badgeBg: "bg-slate-50",
     badgeText: "text-slate-700",
@@ -73,15 +102,19 @@ const emailProviders = [
     buttonHoverBg: "hover:bg-sky-800",
     buttonText: "text-white",
     enabled: false,
+    badgeKey: "providers.outlookMail.badge",
+    connectKey: "providers.outlookMail.connect",
+    disconnectKey: "providers.outlookMail.disconnect",
+    helperConnectedKey: "providers.outlookMail.helperConnected",
+    helperDisconnectedKey: "providers.outlookMail.helperDisconnected",
   },
 ];
 
 const billingProviders = [
   {
     id: "stripe" as const,
-    name: "Stripe (Test)",
-    description:
-      "Connect Stripe to create products, send invoices, collect payments, and show payment status.",
+    nameKey: "providers.stripe.name",
+    descriptionKey: "providers.stripe.description",
     connectHref: "/api/integrations/stripe/connect",
     badgeBg: "bg-violet-50",
     badgeText: "text-violet-700",
@@ -89,11 +122,23 @@ const billingProviders = [
     buttonHoverBg: "hover:bg-violet-700",
     buttonText: "text-white",
     enabled: true,
+    badgeKey: "providers.stripe.badge",
+    connectKey: "providers.stripe.connect",
+    disconnectKey: "providers.stripe.disconnect",
+    helperConnectedKey: "providers.stripe.helperConnected",
+    helperDisconnectedKey: "providers.stripe.helperDisconnected",
   },
 ];
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function getAuthedLocaleHeaders(accessToken: string | null, locale: string) {
+  return {
+    "x-faigata-locale": locale,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
 }
 
 function CalendarProviderIcon({ id }: { id: ProviderId }) {
@@ -179,6 +224,7 @@ function CalendarProviderIcon({ id }: { id: ProviderId }) {
 function EmailProviderIcon({ id }: { id: ProviderId }) {
   const stroke = id === "google" ? "#16A34A" : "#0284C7";
   const fill = id === "google" ? "#DCFCE7" : "#E0F2FE";
+
   return (
     <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true" role="img">
       <rect
@@ -237,7 +283,9 @@ const clearReconnectFlag = () => {
 };
 
 export default function IntegrationsClient() {
-  // ✅ IMPORTANT: call ALL hooks unconditionally (fixes hook-order error)
+  const t = useTranslations("Integrations");
+  const common = useTranslations("Common");
+  const locale = useLocale();
   const { resolvedTheme } = useTheme();
   const searchParams = useSearchParams();
 
@@ -245,19 +293,17 @@ export default function IntegrationsClient() {
   const errorParam = searchParams.get("error");
 
   const [mounted, setMounted] = useState(false);
-
   const [status, setStatus] = useState<IntegrationStatus>(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
-
   const [pendingCalendar, setPendingCalendar] = useState<ProviderId | null>(
     null,
   );
   const [pendingStripe, setPendingStripe] = useState(false);
-
   const [googleReconnectNeeded, setGoogleReconnectNeeded] = useState(false);
-
   const [isAdmin, setIsAdmin] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(true);
+  const [errorMessageKey, setErrorMessageKey] =
+    useState<ErrorMessageKey | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -323,19 +369,28 @@ export default function IntegrationsClient() {
       }
 
       const { data, error } = await supabase
-        .from("profiles")
+        .from("team_members")
         .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
+        .eq("user_id", user.id);
 
       if (error) {
         console.error("[Integrations] Failed to load roles", error);
+        setErrorMessageKey("loadRoles");
         setIsAdmin(false);
         return;
       }
 
-      const roles = (data?.role ?? []) as string[];
-      setIsAdmin(roles.some((r) => String(r).toLowerCase() === "admin"));
+      const roles = (Array.isArray(data) ? data : [])
+        .flatMap((row: any) =>
+          Array.isArray(row?.role)
+            ? row.role
+            : row?.role != null
+              ? [row.role]
+              : [],
+        )
+        .map((role) => String(role).toLowerCase());
+
+      setIsAdmin(roles.includes("admin"));
     } finally {
       setRolesLoading(false);
     }
@@ -349,14 +404,16 @@ export default function IntegrationsClient() {
       return;
     }
 
+    const headers = getAuthedLocaleHeaders(token, locale);
+
     const [googleRes, stripeRes] = await Promise.allSettled([
       fetch("/api/integrations/calendar/google/status", {
         cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       }),
       fetch("/api/integrations/stripe/status", {
         cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       }),
     ]);
 
@@ -379,17 +436,28 @@ export default function IntegrationsClient() {
       stripeConnected = !!json?.connected;
     }
 
+    if (
+      googleRes.status === "rejected" ||
+      stripeRes.status === "rejected" ||
+      (googleRes.status === "fulfilled" && !googleRes.value.ok) ||
+      (stripeRes.status === "fulfilled" && !stripeRes.value.ok)
+    ) {
+      setErrorMessageKey("loadStatus");
+    }
+
     setStatus({ ...calendarEmail, billing: { stripe: stripeConnected } });
-  }, [getAccessToken]);
+  }, [getAccessToken, locale]);
 
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
+      setErrorMessageKey(null);
       await Promise.all([fetchStatus(), fetchRoles()]);
-    } catch (e) {
-      console.error("[Integrations] Failed to load status/roles", e);
+    } catch (error) {
+      console.error("[Integrations] Failed to load status/roles", error);
       setStatus(EMPTY_STATUS);
       setIsAdmin(false);
+      setErrorMessageKey("loadStatus");
     } finally {
       setLoading(false);
     }
@@ -401,9 +469,9 @@ export default function IntegrationsClient() {
 
     await fetch("/api/integrations/calendar/google/clear-cookie", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: getAuthedLocaleHeaders(token, locale),
     }).catch(() => {});
-  }, [getAccessToken]);
+  }, [getAccessToken, locale]);
 
   useEffect(() => {
     setGoogleReconnectNeeded(readReconnectFlag());
@@ -462,39 +530,47 @@ export default function IntegrationsClient() {
 
   const startConnect = useCallback(
     async (connectHref: string, providerId?: ProviderId) => {
-      const token = await getAccessToken();
+      try {
+        setErrorMessageKey(null);
 
-      if (!token) {
-        window.location.href = "/login";
-        return;
+        const token = await getAccessToken();
+
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
+
+        if (providerId === "google" && googleReconnectNeeded) {
+          await clearGoogleConnectedCookie().catch(() => {});
+        }
+
+        const res = await fetch(connectHref, {
+          method: "POST",
+          headers: getAuthedLocaleHeaders(token, locale),
+        });
+
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          const msg = (json as any)?.error || `connect_failed_${res.status}`;
+          window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
+          return;
+        }
+
+        const authUrl = (json as any)?.authUrl as string | undefined;
+        if (!authUrl) {
+          setErrorMessageKey("missingAuthUrl");
+          window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
+          return;
+        }
+
+        window.location.href = authUrl;
+      } catch (error) {
+        console.error("[Integrations] start connect failed", error);
+        setErrorMessageKey("connectStart");
       }
-
-      if (providerId === "google" && googleReconnectNeeded) {
-        await clearGoogleConnectedCookie().catch(() => {});
-      }
-
-      const res = await fetch(connectHref, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const json = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        const msg = (json as any)?.error || `connect_failed_${res.status}`;
-        window.location.href = `/settings/integrations?error=${encodeURIComponent(msg)}`;
-        return;
-      }
-
-      const authUrl = (json as any)?.authUrl as string | undefined;
-      if (!authUrl) {
-        window.location.href = `/settings/integrations?error=${encodeURIComponent("missing_auth_url")}`;
-        return;
-      }
-
-      window.location.href = authUrl;
     },
-    [getAccessToken, googleReconnectNeeded, clearGoogleConnectedCookie],
+    [getAccessToken, googleReconnectNeeded, clearGoogleConnectedCookie, locale],
   );
 
   async function handleCalendarClick(
@@ -509,6 +585,7 @@ export default function IntegrationsClient() {
     }
 
     try {
+      setErrorMessageKey(null);
       setPendingCalendar(provider.id);
 
       const token = await getAccessToken();
@@ -518,13 +595,14 @@ export default function IntegrationsClient() {
         `/api/integrations/calendar/${provider.id}/disconnect`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthedLocaleHeaders(token, locale),
         },
       );
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("Disconnect calendar failed:", res.status, text);
+        setErrorMessageKey("disconnectCalendar");
         return;
       }
 
@@ -552,6 +630,7 @@ export default function IntegrationsClient() {
     }
 
     try {
+      setErrorMessageKey(null);
       setPendingStripe(true);
 
       const token = await getAccessToken();
@@ -559,12 +638,13 @@ export default function IntegrationsClient() {
 
       const res = await fetch("/api/integrations/stripe/disconnect", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthedLocaleHeaders(token, locale),
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("Disconnect stripe failed:", res.status, text);
+        setErrorMessageKey("disconnectStripe");
         return;
       }
 
@@ -579,11 +659,10 @@ export default function IntegrationsClient() {
     connected: boolean,
   ) {
     if (!provider.enabled && !connected) return;
-    if (!connected) await startConnect(provider.connectHref, provider.id);
+    if (!connected) {
+      await startConnect(provider.connectHref, provider.id);
+    }
   }
-
-  // ✅ safe to gate render AFTER hooks
-  if (!mounted) return null;
 
   return (
     <div className="max-w-3xl space-y-6 pt-6">
@@ -594,7 +673,7 @@ export default function IntegrationsClient() {
             isDark ? "text-slate-100" : "text-slate-900",
           )}
         >
-          Integrations
+          {t("title")}
         </h1>
         <p
           className={cn(
@@ -602,7 +681,7 @@ export default function IntegrationsClient() {
             isDark ? "text-slate-400" : "text-slate-600",
           )}
         >
-          Connect your calendar and inbox to power bookings and communication.
+          {t("description")}
         </p>
 
         {googleReconnectNeeded && (
@@ -612,8 +691,7 @@ export default function IntegrationsClient() {
               isDark ? "text-amber-300" : "text-amber-700",
             )}
           >
-            Your Google Calendar needs to be reconnected so booking links can
-            check availability. Click “Reconnect Google Calendar”.
+            {t("googleReconnectNotice")}
           </p>
         )}
 
@@ -624,41 +702,48 @@ export default function IntegrationsClient() {
               isDark ? "text-rose-300" : "text-rose-600",
             )}
           >
-            Connection failed: {errorParam}
+            {t("connectionFailed", { error: errorParam })}
+          </p>
+        )}
+
+        {errorMessageKey && (
+          <p
+            className={cn(
+              "mt-2 text-xs font-semibold",
+              isDark ? "text-rose-300" : "text-rose-600",
+            )}
+          >
+            {t(`errors.${errorMessageKey}`)}
           </p>
         )}
       </div>
 
-      {/* Calendar */}
       <section className="space-y-3">
         <div>
-          <h2 className={heading()}>Calendar Connections</h2>
-          <p className={subText("mt-1")}>
-            We use your calendar to show availability and create events when a
-            lead books a call.
-          </p>
+          <h2 className={heading()}>{t("sections.calendarTitle")}</h2>
+          <p className={subText("mt-1")}>{t("sections.calendarDescription")}</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {calendarProviders.map((p) => {
+          {calendarProviders.map((provider) => {
             const connected =
-              p.id === "google" && googleReconnectNeeded
+              provider.id === "google" && googleReconnectNeeded
                 ? false
-                : isCalendarConnected(p.id);
+                : isCalendarConnected(provider.id);
 
-            const isPending = pendingCalendar === p.id;
+            const isPending = pendingCalendar === provider.id;
 
             return (
-              <div key={p.id} className={tileBase}>
-                <div className="mb-3 flex min-h-[40px] items-center gap-2">
+              <div key={provider.id} className={tileBase}>
+                <div className="mb-3 flex min-h-[40px] flex-wrap items-center gap-2">
                   <div className={iconWrap}>
-                    <CalendarProviderIcon id={p.id} />
+                    <CalendarProviderIcon id={provider.id} />
                   </div>
 
                   {connected && (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-emerald-500/10 text-emerald-200"
                           : "bg-emerald-50 text-emerald-700",
@@ -670,83 +755,101 @@ export default function IntegrationsClient() {
                           isDark ? "bg-emerald-400" : "bg-emerald-500",
                         )}
                       />
-                      Connected
+                      {common("status.connected")}
                     </span>
                   )}
 
-                  {p.id === "google" && googleReconnectNeeded && (
+                  {provider.id === "google" && googleReconnectNeeded && (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-amber-500/10 text-amber-200"
                           : "bg-amber-50 text-amber-800",
                       )}
                     >
-                      Action required
+                      {common("status.actionRequired")}
                     </span>
                   )}
 
-                  {!p.enabled && !connected && (
+                  {!provider.enabled && !connected && (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-slate-900/40 text-slate-300"
                           : "bg-slate-100 text-slate-600",
                       )}
                     >
-                      Coming soon
+                      {common("status.comingSoon")}
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className={heading()}>{p.name}</h3>
-                  <p className={subText("mt-1")}>{p.description}</p>
+                  <h3 className={heading()}>{t(provider.nameKey)}</h3>
+                  <p className={subText("mt-1")}>
+                    {t(provider.descriptionKey)}
+                  </p>
                   <div
                     className={cn(
-                      "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      "mt-2 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                       isDark
                         ? "bg-slate-900/40 text-slate-200"
-                        : `${p.badgeBg} ${p.badgeText}`,
+                        : `${provider.badgeBg} ${provider.badgeText}`,
                     )}
                   >
-                    {p.id === "google"
-                      ? "Great for Google Workspace teams"
-                      : "Great for Microsoft 365 / Outlook users"}
+                    {t(provider.badgeKey)}
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2">
+                <div className={actionArea}>
                   <button
                     type="button"
                     disabled={
-                      loading || isPending || (!p.enabled && !connected)
+                      loading || isPending || (!provider.enabled && !connected)
                     }
-                    onClick={() => handleCalendarClick(p, connected)}
+                    onClick={() => handleCalendarClick(provider, connected)}
                     className={cn(
                       "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
                       connected
                         ? isDark
                           ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
                           : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                        : cn(
+                            provider.buttonBg,
+                            provider.buttonHoverBg,
+                            provider.buttonText,
+                          ),
                     )}
+                    aria-label={
+                      provider.id === "google" && googleReconnectNeeded
+                        ? t(provider.reconnectKey!)
+                        : connected
+                          ? t(provider.disconnectKey)
+                          : t(provider.connectKey)
+                    }
+                    title={
+                      provider.id === "google" && googleReconnectNeeded
+                        ? t(provider.reconnectKey!)
+                        : connected
+                          ? t(provider.disconnectKey)
+                          : t(provider.connectKey)
+                    }
                   >
-                    {p.id === "google" && googleReconnectNeeded
-                      ? "Reconnect Google Calendar"
+                    {provider.id === "google" && googleReconnectNeeded
+                      ? t(provider.reconnectKey!)
                       : connected
-                        ? `Disconnect ${p.name}`
-                        : `Connect ${p.name}`}
+                        ? t(provider.disconnectKey)
+                        : t(provider.connectKey)}
                   </button>
 
-                  <p className={muted(connected ? "pb-[11px]" : "")}>
-                    {p.id === "google" && googleReconnectNeeded
-                      ? "Reconnect to restore availability checks for booking links."
+                  <p className={muted(helperArea)}>
+                    {provider.id === "google" && googleReconnectNeeded
+                      ? t(provider.helperReconnectKey!)
                       : connected
-                        ? "Currently syncing events from this calendar."
-                        : "We’ll only be able to see and manage events in your calendar."}
+                        ? t(provider.helperConnectedKey!)
+                        : t(provider.helperDisconnectedKey!)}
                   </p>
                 </div>
               </div>
@@ -755,31 +858,27 @@ export default function IntegrationsClient() {
         </div>
       </section>
 
-      {/* Email */}
       <section className="space-y-3">
         <div>
-          <h2 className={heading()}>Email Connections</h2>
-          <p className={subText("mt-1")}>
-            Connect your inbox to send emails from FaigataCRM and log
-            conversations to leads.
-          </p>
+          <h2 className={heading()}>{t("sections.emailTitle")}</h2>
+          <p className={subText("mt-1")}>{t("sections.emailDescription")}</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {emailProviders.map((p) => {
-            const connected = isEmailConnected(p.id);
+          {emailProviders.map((provider) => {
+            const connected = isEmailConnected(provider.id);
 
             return (
-              <div key={`${p.id}-email`} className={tileBase}>
-                <div className="mb-3 flex min-h-[40px] items-center gap-2">
+              <div key={`${provider.id}-email`} className={tileBase}>
+                <div className="mb-3 flex min-h-[40px] flex-wrap items-center gap-2">
                   <div className={iconWrap}>
-                    <EmailProviderIcon id={p.id} />
+                    <EmailProviderIcon id={provider.id} />
                   </div>
 
                   {connected && (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-emerald-500/10 text-emerald-200"
                           : "bg-emerald-50 text-emerald-700",
@@ -791,62 +890,78 @@ export default function IntegrationsClient() {
                           isDark ? "bg-emerald-400" : "bg-emerald-500",
                         )}
                       />
-                      Connected
+                      {common("status.connected")}
                     </span>
                   )}
 
-                  {!p.enabled && !connected && (
+                  {!provider.enabled && !connected && (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-slate-900/40 text-slate-300"
                           : "bg-slate-100 text-slate-600",
                       )}
                     >
-                      Coming soon
+                      {common("status.comingSoon")}
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className={heading()}>{p.name}</h3>
-                  <p className={subText("mt-1")}>{p.description}</p>
+                  <h3 className={heading()}>{t(provider.nameKey)}</h3>
+                  <p className={subText("mt-1")}>
+                    {t(provider.descriptionKey)}
+                  </p>
                   <div
                     className={cn(
-                      "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      "mt-2 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                       isDark
                         ? "bg-slate-900/40 text-slate-200"
-                        : `${p.badgeBg} ${p.badgeText}`,
+                        : `${provider.badgeBg} ${provider.badgeText}`,
                     )}
                   >
-                    {p.id === "google"
-                      ? "Requires Gmail / Workspace mail permissions"
-                      : "Requires Outlook / Microsoft 365 mail permissions"}
+                    {t(provider.badgeKey)}
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
-                    disabled={loading || (!p.enabled && !connected)}
-                    onClick={() => handleEmailClick(p, connected)}
+                    disabled={loading || (!provider.enabled && !connected)}
+                    onClick={() => handleEmailClick(provider, connected)}
                     className={cn(
                       "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
                       connected
                         ? isDark
                           ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
                           : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                        : cn(
+                            provider.buttonBg,
+                            provider.buttonHoverBg,
+                            provider.buttonText,
+                          ),
                     )}
+                    aria-label={
+                      connected
+                        ? t(provider.disconnectKey)
+                        : t(provider.connectKey)
+                    }
+                    title={
+                      connected
+                        ? t(provider.disconnectKey)
+                        : t(provider.connectKey)
+                    }
                   >
-                    {connected ? `Disconnect ${p.name}` : `Connect ${p.name}`}
+                    {connected
+                      ? t(provider.disconnectKey)
+                      : t(provider.connectKey)}
                   </button>
 
                   <p className={muted()}>
                     {connected
-                      ? "We’re using this inbox to send and log lead-related communication."
-                      : "You’ll see a separate consent screen. We only use this to send and log lead-related communication."}
+                      ? t(provider.helperConnectedKey!)
+                      : t(provider.helperDisconnectedKey!)}
                   </p>
                 </div>
               </div>
@@ -855,21 +970,19 @@ export default function IntegrationsClient() {
         </div>
       </section>
 
-      {/* Billing (ADMIN ONLY) */}
       {isAdmin && (
         <section className="space-y-3">
           <div>
-            <h2 className={heading()}>Billing Connections</h2>
+            <h2 className={heading()}>{t("sections.billingTitle")}</h2>
             <p className={subText("mt-1")}>
-              Connect Stripe to create products, send invoices, and collect
-              payments.
+              {t("sections.billingDescription")}
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {billingProviders.map((p) => (
-              <div key={p.id} className={tileBase}>
-                <div className="mb-3 flex min-h-[40px] items-center gap-2">
+            {billingProviders.map((provider) => (
+              <div key={provider.id} className={tileBase}>
+                <div className="mb-3 flex min-h-[40px] flex-wrap items-center gap-2">
                   <div className={iconWrap}>
                     <StripeProviderIcon />
                   </div>
@@ -877,7 +990,7 @@ export default function IntegrationsClient() {
                   {isStripeConnected ? (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-emerald-500/10 text-emerald-200"
                           : "bg-emerald-50 text-emerald-700",
@@ -889,32 +1002,37 @@ export default function IntegrationsClient() {
                           isDark ? "bg-emerald-400" : "bg-emerald-500",
                         )}
                       />
-                      Connected
+                      {common("status.connected")}
                     </span>
                   ) : (
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                         isDark
                           ? "bg-slate-900/40 text-slate-200"
-                          : `${p.badgeBg} ${p.badgeText}`,
+                          : `${provider.badgeBg} ${provider.badgeText}`,
                       )}
                     >
-                      Billing
+                      {t(provider.badgeKey)}
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className={heading()}>{p.name}</h3>
-                  <p className={subText("mt-1")}>{p.description}</p>
+                  <h3 className={heading()}>{t(provider.nameKey)}</h3>
+                  <p className={subText("mt-1")}>
+                    {t(provider.descriptionKey)}
+                  </p>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
                     disabled={
-                      loading || rolesLoading || pendingStripe || !p.enabled
+                      loading ||
+                      rolesLoading ||
+                      pendingStripe ||
+                      !provider.enabled
                     }
                     onClick={handleStripeClick}
                     className={cn(
@@ -923,20 +1041,38 @@ export default function IntegrationsClient() {
                         ? isDark
                           ? "border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15"
                           : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        : cn(p.buttonBg, p.buttonHoverBg, p.buttonText),
+                        : cn(
+                            provider.buttonBg,
+                            provider.buttonHoverBg,
+                            provider.buttonText,
+                          ),
                     )}
+                    aria-label={
+                      pendingStripe
+                        ? common("actions.working")
+                        : isStripeConnected
+                          ? t(provider.disconnectKey)
+                          : t(provider.connectKey)
+                    }
+                    title={
+                      pendingStripe
+                        ? common("actions.working")
+                        : isStripeConnected
+                          ? t(provider.disconnectKey)
+                          : t(provider.connectKey)
+                    }
                   >
                     {pendingStripe
-                      ? "Working..."
+                      ? common("actions.working")
                       : isStripeConnected
-                        ? "Disconnect Stripe"
-                        : "Connect Stripe (Test)"}
+                        ? t(provider.disconnectKey)
+                        : t(provider.connectKey)}
                   </button>
 
                   <p className={muted()}>
                     {isStripeConnected
-                      ? "Stripe is connected for this workspace (test mode)."
-                      : "You’ll be redirected to Stripe to authorize access (test mode)."}
+                      ? t(provider.helperConnectedKey!)
+                      : t(provider.helperDisconnectedKey!)}
                   </p>
                 </div>
               </div>

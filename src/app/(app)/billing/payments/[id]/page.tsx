@@ -1,11 +1,15 @@
-// src/app/(app)/billing/payments/[id]/page.tsx
 import type { Metadata } from "next";
-import PaymentDetailClient from "@/modules/billing/components/PaymentDetailClient";
+import { getTranslations } from "next-intl/server";
+import PaymentDetailClient from "@/features/billing/components/PaymentDetailClient";
 
-export const metadata: Metadata = {
-  title: "Payment Details • Billing",
-  description: "Inspect a payment and trigger refunds.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingPaymentDetailPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 type PageProps = {
   params: Promise<{ id: string }>;

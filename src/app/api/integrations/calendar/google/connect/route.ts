@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import crypto from "crypto";
+import { getRequestUser } from "@/lib/auth/session";
+import { serverEnv } from "@/lib/env/server";
+import { createGoogleOauthState } from "@/features/integrations/google/server/oauth-state";
 
 export const runtime = "nodejs";
 
@@ -10,26 +11,19 @@ const SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
 ].join(" ");
 
-function getBearer(req: NextRequest) {
-  const auth =
-    req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
-  const m = auth.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] ?? null;
-}
-
 function setShortCookie(res: NextResponse, name: string, value: string) {
   res.cookies.set(name, value, {
     path: "/",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: serverEnv.isProduction(),
     maxAge: 10 * 60,
   });
 }
 
 export async function POST(req: NextRequest) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  const clientId = serverEnv.google.clientId();
+  const redirectUri = serverEnv.google.redirectUri();
   if (!clientId || !redirectUri) {
     return NextResponse.json(
       { error: "server_misconfigured" },
@@ -37,16 +31,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const jwt = getBearer(req);
-  if (!jwt)
-    return NextResponse.json({ error: "missing_auth" }, { status: 401 });
-
-  const { data, error } = await supabaseAdmin.auth.getUser(jwt);
-  if (error || !data?.user) {
-    return NextResponse.json({ error: "invalid_auth" }, { status: 401 });
+  const auth = await getRequestUser(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.reason }, { status: 401 });
   }
 
-  const state = crypto.randomUUID();
+  const state = createGoogleOauthState(auth.user.id);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -63,9 +53,8 @@ export async function POST(req: NextRequest) {
     authUrl: `${GOOGLE_AUTH_BASE}?${params.toString()}`,
   });
 
-  // short-lived cookies for callback validation
   setShortCookie(res, "gc_oauth_state", state);
-  setShortCookie(res, "gc_oauth_user_id", data.user.id);
+  setShortCookie(res, "gc_oauth_user_id", auth.user.id);
 
   return res;
 }

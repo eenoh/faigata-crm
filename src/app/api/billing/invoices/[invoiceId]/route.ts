@@ -1,7 +1,13 @@
 // src/app/api/billing/invoices/[invoiceId]/route.ts
 import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
+import {
+  applyBillingCustomerNameTranslations,
+  applyBillingInvoiceLineTranslations,
+} from "@/features/billing/server/translations";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
 import { getStripe } from "@/lib/stripeServer";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type RouteContext = { params: Promise<{ invoiceId: string }> };
 
@@ -48,6 +54,12 @@ export async function GET(req: Request, ctx: RouteContext) {
   }
 
   const stripe = getStripe(auth.ctx.livemode ? "live" : "test");
+  const supabase = getSupabaseAdminClient();
+  const requestedLocale = await resolveRequestLocale({
+    request: req,
+    admin: supabase,
+    userId: auth.ctx.userId,
+  });
 
   try {
     const inv = await stripe.invoices.retrieve(
@@ -76,6 +88,45 @@ export async function GET(req: Request, ctx: RouteContext) {
       price_id: l.price?.id ?? null,
       product_name: (l.price?.product as any)?.name ?? null,
     }));
+
+    if (customer?.id) {
+      const customerRows = [
+        {
+          customerId: customer.id,
+          name: customer.name ?? null,
+        },
+      ];
+
+      await applyBillingCustomerNameTranslations({
+        admin: supabase,
+        orgId: auth.ctx.orgId,
+        livemode: auth.ctx.livemode,
+        requestedLocale,
+        rows: customerRows,
+      });
+
+      customer.name = customerRows[0]?.name ?? customer.name;
+    }
+
+    const lineTranslationRows = lines.map((line) => ({
+      lineId: line.id,
+      description: line.description,
+    }));
+
+    await applyBillingInvoiceLineTranslations({
+      admin: supabase,
+      orgId: auth.ctx.orgId,
+      livemode: auth.ctx.livemode,
+      requestedLocale,
+      rows: lineTranslationRows,
+    });
+
+    for (const [index, line] of lines.entries()) {
+      const translated = lineTranslationRows[index];
+      if (translated) {
+        line.description = translated.description;
+      }
+    }
 
     return NextResponse.json({
       invoice: {

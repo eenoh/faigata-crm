@@ -1,17 +1,16 @@
-// src/app/(app)/settings/pipeline-stages/page.tsx
 import type { Metadata } from "next";
-import { PipelineStagesSettingsClient } from "@/modules/crm/components/PipelineStagesSettingsClient";
+import { PipelineStagesSettingsClient } from "@/features/crm/components/PipelineStagesSettingsClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Pipeline Stages",
-  description: "Define and organize the stages of your team's sales pipeline.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("PipelineStagesSettingsPage");
 
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function PipelineStagesSettingsPage() {
-  return (
-    <div className="p-4 md:p-6">
-      <PipelineStagesSettingsClient />
-    </div>
-  );
+  return <PipelineStagesSettingsClient />;
 }

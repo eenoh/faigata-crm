@@ -1,12 +1,15 @@
-// src/app/(app)/pipeline/page.tsx
 import type { Metadata } from "next";
-import { PipelineClient } from "../../../modules/crm/components/PipelineClient";
+import { PipelineClient } from "@/features/crm/components/PipelineClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Pipeline",
-  description:
-    "Visualize your sales pipeline and drag leads between stages on a Kanban board.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("PipelinePage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function PipelinePage() {
   return <PipelineClient />;

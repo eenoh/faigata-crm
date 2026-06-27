@@ -1,321 +1,385 @@
-# Lumo
+﻿# Faigata Documentation
+
+## Project Overview
 
-**Lumo** is a multi-tenant, team-based CRM and booking platform designed for small teams and agencies to manage leads, pipelines, scoring, bookings, and external integrations (Google Calendar, Stripe) in one cohesive system.
+Faigata is a multi-tenant application that combines CRM, booking, and billing workflows in one Next.js App Router codebase.
 
-It exists to centralize lead management, automate scoring and booking workflows, and provide a clean, extensible foundation for a modern SaaS CRM.
+Core domains:
 
----
+- CRM for leads, pipeline management, messaging, scoring, and team workflows
+- Booking for schedule pages, public booking links, invite-based booking, and outcomes
+- Billing for Stripe-backed products, invoices, customers, and payments
 
-## Table of Contents
+Phase 1 of the build plan is now implemented around four goals:
 
-* [Overview](#overview)
-* [Core Concepts](#core-concepts)
-* [Architecture](#architecture)
-* [Project Structure](#project-structure)
-* [Data Model (Supabase)](#data-model-supabase)
-* [Authentication & Authorization](#authentication--authorization)
-* [Integrations](#integrations)
-* [Scoring & Metrics](#scoring--metrics)
-* [Installation & Setup](#installation--setup)
-* [Configuration](#configuration)
-* [Development](#development)
-* [Troubleshooting](#troubleshooting)
+- Supabase SSR auth wired in the same shape as the official Next.js guide
+- shared server-side auth checks for login completion, registration completion, and onboarding
+- explicit environment setup via `.env.example`
+- focused tests for auth/session parsing, route guards, booking helpers, and webhook verification
 
----
+## Phase 2 Status
 
-## Overview
+Completed in this pass:
 
-Lumo is built as a **Next.js App Router application** backed by **Supabase (PostgreSQL + Auth + Storage)**. It supports:
+- Moved the remaining planned CRM hotspots into feature handlers so the App Router files are now thin wrappers:
+  - [`src/features/crm/server/pipeline-stages.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/pipeline-stages.handler.ts)
+  - [`src/features/crm/server/team-roles.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/team-roles.handler.ts)
+  - [`src/features/crm/server/booking-outcome.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/booking-outcome.handler.ts)
+  - [`src/features/crm/server/onboarding.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/onboarding.handler.ts)
+  - [`src/features/crm/server/team-invites.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/team-invites.handler.ts)
+- Moved the remaining planned billing hotspots into feature handlers:
+  - [`src/features/billing/server/customers.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/customers.handler.ts)
+  - [`src/features/billing/server/product-prices-create.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/product-prices-create.handler.ts)
+  - [`src/features/billing/server/products-sync.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/products-sync.handler.ts)
+  - [`src/features/billing/server/product-archive.handler.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/product-archive.handler.ts)
+- Added small shared server helpers for the extracted routes:
+  - [`src/features/billing/server/http.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/http.ts)
+  - [`src/features/billing/server/catalog.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/billing/server/catalog.ts)
+  - [`src/features/crm/server/team-roles.shared.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/server/team-roles.shared.ts)
+- Split [`src/features/crm/components/LeadDetailClient.tsx`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/LeadDetailClient.tsx) by extracting shared lead-detail UI and timeline modules:
+  - [`src/features/crm/components/lead-detail/ui.tsx`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/lead-detail/ui.tsx)
+  - [`src/features/crm/components/lead-detail/timeline.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/lead-detail/timeline.ts)
+  - [`src/features/crm/components/lead-detail/types.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/lead-detail/types.ts)
+- Split [`src/features/crm/components/DashboardClient.tsx`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/DashboardClient.tsx) into shared dashboard types, helpers, and UI modules:
+  - [`src/features/crm/components/dashboard/types.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/dashboard/types.ts)
+  - [`src/features/crm/components/dashboard/helpers.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/dashboard/helpers.ts)
+  - [`src/features/crm/components/dashboard/ui.tsx`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/features/crm/components/dashboard/ui.tsx)
 
-* Multiple organizations and teams
-* Role-based access control (Admin / Manager / Closer / Setter / Prospector)
-* Customizable pipelines and lead fields
-* Lead scoring (rules + activity-based)
-* Booking links and outcomes
-* External integrations (Google Calendar, Stripe)
+Phase 2 outcome:
 
-The system is intentionally modular: CRM logic, integrations, scoring, and UI concerns are separated to keep complexity manageable.
+- the planned CRM and billing route hotspots now keep business logic in `src/features/*/server` instead of inline in `route.ts`
+- the migrated CRM and billing routes now resolve auth/team/org context through shared feature services rather than request-local variants
+- `LeadDetailClient` and `DashboardClient` are materially smaller and organized around stable helper/UI submodules
+- older compatibility wrappers still exist for some non-phase-2 billing endpoints, but they are now isolated from the migrated slice rather than extended further
 
----
+Verification notes:
 
-## Core Concepts
+- I could not run `eslint`, `tsc`, or Vitest in this shell because `node`/`npm` are not available on PATH in the current environment
+- verification here was limited to read-back inspection of the extracted handlers, wrapper entrypoints, and client-module splits
+## Tech Stack
 
-### Organization
+Framework and runtime:
 
-* Represents a company or account
-* Owns Stripe connections, branding, and billing configuration
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Tailwind CSS 4
 
-### Team
+Platform and integrations:
 
-* A workspace within an organization
-* Owns leads, pipelines, metrics, and team members
+- Supabase Auth
+- Supabase Postgres
+- Supabase Storage
+- Stripe Connect
+- Stripe billing APIs
+- Google Calendar OAuth
+- node-postgres for one remaining legacy compatibility path
 
-### Profile
+Tooling:
 
-* One per authenticated user
-* Stores name, avatar (profile pictures), role(s), team association
+- ESLint
+- Vitest
+- Playwright
+- GitHub Actions
 
-### Lead
+## Phase 1 Status
 
-* Central CRM entity
-* Belongs to a team
-* Moves through pipeline stages
-* Has custom fields, messages, score, and bookings
+Completed in this pass:
 
----
+- Added `.env.example` with the currently required local and deployment variables.
+- Added `middleware.ts` plus `src/lib/supabase/middleware.ts` to refresh Supabase sessions and protect private routes.
+- Added `src/app/auth/confirm/route.ts` so email confirmation and code-exchange flows land back inside the app correctly.
+- Moved `/api/auth/after-login` to a feature handler and standardized auth checks with `requireAuthenticatedRequestUser`.
+- Updated registration completion and onboarding to verify the authenticated Supabase user instead of trusting a browser-provided `userId`.
+- Added tests for session parsing, request-user guards, auth-sensitive routes, and Stripe webhook secret verification.
 
-## Architecture
+Not completed in this pass:
 
-### High-Level
+- removing the legacy direct-Postgres registration endpoint entirely
+- refactoring the largest CRM and billing routes into feature handlers
+- deeper route/integration coverage beyond the Phase 1 risk areas
 
-```
-Next.js App Router (UI)
-        |
-        v
-API Routes (Server Actions / REST)
-        |
-        v
-Supabase (Postgres + Auth + Storage)
-```
+## Authentication Architecture
 
-### Key Design Decisions
+### Baseline pattern
 
-* **Server-side authority**: All sensitive operations (deletes, role checks, integrations) happen in API routes using the Supabase service role.
-* **Client = thin UI**: Clients fetch status and trigger actions; they never enforce security.
-* **Explicit normalization**: CamelCase in the frontend, snake_case in the database.
-* **Delete = soft-remove**: Team member removal clears associations instead of deleting users.
+Authentication now follows the same core model shown in Supabase's Next.js guide:
 
-Tradeoffs:
-
-* Slight duplication between client/server validation
-* More API routes, but clearer boundaries
-
----
-
-## Project Structure
-
-```
-src/
-  app/
-    api/                # Server routes (auth, CRM, integrations)
-    profile/            # Profile & integrations UI
-    settings/           # Team & member management
-  components/           # Shared UI components
-  context/              # React contexts (Workspace, Sidebar)
-  lib/                  # Supabase, Stripe, helpers
-  modules/
-    crm/
-      components/       # CRM UI components
-      data/             # Client-side data access
-      scoring/          # Lead scoring logic
-      types/            # Shared CRM types
-```
-
-Key folders:
-
-* `modules/crm/data` — client-side fetch helpers
-* `app/api` — authorization + persistence layer
-* `context/WorkspaceContext` — resolves current team
-
----
-
-## Data Model (Supabase)
-
-### Core Tables
-
-* `profiles` — user profile, roles, team/org association
-* `organizations` — company-level settings
-* `teams` — workspaces
-* `team_members` — membership + roles
-
-### CRM Tables
-
-* `leads`
-* `pipeline_stages`
-* `lead_fields`
-* `lead_messages`
-* `conversion_metrics`
-* `lead_scoring_configs`
-
-### Booking & Billing
-
-* `booking_links`
-* `bookings`
-* `booking_outcomes`
-* `organization_stripe_accounts`
-* `organization_stripe_products`
-
-Design notes:
-
-* Most tables are scoped by `team_id`
-* Stripe data is scoped by `org_id`
-* RLS is bypassed in API routes via service role
-
----
-
-## Authentication & Authorization
-
-### Auth
-
-* Supabase Auth (email/password)
-* Client uses anon key
-* Server uses service role key
-
-### Roles
-
-Stored in `profiles.role` as an array:
-
-* `Admin`
-* `Manager`
-* `Closer`
-* `Setter`
-* `Prospector`
-
-Rules:
-
-* Admin: organization + billing access
-* Manager: team & CRM management
-* Closer: can edit call notes
-* Setter: can store message & create booking links
-* Prospector: adds leads to the database/workspace
-
-All role checks are enforced server-side.
-
----
-
-## Integrations
-
-### Google Calendar
-
-* OAuth 2.0 with offline access
-* Tokens stored in `user_google_calendar_tokens`
-* Supports reconnect flow
-* Used for availability checks and event creation
-
-Endpoints:
-
-* `/api/integrations/calendar/google/connect`
-* `/api/integrations/calendar/google/status`
-* `/api/integrations/calendar/google/disconnect`
-
-### Stripe (Test Mode)
-
-* OAuth Connect
-* One Stripe account per organization
-* Used for invoices, products, payments
-
-Endpoints:
-
-* `/api/integrations/stripe/connect`
-* `/api/integrations/stripe/status`
-* `/api/integrations/stripe/disconnect`
-
----
-
-## Scoring & Metrics
-
-### Lead Scoring
-
-Two-layer model:
-
-1. **Rule-based score**
-
-   * Configured per team
-   * Based on custom fields
-
-2. **Activity-based bonuses**
-
-   * Inbound message frequency
-   * Fast pipeline movement
-
-Final score is clamped to `0–100`.
+- browser-side auth uses `@supabase/ssr` through `src/lib/supabase/browser.ts`
+- server-side auth uses `src/lib/supabase/server.ts`
+- middleware refreshes the session on navigation and protects private routes
+- the auth confirmation route exchanges `code` or `token_hash` values into a server-side session
 
 Key files:
 
-* `modules/crm/scoring/scoreLead.ts`
-* `modules/crm/scoring/recomputeLeadScore.ts`
+- `middleware.ts`
+- `src/lib/supabase/middleware.ts`
+- `src/lib/supabase/browser.ts`
+- `src/lib/supabase/server.ts`
+- `src/app/auth/confirm/route.ts`
 
-### Conversion Metrics
+### Faigata-specific auth rules
 
-* Define stage-to-stage conversions
-* Optional `target_rate` stored as `int4`
-* Used for reporting and forecasting
+Supabase Auth is only the identity layer. Faigata still applies project-specific team and role logic after authentication.
 
----
+That logic now works like this:
 
-## Installation & Setup
+1. A user signs in or signs up with Supabase Auth.
+2. The client calls a server route with the active access token.
+3. The server validates the real session through shared helpers.
+4. The server resolves pending invites, profile data, team membership, and company linkage.
+5. Roles are stored from invite/team membership data, not inferred from the browser.
 
-### Requirements
+### Shared request auth
 
-* Node.js 18+
-* Supabase project
-* PostgreSQL (via Supabase)
+`src/features/auth/server/request-auth.ts` is the shared guard for the high-risk Phase 1 routes.
 
-### Setup
+Use it for routes that must ensure:
 
-```bash
-git clone <https://github.com/eenoh/faigata>
-cd faigata
-npm install
-npm run dev
-```
+- there is a valid Supabase session
+- the request is acting as the authenticated user
+- any optional `userId` sent by the browser matches the session user
 
----
+This guard is now applied to:
 
-## Configuration
+- `src/features/auth/server/after-login.handler.ts`
+- `src/features/auth/server/complete-registration.handler.ts`
+- `src/app/api/crm/onboarding/route.ts`
 
-### Environment Variables
+### Cookie and bearer handling
 
-| Variable                        | Required | Description             |
-| ------------------------------- | -------- | ----------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Public anon key         |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Yes      | Server-side service key |
-| `GOOGLE_CLIENT_ID`              | Yes      | Google OAuth client     |
-| `GOOGLE_REDIRECT_URI`           | Yes      | Google OAuth redirect   |
-| `STRIPE_CLIENT_ID_TEST`         | Yes      | Stripe Connect client   |
-| `STRIPE_SECRET_KEY_TEST`        | Yes      | Stripe API key          |
+`src/lib/auth/session.ts` now supports:
 
----
+- bearer tokens from `Authorization` headers
+- direct access-token cookies
+- chunked Supabase auth cookies created by SSR/session persistence
 
-## Development
+That fix matters because the newer SSR client can split larger auth cookies across multiple cookie keys.
 
-### Local Development
+## Protected Routes
 
-```bash
-npm run dev
-```
+The middleware protects the authenticated application surface:
 
-### Conventions
+- `/crm`
+- `/dashboard`
+- `/leads`
+- `/pipeline`
+- `/calendar`
+- `/billing`
+- `/settings`
+- `/profile`
+- `/onboarding`
 
-* Tailwind CSS for styling
-* Server logic only in `/api`
-* No client-side role enforcement
+Public routes intentionally stay open:
 
-### Recommended Next Steps
+- `/`
+- `/login`
+- `/register`
+- `/invite/accept`
+- `/b/[slug]`
+- public API/webhook endpoints that must remain externally reachable
 
-* Add automated tests for API routes
-* Introduce audit logs for admin actions
-* Harden RLS policies for read-only queries
+## Team and Role Model
 
----
+Faigata keeps its project model on top of Supabase Auth:
 
-## Troubleshooting
+- `profiles` stores the user's current team and company linkage
+- `team_members` stores explicit workspace membership
+- `team_invites` and `team_invite_roles` drive invite acceptance and initial role assignment
+- billing and CRM permissions still derive from team/company membership and role values
 
-### Unauthorized API errors
+Important outcome of the Phase 1 auth work:
 
-* Ensure Authorization: Bearer <access_token> is sent
-* Verify service role key exists on server
+- the browser no longer gets to choose which user is being onboarded or attached to an invite
+- the server always derives the acting user from the authenticated Supabase session first
 
-### Google Calendar shows "Reconnect required"
+## Environment Setup
 
-* Tokens expired or revoked
-* Use reconnect flow in Integrations UI
+Copy `.env.example` to `.env.local`.
 
-### Lead score not updating
+### Required for local auth and core app usage
 
-* Ensure `lead_scoring_configs` exists for team
-* Check recent `lead_messages`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
----
+### Required for Stripe features
 
+- `STRIPE_LIVEMODE`
+- `STRIPE_SECRET_KEY_TEST`
+- `STRIPE_SECRET_KEY_LIVE`
+- `STRIPE_CLIENT_ID_TEST`
+- `STRIPE_CLIENT_ID_LIVE`
+- `STRIPE_CONNECT_REDIRECT_URI_TEST`
+- `STRIPE_CONNECT_REDIRECT_URI_LIVE`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_WEBHOOK_SECRET_TEST`
+- `STRIPE_WEBHOOK_SECRET_LIVE`
+
+### Required for Google Calendar features
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+
+### Compatibility / advanced variables still referenced in the repo
+
+- `DATABASE_URL`
+- `GOOGLE_OAUTH_STATE_SECRET`
+- `STRIPE_CONNECT_STATE_SECRET`
+- `STRIPE_PLATFORM_WEBHOOK_SECRET_TEST`
+- `STRIPE_PLATFORM_WEBHOOK_SECRET_LIVE`
+- Vercel preview/prod URL variables used by `src/lib/env/server.ts`
+
+## Node Runtime Notes
+
+Critical server routes should stay on the Node runtime.
+
+Explicit Node runtime routes in the Phase 1 auth path now include:
+
+- `src/app/api/auth/after-login/route.ts`
+- `src/app/api/auth/complete-registration/route.ts`
+- `src/app/api/crm/onboarding/route.ts`
+- `src/app/auth/confirm/route.ts`
+- Stripe webhook routes and booking handlers already using Node runtime exports
+
+## Folder Responsibilities
+
+### `src/app`
+
+Use this folder for App Router entrypoints only.
+
+Examples:
+
+- route groups and pages
+- layouts
+- public booking entrypoints
+- thin API route wrappers
+
+### `src/features`
+
+Use this folder for domain-owned logic.
+
+Current notable feature areas:
+
+- `src/features/auth/server`
+- `src/features/crm`
+- `src/features/billing`
+- `src/features/integrations/stripe/server`
+- `src/features/organizations/server`
+
+### `src/lib`
+
+Use this folder for cross-feature infrastructure.
+
+Current notable modules:
+
+- `src/lib/env`
+- `src/lib/supabase`
+- `src/lib/stripe`
+- `src/lib/auth`
+- `src/lib/http`
+- `src/lib/postgres`
+- `src/lib/validation`
+
+## Testing Coverage
+
+Phase 1 verification now covers:
+
+- auth session parsing and chunked cookie handling
+- request-user guard behavior
+- auth-sensitive route guard behavior for after-login, complete-registration, and onboarding
+- booking helper behavior in existing CRM tests
+- Stripe webhook verification secret selection
+
+Relevant test files:
+
+- `tests/unit/auth-session.test.ts`
+- `tests/unit/request-auth.test.ts`
+- `tests/unit/auth-route-guards.test.ts`
+- `tests/unit/stripe-webhooks.test.ts`
+- `tests/unit/crm-server-helpers.test.ts`
+
+## Current Caveats
+
+- `src/app/api/auth/register/route.ts` still exists as a legacy compatibility path and is not part of the preferred Supabase SSR auth flow.
+- Some older CRM and billing APIs still contain inline orchestration and should move into feature handlers in later phases.
+- The generated database types are still incomplete for parts of the live schema, so some server code uses narrow local casts.
+
+## Recommended Workflow For Future Changes
+
+When touching auth-sensitive code:
+
+1. Prefer `src/lib/supabase/browser.ts` and `src/lib/supabase/server.ts` over ad hoc clients.
+2. Use shared server-side auth guards before reading or writing user-owned data.
+3. Resolve team/org/role context on the server, never from browser trust alone.
+4. Keep App Router `route.ts` files thin when a flow grows beyond simple validation.
+5. Add a focused unit test when changing auth, onboarding, booking, or webhook code.
+
+
+
+## Internationalization
+
+Faigata now uses `next-intl` as the project i18n layer.
+
+Why `next-intl` was chosen:
+
+- it is App Router compatible
+- it works with server-rendered and client-rendered UI in the same codebase
+- it supports incremental adoption without forcing a `[locale]` route segment rewrite across the whole authenticated app
+- it keeps translations in local JSON catalogs that are easy to review and extend
+
+This project uses a cookie and user-preference driven locale model instead of locale-prefixed routing.
+
+How locale resolution works:
+
+1. middleware refreshes the Supabase session and prepares locale context for the request
+2. `next-intl` request config reads the request header when present
+3. otherwise it uses the `faigata_locale` cookie
+4. if no cookie is available, it checks the authenticated user's `profiles.preferred_language`
+5. if nothing is set, it falls back to English (`en`)
+
+Key files:
+
+- [`next.config.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/next.config.ts)
+- [`src/i18n/config.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/i18n/config.ts)
+- [`src/i18n/routing.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/i18n/routing.ts)
+- [`src/i18n/request.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/i18n/request.ts)
+- [`src/app/layout.tsx`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/app/layout.tsx)
+- [`src/lib/supabase/middleware.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/lib/supabase/middleware.ts)
+
+Messages live in `messages/`.
+
+Current workflow:
+
+- `messages/en.json` is the source-of-truth catalog for touched UI
+- non-English locale files currently mirror the English structure so real translations can be added later without refactoring
+- missing keys fall back to English at load time by merging the locale catalog onto the English catalog
+
+Preferred language storage:
+
+- the profile form now reads and writes `profiles.preferred_language`
+- the stored value is always a locale code like `en`, `de`, or `fr`
+- successful profile saves also update the locale cookie immediately so the app can refresh into the newly selected language right away
+
+Migration added:
+
+- [`supabase/migrations/20260320173000_add_profiles_preferred_language.sql`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/supabase/migrations/20260320173000_add_profiles_preferred_language.sql)
+
+How to add a new language:
+
+1. Add the locale code to [`src/i18n/config.ts`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/src/i18n/config.ts)
+2. Add its display label to `LOCALE_LABELS`
+3. Copy [`messages/en.json`](/C:/Users/beson/OneDrive/Dokumente/Coding/faigata/messages/en.json) to `messages/<locale>.json`
+4. Translate values progressively in that new file
+
+How to translate new UI text:
+
+1. Choose or add an appropriate namespace in `messages/en.json`
+2. Replace hardcoded visible strings in the touched component with `useTranslations` or `getTranslations`
+3. Keep English complete first, then copy the new keys into the other locale files
+
+Developer note:
+
+- this setup intentionally avoids machine translation services and large routing changes; it is meant to be maintainable, reviewable, and safe for the existing auth, theme, org, and profile flows

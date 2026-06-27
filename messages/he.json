@@ -1,0 +1,2983 @@
+{
+  "Common": {
+    "actions": {
+      "save": "שמור שינויים",
+      "saving": "שומר עדכונים...",
+      "upload": "העלה קובץ",
+      "working": "מעבד...",
+      "clear": "נקה נתונים",
+      "refresh": "רענן",
+      "cancel": "בטל",
+      "close": "סגור",
+      "copy": "העתק",
+      "continue": "המשך",
+      "view": "צפה בפרטים",
+      "edit": "ערוך",
+      "delete": "מחק",
+      "archive": "העבר לארכיון"
+    },
+    "brand": {
+      "logoAlt": "לוגו CRM לאימון כושר"
+    },
+    "fields": {
+      "firstName": "שם פרטי",
+      "lastName": "שם משפחה",
+      "email": "כתובת אימייל",
+      "workEmail": "אימייל עסקי",
+      "password": "סיסמה",
+      "roles": "תפקידי צוות"
+    },
+    "auth": {
+      "showPassword": "הצג סיסמה",
+      "hidePassword": "הסתר סיסמה",
+      "creatingAccount": "מגדיר את סביבת העבודה שלך לאימון כושר...",
+      "logIn": "התחבר ל-CRM שלך",
+      "createAccount": "צור את חשבון האימון שלך"
+    },
+    "status": {
+      "connected": "מחובר",
+      "comingSoon": "בקרוב",
+      "actionRequired": "נדרשת פעולה"
+    },
+    "roles": {
+      "admin": "מנהל מערכת",
+      "manager": "מנהל מכירות",
+      "prospector": "יוצר לידים",
+      "setter": "קובע פגישות",
+      "closer": "סוגר מכירות",
+      "member": "חבר צוות",
+      "admins": "מנהלי מערכת"
+    },
+    "states": {
+      "noMessages": "עדיין אין שיחות."
+    },
+    "activityTimeline": {
+      "roleLead": "ליד",
+      "roleTeam": "צוות",
+      "joinDetails": "פרטי שיחה",
+      "meetingLink": "קישור לשיחה",
+      "schedulePage": "עמוד הזמנה",
+      "bookingLinkSent": "נשלח קישור הזמנה: {name}",
+      "actions": {
+        "openGoogleMeet": "פתח Google Meet",
+        "openCalendarEvent": "צפה ביומן"
+      },
+      "alt": {
+        "newLead": "ליד כושר חדש",
+        "leadRejected": "ליד נפסל",
+        "callStatus": "עדכון סטטוס שיחה",
+        "offerMade": "נשלחה הצעת תוכנית",
+        "closedOnCall": "הלקוח נסגר בשיחה",
+        "callOutcomeUpdate": "תוצאת השיחה עודכנה",
+        "callBooked": "נקבעה פגישת ייעוץ",
+        "bookingLinkSent": "נשלח קישור הזמנה",
+        "pipelineActivity": "עדכון פייפליין"
+      },
+      "channels": {
+        "dm": "DM",
+        "sms": "SMS",
+        "other": "אחר",
+        "pipeline": "פייפליין"
+      }
+    },
+    "languages": {
+      "label": "שפה מועדפת",
+      "help": "בחר את השפה שתשמש בכל ה-CRM שלך לאימון לאחר השמירה."
+    },
+    "common": {
+      "yes": "כן",
+      "no": "לא",
+      "select": "בחר..."
+    }
+  },
+  "BillingCommon": {
+    "actions": {
+      "creating": "יוצר תשלום...",
+      "archiving": "מעביר לארכיון..."
+    },
+    "errors": {
+      "prefix": "שגיאת תשלום"
+    },
+    "fields": {
+      "name": "שם התוכנית / ההצעה",
+      "description": "פרטי התוכנית",
+      "amount": "מחיר",
+      "currency": "מטבע",
+      "customer": "לקוח",
+      "phone": "טלפון הלקוח",
+      "chargeId": "מזהה תשלום"
+    },
+    "price": {
+      "oneTime": "תשלום חד-פעמי",
+      "recurring": "מנוי חודשי"
+    },
+    "states": {
+      "loading": "טוען תשלומים..."
+    },
+    "status": {
+      "active": "פעיל",
+      "archived": "בארכיון"
+    }
+  },
+  "DomainValues": {
+    "fallbacks": {
+      "empty": "—",
+      "unknown": "לא ידוע"
+    },
+    "crm": {
+      "leadType": {
+        "individual": "פרטי",
+        "business": "עסקי"
+      },
+      "gender": {
+        "male": "זכר",
+        "female": "נקבה"
+      },
+      "contactType": {
+        "email": "אימייל",
+        "phone": "טלפון",
+        "linkedin": "LinkedIn",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "reddit": "Reddit",
+        "twitterX": "Twitter/X",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "tiktok": "TikTok",
+        "youtube": "YouTube",
+        "snapchat": "Snapchat",
+        "discord": "Discord",
+        "slack": "Slack",
+        "wechat": "WeChat",
+        "line": "LINE",
+        "signal": "Signal",
+        "other": "אחר"
+      },
+      "sourceCategory": {
+        "inbound": "נכנס (לידים אורגניים)",
+        "outbound": "יוצא (פנייה קרה)",
+        "referral": "הפניית לקוח",
+        "partner": "שותפות",
+        "purchased": "לידים בתשלום"
+      },
+      "attendance": {
+        "attended": "הגיע",
+        "noShow": "לא הגיע",
+        "cancelled": "בוטל",
+        "rescheduled": "נקבע מחדש",
+        "unknown": "לא ידוע"
+      }
+    },
+    "billing": {
+      "paymentStatus": {
+        "succeeded": "התשלום הצליח",
+        "processing": "התשלום בעיבוד",
+        "requiresPaymentMethod": "נדרש אמצעי תשלום",
+        "requiresConfirmation": "ממתין לאישור",
+        "requiresAction": "נדרשת פעולה",
+        "requiresCapture": "ממתין ללכידה",
+        "canceled": "התשלום בוטל",
+        "failed": "התשלום נכשל"
+      },
+      "invoiceStatus": {
+        "paid": "שולם",
+        "open": "פתוח",
+        "draft": "טיוטה",
+        "void": "בוטל",
+        "uncollectible": "לא ניתן לגבייה"
+      }
+    }
+  },
+  "Home": {
+    "title": "Faigata",
+    "description": "נהל את פייפליין ה-setter שלך באינסטגרם, פגישות הייעוץ שנקבעו ומכירות האימון במקום אחד.",
+    "cta": "פתח סביבת עבודה למכירות"
+  },
+  "ProfileSettings": {
+    "metadata": {
+      "title": "הגדרות פרופיל",
+      "description": "עדכן את הפרטים האישיים שלך, תפקיד הצוות והתמונה שלך."
+    },
+    "loading": "טוען את הגדרות הפרופיל שלך...",
+    "title": "הגדרות פרופיל ועסק",
+    "description": "נהל את פרטי החשבון האישיים שלך ואת המיתוג של עסק אימון הכושר שלך.",
+    "integrations": "אינטגרציות",
+    "accountUpdated": "הפרופיל שלך עודכן.",
+    "organization": {
+      "title": "הגדרות העסק",
+      "description": "עדכן את שם עסק האימון שלך, הלוגו וצבע המותג שמשמש בדפי ההזמנה שלך.",
+      "adminOnly": "רק מנהלי מערכת יכולים לשנות את הגדרות העסק. פנה לבעל החשבון או למנהל מערכת אם צריך לעדכן את הפרטים האלו.",
+      "updated": "הגדרות העסק עודכנו.",
+      "logoFallback": "לוגו",
+      "companyLogo": "לוגו העסק",
+      "logoHelp": "העלה תמונת PNG או JPG. לוגו מרובע עובד הכי טוב.",
+      "uploadLogo": "העלה לוגו",
+      "uploadingLogo": "מעלה לוגו...",
+      "companyName": "שם העסק",
+      "primaryColor": "צבע המותג",
+      "colorHelp": "צבע זה משמש עבור כפתורים, הדגשות ואלמנטים ממותגים אחרים בסביבת העבודה שלך.",
+      "preview": "תצוגה מקדימה",
+      "save": "שמור הגדרות עסק"
+    },
+    "profile": {
+      "picture": "תמונת פרופיל",
+      "pictureHelp": "העלה תמונת PNG או JPG עד בערך 5MB.",
+      "uploadPhoto": "העלה תמונה חדשה",
+      "uploadingPhoto": "מעלה תמונה...",
+      "emailHelp": "זה משנה את כתובת האימייל שבה אתה משתמש כדי להתחבר. ייתכן שתצטרך לאמת את כתובת האימייל החדשה לפני שהשינוי יושלם.",
+      "newPassword": "סיסמה חדשה",
+      "confirmNewPassword": "אשר סיסמה חדשה",
+      "passwordPlaceholder": "השאר ריק כדי לשמור את הסיסמה הנוכחית שלך",
+      "save": "שמור שינויים בפרופיל",
+      "avatarFallback": "U"
+    },
+    "errors": {
+      "notSignedIn": "אינך מחובר.",
+      "loadProfile": "לא הצלחנו לטעון את הפרופיל שלך.",
+      "loadProfileUnexpected": "משהו השתבש בזמן טעינת הפרופיל שלך. נסה שוב.",
+      "uploadAvatar": "לא הצלחנו להעלות את תמונת הפרופיל שלך.",
+      "uploadAvatarSignedUrl": "התמונה שלך הועלתה, אבל לא הצלחנו ליצור עבורה קישור תצוגה מקדימה.",
+      "uploadAvatarSave": "התמונה שלך הועלתה, אבל לא הצלחנו לשמור אותה בפרופיל שלך.",
+      "uploadAvatarUnexpected": "משהו השתבש בזמן העלאת תמונת הפרופיל שלך. נסה שוב.",
+      "saveProfile": "לא הצלחנו לשמור את השינויים בפרופיל שלך.",
+      "passwordMismatch": "הסיסמה החדשה ואישור הסיסמה אינם תואמים.",
+      "saveAuthEmailPassword": "לא הצלחנו לעדכן את כתובת האימייל והסיסמה שלך.",
+      "saveAuthEmail": "לא הצלחנו לעדכן את כתובת האימייל שלך.",
+      "saveAuthPassword": "לא הצלחנו לעדכן את הסיסמה שלך.",
+      "saveProfileUnexpected": "משהו השתבש בזמן שמירת הפרופיל שלך. נסה שוב.",
+      "orgAdminOnly": "רק מנהלי מערכת יכולים לעדכן את הגדרות העסק.",
+      "loadOrganization": "לא הצלחנו לטעון את הגדרות העסק שלך.",
+      "saveOrganization": "לא הצלחנו לשמור את הגדרות העסק שלך.",
+      "saveOrganizationUnexpected": "משהו השתבש בזמן שמירת הגדרות העסק שלך. נסה שוב.",
+      "missingOrganizationId": "מזהה העסק שלך חסר, ולכן לא היה ניתן להשלים את השינוי הזה.",
+      "uploadLogo": "לא הצלחנו להעלות את לוגו העסק שלך.",
+      "uploadLogoSignedUrl": "הלוגו שלך הועלה, אבל לא הצלחנו ליצור עבורו קישור תצוגה מקדימה.",
+      "uploadLogoSave": "הלוגו שלך הועלה, אבל לא הצלחנו לשמור אותו בהגדרות העסק שלך.",
+      "uploadLogoUnexpected": "משהו השתבש בזמן העלאת הלוגו שלך. נסה שוב."
+    }
+  },
+  "Integrations": {
+    "metadata": {
+      "title": "אינטגרציות",
+      "description": "חבר את היומן ואת כלי התשלומים שלך כדי שלידים יוכלו להזמין שיחות, שהצוות שלך יישאר מאורגן, וכדי שתוכל לגבות תשלומים."
+    },
+    "errors": {
+      "loadStatus": "לא הצלחנו לטעון את סטטוס האינטגרציות שלך. רענן את העמוד ונסה שוב.",
+      "loadRoles": "לא הצלחנו לאמת את ההרשאות שלך עבור אינטגרציות חיוב. רענן את העמוד ונסה שוב.",
+      "disconnectCalendar": "לא הצלחנו לנתק את היומן שלך. נסה שוב.",
+      "disconnectStripe": "לא הצלחנו לנתק את Stripe. נסה שוב.",
+      "connectStart": "לא הצלחנו להתחיל את תהליך החיבור. נסה שוב.",
+      "missingAuthUrl": "לא הצלחנו להתחיל את תהליך החיבור כי לא הוחזר קישור הרשאה."
+    },
+    "title": "אינטגרציות",
+    "description": "חבר את הכלים שעסק אימון הכושר שלך משתמש בהם להזמנת שיחות, ניהול יומנים, מעקב אחרי לידים וגביית תשלומים.",
+    "googleReconnectNotice": "צריך לחבר מחדש את Google Calendar שלך כדי שדפי ההזמנה יוכלו לבדוק את הזמינות שלך. לחץ על \"חבר מחדש את Google Calendar\" כדי להמשיך.",
+    "connectionFailed": "החיבור נכשל: {error}",
+    "sections": {
+      "calendarTitle": "חיבורי יומן",
+      "calendarDescription": "חבר יומן כדי שלידים ולקוחות יוכלו להזמין שיחות לפי הזמינות האמיתית שלך.",
+      "emailTitle": "חיבורי אימייל",
+      "emailDescription": "חבר את תיבת המייל שלך כדי לשלוח מעקבים ולשמור את שיחות הלידים במקום אחד.",
+      "billingTitle": "חיבורי חיוב",
+      "billingDescription": "חבר את Stripe כדי למכור תוכניות אימון, לשלוח קישורי תשלום או חשבוניות ולעקוב אחרי תשלומים."
+    },
+    "providers": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "השתמש ב-Google Calendar כדי להציג משבצות זמן פנויות ולהוסיף אוטומטית שיחות שנקבעו ליומן שלך.",
+        "badge": "הכי מתאים למשתמשי Google Calendar",
+        "connect": "חבר את Google Calendar",
+        "disconnect": "נתק את Google Calendar",
+        "reconnect": "חבר מחדש את Google Calendar",
+        "helperConnected": "Google Calendar שלך מחובר וניתן להשתמש בו כדי לבדוק זמינות ולנהל שיחות שנקבעו.",
+        "helperDisconnected": "חבר את Google Calendar כדי שדפי ההזמנה שלך יוכלו להציג משבצות זמן פנויות וליצור אירועים אוטומטית.",
+        "helperReconnect": "חבר מחדש את Google Calendar כדי לשחזר בדיקות זמינות וסנכרון דפי הזמנה."
+      },
+      "outlookCalendar": {
+        "name": "Outlook / Microsoft 365 Calendar",
+        "description": "השתמש ב-Outlook Calendar כדי להציג משבצות זמן פנויות ולהוסיף אוטומטית שיחות שנקבעו ליומן שלך.",
+        "badge": "הכי מתאים למשתמשי Outlook ו-Microsoft 365",
+        "connect": "חבר את Outlook / Microsoft 365 Calendar",
+        "disconnect": "נתק את Outlook / Microsoft 365 Calendar",
+        "helperConnected": "יומן Outlook שלך מחובר וניתן להשתמש בו כדי לבדוק זמינות ולנהל שיחות שנקבעו.",
+        "helperDisconnected": "חבר את Outlook Calendar כדי שדפי ההזמנה שלך יוכלו להציג משבצות זמן פנויות וליצור אירועים אוטומטית."
+      },
+      "gmail": {
+        "name": "Gmail / Google Workspace",
+        "description": "שלח ועקוב אחרי אימיילים של לידים מתוך האפליקציה.",
+        "badge": "דורש גישה ל-Gmail או ל-Google Workspace",
+        "connect": "חבר את Gmail / Google Workspace",
+        "disconnect": "נתק את Gmail / Google Workspace",
+        "helperConnected": "תיבת הדואר הזו מחוברת וניתן להשתמש בה כדי לשלוח ולתעד תקשורת עם לידים.",
+        "helperDisconnected": "תתבקש לאשר גישה. זה משמש רק לשליחת תקשורת עם לידים ולתיעוד שלה."
+      },
+      "outlookMail": {
+        "name": "Outlook / Microsoft 365 Mail",
+        "description": "שלח ועקוב אחרי אימיילים של לידים מתוך תיבת Outlook שלך באפליקציה.",
+        "badge": "דורש גישה ל-Outlook או ל-Microsoft 365",
+        "connect": "חבר את Outlook / Microsoft 365 Mail",
+        "disconnect": "נתק את Outlook / Microsoft 365 Mail",
+        "helperConnected": "תיבת הדואר הזו מחוברת וניתן להשתמש בה כדי לשלוח ולתעד תקשורת עם לידים.",
+        "helperDisconnected": "תתבקש לאשר גישה. זה משמש רק לשליחת תקשורת עם לידים ולתיעוד שלה."
+      },
+      "stripe": {
+        "name": "Stripe (Test)",
+        "description": "חבר את Stripe כדי ליצור הצעות, לשלוח חשבוניות או קישורי תשלום, לגבות תשלומים ולעקוב אחרי סטטוס התשלום.",
+        "badge": "תשלומים",
+        "connect": "חבר את Stripe (Test)",
+        "disconnect": "נתק את Stripe",
+        "helperConnected": "Stripe מחובר לסביבת העבודה הזו במצב בדיקה.",
+        "helperDisconnected": "תועבר ל-Stripe כדי לאשר גישה במצב בדיקה."
+      }
+    }
+  },
+  "ProductSuite": {
+    "metadata": {
+      "title": "Lumo",
+      "description": "פתח את סביבות העבודה שבהן צוות אימון הכושר שלך משתמש לניהול לידים, שיחות שנקבעו, לקוחות ותשלומים."
+    },
+    "errors": {
+      "loadTeams": "לא הצלחנו לטעון את סביבות העבודה שלך. רענן את הדף ונסה שוב.",
+      "openTeam": "לא הצלחנו לפתוח את סביבת העבודה הזו. נסה שוב."
+    },
+    "title": "Lumo",
+    "emptySummary": "אין לך עדיין סביבות עבודה לאימון.",
+    "memberSummary": "אתה חבר ב-{count} סביבת עבודה{count, plural, one {} other {ות}}.",
+    "addTeam": "+ הוסף סביבת עבודה",
+    "loading": "טוען את סביבות העבודה שלך...",
+    "noTeams": "אינך חלק מאף סביבת עבודה לאימון עדיין.",
+    "noTeamsCtaPrefix": "לחץ",
+    "addTeamLabel": "הוסף סביבת עבודה",
+    "noTeamsCtaSuffix": "כדי ליצור את סביבת העבודה הראשונה שלך.",
+    "opening": "פותח סביבת עבודה...",
+    "openDashboard": "פתח סביבת עבודה",
+    "table": {
+      "title": "סביבות העבודה שלך",
+      "description": "בחר סביבת עבודה לניהול לידים, שיחות, לקוחות ותשלומים.",
+      "columns": {
+        "teamName": "שם סביבת העבודה",
+        "role": "התפקיד שלך",
+        "open": "פתח"
+      }
+    }
+  },
+  "ProductSuiteHeader": {
+    "productName": "Lumo",
+    "profileSettings": "הגדרות חשבון ועסק"
+  },
+  "ProductSuiteSidebar": {
+    "logout": "התנתק",
+    "loggingOut": "מתנתק...",
+    "expandSidebar": "הרחב סרגל צד",
+    "collapseSidebar": "כווץ סרגל צד",
+    "nav": {
+      "crm": "CRM"
+    }
+  },
+  "AppSidebar": {
+    "nav": {
+      "dashboard": "דשבורד",
+      "leads": "לידים",
+      "home": "בית",
+      "pipeline": "פייפליין",
+      "settings": "הגדרות",
+      "calendar": "יומן",
+      "billing": "חיוב"
+    },
+    "brand": {
+      "logoAlt": "לוגו Lumo CRM",
+      "productName": "Lumo"
+    },
+    "workspaceLabel": "סביבת עבודה:",
+    "expandSidebar": "הרחב סרגל צד",
+    "collapseSidebar": "כווץ סרגל צד"
+  },
+  "AppHeader": {
+    "kicker": "Lumo",
+    "sections": {
+      "default": "CRM"
+    },
+    "search": {
+      "placeholders": {
+        "niches": "חפש נישות או עסקים...",
+        "default": "חפש לידים, לקוחות או עסקים..."
+      },
+      "clearSearch": "נקה חיפוש"
+    },
+    "calendarReconnect": {
+      "text": "חבר מחדש את Google Calendar",
+      "title": "חבר מחדש את Google Calendar כדי לשמור על דפי ההזמנות פעילים"
+    },
+    "notifications": {
+      "ariaLabel": "התראות",
+      "title": "תזכורות",
+      "checking": "בודק...",
+      "openCount": "{count} פתוחות",
+      "empty": "אין תזכורות כרגע."
+    },
+    "profile": {
+      "you": "אתה",
+      "initialsFallback": "U",
+      "menuAriaLabel": "פתח תפריט פרופיל",
+      "menuTitle": "פתח תפריט פרופיל",
+      "logout": "התנתק"
+    },
+    "reminders": {
+      "noReply48h": "אין תגובה במשך 48 שעות מאז ההודעה האחרונה שלך.",
+      "noReply4d": "אין תגובה במשך 4 ימים מאז ההודעה האחרונה שלך.",
+      "noReply1w": "אין תגובה במשך שבוע מאז ההודעה האחרונה שלך.",
+      "stageStuck": "בשלב \"{stage}\" יותר מ-3 ימים.",
+      "fallbackLeadInStage": "ליד בשלב \"{stage}\"",
+      "pipelineFallback": "פייפליין"
+    }
+  },
+  "Dashboard": {
+    "metadata": {
+      "title": "דשבורד"
+    },
+    "common": {
+      "leadSingular": "ליד",
+      "leadPlural": "לידים"
+    },
+    "errors": {
+      "unauthorized": "אין לך הרשאה. טוקן הסשן חסר.",
+      "requestFailed": "הבקשה נכשלה ({status}).",
+      "failedToLoad": "לא הצלחנו לטעון את הדשבורד שלך."
+    },
+    "loading": {
+      "dashboard": "טוען דשבורד..."
+    },
+    "page": {
+      "title": "דשבורד",
+      "subtitle": "ראה את זרימת הלידים שלך, פעילות הצוות, שיחות שנקבעו והדברים שדורשים תשומת לב."
+    },
+    "status": {
+      "live": "חי",
+      "updating": "מתעדכן..."
+    },
+    "filters": {
+      "team": "צוות",
+      "me": "אני",
+      "days30": "30 ימים אחרונים",
+      "days90": "90 ימים אחרונים",
+      "days120": "120 ימים אחרונים",
+      "daily": "יומי",
+      "weekly": "שבועי",
+      "monthly": "חודשי",
+      "scopeTeam": "מציג: צוות",
+      "scopeMe": "מציג: אני"
+    },
+    "kpis": {
+      "leads": "סה\"כ לידים",
+      "newLeads7d": "לידים חדשים (7 ימים אחרונים)",
+      "messagesSent7d": "הודעות שנשלחו (7 ימים אחרונים)",
+      "bookings7d": "הזמנות (7 ימים אחרונים)",
+      "showRate30d": "שיעור הגעה (30 ימים אחרונים)",
+      "closeRate30d": "שיעור סגירה (30 ימים אחרונים)",
+      "last30d": "30 ימים אחרונים: {value}",
+      "basedOnOutcomes": "מבוסס על תוצאות הזמנות"
+    },
+    "funnel": {
+      "title": "משפך פייפליין",
+      "subtitleNeedStages": "הוסף לפחות 2 שלבים בפייפליין כדי לראות מדדי המרה.",
+      "subtitleInteractive": "לחץ על שלב כדי לראות את פרטי ההמרה והנטישה שלו.",
+      "configureStages": "הגדר שלבים →",
+      "noStages": "עדיין לא נוספו שלבים לפייפליין.",
+      "onlyOneStage": "יש לך רק <strong>{count}</strong> שלב. הוסף שלב נוסף כדי לפתוח תובנות המרה.",
+      "tipLabel": "טיפ:",
+      "tipText": "לחץ על שלב כדי לראות פרטים נוספים.",
+      "showTable": "הצג טבלה",
+      "hideTable": "הסתר טבלה",
+      "ariaLabel": "משפך פייפליין",
+      "convShort": "המרה",
+      "targetShort": "יעד",
+      "dropShort": "נטישה",
+      "stageBadge": "שלב {current} מתוך {total}",
+      "stageLeadCount": "{count} {count, plural, one {ליד} other {לידים}} בשלב זה.",
+      "nextLabel": "שלב הבא:",
+      "conversion": "המרה",
+      "dropOff": "נטישה",
+      "targetLong": "יעד: {value}%",
+      "tableTitle": "ביצועים בין שלבים",
+      "table": {
+        "transition": "מעבר",
+        "label": "תווית",
+        "conversion": "המרה",
+        "dropOff": "נטישה",
+        "empty": "הוסף לפחות 2 שלבים כדי לראות מדדי המרה."
+      },
+      "overallConversionLabel": "המרה כוללת:",
+      "biggestDropLabel": "הנטישה הגדולה ביותר:"
+    },
+    "activity": {
+      "title": "פעילות",
+      "subtitle": "לידים שנוספו מול הודעות יוצאות (עדכוני פייפליין לא כלולים). סה\"כ לטווח זה: {leads} לידים, {messages} הודעות.",
+      "empty": "אין נתוני פעילות לטווח זמן זה.",
+      "legendLeads": "לידים שנוספו",
+      "legendMessages": "הודעות שנשלחו",
+      "tip": "טיפ: רחף מעל הגרף כדי להשוות בין לידים שנוספו להודעות שנשלחו באותה תקופה."
+    },
+    "attention": {
+      "title": "דורש תשומת לב",
+      "subtitle": "לידים בעדיפות גבוהה ללא פעילות אחרונה.",
+      "openPipeline": "פתח פייפליין →",
+      "empty": "אין לידים שדורשים תשומת לב כרגע.",
+      "unnamedLead": "ליד ללא שם",
+      "stageLabel": "שלב:",
+      "lastActivityLabel": "פעילות אחרונה:",
+      "score": "ציון {score}"
+    },
+    "bookings": {
+      "title": "הזמנות קרובות",
+      "subtitle": "14 ימים הבאים",
+      "empty": "אין הזמנות קרובות.",
+      "bookingFallback": "הזמנה",
+      "scheduled": "נקבע"
+    },
+    "feed": {
+      "title": "פיד אחרון",
+      "subtitle": "פעילות אחרונה",
+      "empty": "אין פעילות אחרונה עדיין.",
+      "types": {
+        "lead": "ליד",
+        "booking": "הזמנה",
+        "message": "הודעה"
+      }
+    }
+  },
+  "LeadsPage": {
+    "metadata": {
+      "title": "לידים"
+    },
+    "page": {
+      "title": "לידים",
+      "loading": "טוען את הלידים שלך...",
+      "showingFiltered": "מציג {visible} מתוך {total} לידים שיש לך גישה אליהם.",
+      "showingAll": "מציג {total} לידים שיש לך גישה אליהם."
+    },
+    "columns": {
+      "score": "ציון",
+      "leadName": "שם הליד",
+      "nicheIndustry": "נישה / תחום",
+      "leadType": "סוג ליד",
+      "gender": "מגדר",
+      "city": "עיר",
+      "region": "אזור / מדינה",
+      "country": "מדינה",
+      "postalCode": "מיקוד",
+      "primaryContactType": "סוג איש קשר ראשי",
+      "primaryContact": "איש קשר ראשי",
+      "sourceCategory": "קטגוריית מקור",
+      "sourceName": "שם המקור",
+      "stage": "שלב"
+    },
+    "actions": {
+      "addLeads": "+ הוסף לידים",
+      "log": "תעד",
+      "sortBy": "מיין לפי {label}",
+      "logMessages": "תעד הודעות נכנסות או יוצאות",
+      "viewDetails": "צפה בפרטים",
+      "editLead": "ערוך ליד",
+      "deleteLead": "מחק ליד"
+    },
+    "empty": {
+      "noWorkspace": "אתה עדיין לא נמצא בסביבת עבודה. פתח את הדף הזה מתוך סביבת עבודה או סיים קודם את תהליך ההצטרפות.",
+      "noLeads": "עדיין אין לידים, או שאין לידים שיש לך גישה אליהם.",
+      "addFirstLead": "לחץ על <strong>+ הוסף לידים</strong> כדי ליצור את הליד הראשון שלך.",
+      "noMatch": "אין לידים שתואמים ל־“{query}”.",
+      "tryDifferentSearch": "נסה לחפש שם אחר, ערך שדה אחר או שלב אחר."
+    }
+  },
+  "PipelinePage": {
+    "metadata": {
+      "title": "פייפליין",
+      "description": "צפה בפייפליין שלך והעבר לידים בין שלבים בלוח קנבן."
+    },
+    "page": {
+      "title": "פייפליין",
+      "description": "גרור ושחרר לידים בין עמודות כדי לעדכן את השלב שלהם."
+    },
+    "stage": {
+      "leadCount": "{count} ליד{count, plural, one {} other {ים}}",
+      "conversion": "{value}% המרה",
+      "empty": "גרור לכאן ליד"
+    },
+    "leadFallback": "ליד {id}...",
+    "score": {
+      "title": "נמוך < {low} | גבוה ≥ {high}"
+    },
+    "stageChangeLog": "השלב השתנה מ־\"{fromStage}\" ל־\"{toStage}\""
+  },
+  "LeadMessagesPage": {
+    "metadata": {
+      "title": "שיחות ליד",
+      "description": "עקוב אחר שיחות נכנסות ויוצאות עם ליד זה."
+    },
+    "page": {
+      "title": "תעד שיחות עבור ליד זה",
+      "description": "עקוב אחרי פעילות נכנסת ויוצאת כדי שתמיד תדע מה הייתה נקודת המגע האחרונה.",
+      "leadLabel": "ליד:",
+      "stageLabel": "שלב:",
+      "unassigned": "לא משויך"
+    },
+    "actions": {
+      "backToLead": "חזרה לליד",
+      "logMessage": "תעד הודעה",
+      "openLeadDetail": "פתח את פרטי הליד"
+    },
+    "form": {
+      "directionOutbound": "יוצאת",
+      "directionInbound": "נכנסת",
+      "placeholderOutbound": "מה שלחת לליד הזה?",
+      "placeholderInboundExisting": "איך הליד הגיב?",
+      "placeholderInboundFirst": "איזו הודעה הליד שלח לך?"
+    },
+    "timeline": {
+      "title": "ציר זמן פעילות",
+      "subtitle": "הודעות ואירועי פייפליין.",
+      "events": {
+        "leadCreated": "ליד חדש נוסף: {leadLabel}",
+        "leadRejected": "{oldSetterName} דחה את הליד הזה והקצה אותו מחדש ל־{newSetterName}. סך הדחיות הקודמות: {previousRejectionCount, plural, =0 {אפס} one {#} other {#}}.",
+        "otherSetter": "סטֶר אחר",
+        "callAttendanceUpdated": "סטטוס שיחה עודכן: {previousStatus} ← {nextStatus}",
+        "offerRemoved": "הצעה הוסרה",
+        "offerMade": "הוצעה הצעה: {productTitle}",
+        "closedOnCallRemoved": "סגירה בשיחה הוסרה",
+        "closedOnCall": "נסגר בשיחה: {productTitle}",
+        "callBooked": "שיחה נקבעה → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "הצטרף לפגישה: {meetLink}"
+      }
+    },
+    "states": {
+      "loading": "טוען...",
+      "leadNotFound": "הליד לא נמצא."
+    },
+    "fallback": {
+      "pipelineLead": "ליד בפייפליין",
+      "pipeline": "פייפליין",
+      "leadInStage": "ליד בשלב \"{stage}\""
+    }
+  },
+  "NewLeadPage": {
+    "metadata": {
+      "title": "הוסף ליד",
+      "description": "צור ליד חדש ידנית או יבא לידים מקובץ CSV."
+    },
+    "page": {
+      "title": "הוסף לידים",
+      "description": "הוסף ליד אחד ידנית או יבא מספר לידים מקובץ CSV."
+    },
+    "sections": {
+      "pipeline": "שלב בפייפליין",
+      "coreDetails": "פרטים מרכזיים",
+      "additionalDetails": "פרטים נוספים",
+      "csvImport": "ייבוא מ־CSV"
+    },
+    "fields": {
+      "city": "עיר",
+      "region": "אזור / מדינה",
+      "country": "מדינה",
+      "postalCode": "מיקוד",
+      "primaryContact": "איש קשר ראשי"
+    },
+    "placeholders": {
+      "leadName": "למשל John Smith / Acme Fitness",
+      "link": "https://example.com"
+    },
+    "actions": {
+      "createLead": "צור ליד",
+      "creating": "יוצר...",
+      "importRows": "ייבא {count} שורה{count, plural, one {} other {ות}}",
+      "importing": "מייבא..."
+    },
+    "csv": {
+      "dropTitle": "גרור ושחרר כאן את קובץ ה־CSV שלך",
+      "dropSubtitle": "או לחץ כדי לבחור קובץ",
+      "selectedFile": "קובץ שנבחר: {name}",
+      "checking": "בודק את מבנה ה־CSV...",
+      "valid": "ה־CSV נראה תקין. {count} שורה{count, plural, one {} other {ות}} מוכנה לייבוא.",
+      "validHelp": "אפשר לייבא גם את השדות המותאמים שלך וגם את שדות הלידים הסטנדרטיים.",
+      "invalidTitle": "עמודות ה־CSV אינן תואמות.",
+      "idlePrefix": "עמודות מותאמות מותרות:",
+      "idleCore": "עמודות ליבה מותרות: Lead Name, Niche / Industry, Lead Type, Gender, City, Region, Country, Postal Code, Primary Contact Type, Primary Contact, Source Category, Source Name.",
+      "emptyRows": "קובץ ה־CSV אינו מכיל שורות נתונים.",
+      "fileType": "אנא העלה קובץ ‎.csv.",
+      "readFailed": "לא הצלחנו לקרוא את קובץ ה־CSV.",
+      "parseFailed": "לא הצלחנו לנתח את קובץ ה־CSV.",
+      "unknownColumns": "עמודות לא מוכרות: {columns}.",
+      "importResult": "יובאו {success} שורה{success, plural, one {} other {ות}}{failed, plural, =0 {.} other {, {failed} נכשלו.}}",
+      "importRowFailed": "לא ניתן היה לייבא שורה אחת. אנא נסה שוב."
+    },
+    "states": {
+      "noStages": "אין שלבים זמינים",
+      "noNiches": "אין נישות פעילות עבור סביבת העבודה הזו",
+      "enableNiches": "הפעל נישות בהגדרות לפני יצירת ליד."
+    },
+    "errors": {
+      "title": "לא ניתן היה ליצור ליד",
+      "dismiss": "סגור",
+      "missingTeam": "לא נמצאה סביבת עבודה. אנא פתח את הדף הזה מתוך סביבת העבודה שלך.",
+      "missingUser": "לא ניתן היה לזהות את חשבון המשתמש שלך. אנא התחבר שוב ונסה שוב.",
+      "missingStage": "אנא בחר שלב בפייפליין.",
+      "missingStageForImport": "אנא בחר שלב בפייפליין לפני הייבוא.",
+      "sessionExpired": "תוקף הסשן שלך פג. רענן את הדף והתחבר שוב.",
+      "createFailed": "לא הצלחנו ליצור את הליד. אנא נסה שוב."
+    },
+    "common": {
+      "yes": "כן",
+      "select": "בחר..."
+    }
+  },
+  "LeadDetailPage": {
+    "metadata": {
+      "title": "פרטי ליד"
+    },
+    "page": {
+      "createdOn": "נוצר בתאריך {date}"
+    },
+    "sections": {
+      "leadScore": "ציון ליד",
+      "pipelineStage": "שלב בפייפליין",
+      "assigned": "משויך",
+      "coreDetails": "פרטים מרכזיים",
+      "additionalFields": "שדות נוספים",
+      "notes": "הערות",
+      "activityTimeline": "ציר זמן פעילות"
+    },
+    "fields": {
+      "prospector": "פרוספקטור",
+      "setter": "סטֶר",
+      "closer": "קלוזר",
+      "location": "מיקום",
+      "primaryContact": "איש קשר ראשי"
+    },
+    "score": {
+      "unscored": "ללא ציון",
+      "scored": "קיבל ציון",
+      "low": "נמוך",
+      "medium": "בינוני",
+      "high": "גבוה",
+      "updated": "עודכן {date}",
+      "noScoreYet": "לליד הזה עדיין אין ציון. הגדר ניקוד לידים בהגדרות ← ניקוד לידים."
+    },
+    "additionalFields": {
+      "none": "עדיין לא הוגדרו שדות מותאמים אישית עבור סביבת העבודה הזו."
+    },
+    "notes": {
+      "description": "הערות פנימיות על הליד הזה. ההערות האלו גלויות רק לצוות שלך.",
+      "none": "עדיין אין הערות."
+    },
+    "timeline": {
+      "newestOnTop": "הפעילות החדשה ביותר מופיעה למעלה.",
+      "events": {
+        "leadCreated": "ליד חדש נוסף: {leadLabel}",
+        "leadRejected": "{oldSetterName} דחה את הליד הזה והקצה אותו מחדש ל־{newSetterName}",
+        "otherSetter": "סטֶר אחר",
+        "callAttendanceUpdated": "סטטוס שיחה עודכן: {previousStatus} → {nextStatus}",
+        "offerRemoved": "הצעה הוסרה",
+        "offerMade": "הוצעה הצעה: {productTitle}",
+        "closedOnCallRemoved": "סגירה בשיחה הוסרה",
+        "closedOnCall": "נסגר בשיחה: {productTitle}",
+        "callBooked": "שיחה נקבעה → {rangeLabel} ({zoneLabel})",
+        "joinMeeting": "הצטרף לפגישה: {meetLink}"
+      }
+    },
+    "actions": {
+      "calls": "שיחות",
+      "callsLoading": "טוען שיחות...",
+      "callsTitle": "צפה ועקוב אחר תוצאות כל השיחות שנקבעו",
+      "bookingLink": "קישור הזמנה",
+      "bookingLinkTitle": "צור קישור הזמנה ייחודי עבור הליד הזה",
+      "reject": "דחה",
+      "rejecting": "דוחה...",
+      "rejectTitle": "דחה את הליד הזה והקצה אותו מחדש לחבר צוות אחר",
+      "delete": "מחק",
+      "logNewMessage": "תעד הודעה חדשה"
+    },
+    "alerts": {
+      "rejectFailedTitle": "לא ניתן היה לדחות את הליד",
+      "bookingLinksLoadFailedTitle": "לא ניתן היה לטעון קישורי הזמנה",
+      "bookingLinkCreateFailedTitle": "לא ניתן היה ליצור קישור הזמנה",
+      "bookingLinkCreatedTitle": "קישור ההזמנה נוצר"
+    },
+    "reject": {
+      "modalTitle": "לדחות את הליד?",
+      "modalMessage": "הליד הזה יוקצה מחדש לחבר צוות אחר והשינוי יתועד בציר הזמן.",
+      "confirm": "דחה ליד",
+      "errors": {
+        "failed": "כשל בדחיית הליד"
+      }
+    },
+    "booking": {
+      "modalAriaLabel": "צור קישור הזמנה",
+      "modalTitle": "צור קישור הזמנה",
+      "modalDescription": "בחר עמוד הזמנה למטה. ניצור הזמנה ייחודית עבור הליד הזה ונתעד אותה בציר הזמן.",
+      "latestLink": "הקישור האחרון",
+      "schedulePage": "עמוד הזמנה",
+      "host": "מארח",
+      "emptyTitle": "עדיין אין עמודי הזמנה",
+      "emptyDescription": "צור קודם עמוד הזמנה כדי שתוכל ליצור קישור הזמנה עבור הליד הזה.",
+      "createSchedulePage": "צור עמוד הזמנה",
+      "notNow": "לא עכשיו",
+      "loadingSchedulePages": "טוען עמודי הזמנה...",
+      "creating": "יוצר...",
+      "createAndCopy": "צור והעתק",
+      "columns": {
+        "schedulePage": "עמוד הזמנה",
+        "type": "סוג",
+        "host": "מארח",
+        "action": "פעולה"
+      },
+      "success": {
+        "createdAndCopied": "קישור ההזמנה נוצר והועתק ללוח שלך.",
+        "createdCopyManual": "קישור ההזמנה נוצר. העתק אותו ידנית מתיבת הקישור האחרון.",
+        "copied": "קישור ההזמנה הועתק ללוח שלך.",
+        "copyFailedManual": "ההעתקה נכשלה — אנא העתק את הקישור ידנית."
+      },
+      "errors": {
+        "leadIdMustBeUuid": "מזהה הליד חייב להיות UUID תקין כדי ליצור הזמנה.",
+        "inviteCreatedButNoUrl": "ההזמנה נוצרה, אך לא הוחזרה כתובת URL. עדכן את ‎/api/crm/booking-invite‎ כך שיחזיר ‎{ url }‎.",
+        "createFailed": "יצירת הזמנת ההזמנה נכשלה",
+        "loadSchedulePages": "טעינת עמודי ההזמנה נכשלה"
+      }
+    },
+    "states": {
+      "loading": "טוען..."
+    },
+    "fallback": {
+      "leadInPipeline": "ליד בפייפליין",
+      "pipeline": "פייפליין",
+      "leadInStage": "ליד בשלב \"{stage}\""
+    },
+    "empty": {
+      "missingLeadId": "מזהה הליד חסר בפרמטרי הנתיב. בדוק את שם הסגמנט הדינמי שלך.",
+      "leadNotFound": "הליד לא נמצא."
+    }
+  },
+  "DeleteLeadPage": {
+    "metadata": {
+      "title": "מחק ליד",
+      "description": "מחק לצמיתות את הליד הזה מסביבת העבודה שלך."
+    },
+    "errors": {
+      "missingTeamOrLeadId": "לא הצלחנו לזהות את הצוות שלך או את מזהה הליד.",
+      "loadFailed": "לא הצלחנו לטעון את הליד הזה. אנא נסה שוב.",
+      "workspaceMismatch": "הליד הזה לא שייך לסביבת העבודה הנוכחית שלך.",
+      "deleteFailed": "מחיקת הליד נכשלה. אנא נסה שוב.",
+      "noWorkspaceContext": "לא הצלחנו לזהות את הצוות שלך מהקשר סביבת העבודה. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה.",
+      "leadNotFound": "הליד לא נמצא."
+    },
+    "header": {
+      "title": "למחוק את הליד הזה?",
+      "description": "הפעולה הזו קבועה ואי אפשר לבטל אותה. כל הנתונים של הליד הזה יוסרו מ־<strong>סביבת העבודה הנוכחית</strong>."
+    },
+    "preview": {
+      "title": "תצוגה מקדימה של הליד",
+      "description": "בדוק את פרטי הליד למטה לפני המחיקה.",
+      "stage": "שלב"
+    },
+    "core": {
+      "title": "פרטים מרכזיים",
+      "description": "הערכים האלה נשמרים בעמודות הראשיות של הליד."
+    },
+    "additional": {
+      "title": "שדות נוספים",
+      "description": "אלו שדות מותאמים אישית שהוגדרו עבור סביבת העבודה הזו.",
+      "none": "בסביבת העבודה הזו עדיין אין שדות ליד מותאמים אישית."
+    },
+    "fields": {
+      "location": "מיקום",
+      "primaryContact": "איש קשר ראשי"
+    },
+    "actions": {
+      "deleting": "מוחק...",
+      "deleteLead": "מחק ליד"
+    }
+  },
+  "EditLeadPage": {
+    "metadata": {
+      "title": "ערוך ליד",
+      "description": "עדכן את הפרטים והמידע הקשורים לליד הזה."
+    },
+    "page": {
+      "title": "ערוך ליד",
+      "description": "עדכן את פרטי הליבה של הליד, השלב שלו וכל שדה מותאם שהצוות שלך עוקב אחריו."
+    },
+    "errorBox": {
+      "title": "לא ניתן היה לשמור את השינויים"
+    },
+    "errors": {
+      "generic": "משהו השתבש. אנא נסה שוב.",
+      "sessionExpired": "תוקף הסשן שלך פג. אנא רענן את הדף והתחבר שוב.",
+      "forbidden": "אין לך הרשאה לערוך את הליד הזה.",
+      "notFound": "לא ניתן היה למצוא את הליד הזה.",
+      "workspaceMismatch": "הליד הזה לא שייך לסביבת העבודה הנוכחית שלך.",
+      "genderRequiredForIndividual": "מגדר נדרש כאשר סוג הליד הוא Individual.",
+      "primaryContactRequired": "ערך איש הקשר הראשי לא יכול להיות ריק.",
+      "invalidNiche": "אנא בחר נישה תקפה שמופעלת עבור הצוות שלך.",
+      "invalidStage": "אנא בחר שלב תקף בפייפליין.",
+      "missingWorkspaceOrLeadId": "לא הצלחנו לזהות את סביבת העבודה שלך או את מזהה הליד.",
+      "loadFailed": "לא הצלחנו לטעון את הליד הזה. אנא נסה שוב.",
+      "saveFailed": "שמירת השינויים נכשלה. אנא נסה שוב.",
+      "noWorkspaceContext": "לא הצלחנו לזהות את הצוות שלך מהקשר סביבת העבודה. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+    },
+    "validation": {
+      "stageRequired": "שלב בפייפליין הוא שדה חובה.",
+      "leadNameRequired": "שם ליד הוא שדה חובה.",
+      "nicheRequired": "נישה / תחום הוא שדה חובה.",
+      "genderRequired": "מגדר הוא שדה חובה עבור אנשים פרטיים.",
+      "countryRequired": "מדינה היא שדה חובה.",
+      "regionRequired": "אזור / מדינה הוא שדה חובה.",
+      "cityRequired": "עיר היא שדה חובה.",
+      "primaryContactTypeRequired": "סוג איש קשר ראשי הוא שדה חובה.",
+      "primaryContactValueRequired": "ערך איש קשר ראשי הוא שדה חובה.",
+      "sourceCategoryRequired": "קטגוריית מקור היא שדה חובה.",
+      "sourceNameRequired": "שם מקור הוא שדה חובה."
+    },
+    "sections": {
+      "coreDetails": "פרטים מרכזיים",
+      "location": "מיקום",
+      "contact": "איש קשר",
+      "source": "מקור",
+      "customFields": "שדות מותאמים אישית",
+      "notes": "הערות"
+    },
+    "fields": {
+      "niche": "נישה",
+      "selectNiche": "בחר נישה",
+      "country": "מדינה",
+      "region": "אזור / מדינה",
+      "city": "עיר",
+      "postalCode": "מיקוד / קוד דואר",
+      "pipelineStage": "שלב בפייפליין"
+    },
+    "placeholders": {
+      "firstName": "למשל Alex",
+      "lastName": "למשל Johnson",
+      "leadName": "למשל Alex Johnson או Acme Inc.",
+      "country": "למשל United States",
+      "region": "למשל California",
+      "city": "למשל San Diego",
+      "postalCode": "למשל 92101"
+    },
+    "contact": {
+      "tip": "טיפ: עבור קישורים חברתיים, הדבק את כתובת הפרופיל המלאה אם אפשר.",
+      "valueLabel": {
+        "email": "כתובת אימייל",
+        "phone": "מספר טלפון",
+        "linkedin": "כתובת פרופיל LinkedIn",
+        "instagram": "כתובת פרופיל Instagram",
+        "facebook": "כתובת פרופיל Facebook",
+        "reddit": "כתובת פרופיל Reddit",
+        "twitter_x": "כתובת פרופיל Twitter/X",
+        "whatsapp": "מספר WhatsApp או קישור wa.me",
+        "telegram": "שם משתמש או קישור של Telegram",
+        "tiktok": "כתובת פרופיל TikTok",
+        "youtube": "כתובת ערוץ YouTube",
+        "snapchat": "שם משתמש Snapchat",
+        "discord": "שם משתמש Discord או קישור הזמנה",
+        "slack": "Slack Workspace/User (או קישור להודעה)",
+        "wechat": "מזהה WeChat",
+        "line": "מזהה LINE",
+        "signal": "מספר Signal",
+        "other": "ערך איש קשר"
+      },
+      "placeholder": {
+        "email": "למשל alex@company.com",
+        "phone": "למשל +1 555 123 4567",
+        "linkedin": "למשל https://www.linkedin.com/in/username",
+        "instagram": "למשל https://instagram.com/username",
+        "facebook": "למשל https://facebook.com/username",
+        "reddit": "למשל https://reddit.com/u/username",
+        "twitter_x": "למשל https://x.com/username",
+        "whatsapp": "למשל +1 555 123 4567 או https://wa.me/15551234567",
+        "telegram": "למשל @username או https://t.me/username",
+        "tiktok": "למשל https://www.tiktok.com/@username",
+        "youtube": "למשל https://www.youtube.com/@channel",
+        "snapchat": "למשל username",
+        "discord": "למשל username#1234 או https://discord.gg/xxxx",
+        "slack": "למשל workspace או קישור להודעה",
+        "wechat": "למשל wechat_id",
+        "line": "למשל line_id",
+        "signal": "למשל +1 555 123 4567",
+        "other": "למשל קישור, handle או מזהה"
+      }
+    },
+    "notes": {
+      "description": "הערות פנימיות על הליד הזה. גלויות רק לצוות שלך.",
+      "placeholder": "הוסף הקשר, התנגדויות, פרטים אישיים או כל דבר אחר שעוזר לצוות שלך לסגור את העסקה הזו."
+    },
+    "actions": {
+      "saveChanges": "שמור שינויים"
+    },
+    "niche": {
+      "unknown": "נישה לא ידועה",
+      "archivedSuffix": "(בארכיון / כבר לא מופעלת)",
+      "archivedHelp": "הליד הזה עדיין מפנה לנישה שנכנסה לארכיון. אפשר להשאיר אותה או לבחור נישה שמופעלת כרגע."
+    },
+    "common": {
+      "optional": "אופציונלי"
+    }
+  },
+  "CallsListPage": {
+    "metadata": {
+      "title": "שיחות",
+      "description": "צפה בכל השיחות המשויכות לליד הזה."
+    },
+    "page": {
+      "title": "שיחות",
+      "description": "שיחות שנקבעו עבור ליד זה.",
+      "filteredDescription": "מציג {shown} מתוך {total} שיחות עבור ליד זה."
+    },
+    "errors": {
+      "missingLeadId": "מזהה ליד חסר.",
+      "invalidLeadId": "מזהה ליד לא תקין.",
+      "notSignedIn": "לא מחובר.",
+      "noTeam": "לא נמצא צוות עבור המשתמש שלך.",
+      "missingSessionToken": "טוקן סשן חסר.",
+      "loadFailed": "טעינת השיחות נכשלה"
+    },
+    "table": {
+      "date": "תאריך",
+      "time": "שעה",
+      "attendance": "נוכחות",
+      "offer": "הצעה",
+      "closed": "נסגר",
+      "productService": "מוצר / שירות"
+    },
+    "actions": {
+      "backToLead": "חזרה לליד",
+      "viewCallDetails": "צפה בפרטי השיחה",
+      "editCallTracking": "ערוך מעקב שיחה"
+    },
+    "states": {
+      "noCalls": "עדיין לא נקבעו שיחות.",
+      "noMatches": "אין התאמות",
+      "tryDifferentSearch": {
+        "before": "נסה חיפוש אחר, כמו",
+        "after": "או שם מוצר."
+      }
+    },
+    "searchExamples": {
+      "attended": "הגיע",
+      "noShow": "לא הגיע"
+    },
+    "product": {
+      "notFound": "המוצר לא נמצא"
+    },
+    "footer": {
+      "help": "השתמש ב־<view>צפה</view> כדי לקרוא הערות/תוצאות, או ב־<edit>ערוך</edit> כדי לעדכן מעקב."
+    }
+  },
+  "CallDetailPage": {
+    "metadata": {
+      "title": "פרטי שיחה",
+      "description": "צפה בפרטים ובתוצאה של השיחה הזו."
+    },
+    "page": {
+      "title": "פרטי שיחה"
+    },
+    "errors": {
+      "missingLeadId": "מזהה ליד חסר.",
+      "missingBookingId": "מזהה הזמנה חסר.",
+      "invalidLeadId": "מזהה ליד לא תקין.",
+      "invalidBookingId": "מזהה הזמנה לא תקין.",
+      "notSignedIn": "לא מחובר.",
+      "noTeam": "לא נמצא צוות.",
+      "missingSessionToken": "טוקן סשן חסר.",
+      "loadFailed": "טעינת פרטי השיחה נכשלה",
+      "selectProductForOffer": "אנא בחר מוצר או שירות כאשר ניתנה הצעה.",
+      "saveFailed": "שמירת תוצאת השיחה נכשלה."
+    },
+    "fields": {
+      "attendance": "נוכחות",
+      "offerMade": "הוצעה הצעה",
+      "closedOnCall": "נסגר בשיחה",
+      "product": "מוצר / שירות",
+      "notes": "הערות",
+      "notesPlaceholder": "הוסף הערות על תוצאת השיחה, התנגדויות, החלטות או שלבי המשך."
+    },
+    "actions": {
+      "backToCalls": "חזרה לשיחות",
+      "saveOutcome": "שמור תוצאה"
+    },
+    "chips": {
+      "attendance": "נוכחות: {status}",
+      "offer": "הצעה: {value}",
+      "closed": "נסגר: {value}",
+      "productSelected": "המוצר נבחר"
+    },
+    "products": {
+      "archivedSuffix": "(בארכיון)",
+      "states": {
+        "loading": "טוען מוצרים...",
+        "unavailable": "המוצרים אינם זמינים"
+      },
+      "errors": {
+        "loadFailed": "טעינת המוצרים נכשלה.",
+        "unauthorized": "אין לך הרשאה לצפות במוצרים.",
+        "forbidden": "אין לך הרשאה לצפות במוצרים.",
+        "noConnectedStripeAccount": "לא נמצא חשבון Stripe מחובר עבור הצוות הזה."
+      }
+    },
+    "productCard": {
+      "title": "מוצר / שירות",
+      "description": "בחר את המוצר או השירות שהוצע במהלך השיחה הזו.",
+      "help": "נדרש רק כאשר \"הוצעה הצעה\" מופעל."
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "\"נסגר בשיחה\" זמין רק כאשר הייתה נוכחות בשיחה.",
+      "markAttendedToEnable": "סמן שהשיחה בוצעה כדי לאפשר אפשרות זו."
+    },
+    "footer": {
+      "tip": "לחץ על <save>שמור תוצאה</save> כדי לעדכן את השיחה הזו."
+    },
+    "states": {
+      "notFound": "השיחה לא נמצאה.",
+      "noNotes": "עדיין אין הערות."
+    }
+  },
+  "CallOutcomePage": {
+    "metadata": {
+      "title": "תוצאת שיחה",
+      "description": "עקוב אחר נוכחות, האם ניתנה הצעה והאם הליד נסגר במהלך השיחה."
+    },
+    "page": {
+      "title": "תוצאת שיחה"
+    },
+    "errors": {
+      "invalidLeadId": "מזהה ליד לא תקין.",
+      "invalidBookingId": "מזהה הזמנה לא תקין.",
+      "notSignedIn": "לא מחובר.",
+      "noTeam": "לא נמצא צוות.",
+      "missingSessionToken": "טוקן סשן חסר.",
+      "loadFailed": "טעינת ההזמנה נכשלה.",
+      "saveFailed": "השמירה נכשלה.",
+      "selectProductForOffer": "אנא בחר מוצר עבור ההצעה."
+    },
+    "success": {
+      "saved": "נשמר."
+    },
+    "chips": {
+      "attendance": "נוכחות: {status}",
+      "offer": "הצעה: {value}",
+      "closed": "נסגר: {value}",
+      "productSelected": "המוצר נבחר"
+    },
+    "fields": {
+      "attendance": "נוכחות",
+      "offerMade": "ניתנה הצעה",
+      "closedOnCall": "נסגר בשיחה",
+      "product": "מוצר",
+      "notes": "הערות",
+      "notesPlaceholder": "סיכום קצר של מה שקרה בשיחה..."
+    },
+    "actions": {
+      "backToCalls": "חזרה לשיחות",
+      "saveOutcome": "שמור תוצאה"
+    },
+    "hints": {
+      "closedOnlyWhenAttended": "רלוונטי רק כאשר הנוכחות היא \"הגיע\".",
+      "markAttendedToEnable": "סמן את הנוכחות כ\"הגיע\" כדי לאפשר זאת."
+    },
+    "productCard": {
+      "title": "מוצר / שירות שהוצע",
+      "description": "בחר איזה מוצר Stripe הוצע במהלך השיחה הזו.",
+      "help": "הדבר יתועד בציר הזמן של פעילות הליד."
+    },
+    "products": {
+      "archivedSuffix": "בארכיון",
+      "states": {
+        "loading": "טוען מוצרים...",
+        "unavailable": "המוצרים אינם זמינים"
+      },
+      "errors": {
+        "unauthorized": "אין הרשאה לטעון מוצרי חיוב.",
+        "forbidden": "אין לך הרשאה לטעון מוצרי חיוב עבור סביבת העבודה הזו.",
+        "noConnectedStripeAccount": "לא נמצא חשבון Stripe מחובר עבור סביבת העבודה הזו במצב שנבחר.",
+        "loadFailed": "טעינת המוצרים נכשלה."
+      }
+    },
+    "footer": {
+      "tip": "טיפ: הגדר את תוצאת השיחה ואז לחץ על <save>שמור תוצאה</save>."
+    },
+    "states": {
+      "notFound": "ההזמנה לא נמצאה."
+    }
+  },
+  "CalendarPage": {
+    "metadata": {
+      "title": "יומן",
+      "description": "צפה ביומן האישי שלך, בזמינות שלך ובשיחות שנקבעו במקום אחד."
+    },
+    "page": {
+      "title": "יומן",
+      "description": "צפה בלוח הזמנים האישי שלך לשיחות היכרות, שיחות מכירה, מעקבי לקוחות ופגישות נוספות בתצוגה שבועית פשוטה."
+    },
+    "meta": {
+      "timesShownIn": "השעות מוצגות ב-{tz}"
+    },
+    "actions": {
+      "prev": "הקודם",
+      "today": "היום",
+      "next": "הבא",
+      "retry": "נסה שוב",
+      "openIntegrations": "פתח אינטגרציות",
+      "goToLogin": "עבור להתחברות"
+    },
+    "labels": {
+      "time": "שעה",
+      "allDay": "כל היום",
+      "today": "היום"
+    },
+    "states": {
+      "loading": "טוען את היומן שלך..."
+    },
+    "headerAlert": {
+      "reconnect": {
+        "text": "חבר מחדש את Google Calendar",
+        "title": "חבר מחדש את Google Calendar באינטגרציות כדי לשמור על ההזמנות והזמינות האישית שלך מעודכנות."
+      },
+      "unauthorized": {
+        "text": "תוקף הסשן פג",
+        "title": "אינך מחובר, או שתוקף הסשן שלך פג. אנא התחבר שוב כדי לגשת ליומן שלך."
+      },
+      "loadFailed": {
+        "text": "טעינת היומן נכשלה"
+      },
+      "generic": {
+        "text": "שגיאת יומן"
+      }
+    },
+    "errors": {
+      "reconnectRequired": {
+        "title": "נדרש חיבור מחדש",
+        "message": "יש לחבר מחדש את Google Calendar שלך כדי לטעון את הזמינות והאירועים האישיים שלך."
+      },
+      "notConnected": {
+        "title": "היומן לא מחובר",
+        "message": "חבר את Google Calendar באינטגרציות כדי לצפות בלוח הזמנים וההזמנות האישיים שלך בדף זה."
+      },
+      "unauthorized": {
+        "title": "תוקף הסשן פג",
+        "message": "אינך מחובר, או שתוקף הסשן שלך פג. אנא התחבר שוב כדי לטעון את היומן שלך."
+      },
+      "loadFailed": {
+        "title": "טעינת היומן נכשלה",
+        "message": "לא הצלחנו לטעון את נתוני היומן שלך כרגע. בדרך כלל זו בעיה זמנית. אנא נסה שוב."
+      },
+      "generic": {
+        "title": "משהו השתבש",
+        "message": "אירעה שגיאה לא צפויה בזמן טעינת היומן. אנא נסה שוב."
+      },
+      "codeLabel": "קוד שגיאה:"
+    },
+    "footer": {
+      "help": "דף זה מציג רק את היומן האישי שלך, כולל הזמינות שלך, שיחות שנקבעו ופגישות מתוזמנות."
+    }
+  },
+  "SettingsPage": {
+    "metadata": {
+      "title": "הגדרות",
+      "description": "הגדר את סביבת העבודה שלך לאימון, נהל שדות מעקב לידים ועדכן את הפרופיל והגדרות החשבון שלך."
+    },
+    "loading": {
+      "workspace": {
+        "title": "טוען סביבת עבודה...",
+        "subtitle": "מאתר את צוות האימון שלך ואת ההקשר של סביבת העבודה."
+      },
+      "auth": {
+        "title": "בודק את הסשן שלך...",
+        "subtitle": "מאמת את החשבון שלך."
+      },
+      "profile": {
+        "title": "טוען הגדרות...",
+        "subtitle": "מביא את הפרופיל, התפקיד וההרשאות שלך."
+      },
+      "idle": {
+        "title": "טוען...",
+        "subtitle": "אנא המתן."
+      }
+    },
+    "unavailable": {
+      "title": "ההגדרות אינן זמינות",
+      "description": "לא הצלחנו למצוא סביבת עבודה או פרופיל עבור החשבון שלך. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+    },
+    "page": {
+      "title": "הגדרות",
+      "description": "הגדר כיצד ה-CRM שלך לאימון עובד עבורך ועבור הצוות שלך."
+    },
+    "cards": {
+      "leadFields": {
+        "title": "שדות לידים",
+        "description": "בחר אילו שדות מותאמים אישית הצוות שלך עוקב אחריהם עבור כל ליד, מהפנייה הראשונה ועד לסגירת העסקה."
+      },
+      "leadScoring": {
+        "title": "ניקוד לידים",
+        "description": "הגדר כיצד פרטי הליד והפעילות שלו הופכים לציון לצורך תעדוף טוב יותר."
+      },
+      "niches": {
+        "title": "נישות",
+        "description": "נהל את נישות האימון שהצוות שלך פונה אליהן וצור אפשרויות נישה מותאמות אישית."
+      },
+      "pipelineStages": {
+        "title": "שלבי פייפליין",
+        "description": "הגדר וסדר מחדש את השלבים שבהם הלידים שלך מתקדמים, מהקשר הראשון ועד ללקוח שנסגר."
+      },
+      "conversionMetrics": {
+        "title": "מדדי המרה",
+        "description": "צור ועקוב אחר מדדי מכירות חשובים כמו שיעור תגובה, שיעור הזמנות, שיעור הגעה ושיעור סגירה."
+      },
+      "schedulePages": {
+        "title": "דפי הזמנה",
+        "description": "צור ונהל קישורי הזמנה לשיחות היכרות, שיחות מכירה ופגישות נוספות."
+      },
+      "inviteTeamMembers": {
+        "title": "הזמן חברי צוות",
+        "description": "הזמן חברי צוות והקצה תפקידים כמו קובע פגישות, סוגר מכירות, מנהל מכירות או מנהל מערכת."
+      },
+      "manageTeamRoles": {
+        "title": "נהל תפקידי צוות",
+        "description": "עדכן תפקידים עבור חברי צוות קיימים. Managers אינם יכולים לקדם משתמשים ל-Admin."
+      }
+    },
+    "logout": {
+      "button": "התנתק"
+    }
+  },
+  "LeadFieldsSettingsPage": {
+    "metadata": {
+      "title": "שדות לידים",
+      "description": "בחר אילו שדות ליד צוות האימון שלך רוצה לעקוב אחריהם."
+    },
+    "page": {
+      "title": "שדות לידים",
+      "description": "שדות ליבה נדרשים עבור כל ליד. הוסף למטה שדות נוספים אם הצוות שלך רוצה ללכוד יותר פרטים לאורך תהליך המכירה."
+    },
+    "states": {
+      "loading": "טוען...",
+      "saved": "השינויים נשמרו",
+      "rememberToSave": "אל תשכח לשמור את השינויים שלך."
+    },
+    "systemSection": {
+      "title": "שדות מערכת נדרשים",
+      "description": "שדות הליבה האלו שומרים על עקביות בלידים שלך והופכים סינון, דיווח והעברות לאמינים בכל סביבת העבודה שלך.",
+      "locked": "נעול"
+    },
+    "badges": {
+      "required": "נדרש",
+      "optional": "אופציונלי"
+    },
+    "fieldTypes": {
+      "text": "טקסט",
+      "number": "מספר",
+      "select": "רשימה נפתחת",
+      "boolean": "תיבת סימון",
+      "link": "קישור (URL)"
+    },
+    "systemFields": {
+      "leadName": {
+        "label": "שם הליד",
+        "note": "נדרש עבור כל ליד."
+      },
+      "nicheIndustry": {
+        "label": "נישת אימון",
+        "note": "עוזר לפלח לידים לפי נישה וסוג הצעה."
+      },
+      "leadType": {
+        "label": "סוג ליד",
+        "note": "בחר אם הליד הוא לקוח פרטי או עסק."
+      },
+      "gender": {
+        "label": "מגדר",
+        "note": "נדרש רק כאשר סוג הליד הוא Individual."
+      },
+      "country": {
+        "label": "מדינה",
+        "note": "תומך בדיווח, שיוך טריטוריות וסינון לפי מיקום."
+      },
+      "region": {
+        "label": "אזור / מדינה",
+        "note": "משפר את דיוק ההפניה והופך את הסינון למדויק יותר."
+      },
+      "city": {
+        "label": "עיר",
+        "note": "שימושי לטרגוט מקומי, תצוגות טריטוריה ורשימות לידים מסודרות יותר."
+      },
+      "postalCode": {
+        "label": "מיקוד / קוד דואר",
+        "note": "אופציונלי, אך מועיל לאזורי שירות ולטרגוט מקומי מדויק יותר."
+      },
+      "primaryContactType": {
+        "label": "סוג איש קשר ראשי",
+        "note": "איך תפנה לליד, למשל אימייל, טלפון או רשת חברתית."
+      },
+      "primaryContactValue": {
+        "label": "ערך איש קשר ראשי",
+        "note": "כתובת האימייל, מספר הטלפון או קישור הפרופיל בפועל."
+      },
+      "sourceCategory": {
+        "label": "קטגוריית מקור",
+        "note": "איך הליד הגיע, למשל inbound, outbound, referral או partner."
+      },
+      "sourceName": {
+        "label": "שם המקור",
+        "note": "מאיפה הליד הגיע, למשל Instagram, Facebook, YouTube או דף נחיתה."
+      }
+    },
+    "customFields": {
+      "title": "שדות מותאמים אישית",
+      "description": "הוסף שדות אופציונליים שהצוות שלך רוצה לעקוב אחריהם עבור לידים.",
+      "newFieldLabel": "שדה חדש",
+      "untitled": "ללא כותרת",
+      "dropdownOptions": "אפשרויות ברשימה נפתחת",
+      "empty": {
+        "title": "עדיין אין שדות מותאמים אישית.",
+        "description": "הוסף שדות כמו מטרה, התנגדות, תקציב, רמת כושר, עניין בתוכנית או Setter משויך."
+      }
+    },
+    "placeholders": {
+      "fieldLabel": "תווית (למשל תקציב)",
+      "dropdownOptions": "למשל נמוך, בינוני, גבוה"
+    },
+    "actions": {
+      "addField": "+ הוסף שדה",
+      "remove": "הסר",
+      "saveChanges": "שמור שינויים"
+    },
+    "errors": {
+      "loadFailed": "לא הצלחנו לטעון את תצורת שדות הלידים שלך. אנא נסה שוב.",
+      "missingTeam": "סביבת עבודה חסרה. יש לפתוח את הדף הזה מתוך סביבת העבודה שלך.",
+      "reservedKey": "מפתח השדה \"{key}\" מתנגש עם שדה מערכת. אנא צור אותו מחדש.",
+      "duplicateKey": "מפתח שדה כפול \"{key}\". המפתחות חייבים להיות ייחודיים.",
+      "saveFailed": "שמירת השדות שלך נכשלה. אנא נסה שוב."
+    },
+    "empty": {
+      "noTeam": {
+        "title": "אין סביבת עבודה זמינה",
+        "description": "לא הצלחנו לזהות את סביבת העבודה שלך. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+      }
+    }
+  },
+  "LeadScoringSettingsPage": {
+    "metadata": {
+      "title": "ניקוד לידים",
+      "description": "הגדר כיצד הלידים שלך לאימון מקבלים ציון."
+    },
+    "page": {
+      "title": "ניקוד לידים",
+      "description": "הקצה משקלים לשדות הלידים שלך כדי שה-CRM יוכל לחשב ציון מ-0 עד 100 לכל ליד. השמירה גם תחשב מחדש ציונים עבור כל הלידים הקיימים."
+    },
+    "states": {
+      "loading": "טוען...",
+      "saved": "כללי הניקוד נשמרו",
+      "savedWithRecomputed": "כללי הניקוד נשמרו — עודכנו {count} ליד{count, plural, one {} other {ים}}",
+      "recomputeFailed": "לתשומת לבך: חישוב מחדש נכשל עבור {count} ליד{count, plural, one {} other {ים}}. הלידים האלה יתעדכנו שוב אחרי הפעילות הבאה או שינוי השלב הבא."
+    },
+    "actions": {
+      "save": "שמור כללי ניקוד",
+      "saving": "שומר ומחשב מחדש..."
+    },
+    "errors": {
+      "noTeamInWorkspace": "לא נמצאה סביבת עבודה.",
+      "loadFailed": "טעינת הגדרות ניקוד הלידים נכשלה.",
+      "saveFailed": "השמירה נכשלה. אנא נסה שוב."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "לא הצלחנו לזהות את סביבת העבודה שלך. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+      },
+      "noFields": {
+        "description": "עדיין אין לך שדות לידים. צור אותם קודם ב-<path>הגדרות → שדות לידים</path>."
+      }
+    },
+    "fieldCard": {
+      "typeLabel": "סוג: {type}",
+      "optionWeights": "משקלי אפשרויות",
+      "optionWeightsHelp": "כל אפשרות מוסיפה את הנקודות שלה כאשר היא נבחרת.",
+      "pointsShort": "נק'"
+    },
+    "thresholds": {
+      "title": "ספי ציון",
+      "description": "שלוט מתי ציונים נחשבים <low>נמוכים</low>, <medium>בינוניים</medium> או <high>גבוהים</high>.",
+      "lowLabel": "סף נמוך / אדום",
+      "lowHelp": "ציונים מתחת לזה נחשבים <low>נמוכים</low>.",
+      "highLabel": "סף גבוה / ירוק",
+      "highHelp": "ציונים ברמה זו ומעלה נחשבים <high>גבוהים</high>. כל מה שביניהם הוא <medium>בינוני</medium>."
+    },
+    "tip": {
+      "title": "טיפ",
+      "description": "השאר מרווח קטן מתחת ל-100, כי אוטומציות כמו מעקב אחר תגובות, תזוזה בפייפליין או פעילויות אחרות יכולות להוסיף נקודות נוספות מעבר לניקוד הידני שלך."
+    }
+  },
+  "NicheSettingsPage": {
+    "metadata": {
+      "title": "נישות",
+      "description": "נהל את נישות האימון הזמינות עבור סביבת העבודה הנוכחית שלך."
+    },
+    "page": {
+      "title": "נישות",
+      "description": "זהו קטלוג הנישות המשותף שלך. כל סביבת עבודה יכולה לבחור באילו נישות היא רוצה להשתמש.",
+      "currentTeam": "סביבת עבודה נוכחית: {teamName}",
+      "unnamedTeam": "סביבת עבודה ללא שם",
+      "searchSummary": "חיפוש: “{search}” · {count} תוצאה{count, plural, one {} other {ות}}"
+    },
+    "howItWorks": {
+      "title": "איך זה עובד",
+      "step1": {
+        "title": "1. בחר נישות",
+        "description": "השתמש בתיבות הסימון כדי להפעיל או להשבית נישות עבור סביבת העבודה הזו."
+      },
+      "step2": {
+        "title": "2. שמור שינויים",
+        "description": "סביבת העבודה שלך תשתמש רק בנישות שנבחרו אחרי שתשמור."
+      },
+      "step3": {
+        "title": "3. השתמש בהן בלידים",
+        "description": "הנישות השמורות יופיעו ברשימת הנישות בעת יצירה או עריכה של לידים."
+      }
+    },
+    "catalog": {
+      "title": "כל הנישות",
+      "description": "כל נישה ברשימה הזו יכולה לשמש כל סביבת עבודה. בחר את אלו שסביבת העבודה הזו צריכה לקבל אליהן גישה.",
+      "noSearchResults": "לא נמצאו נישות שתואמות לחיפוש שלך.",
+      "empty": "עדיין אין נישות זמינות.",
+      "createdBy": "נוצרה במקור על ידי {organizationName}.",
+      "sharedNiche": "נישה משותפת."
+    },
+    "enabled": {
+      "title": "מופעלות עבור סביבת העבודה הזו",
+      "description": "הנישות האלו יהיו זמינות כאשר הצוות שלך ייצור או יערוך לידים.",
+      "empty": "עדיין אין נישות מופעלות."
+    },
+    "create": {
+      "title": "צור נישה",
+      "description": "נישות חדשות מתווספות לקטלוג המשותף ומופעלות עבור סביבת העבודה הזו מיד. אם הנישה כבר קיימת, היא פשוט תופעל עבור סביבת העבודה הזו במקום זאת.",
+      "fieldLabel": "שם הנישה",
+      "placeholder": "לדוגמה: מאמני כושר אונליין"
+    },
+    "actions": {
+      "saveChanges": "שמור שינויים",
+      "everythingSaved": "הכול שמור",
+      "creating": "יוצר...",
+      "createNiche": "צור נישה"
+    },
+    "feedback": {
+      "saved": "נישות סביבת העבודה שלך נשמרו.",
+      "alreadyExistsSelected": "\"{name}\" כבר קיימת, לכן היא הופעלה עבור סביבת העבודה הזו במקום זאת.",
+      "alreadyExistedEnabled": "\"{name}\" כבר הייתה קיימת והופעלה עבור סביבת העבודה הזו.",
+      "createdAndAdded": "\"{name}\" נוצרה ונוספה לסביבת העבודה הזו."
+    },
+    "errors": {
+      "noTeam": "לא הצלחנו לזהות את סביבת העבודה הנוכחית שלך.",
+      "loadFailed": "טעינת הנישות נכשלה.",
+      "saveFailed": "שמירת הנישות נכשלה.",
+      "enterName": "אנא הזן שם נישה.",
+      "createFailed": "יצירת הנישה נכשלה."
+    }
+  },
+  "PipelineStagesSettingsPage": {
+    "metadata": {
+      "title": "שלבי פייפליין",
+      "description": "הגדר וארגן את השלבים בפייפליין המכירות שלך לאימון."
+    },
+    "page": {
+      "title": "שלבי פייפליין",
+      "description": "הגדר את השלבים בפייפליין המכירות שלך ובחר את הסדר שבו הלידים מתקדמים דרכם."
+    },
+    "loading": {
+      "workspace": {
+        "title": "טוען סביבת עבודה...",
+        "subtitle": "בודק את סביבת העבודה וההרשאות שלך."
+      },
+      "stages": {
+        "title": "טוען שלבי פייפליין...",
+        "subtitle": "מביא את הגדרת הפייפליין השמורה שלך."
+      },
+      "idle": {
+        "title": "טוען..."
+      }
+    },
+    "states": {
+      "saved": "שלבי הפייפליין נשמרו"
+    },
+    "tips": {
+      "title": "איך זה עובד",
+      "description": "השלבים האלה משמשים בכל הפייפליין שלך, בתצוגות לידים, במסננים ובדוחות. השתמש בחצים כדי לשנות את הסדר שלהם, ואז שמור את השינויים."
+    },
+    "placeholders": {
+      "stageName": "שם השלב"
+    },
+    "defaults": {
+      "newStage": "שלב חדש {number}"
+    },
+    "actions": {
+      "addStage": "+ הוסף שלב",
+      "saveStages": "שמור שלבים",
+      "remove": "הסר",
+      "moveUp": "העבר שלב למעלה",
+      "moveDown": "העבר שלב למטה"
+    },
+    "errors": {
+      "loadFailed": "טעינת שלבי הפייפליין נכשלה.",
+      "missingTeam": "סביבת עבודה חסרה. יש לפתוח את הדף הזה מתוך סביבת העבודה שלך.",
+      "atLeastOneStage": "הוסף לפחות שלב אחד לפני השמירה.",
+      "stageNameRequired": "לכל שלב חייב להיות שם.",
+      "stageNamesUnique": "שמות השלבים חייבים להיות ייחודיים.",
+      "saveFailed": "שמירת שלבי הפייפליין שלך נכשלה. אנא נסה שוב."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "לא הצלחנו לזהות את סביבת העבודה שלך. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+      },
+      "noStages": "עדיין אין שלבי פייפליין."
+    }
+  },
+  "ConversionMetricDefinitionsSettingsPage": {
+    "metadata": {
+      "title": "מדדי המרה",
+      "description": "הגדר את מדדי ההמרה שהצוות שלך עוקב אחריהם בין שלבי הפייפליין."
+    },
+    "page": {
+      "title": "מדדי המרה",
+      "description": "הגדר את מדדי ההמרה שברצונך לעקוב אחריהם. כל מדד משווה כמה לידים עוברים משלב אחד בפייפליין לשלב אחר."
+    },
+    "loading": {
+      "workspace": {
+        "title": "טוען סביבת עבודה...",
+        "subtitle": "בודק את סביבת העבודה וההרשאות שלך."
+      },
+      "definitions": {
+        "title": "טוען מדדי המרה...",
+        "subtitle": "מביא את הגדרות מדדי ההמרה השמורות שלך."
+      },
+      "idle": {
+        "title": "טוען..."
+      }
+    },
+    "states": {
+      "saved": "מדדי ההמרה נשמרו",
+      "rememberToSave": "אל תשכח לשמור את השינויים שלך."
+    },
+    "tips": {
+      "title": "איך זה עובד",
+      "description": "צור מדדים עם שמות בין שלבים, כמו שיעור תגובה, שיעור הזמנות או שיעור הגעה. ההגדרות האלה עוזרות לצוות שלך לעקוב אחר ההמרות החשובות ביותר בפייפליין.",
+      "needStages": "הוסף לפחות 2 שלבי פייפליין לפני יצירת מדדי המרה."
+    },
+    "fields": {
+      "fromStageOption": "מ־: {stage}",
+      "toStageOption": "אל: {stage}",
+      "targetRate": "יעד %",
+      "targetRateTitle": "שיעור יעד (0–100)"
+    },
+    "placeholders": {
+      "metricName": "שם המדד (למשל: שיעור תגובה, שיעור הזמנות)",
+      "targetRate": "יעד %"
+    },
+    "defaults": {
+      "newMetric": "מדד המרה חדש"
+    },
+    "actions": {
+      "addMetric": "+ הוסף מדד המרה",
+      "saveMetrics": "שמור מדדים",
+      "remove": "הסר"
+    },
+    "errors": {
+      "loadFailed": "טעינת מדדי ההמרה נכשלה.",
+      "missingTeam": "סביבת עבודה חסרה. יש לפתוח את הדף הזה מתוך סביבת העבודה שלך.",
+      "atLeastOneMetric": "הוסף לפחות מדד המרה אחד לפני השמירה.",
+      "metricFieldsRequired": "לכל מדד חייבים להיות שם ושלבי מקור/יעד תקפים.",
+      "targetRateRange": "שיעור היעד חייב להיות בין 0 ל־100.",
+      "saveFailed": "שמירת מדדי ההמרה שלך נכשלה. אנא נסה שוב."
+    },
+    "empty": {
+      "noTeam": {
+        "description": "לא הצלחנו לזהות את סביבת העבודה שלך. אנא פתח את הדף הזה מתוך סביבת העבודה שלך או פנה לתמיכה."
+      },
+      "noMetrics": {
+        "title": "עדיין אין מדדי המרה.",
+        "description": "הוסף מדדים כמו שיעור תגובה, שיעור הזמנות או שיעור הגעה כדי להתאים לתהליך המכירה שלך."
+      }
+    }
+  },
+  "SchedulePagesSettingsPage": {
+    "page": {
+      "title": "דפי הזמנה",
+      "description": "צור קישורי הזמנה שלידים יכולים להשתמש בהם כדי לקבוע שיחות ביומן Google המחובר שלך."
+    },
+    "loading": {
+      "workspace": {
+        "title": "טוען סביבת עבודה...",
+        "subtitle": "מאתר את ההקשר של סביבת העבודה שלך."
+      },
+      "auth": {
+        "title": "בודק את הסשן שלך...",
+        "subtitle": "מאמת את החשבון שלך."
+      },
+      "links": {
+        "title": "טוען דפי הזמנה...",
+        "subtitle": "מביא את קישורי ההזמנה שלך."
+      },
+      "idle": {
+        "title": "טוען...",
+        "subtitle": "אנא המתן."
+      }
+    },
+    "dialog": {
+      "title": "בחר סוג דף הזמנה",
+      "description": "בחר כיצד קישור ההזמנה הזה יעבוד. תוכל ליצור מסלולי הזמנה אחד-על-אחד, קבוצתיים או round robin."
+    },
+    "types": {
+      "oneOnOne": {
+        "label": "אחד-על-אחד",
+        "description": "לידים יכולים להזמין ישירות איתך או עם חבר צוות מסוים אחד."
+      },
+      "group": {
+        "label": "קבוצה",
+        "description": "השתמש בזה כאשר כמה חברי צוות צריכים להצטרף לאותה שיחה."
+      },
+      "roundRobin": {
+        "label": "Round Robin",
+        "description": "פזר הזמנות אוטומטית בין קבוצת חברי צוות. אידיאלי לנפח inbound גבוה."
+      }
+    },
+    "badges": {
+      "oneOnOne": "1:1",
+      "group": "קבוצה",
+      "roundRobin": "Round Robin"
+    },
+    "table": {
+      "schedulePage": "דף הזמנה",
+      "publicLink": "קישור ציבורי",
+      "color": "צבע",
+      "actions": "פעולות",
+      "noDescription": "אין תיאור",
+      "publicBookingPage": "דף הזמנה ציבורי",
+      "createdAtTitle": "נוצר בתאריך {date} בשעה {time}"
+    },
+    "actions": {
+      "createSchedulePage": "צור דף הזמנה",
+      "deleteSchedulePage": "מחק דף הזמנה"
+    },
+    "errors": {
+      "verifySessionFailed": "אימות הסשן שלך נכשל. אנא רענן את הדף.",
+      "noTeam": "לא נמצאה סביבת עבודה. פתח את הדף הזה מתוך סביבת העבודה שלך.",
+      "noUserFound": "לא נמצא משתמש. אנא התחבר שוב.",
+      "loadFailed": "טעינת דפי ההזמנה נכשלה.",
+      "loadUnexpected": "אירעה שגיאה לא צפויה בזמן טעינת דפי ההזמנה."
+    },
+    "empty": {
+      "unavailable": "נדרשים סביבת עבודה ופרופיל כדי לנהל דפי הזמנה. פנה לתמיכה אם זה נראה שגוי.",
+      "noPages": {
+        "title": "עדיין אין דפי הזמנה.",
+        "description": "לחץ על <strong>צור דף הזמנה</strong> כדי להגדיר את קישור ההזמנה הראשון שלך."
+      }
+    }
+  },
+  "DeleteSchedulePage": {
+    "metadata": {
+      "title": "מחק דף הזמנה",
+      "description": "אשר מחיקה של דף הזמנה זה. פעולה זו תסתיר את דף ההזמנה תוך שמירה על הזמנות קיימות."
+    },
+    "page": {
+      "title": "מחק דף הזמנה",
+      "description": "פעולה זו תסתיר את דף ההזמנה. הזמנות קיימות יישארו."
+    },
+    "states": {
+      "loading": "טוען...",
+      "alreadyDeleted": "דף ההזמנה הזה כבר נמחק."
+    },
+    "confirm": {
+      "message": "האם אתה בטוח שברצונך למחוק את <strong>{name}</strong>?",
+      "warning": "פעולה זו <strong>תשבית</strong> את דף ההזמנה. לא תוכל לבטל זאת דרך הממשק."
+    },
+    "preview": {
+      "title": "תצוגה מקדימה של דף ההזמנה",
+      "name": "שם",
+      "slug": "Slug"
+    },
+    "actions": {
+      "deleting": "מוחק...",
+      "delete": "מחק דף הזמנה"
+    },
+    "errors": {
+      "notFound": "לא הצלחנו למצוא את דף ההזמנה הזה, או שאין לך גישה אליו.",
+      "missingTeamOrId": "לא הצלחנו לזהות את סביבת העבודה שלך או את מזהה דף ההזמנה.",
+      "loadFailed": "טעינת דף ההזמנה נכשלה.",
+      "deleteFailed": "מחיקת דף ההזמנה נכשלה."
+    },
+    "fallback": {
+      "thisSchedulePage": "דף ההזמנה הזה"
+    }
+  },
+  "CreateSchedulePage": {
+    "metadata": {
+      "title": "צור דף הזמנה",
+      "description": "צור דף הזמנה חדש ב-CRM שלך. בחר את סוג הפגישה, הגדר URL מותאם אישית ובחר צבע ראשי לקישור ההזמנה הציבורי שלך."
+    },
+    "page": {
+      "title": "צור דף הזמנה",
+      "description": "בחר שם, URL וצבע ראשי. לאחר מכן בחר אילו closers נכללים לפי סוג ההזמנה."
+    },
+    "common": {
+      "error": "שגיאה",
+      "minutes": "דקות",
+      "min": "דק'",
+      "hours": "שעות",
+      "days": "ימים"
+    },
+    "defaults": {
+      "confirmHeading": "הזמנתך נקלטה!",
+      "confirmSubheading": "שלחנו הזמנה ליומן לכתובת האימייל שלך."
+    },
+    "fields": {
+      "meetingName": "שם הפגישה",
+      "publicSlug": "slug של URL ציבורי",
+      "descriptionOptional": "תיאור (אופציונלי)",
+      "bufferBefore": "לפני",
+      "bufferAfter": "אחרי",
+      "minNotice": "התראה מינימלית",
+      "maxNotice": "התראה מקסימלית",
+      "startTime": "שעת התחלה",
+      "endTime": "שעת סיום",
+      "days": "ימים",
+      "primaryColor": "צבע ראשי"
+    },
+    "placeholders": {
+      "meetingName": "שיחת אסטרטגיית כושר",
+      "publicSlug": "fitness-strategy-call",
+      "description": "בחר זמן שנוח לך. נשלח הזמנה ליומן אחרי שתאשר."
+    },
+    "help": {
+      "publicSlug": "זה יהפוך לקישור השיתופי שאתה שולח ללידים."
+    },
+    "sections": {
+      "duration": {
+        "title": "משך זמן",
+        "description": "בחר כמה זמן הפגישה הזו אמורה להימשך."
+      },
+      "buffers": {
+        "title": "מרווחים"
+      },
+      "bookingWindow": {
+        "title": "חלון הזמנה"
+      },
+      "availability": {
+        "title": "זמינות"
+      }
+    },
+    "availability": {
+      "businessHours": "שעות עבודה (בחר ימים וטווח שעות)",
+      "twentyFourSeven": "24/7 (לידים יכולים להזמין בכל עת)",
+      "daysHelp": "הזמינות תוגבל לימים ולשעות האלה באזור הזמן של הליד.",
+      "none": "ללא"
+    },
+    "preview": {
+      "alwaysOpen": "24/7"
+    },
+    "actions": {
+      "create": "צור דף הזמנה",
+      "creating": "יוצר..."
+    },
+    "errors": {
+      "nameRequired": "אנא תן שם לדף ההזמנה שלך.",
+      "slugRequired": "ה-slug לא יכול להיות ריק.",
+      "durationMin": "משך הזמן חייב להיות לפחות 5 דקות.",
+      "invalidTimes": "אנא הגדר שעות התחלה וסיום תקינות.",
+      "endAfterStart": "שעת הסיום חייבת להיות אחרי שעת ההתחלה.",
+      "pickDay": "אנא בחר לפחות יום אחד לזמינות.",
+      "pickOneOnOneCloser": "אנא בחר עם מי מתקיימת פגישת האחד-על-אחד הזו.",
+      "pickPrimaryCloser": "אנא בחר closer ראשי.",
+      "groupNeedsTwo": "אנא בחר לפחות 2 closers עבור דף הזמנה קבוצתי.",
+      "roundRobinNeedsOne": "אנא בחר לפחות closer אחד עבור round robin.",
+      "createFailed": "יצירת דף ההזמנה נכשלה.",
+      "groupHostsSaveFailed": "הדף נוצר, אך שמירת מארחי הקבוצה נכשלה.",
+      "roundRobinSaveFailed": "הדף נוצר, אך שמירת קבוצת ה-round robin נכשלה.",
+      "unexpected": "שגיאה לא צפויה"
+    },
+    "weekdays": {
+      "mon": "ב׳",
+      "tue": "ג׳",
+      "wed": "ד׳",
+      "thu": "ה׳",
+      "fri": "ו׳",
+      "sat": "ש׳",
+      "sun": "א׳"
+    },
+    "hostSelection": {
+      "unnamedUser": "משתמש ללא שם",
+      "emptyClosers": "לא נמצאו חברי צוות עם התפקיד <strong>Closer</strong>.",
+      "oneOnOne": {
+        "label": "מארח (Closer)",
+        "help": "הליד מזמין ישירות עם ה-closer הזה."
+      },
+      "group": {
+        "label": "Closers נדרשים (חייבים להשתתף)",
+        "primaryCloser": "Closer ראשי (משויך לליד)",
+        "selectAttendees": "בחר משתתפים נדרשים",
+        "primaryBadge": "ראשי",
+        "help": "הזמינות מבוססת על החפיפה בין כל היומנים שנבחרו."
+      },
+      "roundRobin": {
+        "label": "Closers ל-round robin (מאגר)",
+        "selectPool": "בחר אילו closers יכולים להיות משויכים",
+        "help": "לידים יראו זמנים שבהם <strong>לפחות closer אחד</strong> זמין. כאשר מתבצעת הזמנה, closer זמין אחד יוקצה באקראי."
+      }
+    },
+    "previewCard": {
+      "header": {
+        "title": "תצוגה מקדימה של דף ההזמנה",
+        "description": "תצוגה מקדימה גסה של דף ההזמנה הציבורי."
+      },
+      "bookingType": {
+        "oneOnOne": "1:1",
+        "group": "קבוצה",
+        "roundRobin": "Round robin"
+      },
+      "meta": {
+        "bookingWith": "הזמנה עם {orgName} · {bookingType} · {duration} דק'",
+        "secureScheduling": "קביעת פגישות מאובטחת"
+      },
+      "defaults": {
+        "meetingName": "שיחת אסטרטגיית כושר",
+        "description": "בחר זמן שנוח לך. נשלח הזמנה ליומן אחרי שתאשר."
+      },
+      "body": {
+        "yourDetails": "הפרטים שלך",
+        "pickTime": "בחר זמן",
+        "firstName": "שם פרטי",
+        "email": "name@example.com",
+        "daysEnabled": "ימים פעילים: <days />",
+        "duration": "משך: {value} דק'",
+        "bufferBefore": "מרווח לפני: {value} דק'",
+        "bufferAfter": "מרווח אחרי: {value} דק'",
+        "minNotice": "התראה מינימלית: {value} שעות",
+        "maxNotice": "התראה מקסימלית: {value} ימים",
+        "noticeWindow": "חלון הזמנה:",
+        "noticeWindowValue": "מינימום {minNoticeHours}ש׳ · מקסימום {maxNoticeDays} ימים",
+        "availabilityAlways": "זמינות: 24/7",
+        "availabilityWindow": "זמינות: {days} · {hours}"
+      },
+      "footer": {
+        "note": "תצוגה מקדימה של מראה הדף.",
+        "poweredBy": "מופעל על ידי <strong>Faigata</strong>"
+      }
+    }
+  },
+  "PublicBookingPage": {
+    "types": {
+      "one_on_one": "1:1",
+      "group": "קבוצה",
+      "round_robin": "Round Robin"
+    },
+    "weekdays": {
+      "sun": "א׳",
+      "mon": "ב׳",
+      "tue": "ג׳",
+      "wed": "ד׳",
+      "thu": "ה׳",
+      "fri": "ו׳",
+      "sat": "ש׳"
+    },
+    "partsOfDay": {
+      "night": "לילה",
+      "morning": "בוקר",
+      "afternoon": "אחר הצהריים",
+      "evening": "ערב"
+    },
+    "states": {
+      "checkingAvailabilityTitle": "בודק זמינות",
+      "checkingAvailabilitySubtitle": "בדרך כלל זה לוקח רק שנייה."
+    },
+    "header": {
+      "bookingWith": "הזמנה עם {orgName} · {type}{duration, plural, =0 {} other { · {duration} דק'}}{hostsCount}",
+      "hostsCount": " · {count} מארחים",
+      "secureScheduling": "קביעת פגישות מאובטחת",
+      "generalLinkNotice": "שים לב: זה נראה כמו קישור הזמנה כללי, לא הזמנה אישית.",
+      "defaultDescription": "בחר תאריך ושעה שנוחים לך. נשלח הזמנה ליומן לאחר שתאשר.",
+      "noticeWindow": "חלון הזמנה:",
+      "noticeWindowValue": "מינימום {minNoticeHours}ש׳ · מקסימום {maxNoticeDays} ימים",
+      "availabilityAlways": "זמינות: 24/7",
+      "availabilityDaily": "יומי",
+      "availabilityWindow": "זמינות: {days} · {start}–{end}"
+    },
+    "details": {
+      "title": "הפרטים שלך",
+      "firstName": "שם פרטי",
+      "firstNamePlaceholder": "Jane",
+      "email": "אימייל",
+      "emailPlaceholder": "jane@example.com",
+      "validEmail": "אנא הזן כתובת אימייל תקינה.",
+      "selected": "נבחר",
+      "pickToContinue": "בחר תאריך ושעה כדי להמשיך.",
+      "bookingConfirmed": "ההזמנה אושרה",
+      "bookingSaved": "ההזמנה שלך נשמרה.",
+      "continue": "המשך",
+      "booking": "מזמין...",
+      "groupAvailabilityHelp": "הזמינות מחושבת לפי כל יומני המארחים הנדרשים לפגישה הזו.",
+      "singleAvailabilityHelp": "הזמינות נמשכת מיומן Google המחובר של המארח."
+    },
+    "calendar": {
+      "chooseDate": "בחר תאריך",
+      "localTimezone": "השעות מוצגות באזור הזמן המקומי שלך",
+      "previousWeek": "השבוע הקודם",
+      "nextWeek": "השבוע הבא",
+      "chooseTime": "בחר שעה",
+      "beforeEarliestDate": "התאריך הזה מוקדם מתאריך ההזמנה המוקדם ביותר ({minDate}).",
+      "outsideWindow": "התאריך הזה מחוץ לחלון ההזמנה ({maxNoticeDays} ימים).",
+      "noSlotsTitle": "אין משבצות זמן זמינות ליום הזה.",
+      "noSlotsDescription": "נסה תאריך אחר — ייתכן שהמארח או המארחים מלאים או לא זמינים.",
+      "showMore": "הצג עוד שעות",
+      "tip": "טיפ: שעות מושבתות נמצאות מחוץ לחלון ההזמנה שלך (מינימום {minNoticeHours}ש׳ / מקסימום {maxNoticeDays} ימים)."
+    },
+    "errors": {
+      "loadAvailability": "לא הצלחנו לטעון זמינות. אנא נסה שוב.",
+      "availabilityInternal": "לא הצלחנו לבדוק זמינות כרגע. אנא רענן את הדף ונסה שוב.",
+      "linkNotFound": "קישור ההזמנה הזה כבר לא קיים.",
+      "inviteInvalid": "קישור ההזמנה הזה כבר לא תקף.",
+      "hostCalendarNotConnected": "המארח עדיין לא חיבר את היומן שלו.",
+      "hostCalendarReconnectRequired": "המארח צריך לחבר מחדש את Google Calendar שלו כדי להציג זמינות.",
+      "loadAvailabilitySoon": "לא הצלחנו לטעון זמינות כרגע. אנא נסה שוב בעוד רגע.",
+      "firstNameRequired": "אנא הזן את שמך הפרטי.",
+      "validEmailRequired": "אנא הזן כתובת אימייל תקינה.",
+      "slotOutsideAvailability": "השעה הזו מחוץ לזמינות של קישור ההזמנה הזה.",
+      "bookingFailed": "השלמת ההזמנה נכשלה."
+    },
+    "footer": {
+      "poweredBy": "מופעל על ידי <strong>Faigata</strong>"
+    }
+  },
+  "InviteTeamMembersPage": {
+    "metadata": {
+      "title": "הזמן חברי צוות"
+    },
+    "page": {
+      "title": "הזמן חברי צוות",
+      "description": "שלח הזמנה והקצה תפקיד אחד או יותר.",
+      "managerNote": "אתה Manager, לכן אינך יכול להקצות את תפקיד ה-Admin. רק Admins יכולים לעשות זאת."
+    },
+    "placeholders": {
+      "email": "new.member@company.com"
+    },
+    "actions": {
+      "sendInvite": "שלח הזמנה",
+      "sending": "שולח..."
+    },
+    "states": {
+      "loading": "טוען סביבת עבודה והרשאות...",
+      "noPermission": "אין לך הרשאה להזמין חברי צוות.",
+      "inviteSent": "ההזמנה נשלחה!"
+    },
+    "errors": {
+      "loadPermissions": "טעינת ההרשאות נכשלה. אנא רענן את הדף.",
+      "emailAndRoleRequired": "נדרשים כתובת אימייל ולפחות תפקיד אחד.",
+      "sendInviteFailed": "שליחת ההזמנה נכשלה.",
+      "generic": "משהו השתבש."
+    }
+  },
+  "ManageTeamRolesPage": {
+    "metadata": {
+      "title": "נהל תפקידי צוות"
+    },
+    "page": {
+      "title": "נהל תפקידי צוות",
+      "description": "החלף תפקידים כדי לעדכן אותם באופן מיידי. Managers אינם יכולים להקצות את תפקיד ה-Admin; רק Admins יכולים."
+    },
+    "table": {
+      "sectionTitle": "חברי צוות",
+      "columns": {
+        "member": "חבר",
+        "action": "פעולה"
+      },
+      "userFallback": "משתמש",
+      "adminOnlyTitle": "רק Admins יכולים להקצות את תפקיד ה-Admin.",
+      "savingTitle": "שומר...",
+      "removeTitle": "הסר חבר צוות"
+    },
+    "states": {
+      "loading": "טוען...",
+      "refreshing": "טוען חברי צוות...",
+      "saved": "נשמר",
+      "empty": "לא נמצאו חברי צוות עבור סביבת העבודה הזו."
+    },
+    "errors": {
+      "noWorkspaceTeam": "לא הצלחנו לזהות את סביבת העבודה שלך.",
+      "noPermission": "אין לך הרשאה לנהל תפקידי צוות.",
+      "loadMembers": "טעינת חברי הצוות נכשלה.",
+      "loadMembersHttp": "טעינת חברי הצוות נכשלה (HTTP {status}).",
+      "atLeastOneRole": "נדרש לפחות תפקיד אחד.",
+      "saveHttp": "שמירת השינויים נכשלה (HTTP {status})."
+    }
+  },
+  "AcceptInvitePage": {
+    "metadata": {
+      "title": "קבל את ההזמנה שלך",
+      "description": "הצטרף לצוות Faigata שלך, צור את החשבון שלך והתחל לשתף פעולה עם הצוות."
+    },
+    "page": {
+      "title": "קבל את ההזמנה שלך",
+      "descriptionWithOrg": "הוזמנת להצטרף ל-{orgName}.",
+      "descriptionWithoutOrg": "הוזמנת להצטרף לצוות של Faigata."
+    },
+    "actions": {
+      "dismiss": "סגור",
+      "tryAgain": "נסה שוב",
+      "acceptInvite": "קבל הזמנה"
+    },
+    "states": {
+      "loadingInvite": "טוען את ההזמנה שלך..."
+    },
+    "success": {
+      "title": "ברוך הבא ל-{orgName}",
+      "defaultOrg": "הצוות החדש שלך",
+      "description": "החשבון שלך נוצר והתפקידים שלך הוקצו. מעביר אותך ללוח הבקרה שלך..."
+    },
+    "footer": {
+      "loginPrompt": "כבר יש לך חשבון ב-Faigata? <link>התחבר כדי לקבל את ההזמנה הזו</link>"
+    },
+    "validation": {
+      "firstNameRequired": "שם פרטי הוא שדה חובה.",
+      "lastNameRequired": "שם משפחה הוא שדה חובה.",
+      "emailRequired": "אימייל הוא שדה חובה.",
+      "passwordRequired": "סיסמה היא שדה חובה.",
+      "passwordMin": "הסיסמה חייבת להכיל לפחות 8 תווים.",
+      "emailMismatch": "אנא השתמש באותה כתובת אימייל שאליה נשלחה ההזמנה."
+    },
+    "errors": {
+      "invalidLink": {
+        "title": "קישור הזמנה לא תקין",
+        "message": "חסר מידע הזמנה בקישור הזה. אנא בקש מהצוות שלך לשלוח את ההזמנה מחדש."
+      },
+      "loadFailed": {
+        "title": "לא ניתן היה לטעון את ההזמנה",
+        "message": "לא הצלחנו לטעון את ההזמנה שלך כרגע. אנא בדוק את החיבור שלך ונסה שוב."
+      },
+      "network": {
+        "title": "שגיאת רשת",
+        "message": "משהו השתבש בזמן קבלת ההזמנה שלך. אנא נסה שוב."
+      },
+      "inviteLoadInvalid": "לא ניתן היה למצוא את ההזמנה הזו או שהיא כבר לא תקפה.",
+      "acceptFailed": "קבלת ההזמנה נכשלה. אנא נסה שוב."
+    },
+    "apiErrors": {
+      "inviteNotFound": {
+        "title": "ההזמנה לא נמצאה",
+        "message": "לא ניתן היה למצוא את ההזמנה הזו. ייתכן שהיא הוסרה, או שהקישור אינו מלא."
+      },
+      "inviteAlreadyAccepted": {
+        "title": "ההזמנה כבר נוצלה",
+        "message": "ההזמנה הזו כבר התקבלה. נסה להתחבר עם כתובת האימייל שאליה נשלחה ההזמנה."
+      },
+      "inviteExpired": {
+        "title": "פג תוקף ההזמנה",
+        "message": "תוקף ההזמנה הזו פג. אנא בקש מהצוות שלך לשלוח לך הזמנה חדשה."
+      },
+      "inviteEmailMismatch": {
+        "title": "האימייל לא תואם",
+        "message": "אנא השתמש באותה כתובת אימייל שאליה נשלחה ההזמנה."
+      },
+      "authCreateUserFailed": {
+        "title": "לא ניתן היה ליצור חשבון",
+        "message": "לא הצלחנו ליצור את החשבון שלך כרגע. אנא נסה שוב."
+      },
+      "authUpdateUserFailed": {
+        "title": "לא ניתן היה להשלים את ההגדרה",
+        "message": "לא הצלחנו להשלים את הגדרת החשבון שלך. אנא נסה שוב."
+      },
+      "inviteAcceptFailed": {
+        "title": "לא ניתן היה להצטרף לצוות",
+        "message": "לא ניתן היה לקשר את החשבון שלך לצוות כרגע. אנא נסה שוב או פנה לתמיכה."
+      },
+      "generic": {
+        "title": "משהו השתבש"
+      }
+    }
+  },
+  "DeleteTeamMemberPage": {
+    "metadata": {
+      "title": "הסר חבר צוות",
+      "description": "אשר את הסרת חבר הצוות מסביבת העבודה הזו. פעולה זו אינה ניתנת לביטול."
+    },
+    "page": {
+      "title": "הסר חבר צוות",
+      "description": "האם אתה בטוח שברצונך להסיר את <strong>{name}</strong> מהצוות הזה?",
+      "warning": "פעולה זו תבטל את הגישה שלו לסביבת העבודה הזו. אי אפשר לבטל פעולה זו."
+    },
+    "actions": {
+      "removing": "מסיר...",
+      "removeUser": "הסר משתמש"
+    },
+    "states": {
+      "loadingWorkspace": "טוען סביבת עבודה..."
+    },
+    "fallback": {
+      "thisUser": "המשתמש הזה"
+    },
+    "preview": {
+      "name": "שם",
+      "userId": "מזהה משתמש"
+    },
+    "errors": {
+      "missingUserId": "מזהה משתמש חסר.",
+      "unauthorized": "אינך מחובר, או שתוקף הסשן שלך פג. אנא התחבר שוב.",
+      "deleteFailed": "הסרת חבר הצוות נכשלה."
+    }
+  },
+  "BillingPage": {
+    "metadata": {
+      "title": "חיוב",
+      "description": "נהל את החיוב ב-Stripe, כולל מוצרים, מחירים, חשבוניות, תשלומים ולקוחות."
+    },
+    "page": {
+      "title": "חיוב ותשלומים",
+      "description": "נהל תוכניות אימון, חשבוניות, לקוחות ופעילות תשלומים במקום אחד."
+    },
+    "actions": {
+      "openCard": "פתח {title}"
+    },
+    "cards": {
+      "invoices": {
+        "title": "חשבוניות",
+        "description": "צור, שלח ועקוב אחרי חשבוניות לחיובים חד-פעמיים או חוזרים.",
+        "hint": "שולם · פתוח · באיחור · טיוטה"
+      },
+      "products": {
+        "title": "מוצרים",
+        "description": "הגדר מוצרים ומחירים שמשמשים לחשבוניות ולמנויים.",
+        "hint": "חד-פעמי · חוזר"
+      },
+      "payments": {
+        "title": "תשלומים",
+        "description": "עקוב אחר תשלומים נכנסים, וגם אחר עסקאות שנכשלו או ממתינות.",
+        "hint": "הצליח · ממתין · נכשל"
+      },
+      "customers": {
+        "title": "לקוחות",
+        "description": "נהל לקוחות Stripe שמקושרים ללידים ולארגונים.",
+        "hint": "פרטי חיוב · אמצעי תשלום"
+      }
+    }
+  },
+  "BillingCustomersPage": {
+    "metadata": {
+      "title": "לקוחות",
+      "description": "צפה ונהל לקוחות Stripe. קשר לקוחות ללידים כדי לשמור את החיוב מחובר ל-CRM שלך."
+    },
+    "page": {
+      "title": "לקוחות",
+      "description": "לקוחות Stripe עבור החשבון המחובר שלך. השתמש בחיפוש בכותרת כדי לסנן לפי שם, אימייל, טלפון או מזהה.",
+      "filterApplied": "סינון: <strong>“{query}”</strong>",
+      "noFilter": "לא הוחל סינון."
+    },
+    "actions": {
+      "newCustomer": "לקוח חדש",
+      "link": "קשר",
+      "changeLink": "שנה קישור",
+      "unlink": "בטל קישור",
+      "createCustomer": "צור לקוח",
+      "creatingCustomer": "יוצר…",
+      "linkToLead": "קשר לליד",
+      "linking": "מקשר…"
+    },
+    "table": {
+      "title": "לקוחות Stripe",
+      "loading": "טוען…",
+      "filteredCount": "מציג {count} לקוח/ות שתואמים לסינון שלך",
+      "totalCount": "מוצגים {count} לקוח/ות",
+      "columns": {
+        "customer": "לקוח",
+        "created": "נוצר",
+        "paymentMethod": "אמצעי תשלום",
+        "linkedLead": "ליד מקושר",
+        "actions": "פעולות"
+      }
+    },
+    "paymentMethod": {
+      "onFile": "קיים במערכת",
+      "none": "ללא"
+    },
+    "linkedLead": {
+      "linkedLead": "ליד מקושר",
+      "notLinked": "לא מקושר"
+    },
+    "empty": {
+      "none": {
+        "title": "עדיין אין לקוחות.",
+        "description": "השתמש ב-<newCustomer>לקוח חדש</newCustomer> כדי להוסיף אחד, או ב-<refresh>רענן</refresh> כדי לטעון את נתוני Stripe העדכניים ביותר."
+      },
+      "noMatch": {
+        "title": "אין לקוחות שתואמים ל-“{query}”.",
+        "description": "נסה שם אחר, אימייל, מספר טלפון או מזהה לקוח ב-Stripe."
+      }
+    },
+    "leadSearch": {
+      "loading": "טוען לידים…",
+      "none": "לא נמצאו לידים.",
+      "stage": "שלב: {stage}",
+      "selected": "נבחר"
+    },
+    "createModal": {
+      "eyebrow": "צור לקוח Stripe",
+      "title": "לקוח חדש",
+      "description": "צור לקוח בחשבון Stripe המחובר וקשר אותו לליד.",
+      "fields": {
+        "findLead": "מצא ליד",
+        "selectLead": "בחר ליד",
+        "customerName": "שם הלקוח"
+      },
+      "placeholders": {
+        "findLead": "הקלד שם ליד, אימייל, טלפון…",
+        "customerName": "למשל ACME GmbH",
+        "email": "name@company.com",
+        "phone": "+49 …"
+      },
+      "help": {
+        "prefill": "בחירת ליד תמלא מראש את השם + האימייל/טלפון הראשי."
+      }
+    },
+    "linkModal": {
+      "eyebrow": "קשר לקוח",
+      "description": "בחר ליד כדי לקשר אליו את לקוח ה-Stripe הזה.",
+      "fields": {
+        "searchLeads": "חפש לידים (אופציונלי)",
+        "selectLead": "בחר ליד"
+      },
+      "placeholders": {
+        "searchLeads": "הקלד שם ליד, חברה, אימייל…"
+      },
+      "help": {
+        "search": "זה מיועד רק לחלון הזה. החיפוש הגלובלי נשאר בכותרת."
+      }
+    }
+  },
+  "BillingInvoicesPage": {
+    "metadata": {
+      "title": "חשבוניות",
+      "description": "צפה ונהל חשבוניות Stripe עבור החשבון המחובר שלך."
+    },
+    "page": {
+      "title": "חשבוניות",
+      "description": "צור, סקור ושלח חשבוניות שמסונכרנות עם חשבון Stripe המחובר שלך.",
+      "filterApplied": "סינון: <strong>“{query}”</strong>",
+      "noFilter": "לא הוחל סינון."
+    },
+    "actions": {
+      "newInvoice": "חשבונית חדשה"
+    },
+    "table": {
+      "title": "חשבוניות Stripe",
+      "loading": "טוען…",
+      "filteredCount": "מציג {count} חשבונית/ות שתואמות לסינון שלך",
+      "totalCount": "מוצגות {count} חשבונית/ות",
+      "columns": {
+        "invoice": "חשבונית",
+        "customer": "לקוח",
+        "status": "סטטוס",
+        "total": "סה״כ",
+        "created": "נוצרה",
+        "due": "לתשלום עד",
+        "view": "צפה"
+      }
+    },
+    "invoice": {
+      "number": "#{number}",
+      "stripeId": "Stripe:"
+    },
+    "empty": {
+      "none": {
+        "title": "עדיין אין חשבוניות.",
+        "description": "השתמש ב-<newInvoice>חשבונית חדשה</newInvoice> כדי ליצור אחת, או ב-<refresh>רענן</refresh> כדי לטעון את נתוני Stripe העדכניים ביותר."
+      },
+      "noMatch": {
+        "title": "אין חשבוניות שתואמות ל-“{query}”.",
+        "description": "נסה שם לקוח, אימייל, מספר חשבונית או מזהה חשבונית ב-Stripe."
+      }
+    }
+  },
+  "BillingPaymentsPage": {
+    "metadata": {
+      "title": "תשלומים",
+      "description": "עקוב אחר תשלומים נכנסים, עסקאות ממתינות וכישלונות."
+    },
+    "page": {
+      "title": "תשלומים",
+      "description": "צפה בתשלומים שסונכרנו מחשבון Stripe המחובר שלך.",
+      "filterApplied": "סינון: <strong>“{query}”</strong>",
+      "noFilter": "לא הוחל סינון."
+    },
+    "table": {
+      "title": "תשלומי Stripe",
+      "loading": "טוען…",
+      "filteredCount": "מציג {count} תשלום/ים שתואמים לסינון שלך",
+      "totalCount": "{count} תשלום/ים"
+    },
+    "empty": {
+      "none": {
+        "title": "עדיין אין תשלומים.",
+        "description": "תשלומים יופיעו כאן לאחר שיעובדו."
+      },
+      "noMatch": {
+        "title": "אין תשלומים שתואמים ל-“{query}”.",
+        "description": "נסה חיפוש אחר."
+      }
+    },
+    "actions": {
+      "open": "פתח →"
+    }
+  },
+  "BillingProductsPage": {
+    "metadata": {
+      "title": "מוצרים",
+      "description": "נהל מוצרים ומחירים של Stripe שמסונכרנים לחשבון המחובר שלך."
+    },
+    "page": {
+      "title": "מוצרים",
+      "description": "נהל מוצרים ומחירים שמסונכרנים לחשבון Stripe המחובר שלך.",
+      "filterApplied": "סינון: <strong>“{query}”</strong>",
+      "noFilter": "לא הוחל סינון."
+    },
+    "actions": {
+      "newProduct": "מוצר חדש"
+    },
+    "table": {
+      "title": "מוצרי Stripe",
+      "loading": "טוען…",
+      "filteredCount": "מציג {count} מוצר/ים שתואמים לסינון שלך",
+      "totalCount": "מוצגים {count} מוצר/ים",
+      "columns": {
+        "product": "מוצר",
+        "status": "סטטוס",
+        "currentPrice": "מחיר נוכחי",
+        "created": "נוצר",
+        "actions": "פעולות"
+      }
+    },
+    "price": {
+      "recurringBilling": "חיוב חוזר"
+    },
+    "empty": {
+      "none": {
+        "title": "עדיין אין מוצרים.",
+        "description": "השתמש ב-<newProduct>מוצר חדש</newProduct> כדי ליצור אחד, או ב-<refresh>רענן</refresh> כדי לסנכרן מ-Stripe."
+      },
+      "noMatch": {
+        "title": "אין מוצרים שתואמים ל-“{query}”.",
+        "description": "נסה לחפש בשם אחר, תיאור אחר או מזהה מוצר אחר."
+      }
+    }
+  },
+  "BillingFailedPaymentsPage": {
+    "metadata": {
+      "title": "תשלומים שנכשלו",
+      "description": "סקור תשלומים שנכשלו או תשלומים שדורשים פעולה."
+    },
+    "page": {
+      "title": "תשלומים שנכשלו",
+      "description": "תשלומים שדורשים פעולה, כמו כרטיסים שנדחו או אמצעי תשלום חסרים.",
+      "filterApplied": "סינון: <strong>“{query}”</strong>",
+      "noFilter": "לא הוחל סינון."
+    },
+    "actions": {
+      "backToAll": "חזרה לכל התשלומים",
+      "open": "פתח תשלום"
+    },
+    "table": {
+      "title": "תשלומים שנכשלו",
+      "loading": "טוען…",
+      "filteredCount": "מציג {count} תשלום/ים שנכשלו שתואמים לסינון שלך",
+      "totalCount": "{count} תשלום/ים שנכשלו"
+    },
+    "empty": {
+      "none": {
+        "title": "עדיין אין תשלומים שנכשלו.",
+        "description": "כאשר תשלום ייכשל, הוא יופיע כאן."
+      },
+      "noMatch": {
+        "title": "אין תשלומים שנכשלו שתואמים ל-“{query}”.",
+        "description": "נסה אימייל אחר, סטטוס אחר או מזהה payment intent אחר."
+      }
+    }
+  },
+  "BillingInvoiceDetailPage": {
+    "metadata": {
+      "title": "חשבונית",
+      "description": "צפה ונהל חשבונית Stripe."
+    },
+    "page": {
+      "title": "פרטי חשבונית"
+    },
+    "header": {
+      "invoiceNumber": "חשבונית #{number}"
+    },
+    "summary": {
+      "total": "סה״כ:",
+      "created": "נוצרה:",
+      "due": "לתשלום עד:",
+      "customer": "לקוח:"
+    },
+    "actions": {
+      "refreshTitle": "רענן חשבונית",
+      "addItem": "הוסף פריט",
+      "addItemTitle": "הוסף שורת פריט",
+      "addItemDisabledTitle": "לא ניתן להוסיף פריטים לחשבונית סגורה",
+      "finalize": "סיים",
+      "send": "שלח",
+      "void": "בטל",
+      "addingItem": "מוסיף…",
+      "addItemModal": "הוסף פריט",
+      "backToInvoices": "חזרה לחשבוניות"
+    },
+    "links": {
+      "openHostedInvoice": "פתח חשבונית מתארחת ↗",
+      "downloadPdf": "הורד PDF ↗",
+      "hostedUnavailable": "החשבונית המתארחת עדיין לא זמינה.",
+      "pdfUnavailable": "קובץ PDF עדיין לא זמין."
+    },
+    "items": {
+      "title": "שורות פריטים",
+      "description": "הוסף פריטים, ואז סיים ושלח. הפריטים ננעלים לאחר תשלום או ביטול.",
+      "empty": "עדיין אין שורות פריטים. לחץ על <strong>הוסף פריט</strong> כדי ליצור את הראשונה.",
+      "fallbackItem": "פריט חשבונית",
+      "table": {
+        "quantity": "כמות"
+      }
+    },
+    "modal": {
+      "title": "הוסף שורת פריט",
+      "description": "השתמש ב-Stripe Price (חוזר/חד-פעמי), או הוסף סכום מותאם אישית בלי לחשוב בסנטים.",
+      "fields": {
+        "mode": "מצב",
+        "priceId": "מזהה מחיר",
+        "quantity": "כמות"
+      },
+      "modes": {
+        "custom": "סכום מותאם אישית",
+        "price": "Stripe Price"
+      },
+      "placeholders": {
+        "priceId": "price_...",
+        "amount": "למשל 99.00"
+      },
+      "help": {
+        "priceId": "הדבק מזהה Stripe Price. (בהמשך אפשר לבנות ממשק “בחר מוצר/מחיר”.)",
+        "currency": "טיפ: Stripe ישמור את הסכום אוטומטית ביחידה הקטנה ביותר.",
+        "amount": "הזן את הסכום הרגיל (למשל 10.50)."
+      }
+    },
+    "states": {
+      "notFound": "החשבונית לא נמצאה."
+    }
+  },
+  "BillingNewInvoicePage": {
+    "metadata": {
+      "title": "חשבונית חדשה",
+      "description": "צור חשבונית Stripe חדשה עבור לקוח."
+    },
+    "page": {
+      "title": "חשבונית חדשה",
+      "description": "צור חשבונית ב-Stripe, ואז הוסף שורות פריטים ושלח אותה ללקוח."
+    },
+    "fields": {
+      "selectCustomer": "בחר לקוח",
+      "collectionMethod": "שיטת גבייה",
+      "daysUntilDue": "ימים עד תאריך היעד",
+      "memo": "הערה (אופציונלי)"
+    },
+    "collectionMethod": {
+      "sendInvoice": "שלח חשבונית",
+      "chargeAutomatically": "חייב אוטומטית"
+    },
+    "placeholders": {
+      "memo": "גלוי ללקוח בחשבונית."
+    },
+    "actions": {
+      "manage": "נהל",
+      "manageCustomersTitle": "נהל לקוחות",
+      "createInvoice": "צור חשבונית"
+    },
+    "states": {
+      "loadingCustomers": "טוען לקוחות..."
+    },
+    "help": {
+      "customer": "טיפ: השתמש בחיפוש הגלובלי בכותרת בדף הלקוחות כדי למצוא במהירות את הלקוח המדויק.",
+      "collectionMethod": "Send invoice = שליחת קישור החשבונית באימייל. Charge automatically = Stripe מנסה לגבות את התשלום.",
+      "daysUntilDue": "חל רק כאשר משתמשים ב-\"שלח חשבונית\".",
+      "submitDisabled": "בחר לקוח כדי להפעיל את \"צור חשבונית\"."
+    }
+  },
+  "BillingPaymentDetailPage": {
+    "metadata": {
+      "title": "פרטי תשלום",
+      "description": "בדוק תשלום ובצע החזרים."
+    },
+    "page": {
+      "title": "פרטי תשלום"
+    },
+    "actions": {
+      "back": "חזרה לתשלומים",
+      "refundPayment": "החזר תשלום",
+      "refunding": "מבצע החזר..."
+    },
+    "help": {
+      "refund": "החזרים דורשים תשלום שהושלם בהצלחה (מצב בדיקה תקין)."
+    },
+    "raw": {
+      "title": "Payload גולמי של Stripe"
+    },
+    "states": {
+      "notFound": "התשלום לא נמצא."
+    }
+  },
+  "BillingProductArchivePage": {
+    "metadata": {
+      "title": "העבר מוצר לארכיון",
+      "description": "העבר מוצר לארכיון ב-Stripe (מגדיר אותו כלא פעיל)."
+    },
+    "page": {
+      "title": "העבר מוצר לארכיון",
+      "description": "הפעולה הזו מגדירה <strong>active=false</strong> ב-Stripe. חשבוניות קיימות אינן מושפעות."
+    },
+    "confirm": {
+      "before": "האם אתה בטוח שברצונך להעביר לארכיון את",
+      "after": "?",
+      "stripeId": "מזהה Stripe:"
+    }
+  },
+  "BillingProductDetailPage": {
+    "metadata": {
+      "title": "מוצר",
+      "description": "צפה בפרטי מוצר, מחירים וציר זמן פעילות."
+    },
+    "header": {
+      "stripeId": "מזהה Stripe:"
+    },
+    "actions": {
+      "sync": "סנכרן",
+      "syncTitle": "סנכרן קטלוג מ-Stripe",
+      "newPrice": "+ מחיר חדש",
+      "createPrice": "צור מחיר"
+    },
+    "states": {
+      "notFound": "המוצר לא נמצא."
+    },
+    "statusCard": {
+      "title": "סטטוס",
+      "created": "נוצר:"
+    },
+    "details": {
+      "title": "פרטים"
+    },
+    "prices": {
+      "title": "מחירים",
+      "description": "מחירי Stripe הם בפועל בלתי ניתנים לשינוי. צור מחיר חדש והעבר את הישן לארכיון.",
+      "empty": "עדיין אין מחירים.",
+      "recurringLabel": "{count} {interval}{count, plural, one {} other {s}}",
+      "recurringType": "חוזר ({recurringLabel})",
+      "table": {
+        "amount": "סכום",
+        "type": "סוג",
+        "status": "סטטוס",
+        "created": "נוצר",
+        "actions": "פעולות"
+      }
+    },
+    "activity": {
+      "title": "ציר זמן פעילות",
+      "description": "עדכוני מוצר ושינויים במחיר.",
+      "empty": "עדיין אין פעילות.",
+      "fallbacks": {
+        "product": "מוצר"
+      },
+      "types": {
+        "productCreated": "מוצר חדש",
+        "productUpdated": "מוצר עודכן",
+        "productArchived": "מוצר הועבר לארכיון",
+        "recurringPriceCreated": "נוצר מחיר חוזר",
+        "oneTimePriceCreated": "נוצר מחיר חד-פעמי",
+        "priceArchived": "מחיר הועבר לארכיון"
+      },
+      "text": {
+        "productCreated": "מוצר חדש: {name}",
+        "nameChanged": "השם שונה ל-{name}",
+        "descriptionUpdated": "התיאור עודכן",
+        "productDetailsChanged": "פרטי המוצר שונו",
+        "productArchived": "הוגדר כלא פעיל ב-Stripe (חשבוניות קיימות אינן מושפעות).",
+        "newPriceCreated": "נוצר מחיר חדש",
+        "recurringPriceCreated": "{amount} - מחויב כל {count} {interval}{count, plural, one {} other {s}}",
+        "oneTimePriceCreated": "{amount} - חיוב חד-פעמי",
+        "priceArchived": "מחיר Stripe הועבר לארכיון: {id}",
+        "productsCount": "{count} מוצרים",
+        "pricesCount": "{count} מחירים",
+        "catalogSynced": "הקטלוג סונכרן",
+        "catalogSyncedWithCounts": "הקטלוג סונכרן - {parts}"
+      }
+    },
+    "modal": {
+      "title": "צור מחיר",
+      "description": "הסכום הוא בסנטים (למשל 1000 = $10.00).",
+      "fields": {
+        "amountCents": "סכום (בסנטים)",
+        "interval": "מרווח",
+        "intervalCount": "מספר מרווחים"
+      },
+      "help": {
+        "currency": "בחר מטבע שנתמך על ידי חשבון Stripe שלך."
+      },
+      "intervals": {
+        "day": "יום",
+        "week": "שבוע",
+        "month": "חודש",
+        "year": "שנה"
+      }
+    }
+  },
+  "BillingProductFormPage": {
+    "metadata": {
+      "create": {
+        "title": "מוצר חדש",
+        "description": "צור מוצר חדש ב-Stripe וסנכרן אותו לקטלוג שלך."
+      },
+      "edit": {
+        "title": "ערוך מוצר",
+        "description": "עדכן את שם המוצר והתיאור שלו, ואז סנכרן ל-Stripe."
+      }
+    },
+    "page": {
+      "createTitle": "מוצר חדש",
+      "editTitle": "ערוך מוצר",
+      "createDescription": "יוצר מוצר ומחיר ב-Stripe בחשבון המחובר שלך.",
+      "editDescription": "מעדכן את שם המוצר והתיאור שלו ב-Stripe."
+    },
+    "fields": {
+      "billingType": "סוג חיוב",
+      "interval": "מרווח",
+      "intervalCount": "מספר מרווחים"
+    },
+    "placeholders": {
+      "name": "למשל Coaching Package",
+      "description": "אופציונלי",
+      "amount": "למשל 19.99"
+    },
+    "price": {
+      "title": "מחיר",
+      "description": "הפעולה הזו תיצור מחיר Stripe עבור המוצר. בדרך כלל לא עורכים מחירי Stripe; במקום זאת יוצרים מחיר חדש."
+    },
+    "help": {
+      "amount": "הזן ביחידות רגילות (למשל 19.99). אנו נמיר לסנטים.",
+      "currency": "נשלח ל-Stripe כקוד באותיות קטנות.",
+      "intervalCount": "למשל חודש אחד, 3 חודשים וכו'.",
+      "missingRouteParam": "טיפ: הדף הזה דורש מזהה מוצר ב-route params."
+    },
+    "intervals": {
+      "day": "יומי",
+      "week": "שבועי",
+      "month": "חודשי",
+      "year": "שנתי"
+    },
+    "actions": {
+      "createProduct": "צור מוצר",
+      "saveChanges": "שמור שינויים"
+    },
+    "errors": {
+      "nameRequired": "שם הוא שדה חובה.",
+      "priceAmountRequired": "סכום המחיר הוא שדה חובה.",
+      "currencyRequired": "מטבע הוא שדה חובה.",
+      "missingProductId": "מזהה מוצר חסר.",
+      "createResponseMissingProductId": "תשובת היצירה חסרה מזהה מוצר."
+    }
+  },
+  "RegisterPage": {
+    "metadata": {
+      "title": "הרשמה"
+    },
+    "page": {
+      "title": "צור את חשבון Faigata שלך",
+      "subtitle": "התחברות אחת עבור ה-setters, ה-closers וההכנסות מהאימון שלך."
+    },
+    "footer": {
+      "alreadyHaveAccount": "כבר יש לך חשבון?"
+    },
+    "states": {
+      "checkingSession": "בודק את הסשן שלך..."
+    },
+    "errors": {
+      "registrationFailed": "ההרשמה נכשלה. אנא נסה שוב.",
+      "sessionNotCreated": "החשבון שלך נוצר, אבל Supabase לא יצר סשן התחברות. אנא אשר את האימייל שלך, ואז המשך מדף ההתחברות.",
+      "userAlreadyExists": "כבר קיים חשבון עם האימייל הזה.",
+      "passwordTooShort": "הסיסמה שלך קצרה מדי.",
+      "invalidEmail": "אנא הזן כתובת אימייל תקינה.",
+      "tooManyRequests": "יותר מדי ניסיונות. אנא המתן רגע ונסה שוב.",
+      "network": "שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.",
+      "completeRegistrationFailed": "החשבון שלך נוצר, אבל לא הצלחנו להשלים את הגדרת סביבת העבודה. מעבירים אותך עכשיו.",
+      "completeRegistrationUnexpected": "החשבון שלך נוצר, אבל משהו השתבש בזמן השלמת ההגדרה.",
+      "initializationFailed": "לא הצלחנו לאמת את הסשן הנוכחי שלך. אנא נסה שוב.",
+      "unexpected": "משהו השתבש בזמן יצירת החשבון שלך."
+    }
+  },
+  "LoginPage": {
+    "metadata": {
+      "title": "התחברות"
+    },
+    "page": {
+      "title": "ברוך שובך ל-Faigata",
+      "subtitle": "התחבר כדי לנהל את ה-prospects, השיחות שנקבעו ולקוחות האימון שלך."
+    },
+    "actions": {
+      "signingIn": "מחבר אותך..."
+    },
+    "footer": {
+      "newToFaigata": "חדש ב-Faigata?"
+    },
+    "states": {
+      "loading": "טוען"
+    },
+    "errors": {
+      "invalidEmailOrPassword": "אימייל או סיסמה שגויים.",
+      "authConfirmFailed": "אימות האימייל נכשל. אנא נסה שוב את הקישור או התחבר ידנית.",
+      "emailNotConfirmed": "אנא אשר את כתובת האימייל שלך לפני ההתחברות.",
+      "tooManyRequests": "יותר מדי ניסיונות. אנא המתן רגע ונסה שוב.",
+      "network": "שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.",
+      "loginFailed": "ההתחברות נכשלה. אנא נסה שוב.",
+      "afterLoginFailed": "ההתחברות הצליחה, אבל לא הצלחנו להשלים את הגדרת סביבת העבודה. מעבירים אותך עכשיו.",
+      "unexpected": "משהו השתבש בזמן ההתחברות שלך."
+    }
+  },
+  "BookingLinksPage": {
+    "metadata": {
+      "title": "דפי זימון",
+      "description": "צפה ונהל את כל קישורי הזמנת הייעוץ שלך במקום אחד. אפשר ל-prospects לקבוע זמן ישירות ביומן Google המחובר שלך."
+    }
+  },
+  "OnboardingPage": {
+    "metadata": {
+      "title": "קליטה ראשונית",
+      "description": "הגדר את סביבת העבודה, הצוות, הפייפליין ונתוני הלידים שלך לפני שתתחיל להשתמש ב-Faigata."
+    },
+    "steps": {
+      "teamSetup": "הגדרת צוות",
+      "inviteTeammates": "הזמן חברי צוות",
+      "customizeLeadData": "התאם נתוני לידים",
+      "importExistingLeads": "ייבא לידים קיימים",
+      "customizePipeline": "התאם את הפייפליין",
+      "conversionMetrics": "מדדי המרה",
+      "finish": "סיום"
+    },
+    "page": {
+      "title": "ברוך הבא ל-Lumo",
+      "progress": "שלב {current} מתוך {total} · {step}",
+      "setupHint": "נסיים להגדיר אותך לגמרי תוך רגע."
+    },
+    "alerts": {
+      "loginRequired": "עליך להיות מחובר כדי להשלים את תהליך הקליטה.",
+      "saveFailed": "שמירת ההגדרה שלך נכשלה. אנא נסה שוב.",
+      "unexpected": "משהו השתבש. אנא נסה שוב."
+    },
+    "actions": {
+      "back": "חזרה",
+      "goToDashboard": "עבור ללוח הבקרה",
+      "addAnotherTeammate": "+ הוסף חבר צוות נוסף",
+      "addAnotherField": "+ הוסף שדה נוסף",
+      "downloadSampleTemplate": "הורד תבנית לדוגמה",
+      "remove": "הסר",
+      "addStage": "+ הוסף שלב",
+      "addConversionMetric": "+ הוסף מדד המרה"
+    },
+    "teamSetup": {
+      "defaults": {
+        "teamName": "צוות מכירות"
+      },
+      "fields": {
+        "companyName": "שם החברה",
+        "teamName": "הצוות הראשון שלך",
+        "timezone": "אזור זמן"
+      },
+      "placeholders": {
+        "companyName": "למשל Faigata GmbH",
+        "teamName": "למשל Outbound Sales"
+      },
+      "info": "המשתמש הראשון שלך יהיה ה-admin של סביבת העבודה הזו. מאוחר יותר תוכל להוסיף צוותים נוספים כמו SDR Team, Closers או CSM."
+    },
+    "invites": {
+      "description": "הזמן את האנשים שישתמשו איתך ב-Lumo. תמיד אפשר להוסיף עוד בהמשך.",
+      "emailPlaceholder": "teammate@company.com"
+    },
+    "customFields": {
+      "description": "בחר את הנתונים שברצונך לעקוב אחריהם עבור כל ליד או prospect. גרור שדות כדי לשנות את הסדר שלהם.",
+      "defaults": {
+        "industryLabel": "תחום",
+        "regionLabel": "אזור",
+        "regionOptions": "DACH, US, UK, EU, Other",
+        "newFieldLabel": "שדה חדש"
+      },
+      "fieldTypes": {
+        "text": "טקסט",
+        "number": "מספר",
+        "select": "רשימה נפתחת",
+        "boolean": "תיבת סימון",
+        "url": "URL"
+      },
+      "placeholders": {
+        "fieldLabel": "תווית שדה (למשל: תחום)",
+        "selectOptions": "אפשרויות (מופרדות בפסיקים, למשל: SaaS, E-commerce, Agency)"
+      }
+    },
+    "importLeads": {
+      "description": "כבר יש לך לידים או prospects בגיליון אלקטרוני? ייבא אותם עכשיו כדי שהצוות שלך יוכל להמשיך מהמקום שבו עצר.",
+      "uploadTitle": "לחץ כדי להעלות CSV / Excel",
+      "uploadSubtitle": "נדריך אותך במיפוי העמודות בהמשך.",
+      "selectedFile": "קובץ נבחר: {fileName}",
+      "recommendedColumns": {
+        "title": "עמודות מומלצות",
+        "nameEmailCompany": "שם, אימייל, חברה",
+        "stage": "שלב (New / Contacted / Replied / Qualified / ...)",
+        "owner": "Owner (Prospector / Setter / Closer)",
+        "customFields": "כל שדה מותאם אישית שזה עתה הגדרת"
+      }
+    },
+    "pipeline": {
+      "description": "זהו הפייפליין ברירת המחדל שלך. תוכל להשאיר את ההמלצה שלנו או לשנות את שמות השלבים כך שיתאימו לתהליך שלך.",
+      "defaults": {
+        "new": "חדש",
+        "contacted": "נוצר קשר",
+        "replied": "הגיב",
+        "qualified": "מוסמך",
+        "bookedCall": "שיחה נקבעה",
+        "showedUp": "הגיע",
+        "offer": "הצעה",
+        "closed": "נסגר",
+        "newStage": "שלב חדש"
+      }
+    },
+    "conversionMetrics": {
+      "description": "תן שמות לשיעורי ההמרה שחשובים לך. כל מדד משווה כמה לידים עוברים משלב אחד בפייפליין לשלב אחר.",
+      "defaults": {
+        "newMetric": "מדד חדש"
+      },
+      "placeholders": {
+        "metricName": "שם המדד (למשל: שיעור תגובה, שיעור הזמנות)"
+      },
+      "fromStage": "מ־: {stage}",
+      "toStage": "אל: {stage}"
+    },
+    "finish": {
+      "readyTitle": "אתה מוכן לצאת לדרך",
+      "description": "ניצור את {teamName} בתוך {companyName}, נטען מראש את השדות המותאמים אישית והפייפליין שלך, ונשלח הזמנות לחברי הצוות שלך.",
+      "fallbacks": {
+        "teamName": "צוות המכירות שלך",
+        "companyName": "החברה שלך"
+      },
+      "summary": {
+        "invites": "{count} הזמנת/ות לחבר צוות",
+        "fields": "{count} שדה/ות לידים מותאם/ים אישית",
+        "stages": "{count} שלב/י פייפליין",
+        "metrics": "{count} מדד/י המרה"
+      },
+      "nextTitle": "הדבר הבא ב-Lumo",
+      "nextItems": {
+        "outreach": "עקוב בזמן אמת אחר ה-outreach והתגובות של setters",
+        "assignment": "הקצה אוטומטית לידים עם פוטנציאל גבוה לביצועים הטובים ביותר שלך",
+        "pipelineHealth": "תן למנהלים תמונה ברורה של בריאות הפייפליין"
+      }
+    }
+  }
+}

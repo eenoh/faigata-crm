@@ -1,16 +1,19 @@
-// src/app/(app)/settings/profile/page.tsx
 import type { Metadata } from "next";
-import ProfileSettingsClient from "../../components/ProfileSettingsClient";
+import { getTranslations } from "next-intl/server";
+import ProfileSettingsClient from "@/components/ProfileSettingsClient";
 import ProductSuiteShellClient from "@/components/layout/ProductSuiteShellClient";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ProfileSettings");
 
-export const metadata: Metadata = {
-  title: "Profile Settings",
-  description: "Manage your name, role, and profile picture in FaigataCRM.",
-};
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function ProfilePage() {
-    return (
+  return (
     <ProductSuiteShellClient>
       <ProfileSettingsClient />
     </ProductSuiteShellClient>

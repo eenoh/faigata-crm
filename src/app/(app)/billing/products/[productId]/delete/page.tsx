@@ -1,11 +1,15 @@
-// src/app/(app)/billing/products/[productId]/delete/page.tsx
 import type { Metadata } from "next";
-import ProductArchiveClient from "@/modules/billing/components/ProductArchiveClient";
+import { getTranslations } from "next-intl/server";
+import ProductArchiveClient from "@/features/billing/components/ProductArchiveClient";
 
-export const metadata: Metadata = {
-  title: "Archive Product",
-  description: "Archive a product in Stripe (sets active=false).",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BillingProductArchivePage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default async function ArchiveProductPage({
   params,

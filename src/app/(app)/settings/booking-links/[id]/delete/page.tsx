@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import DeleteSchedulePageClient from "../../../../../../modules/crm/components/DeleteSchedulePageClient";
+import DeleteSchedulePageClient from "@/features/crm/components/DeleteSchedulePageClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Delete Schedule Page",
-  description:
-    "Confirm deletion of this schedule page. This will hide the schedule page while keeping existing bookings.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("DeleteSchedulePage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default function Page() {
   return <DeleteSchedulePageClient />;

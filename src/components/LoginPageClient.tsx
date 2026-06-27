@@ -9,54 +9,124 @@ import {
   type FormEvent,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function buildRegisterHref(inviteId: string | null, teamId: string | null) {
-  if (!inviteId && !teamId) return "/register";
-  const qs = new URLSearchParams({
-    ...(inviteId ? { invite: inviteId } : {}),
-    ...(teamId ? { team: teamId } : {}),
-  }).toString();
-  return `/register?${qs}`;
+function buildHref(
+  base: string,
+  params: Record<string, string | null | undefined>,
+) {
+  const qs = new URLSearchParams(
+    Object.entries(params).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        if (value) acc[key] = value;
+        return acc;
+      },
+      {},
+    ),
+  ).toString();
+
+  return qs ? `${base}?${qs}` : base;
 }
 
+function sanitizeNextPath(value: string | null) {
+  return value && value.startsWith("/") ? value : null;
+}
+
+function getAuthedLocaleHeaders(accessToken: string | null, locale: string) {
+  return {
+    "Content-Type": "application/json",
+    "x-faigata-locale": locale,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+}
+
+type AfterLoginResponse = {
+  needsOnboarding: boolean;
+  teamId?: string | null;
+};
+
 export function LoginPageClient() {
-  // ✅ MUST be called unconditionally (prevents hook order issues)
+  const t = useTranslations("LoginPage");
+  const common = useTranslations("Common");
+  const locale = useLocale();
+
   const searchParams = useSearchParams();
   const inviteId = searchParams.get("invite");
   const teamIdParam = searchParams.get("team");
-
-  // ✅ Theme hook unconditionally
+  const nextPath = sanitizeNextPath(searchParams.get("next"));
+  const authError = searchParams.get("error");
   const { resolvedTheme } = useTheme();
 
-  // ✅ Prevent hydration mismatch / flash
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   useEffect(() => setMounted(true), []);
   const isDark = resolvedTheme === "dark";
 
   const registerHref = useMemo(
-    () => buildRegisterHref(inviteId, teamIdParam),
-    [inviteId, teamIdParam],
+    () =>
+      buildHref("/register", {
+        invite: inviteId,
+        team: teamIdParam,
+        next: nextPath,
+      }),
+    [inviteId, teamIdParam, nextPath],
   );
-
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   const redirect = useCallback((to: string) => {
     window.location.href = to;
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function continueExistingSession() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session) return;
+
+      const response = await fetch("/api/auth/after-login", {
+        method: "POST",
+        headers: getAuthedLocaleHeaders(session.access_token, locale),
+        body: JSON.stringify({
+          inviteId,
+          teamId: teamIdParam,
+        }),
+      });
+
+      if (!response.ok || cancelled) return;
+
+      const payload = (await response
+        .json()
+        .catch(() => null)) as AfterLoginResponse | null;
+
+      redirect(payload?.needsOnboarding ? "/onboarding" : (nextPath ?? "/crm"));
+    }
+
+    continueExistingSession().catch((error) => {
+      console.error("[login] existing session continuation failed", error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteId, teamIdParam, nextPath, redirect, locale]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (loading) return;
 
     setLoading(true);
+    setStatusMessage(null);
 
     try {
       const normalizedEmail = email.trim();
@@ -68,15 +138,15 @@ export function LoginPageClient() {
 
       if (error || !data.user) {
         console.error(error);
-        alert(error?.message || "Invalid email or password");
+        setStatusMessage(resolveLoginErrorMessage(error, t));
         return;
       }
 
+      const accessToken = data.session?.access_token ?? null;
       const res = await fetch("/api/auth/after-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthedLocaleHeaders(accessToken, locale),
         body: JSON.stringify({
-          userId: data.user.id,
           inviteId,
           teamId: teamIdParam,
         }),
@@ -84,33 +154,30 @@ export function LoginPageClient() {
 
       if (!res.ok) {
         console.error(
-          "after-login check failed",
+          "[login] after-login check failed",
           await res.text().catch(() => ""),
         );
-        redirect("/crm");
+        setStatusMessage(t("errors.afterLoginFailed"));
+        redirect(nextPath ?? "/crm");
         return;
       }
 
-      const payload = (await res.json().catch(() => null)) as {
-        needsOnboarding: boolean;
-        teamId?: string | null;
-      } | null;
+      const payload = (await res
+        .json()
+        .catch(() => null)) as AfterLoginResponse | null;
 
-      redirect(payload?.needsOnboarding ? "/onboarding" : "/crm");
+      redirect(payload?.needsOnboarding ? "/onboarding" : (nextPath ?? "/crm"));
     } catch (err) {
-      console.error("after-login error", err);
-      redirect("/crm");
+      console.error("[login] after-login error", err);
+      setStatusMessage(t("errors.unexpected"));
+      redirect(nextPath ?? "/crm");
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ Safe to gate render AFTER all hooks
-  if (!mounted) return null;
-
   const pageBg = cn(
     "min-h-screen flex items-center justify-center px-4 relative",
-    // use your app background token in dark, keep your gradient feel in light
     isDark
       ? "bg-[var(--background)]"
       : "bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50",
@@ -148,6 +215,11 @@ export function LoginPageClient() {
     isDark ? "bg-slate-950 border border-slate-800" : "bg-white",
   );
 
+  const errorTextClass = cn(
+    "mt-3 text-xs",
+    isDark ? "text-amber-300" : "text-amber-600",
+  );
+
   return (
     <main className={pageBg}>
       {loading && <LoadingOverlay isDark={isDark} />}
@@ -157,18 +229,33 @@ export function LoginPageClient() {
           <div className={logoWrap}>
             <img
               src="/icons/icon-faigata.svg"
-              alt="Faigata"
+              alt={common("brand.logoAlt")}
               className={cn("w-10 h-10", isDark ? "opacity-95" : "")}
             />
           </div>
 
-          <h1 className={title}>Welcome back to Faigata</h1>
-          <p className={subtitle}>Log in to continue where you left off.</p>
+          <h1 className={title}>{t("page.title")}</h1>
+          <p className={subtitle}>{t("page.subtitle")}</p>
+
+          {authError === "auth_confirm_failed" ? (
+            <p className={errorTextClass}>{t("errors.authConfirmFailed")}</p>
+          ) : null}
+
+          {statusMessage ? (
+            <p
+              className={cn(
+                "mt-3 text-xs",
+                isDark ? "text-rose-300" : "text-rose-600",
+              )}
+            >
+              {statusMessage}
+            </p>
+          ) : null}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <FloatingInput
-            label="Work email"
+            label={common("fields.workEmail")}
             type="email"
             required
             value={email}
@@ -177,7 +264,7 @@ export function LoginPageClient() {
           />
 
           <FloatingInput
-            label="Password"
+            label={common("fields.password")}
             type="password"
             required
             value={password}
@@ -190,14 +277,14 @@ export function LoginPageClient() {
             disabled={loading}
             className="w-full flex items-center justify-center rounded-xl bg-indigo-600 text-white text-sm font-semibold py-3 mt-2 hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
-            {loading ? "Signing you in..." : "Log in"}
+            {loading ? t("actions.signingIn") : common("auth.logIn")}
           </button>
         </form>
 
         <p className={footerText}>
-          New to Faigata?{" "}
+          {t("footer.newToFaigata")}{" "}
           <Link href={registerHref} className={linkClass}>
-            Create an account
+            {common("auth.createAccount")}
           </Link>
         </p>
       </div>
@@ -205,11 +292,9 @@ export function LoginPageClient() {
   );
 }
 
-/* --------------------------
-   Loading Overlay (3 bouncing dots)
---------------------------- */
-
 function LoadingOverlay({ isDark }: { isDark: boolean }) {
+  const t = useTranslations("LoginPage");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
@@ -239,16 +324,12 @@ function LoadingOverlay({ isDark }: { isDark: boolean }) {
             isDark ? "text-slate-200" : "text-slate-700",
           )}
         >
-          Loading
+          {t("states.loading")}
         </p>
       </div>
     </div>
   );
 }
-
-/* --------------------------
-   Floating label input
---------------------------- */
 
 function FloatingInput({
   label,
@@ -265,6 +346,7 @@ function FloatingInput({
   onChange: (v: string) => void;
   isDark: boolean;
 }) {
+  const common = useTranslations("Common");
   const [showPassword, setShowPassword] = useState(false);
 
   const isPassword = type === "password";
@@ -293,6 +375,7 @@ function FloatingInput({
         className={inputClass}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={label}
       />
       <label className={labelClass}>{label}</label>
 
@@ -304,7 +387,16 @@ function FloatingInput({
             "absolute inset-y-0 right-3 flex items-center",
             isDark ? "opacity-90" : "",
           )}
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-label={
+            showPassword
+              ? common("auth.hidePassword")
+              : common("auth.showPassword")
+          }
+          title={
+            showPassword
+              ? common("auth.hidePassword")
+              : common("auth.showPassword")
+          }
         >
           <img
             src={showPassword ? "/icons/eye-off.svg" : "/icons/eye.svg"}
@@ -315,4 +407,35 @@ function FloatingInput({
       )}
     </div>
   );
+}
+
+function resolveLoginErrorMessage(
+  error: { message?: string; status?: number; code?: string | null } | null,
+  t: ReturnType<typeof useTranslations<"LoginPage">>,
+) {
+  const message = error?.message?.toLowerCase() ?? "";
+  const code = error?.code?.toLowerCase() ?? "";
+
+  if (
+    code.includes("invalid_credentials") ||
+    message.includes("invalid login credentials") ||
+    message.includes("email not confirmed") ||
+    message.includes("invalid email or password")
+  ) {
+    return t("errors.invalidEmailOrPassword");
+  }
+
+  if (message.includes("email not confirmed")) {
+    return t("errors.emailNotConfirmed");
+  }
+
+  if (message.includes("too many requests")) {
+    return t("errors.tooManyRequests");
+  }
+
+  if (message.includes("network") || error?.status === 0) {
+    return t("errors.network");
+  }
+
+  return t("errors.loginFailed");
 }

@@ -1,6 +1,3 @@
-// src/app/api/crm/invite-accept/route.ts (example path — keep your real path)
-// NOTE: only changed logic/types; no behavior changes except safer parsing.
-
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -13,7 +10,27 @@ const AVAILABLE_ROLES = [
   "Manager",
   "Admin",
 ] as const;
+
 type TeamRole = (typeof AVAILABLE_ROLES)[number];
+
+type TeamInviteRow = {
+  id: string;
+  email: string | null;
+  team_id: string | null;
+  role: unknown;
+  company_id: string | null;
+  created_at: string | null;
+  accepted_at: string | null;
+  team_invite_roles?: Array<{ role?: unknown }> | null;
+};
+
+type TeamRow = {
+  organization_id: string | null;
+};
+
+type OrganizationRow = {
+  name: string | null;
+};
 
 const INVITE_TTL_HOURS = 24;
 
@@ -28,10 +45,6 @@ function isTeamRole(v: unknown): v is TeamRole {
 }
 
 function normalizeRoles(raw: unknown): TeamRole[] {
-  // Accept:
-  // - "Setter"
-  // - ["Setter","Closer"]
-  // - null/undefined
   if (Array.isArray(raw)) {
     return raw.filter(isTeamRole);
   }
@@ -39,7 +52,6 @@ function normalizeRoles(raw: unknown): TeamRole[] {
   return [];
 }
 
-/* -------------- GET: fetch invite metadata for client page -------------- */
 export async function GET(req: NextRequest) {
   try {
     const inviteId = req.nextUrl.searchParams.get("inviteId");
@@ -50,8 +62,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { data: invite, error: inviteError } = await supabaseAdmin
-      .from("team_invites")
+    const teamInvitesTable = supabaseAdmin.from("team_invites") as any;
+    const teamsTable = supabaseAdmin.from("teams") as any;
+    const organizationsTable = supabaseAdmin.from("organizations") as any;
+
+    const { data, error: inviteError } = await teamInvitesTable
       .select(
         `
         id,
@@ -66,6 +81,8 @@ export async function GET(req: NextRequest) {
       )
       .eq("id", inviteId)
       .single();
+
+    const invite = (data ?? null) as TeamInviteRow | null;
 
     if (inviteError || !invite) {
       console.error("[invite-accept][GET] invite error", inviteError);
@@ -87,6 +104,7 @@ export async function GET(req: NextRequest) {
       const expires = new Date(
         created.getTime() + INVITE_TTL_HOURS * 60 * 60 * 1000,
       );
+
       if (Date.now() > expires.getTime()) {
         return NextResponse.json(
           { ok: false, error: "Invite has expired." },
@@ -95,47 +113,46 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Roles: prefer join table; fallback to team_invites.role (might be single OR array)
-    const joinRows: Array<{ role?: unknown }> = Array.isArray(
-      (invite as any).team_invite_roles,
-    )
-      ? ((invite as any).team_invite_roles as any[])
+    const joinRows = Array.isArray(invite.team_invite_roles)
+      ? invite.team_invite_roles
       : [];
 
     const rolesFromJoin: TeamRole[] = joinRows
       .map((r) => r?.role)
       .filter(isTeamRole);
 
-    const rolesFromInviteCol: TeamRole[] = normalizeRoles((invite as any).role);
+    const rolesFromInviteCol: TeamRole[] = normalizeRoles(invite.role);
 
     const roles: TeamRole[] = uniq(
       rolesFromJoin.length > 0 ? rolesFromJoin : rolesFromInviteCol,
     );
 
-    // Optional: organization name from teams -> organizations
     let organizationName: string | null = null;
 
-    const { data: team } = await supabaseAdmin
-      .from("teams")
+    const { data: teamData } = await teamsTable
       .select("organization_id")
       .eq("id", String(invite.team_id))
       .maybeSingle();
 
+    const team = (teamData ?? null) as TeamRow | null;
+
     if (team?.organization_id) {
-      const { data: org } = await supabaseAdmin
-        .from("organizations")
+      const { data: orgData } = await organizationsTable
         .select("name")
         .eq("id", String(team.organization_id))
         .maybeSingle();
 
-      if (org?.name) organizationName = String(org.name);
+      const org = (orgData ?? null) as OrganizationRow | null;
+
+      if (org?.name) {
+        organizationName = String(org.name);
+      }
     }
 
     return NextResponse.json({
       ok: true,
       email: String(invite.email ?? ""),
-      teamId: String(invite.team_id ?? ""),
-      // ✅ avoid redundant `?? null` warnings by using a normal conditional
+      teamId: invite.team_id ? String(invite.team_id) : null,
       companyId: invite.company_id ? String(invite.company_id) : null,
       organizationName,
       roles,

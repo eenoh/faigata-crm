@@ -2,10 +2,12 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { useAppLocale } from "@/context/LocaleContext";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import { ProductSuiteSidebar } from "./ProductSuiteSidebar";
 import { ProductSuiteHeader } from "./ProductSuiteHeader";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { getHtmlTextDirection } from "@/i18n/config";
 
 type Props = { children: ReactNode };
 
@@ -15,19 +17,21 @@ function cn(...parts: Array<string | false | null | undefined>) {
 
 function ProductSuiteShellInner({ children }: Props) {
   const { collapsed } = useSidebar();
+  const { locale } = useAppLocale();
   const offsetClass = collapsed ? "ml-16" : "ml-64";
+  const localeDirection = getHtmlTextDirection(locale);
 
   const { resolvedTheme } = useTheme();
 
   // ✅ gate render until theme is resolved (prevents flash / wrong bg)
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-
   const isDark = resolvedTheme === "dark";
 
   return (
     <div
+      dir="ltr"
+      data-app-shell="stable"
       className={cn(
         "min-h-screen flex",
         // ✅ background switches with light/dark theme via CSS vars
@@ -52,7 +56,12 @@ function ProductSuiteShellInner({ children }: Props) {
             "overflow-visible",
           )}
         >
-          {children}
+          <div
+            data-locale-surface="content"
+            data-locale-direction={localeDirection}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

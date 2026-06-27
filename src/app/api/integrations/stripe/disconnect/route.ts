@@ -1,8 +1,7 @@
-// src/app/api/integrations/stripe/disconnect/route.ts
-
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { ensureOrgIdForUser } from "../_org";
+﻿import { NextResponse } from "next/server";
+import { getRequestUser } from "@/lib/auth/session";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { ensureOrgIdForUser } from "@/features/organizations/server/organization.service";
 
 export const runtime = "nodejs";
 
@@ -12,32 +11,15 @@ const jsonError = (
   extra?: Record<string, unknown>,
 ) => NextResponse.json({ error, ...extra }, { status });
 
-const supabaseAdmin = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export async function POST(request: Request) {
+  const auth = await getRequestUser(request);
+  if (!auth.ok) return jsonError(auth.reason, 401);
 
-  if (!url || !serviceKey) throw new Error("Missing Supabase env");
-
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-};
-
-export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization") ?? "";
-  const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-  if (!jwt) return jsonError("unauthorized", 401);
-
-  const sb = supabaseAdmin();
-
-  const { data: userData } = await sb.auth.getUser(jwt);
-  if (!userData?.user) return jsonError("invalid_session", 401);
-
-  const orgId = await ensureOrgIdForUser(sb as any, userData.user.id);
+  const supabase = getSupabaseAdminClient();
+  const orgId = await ensureOrgIdForUser(auth.user.id, supabase);
   if (!orgId) return jsonError("missing_org", 400);
 
-  const { error } = await sb
+  const { error } = await supabase
     .from("organization_stripe_accounts")
     .delete()
     .eq("org_id", orgId)

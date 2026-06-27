@@ -1,10 +1,14 @@
-// src/app/(app)/settings/team/invite/page.tsx
 import type { Metadata } from "next";
-import { InviteTeamMemberClient } from "../../../../../modules/crm/components/InviteTeamMemberClient";
+import { InviteTeamMemberClient } from "@/features/crm/components/InviteTeamMemberClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Invite Team Members",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("InviteTeamMembersPage");
+
+  return {
+    title: t("metadata.title"),
+  };
+}
 
 export default function InviteTeamPage() {
   return <InviteTeamMemberClient />;

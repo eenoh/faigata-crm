@@ -1,12 +1,15 @@
-// src/app/(app)/settings/page.tsx
 import type { Metadata } from "next";
-import SettingsPageClient from "../../../modules/crm/components/SettingsPageClient";
+import SettingsPageClient from "@/features/crm/components/SettingsPageClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Settings",
-  description:
-    "Configure your FaigataCRM workspace, manage lead fields, and update your personal profile and account settings.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("SettingsPage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function SettingsPage() {
   return <SettingsPageClient />;

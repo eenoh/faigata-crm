@@ -1,33 +1,43 @@
-// src/app/api/billing/customers/create/route.ts
 import { NextResponse } from "next/server";
-import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
-import { getStripe } from "@/lib/stripeServer";
-import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
+import { getAuthedBillingContextWithReason } from "@/features/billing/server/auth";
+import {
+  createSupabaseBillingCustomerMappingStore,
+  saveBillingCustomerMapping,
+} from "@/features/billing/server/customer-mappings";
+import { billingContextErrorResponse } from "@/features/billing/server/http";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
+import { syncBillingCustomerNameTranslationSources } from "@/features/billing/server/translations";
+import { getStripeClientForLivemode } from "@/lib/stripe/client";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const auth = await getAuthedBillingContextWithReason(req);
-  if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.reason, details: auth.details },
-      { status: 401 },
-    );
+  const billing = await getAuthedBillingContextWithReason(req);
+  if (!billing.ok) {
+    return billingContextErrorResponse(billing);
   }
 
-  const { orgId, livemode, stripeAccountId } = auth.ctx;
+  const { orgId, livemode, stripeAccountId, userId } = billing.ctx;
+  const sb = getSupabaseAdminClient();
+  const sourceLocale = await resolveRequestLocale({
+    request: req,
+    admin: sb,
+    userId,
+  });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const leadId = String(body.leadId ?? "").trim();
-  if (!leadId)
+  if (!leadId) {
     return NextResponse.json({ error: "missing_leadId" }, { status: 400 });
+  }
 
   const s = (v: unknown) => {
     const t = String(v ?? "").trim();
     return t ? t : null;
   };
 
-  const stripe = getStripe(livemode ? "live" : "test");
+  const stripe = getStripeClientForLivemode(livemode);
 
   try {
     const customer = await stripe.customers.create(
@@ -39,24 +49,45 @@ export async function POST(req: Request) {
       { stripeAccount: stripeAccountId },
     );
 
-    const { error } = await adminClient()
-      .from("organization_stripe_customers")
-      .upsert(
-        {
-          org_id: orgId,
-          livemode,
-          stripe_customer_id: customer.id,
-          lead_id: leadId,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "org_id,livemode,stripe_customer_id" },
-      );
+    const store = createSupabaseBillingCustomerMappingStore(sb);
+    const { error } = await saveBillingCustomerMapping(store, {
+      orgId,
+      livemode,
+      stripeCustomerId: customer.id,
+      leadId,
+    });
 
     if (error) {
       return NextResponse.json(
-        { error: "db_upsert_failed", details: error },
+        {
+          error: "customer_mapping_save_failed",
+          message: error.message ?? "Failed to save the customer mapping.",
+          details: error,
+        },
         { status: 500 },
       );
+    }
+
+    if (customer.name) {
+      try {
+        await syncBillingCustomerNameTranslationSources({
+          admin: sb as any,
+          orgId,
+          livemode,
+          sourceLocale,
+          rows: [
+            {
+              customerId: customer.id,
+              name: customer.name,
+            },
+          ],
+        });
+      } catch (translationError) {
+        console.error(
+          "[billing-customers-create] translation source sync failed",
+          translationError,
+        );
+      }
     }
 
     return NextResponse.json({ customer });

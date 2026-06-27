@@ -1,7 +1,10 @@
 // src/app/api/billing/invoices/route.ts
 import { NextResponse } from "next/server";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
+import { applyBillingCustomerNameTranslations } from "@/features/billing/server/translations";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
 import { getStripe } from "@/lib/stripeServer";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -39,6 +42,12 @@ export async function GET(req: Request) {
   });
 
   const stripe = getStripe(auth.ctx.livemode ? "live" : "test");
+  const supabase = getSupabaseAdminClient();
+  const requestedLocale = await resolveRequestLocale({
+    request: req,
+    admin: supabase,
+    userId: auth.ctx.userId,
+  });
 
   try {
     const list = await stripe.invoices.list(
@@ -72,6 +81,32 @@ export async function GET(req: Request) {
         customer_name: cust?.name ?? null,
       };
     });
+
+    const customerTranslationRows = rows
+      .filter((row) => typeof row.customer_id === "string" && row.customer_id.trim())
+      .map((row) => ({
+        customerId: row.customer_id as string,
+        name: row.customer_name,
+      }));
+
+    await applyBillingCustomerNameTranslations({
+      admin: supabase,
+      orgId: auth.ctx.orgId,
+      livemode: auth.ctx.livemode,
+      requestedLocale,
+      rows: customerTranslationRows,
+    });
+
+    const translatedCustomerNameById = new Map(
+      customerTranslationRows.map((row) => [row.customerId, row.name]),
+    );
+
+    for (const row of rows) {
+      if (row.customer_id && translatedCustomerNameById.has(row.customer_id)) {
+        row.customer_name =
+          translatedCustomerNameById.get(row.customer_id) ?? row.customer_name;
+      }
+    }
 
     const filtered =
       q.length > 0

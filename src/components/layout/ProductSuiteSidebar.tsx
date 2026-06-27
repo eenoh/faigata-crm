@@ -4,23 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSidebar } from "@/context/SidebarContext";
 import {
   ChevronLeftIcon,
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/lib/supabaseClient";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-const navItems = [
-  { href: "/crm", label: "Lumo", iconSrc: "/icons/icon-crm.svg" },
-];
+type NavItem = {
+  href: string;
+  label: string;
+  iconSrc: string;
+};
 
 export function ProductSuiteSidebar() {
+  const t = useTranslations("ProductSuiteSidebar");
+  const common = useTranslations("Common");
   const pathname = usePathname();
   const router = useRouter();
   const { collapsed, toggle } = useSidebar();
@@ -28,8 +33,20 @@ export function ProductSuiteSidebar() {
 
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
   useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === "dark";
+  const isDark = resolvedTheme === "dark";
+
+  const navItems: NavItem[] = useMemo(
+    () => [
+      {
+        href: "/crm",
+        label: t("nav.crm"),
+        iconSrc: "/icons/icon-crm.svg",
+      },
+    ],
+    [t],
+  );
 
   const widthClass = collapsed ? "w-16" : "w-64";
   const brandRevealClass = collapsed ? "w-0 opacity-0" : "w-36 opacity-100";
@@ -46,6 +63,7 @@ export function ProductSuiteSidebar() {
 
   async function handleLogout() {
     if (loggingOut) return;
+
     setLoggingOut(true);
     try {
       await supabase.auth.signOut();
@@ -70,7 +88,7 @@ export function ProductSuiteSidebar() {
         <Link href="/crm" className="flex items-center gap-2">
           <Image
             src="/icons/icon-faigata.svg"
-            alt="Faigata"
+            alt={common("brand.logoAlt")}
             width={36}
             height={36}
             className={cn(
@@ -146,7 +164,7 @@ export function ProductSuiteSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          title={collapsed ? "Log out" : undefined}
+          title={collapsed ? t("logout") : undefined}
           className={cn(
             "flex w-full items-center justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer",
             isDark
@@ -163,7 +181,7 @@ export function ProductSuiteSidebar() {
             )}
           >
             <span className="whitespace-nowrap">
-              {loggingOut ? "Logging out…" : "Log out"}
+              {loggingOut ? t("loggingOut") : t("logout")}
             </span>
           </div>
         </button>
@@ -173,7 +191,7 @@ export function ProductSuiteSidebar() {
       <button
         type="button"
         onClick={toggle}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
         className={cn(
           "group absolute right-[-18px] top-1/2 -translate-y-1/2 z-40 flex h-9 w-9 items-center justify-center rounded-full border shadow-md transition-colors cursor-pointer",
           isDark

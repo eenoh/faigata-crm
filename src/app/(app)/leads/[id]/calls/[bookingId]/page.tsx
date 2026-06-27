@@ -1,19 +1,24 @@
-// src/app/(app)/leads/[id]/calls/[bookingId]/page.tsx
 import type { Metadata } from "next";
-import CallOutcomeClient from "@/modules/crm/components/CallOutcomeClient";
+import { getTranslations } from "next-intl/server";
+import CallOutcomeClient from "@/features/crm/components/CallOutcomeClient";
 
-export const metadata: Metadata = {
-  title: "Call Outcome",
-  description: "Track attendance, offer made, and whether the lead closed on the call.",
-};
-
-// ✅ Next 15+ can pass params as a Promise in some dynamic routes
 type PageProps = {
   params: Promise<{ id: string; bookingId: string }>;
 };
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("CallOutcomePage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
+
 export default async function CallOutcomePage({ params }: PageProps) {
-  const { id, bookingId } = await params;
+  const resolved = await Promise.resolve(params);
+  const id = String(resolved?.id ?? "").trim();
+  const bookingId = String(resolved?.bookingId ?? "").trim();
 
   return (
     <div className="p-6">

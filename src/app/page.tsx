@@ -1,17 +1,18 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-export default function Home() {
+export default async function Home() {
+  const t = await getTranslations("Home");
+
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-      <h1 className="text-3xl font-bold mb-4">Faigata</h1>
-      <p className="mb-6 text-slate-600">
-        Welcome to Faigata – start using FaigataCRM.
-      </p>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50">
+      <h1 className="mb-4 text-3xl font-bold">{t("title")}</h1>
+      <p className="mb-6 text-slate-600">{t("description")}</p>
       <Link
         href="/dashboard"
-        className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm"
+        className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white"
       >
-        Go to FaigataCRM
+        {t("cta")}
       </Link>
     </main>
   );

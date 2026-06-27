@@ -1,12 +1,12 @@
 // src/app/api/crm/lead-scoring-config/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { recomputeLeadScore } from "@/modules/crm/scoring/recomputeLeadScore";
+import { recomputeLeadScore } from "@/features/crm/scoring/recomputeLeadScore";
 import type {
   ScoringRule,
   ScoreThresholds,
   LeadScoringConfig,
-} from "@/modules/crm/scoring/types";
+} from "@/features/crm/scoring/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -231,3 +231,4 @@ export async function POST(req: Request) {
     });
   }
 }
+

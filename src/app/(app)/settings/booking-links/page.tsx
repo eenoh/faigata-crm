@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import SettingsBookingLinksClient from "../../../../modules/crm/components/SettingsBookingLinksClient";
+import SettingsBookingLinksClient from "@/features/crm/components/SettingsBookingLinksClient";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Schedule Pages",
-  description:
-    "View and manage all of your FaigataCRM schedule pages in one place. Create booking links that let leads book time directly on your connected Google Calendar.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("BookingLinksPage");
+
+  return {
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+  };
+}
 
 export default function BookingLinksPage() {
   return <SettingsBookingLinksClient />;

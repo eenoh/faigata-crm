@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { DeleteLeadClient } from "../../../../../modules/crm/components/DeleteLeadClient";
+import { getTranslations } from "next-intl/server";
+import { DeleteLeadClient } from "@/features/crm/components/DeleteLeadClient";
 
-export const metadata: Metadata = {
-  title: "Delete Lead",
-  description:
-    "Delete the Lead",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("DeleteLeadPage.metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function DeleteLeadPage() {
   return <DeleteLeadClient />;

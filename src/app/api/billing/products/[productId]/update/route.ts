@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { stripeClient } from "@/app/api/utils/stripeClient";
 import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
+import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
+import { syncBillingProductTranslationSources } from "@/features/billing/server/translations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +40,12 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
   }
 
   const { orgId, livemode, stripeAccountId, userId } = auth.ctx;
+  const sb = adminClient();
+  const sourceLocale = await resolveRequestLocale({
+    request: req,
+    admin: sb as any,
+    userId,
+  });
 
   // ✅ Next: params is Promise in your build
   const { productId: raw } = await ctx.params;
@@ -82,7 +90,6 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
   }
 
   const stripe = stripeClient(livemode);
-  const sb = adminClient();
 
   try {
     // Stripe update (connected account)
@@ -137,6 +144,27 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
       });
     } catch {
       // ignore
+    }
+
+    try {
+      await syncBillingProductTranslationSources({
+        admin: sb as any,
+        orgId,
+        livemode,
+        sourceLocale,
+        rows: [
+          {
+            productId: updated.id,
+            name: updated.name ?? null,
+            description: updated.description ?? null,
+          },
+        ],
+      });
+    } catch (translationError) {
+      console.error(
+        "[billing-products-update] translation source sync failed",
+        translationError,
+      );
     }
 
     return NextResponse.json({ ok: true });
