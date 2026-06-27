@@ -27,7 +27,7 @@ test.describe("recruiter-facing smoke checks", () => {
       page.getByRole("heading", { name: "Welcome back to Faigata" }),
     ).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Business email" })).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Password" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Log in to your CRM" }),
     ).toBeVisible();
@@ -43,7 +43,7 @@ test.describe("recruiter-facing smoke checks", () => {
     await expect(page.getByRole("textbox", { name: "First name" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Last name" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Business email" })).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Password" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Create your coaching account" }),
     ).toBeVisible();

@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useId,
   useState,
   type FormEvent,
 } from "react";
@@ -347,37 +348,41 @@ function FloatingInput({
   isDark: boolean;
 }) {
   const common = useTranslations("Common");
+  const inputId = useId();
   const [showPassword, setShowPassword] = useState(false);
 
   const isPassword = type === "password";
   const inputType = isPassword && showPassword ? "text" : type;
 
   const inputClass = cn(
-    "peer w-full rounded-xl border px-3.5 pr-10 pt-5 pb-2 text-sm focus:outline-none focus:ring-2 placeholder-transparent",
+    "peer w-full rounded-xl border px-3.5 pr-10 pt-6 pb-2.5 text-sm focus:outline-none focus:ring-2 placeholder-transparent",
     isDark
       ? "border-slate-800 bg-slate-950 text-slate-200 focus:ring-indigo-400 focus:border-indigo-400"
       : "border-slate-300 bg-white text-slate-800 focus:ring-indigo-500 focus:border-indigo-500",
   );
 
   const labelClass = cn(
-    "absolute left-3.5 top-2 text-xs transition-all duration-150 pointer-events-none",
-    isDark ? "text-slate-400" : "text-slate-600",
-    "peer-focus:-translate-y-1 peer-focus:text-[10px]",
+    "pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm transition-all duration-150",
+    isDark ? "text-slate-500" : "text-slate-500",
+    "peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-[10px]",
     isDark ? "peer-focus:text-indigo-300" : "peer-focus:text-indigo-600",
-    "peer-not-placeholder-shown:-translate-y-1 peer-not-placeholder-shown:text-[10px]",
+    "peer-not-placeholder-shown:top-2.5 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-[10px]",
   );
 
   return (
     <div className="relative">
       <input
+        id={inputId}
         type={inputType}
         required={required}
         className={inputClass}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={label}
+        placeholder=" "
       />
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={inputId} className={labelClass}>
+        {label}
+      </label>
 
       {isPassword && (
         <button
