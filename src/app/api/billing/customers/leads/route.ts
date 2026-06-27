@@ -1,6 +1,10 @@
 // src/app/api/billing/customers/leads/route.ts
 import { NextResponse } from "next/server";
 import { applyEntityTranslations } from "@/features/crm/server/custom-value-translations";
+import {
+  hydrateLeadRows,
+  NORMALIZED_LEAD_SELECT_COLUMNS,
+} from "@/features/crm/server/normalized-crm";
 import { getAuthedBillingContextWithReason } from "@/app/api/utils/authedBilling";
 import { adminClient } from "@/app/api/utils/getOrgAndStripeAccount";
 import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
@@ -47,17 +51,13 @@ export async function GET(req: Request) {
 
   let query = sb
     .from("leads")
-    .select(
-      "id, lead_name, stage, stage_id, created_at, primary_contact_type, primary_contact_value",
-    )
+    .select(NORMALIZED_LEAD_SELECT_COLUMNS)
     .eq("team_id", teamId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(q ? 200 : 50);
 
   if (q) {
-    query = query.or(
-      `lead_name.ilike.%${q}%,primary_contact_value.ilike.%${q}%`,
-    );
+    query = query.ilike("lead_name", `%${q}%`);
   }
 
   const { data, error } = await query;
@@ -65,7 +65,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const leads = (Array.isArray(data) ? data : []) as LeadOptionRow[];
+  let leads = await hydrateLeadRows({
+    admin: sb as any,
+    teamId,
+    rows: (Array.isArray(data) ? data : []) as any[],
+  });
+
+  if (q) {
+    const loweredQuery = q.toLowerCase();
+    leads = leads
+      .filter((lead) => {
+        const haystack = [
+          String(lead.lead_name ?? "").toLowerCase(),
+          String(lead.primary_contact_value ?? "").toLowerCase(),
+        ].join(" ");
+        return haystack.includes(loweredQuery);
+      })
+      .slice(0, 50);
+  }
 
   await applyEntityTranslations({
     admin: sb as any,

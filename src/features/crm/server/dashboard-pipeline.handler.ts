@@ -175,41 +175,25 @@ export async function GET(req: Request) {
     });
 
     const stageIdToName = new Map<string, string>();
-    const stageNameToId = new Map<string, string>();
     for (const stage of sortedStages) {
       const id = String(stage.id);
       const name = String(stage.name ?? "Untitled");
       stageIdToName.set(id, name);
-      stageNameToId.set(normalizeKey(name), id);
     }
 
-    const { data: leadRowsRaw, usedSelect } = await selectWithFallback(
+    const { data: leadRowsRaw } = await selectWithFallback(
       (select) => applyLeadScope(admin.from("leads").select(select)),
-      ["id, stage_id", "id, stage"],
+      ["id, stage_id"],
     );
     const leadRows = Array.isArray(leadRowsRaw) ? (leadRowsRaw as any[]) : [];
 
     const stageIdToCount = new Map<string, number>();
-    if (usedSelect.includes("stage_id")) {
-      for (const lead of leadRows) {
-        const stageId = lead?.stage_id ? String(lead.stage_id) : "";
-        if (!stageId) {
-          continue;
-        }
-        stageIdToCount.set(stageId, (stageIdToCount.get(stageId) ?? 0) + 1);
+    for (const lead of leadRows) {
+      const stageId = lead?.stage_id ? String(lead.stage_id) : "";
+      if (!stageId) {
+        continue;
       }
-    } else {
-      for (const lead of leadRows) {
-        const stageName = lead?.stage ? String(lead.stage) : "";
-        if (!stageName) {
-          continue;
-        }
-        const stageId = stageNameToId.get(normalizeKey(stageName));
-        if (!stageId) {
-          continue;
-        }
-        stageIdToCount.set(stageId, (stageIdToCount.get(stageId) ?? 0) + 1);
-      }
+      stageIdToCount.set(stageId, (stageIdToCount.get(stageId) ?? 0) + 1);
     }
 
     const funnelStages: FunnelStage[] = sortedStages.map((stage) => ({

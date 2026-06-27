@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit",
+    "test:crud": "vitest run tests/unit/normalized-crm.test.ts tests/unit/crm-lead-fields-route.test.ts tests/unit/crm-booking-link-route.test.ts tests/unit/crm-lead-scoring-config-route.test.ts",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test:unit"

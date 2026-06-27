@@ -1,6 +1,11 @@
 // src/features/crm/scoring/recomputeLeadScore.ts
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  hydrateLeadRows,
+  loadLeadScoringConfig,
+  NORMALIZED_LEAD_SELECT_COLUMNS,
+} from "@/features/crm/server/normalized-crm";
 import { computeLeadScore } from "./scoreLead";
 import type { LeadScoringConfig } from "./types";
 
@@ -330,9 +335,7 @@ export async function recomputeLeadScore(
   // 1) Load lead
   const { data: lead, error: leadError } = await supabaseAdmin
     .from("leads")
-    .select(
-      "id, stage, stage_id, custom_values, source_category, rejected_count",
-    )
+    .select(NORMALIZED_LEAD_SELECT_COLUMNS)
     .eq("team_id", teamId)
     .eq("id", leadId)
     .single();
@@ -343,24 +346,31 @@ export async function recomputeLeadScore(
   }
 
   // 2) Load scoring config
-  const { data: cfgRow, error: cfgError } = await supabaseAdmin
-    .from("lead_scoring_configs")
-    .select("config")
-    .eq("team_id", teamId)
-    .maybeSingle();
-
-  if (cfgError && cfgError.code !== "PGRST116") {
-    console.error("[Scoring] Failed to load scoring config", cfgError);
+  let hydratedLead = lead as any;
+  try {
+    const hydratedRows = await hydrateLeadRows({
+      admin: supabaseAdmin as any,
+      teamId,
+      rows: [lead as any],
+    });
+    hydratedLead = hydratedRows[0] ?? lead;
+  } catch (error) {
+    console.error("[Scoring] Failed to hydrate lead for scoring", error);
   }
 
-  const config = (cfgRow?.config ?? null) as LeadScoringConfig | null;
+  let config: LeadScoringConfig | null = null;
+  try {
+    config = await loadLeadScoringConfig(supabaseAdmin as any, teamId);
+  } catch (cfgError: any) {
+    console.error("[Scoring] Failed to load scoring config", cfgError);
+  }
 
   // 3) Field-based score only
   const fieldScore =
     computeLeadScore(
       {
-        stage: String((lead as any).stage ?? ""),
-        custom_values: (lead as any).custom_values ?? {},
+        stage: String((hydratedLead as any).stage ?? ""),
+        custom_values: (hydratedLead as any).custom_values ?? {},
       },
       config,
     )?.score ?? 0;
@@ -387,10 +397,10 @@ export async function recomputeLeadScore(
   const responsivenessBonus = getResponsivenessBonus(conversationalMessages);
 
   const sourceQualityBonus = getSourceQualityBonus(
-    (lead as any).source_category,
+    (hydratedLead as any).source_category,
   );
 
-  const rejectedCount = Number((lead as any).rejected_count ?? 0);
+  const rejectedCount = Number((hydratedLead as any).rejected_count ?? 0);
   const leadRejectedPenalty = rejectedCount > 0 ? LEAD_REJECTED_PENALTY : 0;
 
   // Explicitly disabled: pipeline logs/stage changes must not affect score

@@ -378,11 +378,8 @@ export async function GET(req: Request) {
               .limit(8),
           ),
         [
-          "id, lead_name, stage_id, stage, created_at, score",
           "id, lead_name, stage_id, created_at, score",
-          "id, lead_name, stage, created_at, score",
           "id, lead_name, stage_id, created_at",
-          "id, lead_name, stage, created_at",
           "id, created_at",
         ],
       );
@@ -416,10 +413,37 @@ export async function GET(req: Request) {
         }
       }
 
+      const recentStageIds = Array.from(
+        new Set(
+          recentLeads
+            .map((lead) =>
+              typeof lead.stage_id === "string" ? lead.stage_id.trim() : "",
+            )
+            .filter(Boolean),
+        ),
+      );
+      const recentStageNameById = new Map<string, string>();
+
+      if (recentStageIds.length > 0) {
+        const { data: recentStageRows } = await admin
+          .from("pipeline_stages")
+          .select("id, name")
+          .eq("team_id", teamId)
+          .in("id", recentStageIds);
+
+        for (const row of Array.isArray(recentStageRows) ? recentStageRows : []) {
+          recentStageNameById.set(
+            String((row as any)?.id ?? ""),
+            String((row as any)?.name ?? ""),
+          );
+        }
+      }
+
       const normalizedRecent = recentLeads.map((lead) => ({
         id: String(lead.id ?? ""),
         name: (lead.lead_name ?? lead.name ?? null) as string | null,
-        stage: (lead.stage ?? null) as string | null,
+        stage:
+          recentStageNameById.get(String(lead.stage_id ?? "").trim()) ?? null,
         created_at: String(lead.created_at ?? ""),
         score: lead.score == null ? null : Number(lead.score),
       })) as DashboardRecentLeadRow[];
@@ -660,29 +684,15 @@ export async function GET(req: Request) {
         }
       }
 
-      let leads: LeadRowStage[] = [];
+      const { data: leadRows, error: leadError } = await applyLeadScope(
+        admin.from("leads").select("id, stage_id"),
+      );
 
-      try {
-        const { data: leadRows, error: leadError } = await applyLeadScope(
-          admin.from("leads").select("id, stage_id, stage"),
-        );
-
-        if (leadError) {
-          throw leadError;
-        }
-
-        leads = Array.isArray(leadRows) ? (leadRows as LeadRowStage[]) : [];
-      } catch {
-        const { data: leadRows, error: leadError } = await applyLeadScope(
-          admin.from("leads").select("id, stage"),
-        );
-
-        if (leadError) {
-          throw leadError;
-        }
-
-        leads = Array.isArray(leadRows) ? (leadRows as LeadRowStage[]) : [];
+      if (leadError) {
+        throw leadError;
       }
+
+      const leads = Array.isArray(leadRows) ? (leadRows as LeadRowStage[]) : [];
 
       const countsByStageId = new Map<string, number>(
         stageRows.map((stage) => [String(stage.id), 0]),
@@ -696,27 +706,6 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const stageText = String(lead.stage ?? "")
-          .trim()
-          .toLowerCase();
-        if (!stageText) {
-          continue;
-        }
-
-        const matchedStage = stageRows.find(
-          (stage) =>
-            String(stage.name ?? "")
-              .trim()
-              .toLowerCase() === stageText,
-        );
-
-        if (matchedStage) {
-          const matchedStageId = String(matchedStage.id);
-          countsByStageId.set(
-            matchedStageId,
-            (countsByStageId.get(matchedStageId) ?? 0) + 1,
-          );
-        }
       }
 
       const stages: FunnelStage[] = [...stageRows]

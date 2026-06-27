@@ -629,12 +629,21 @@ export function AppHeader() {
     setLoadingReminders(true);
 
     try {
-      const { data: leadsData, error: leadsError } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("team_id", teamId);
+      const leadsRes = await fetch(
+        `/api/crm/leads?teamId=${encodeURIComponent(teamId)}`,
+        {
+          cache: "no-store",
+          credentials: "same-origin",
+        },
+      );
 
-      if (leadsError || !leadsData?.length) {
+      if (!leadsRes.ok) {
+        setReminders([]);
+        return;
+      }
+
+      const leadsData = (await leadsRes.json().catch(() => [])) as LeadRowLike[];
+      if (!Array.isArray(leadsData) || leadsData.length === 0) {
         setReminders([]);
         return;
       }

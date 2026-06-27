@@ -4,6 +4,7 @@ import {
   deleteEntityTranslations,
   syncEntityTranslationSources,
 } from "@/features/crm/server/custom-value-translations";
+import { replaceBookingLinkWorkDays } from "@/features/crm/server/normalized-crm";
 import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
 import { getCrmAdminClient } from "@/features/crm/server/supabase";
 
@@ -250,7 +251,6 @@ export async function POST(req: Request) {
         normalizeString(body?.availability_mode) || "business_hours",
       work_start_minute: normalizeNumber(body?.work_start_minute, 0),
       work_end_minute: normalizeNumber(body?.work_end_minute, 0),
-      work_days: normalizeStringArray(body?.work_days),
     };
 
     if (
@@ -286,6 +286,12 @@ export async function POST(req: Request) {
     }
 
     const bookingLink = data as BookingLinkRow;
+
+    await replaceBookingLinkWorkDays({
+      admin: admin as any,
+      bookingLinkId: bookingLink.id,
+      weekdays: normalizeStringArray(body?.work_days),
+    });
 
     if (hostUserIds.length) {
       const { error: hostError } = await admin

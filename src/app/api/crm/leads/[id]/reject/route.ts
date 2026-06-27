@@ -109,7 +109,6 @@ export async function POST(req: Request, ctx: RouteContext) {
         setter_id,
         closer_id,
         prospector_id,
-        stage,
         stage_id,
         rejected_count,
         rejected_by
@@ -158,6 +157,17 @@ export async function POST(req: Request, ctx: RouteContext) {
       : [];
     const mergedRejectedBy = Array.from(new Set([...prevRejectedBy, userId]));
     const nowIso = new Date().toISOString();
+    let stageName: string | null = null;
+
+    if ((lead as any)?.stage_id) {
+      const { data: stageRow } = await supabase
+        .from("pipeline_stages")
+        .select("name")
+        .eq("team_id", teamId)
+        .eq("id", String((lead as any).stage_id))
+        .maybeSingle();
+      stageName = stageRow?.name ? String(stageRow.name) : null;
+    }
 
     const { error: updateErr } = await supabase
       .from("leads")
@@ -217,7 +227,7 @@ export async function POST(req: Request, ctx: RouteContext) {
           prospector_id: (lead as any).prospector_id ?? null,
           closer_id: (lead as any).closer_id ?? null,
           stage_id: (lead as any).stage_id ?? null,
-          stage: (lead as any).stage ?? null,
+          stage: stageName,
         },
       } as any);
 

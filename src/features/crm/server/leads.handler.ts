@@ -9,6 +9,13 @@ import {
   deleteEntityTranslations,
   syncEntityTranslationSources,
 } from "@/features/crm/server/custom-value-translations";
+import {
+  ensureLeadSourceId,
+  hydrateLeadRows,
+  NORMALIZED_LEAD_SELECT_COLUMNS,
+  replaceLeadCustomValues,
+  replacePrimaryLeadContact,
+} from "@/features/crm/server/normalized-crm";
 import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
 import { normalizeLeadKey } from "@/features/crm/utils/lead";
 import type { CustomFieldType } from "@/features/crm/types/lead";
@@ -84,19 +91,7 @@ async function resolveAuthorizedLeadContext(
   }
 }
 
-const LEAD_SELECT_COLUMNS = `
-id, team_id,
-stage, stage_id,
-lead_name,
-niche_id, niche,
-lead_type, gender,
-country, region, city, postal_code,
-primary_contact_type, primary_contact_value,
-source_category, source_name,
-custom_values, prospector_id, setter_id, closer_id, notes,
-score, score_updated_at,
-created_at, updated_at
-` as const;
+const LEAD_SELECT_COLUMNS = NORMALIZED_LEAD_SELECT_COLUMNS;
 
 type StageRow = { id: string; name: string };
 type NicheRow = { id: string; name: string };
@@ -104,6 +99,7 @@ type NicheRow = { id: string; name: string };
 type LeadApiRow = {
   id: string;
   team_id: string;
+  source_id?: string | null;
   stage: string | null;
   stage_id: string | null;
   lead_name: string | null;
@@ -126,6 +122,7 @@ type LeadApiRow = {
   notes: string | null;
   score: number | null;
   score_updated_at: string | null;
+  rejected_count?: number | null;
   created_at: string | null;
   updated_at: string | null;
   display_values?: Record<string, string | null> | null;
@@ -541,7 +538,12 @@ async function localizeLeadRows(args: {
   userId: string;
   rows: LeadApiRow[];
 }): Promise<LeadApiRow[]> {
-  const { request, teamId, userId, rows } = args;
+  const { request, teamId, userId } = args;
+  const rows = (await hydrateLeadRows({
+    admin: supabaseAdmin as any,
+    teamId,
+    rows: args.rows as any,
+  })) as LeadApiRow[];
 
   if (!rows.length) {
     return rows;
@@ -830,7 +832,6 @@ export async function POST(req: Request) {
   }
 
   let nicheId: string | null = null;
-  let nicheName: string | null = normalizeNullish((system as any).niche);
 
   if ((system as any).niche_id) {
     const resolvedNiche = await resolveEnabledLeadNiche({
@@ -847,29 +848,27 @@ export async function POST(req: Request) {
     }
 
     nicheId = resolvedNiche.id;
-    nicheName = resolvedNiche.name;
   }
+
+  const sourceId = await ensureLeadSourceId({
+    admin: supabaseAdmin as any,
+    teamId,
+    sourceCategory: (system as any).source_category,
+    sourceName: (system as any).source_name,
+  });
 
   const insertPayload: any = {
     team_id: teamId,
-    stage,
     stage_id,
     lead_name: normalizeNullish((system as any).lead_name),
-    custom_values: safeCustomValues,
     niche_id: nicheId,
-    niche: nicheName,
     lead_type: normalizeNullish((system as any).lead_type),
     gender: normalizeNullish((system as any).gender),
     country: normalizeNullish((system as any).country),
     region: normalizeNullish((system as any).region),
     city: normalizeNullish((system as any).city),
     postal_code: normalizeNullish((system as any).postal_code),
-    primary_contact_type: primaryContactType,
-    primary_contact_value: normalizeNullish(
-      (system as any).primary_contact_value,
-    ),
-    source_category: normalizeNullish((system as any).source_category),
-    source_name: normalizeNullish((system as any).source_name),
+    source_id: sourceId,
     prospector_id: prospectorId,
     setter_id: setterId,
     notes,
@@ -893,11 +892,55 @@ export async function POST(req: Request) {
   }
 
   const createdLeadId = (data as any)?.id ?? null;
+  let normalizedCreatedLead = data as LeadApiRow;
+
+  try {
+    if (createdLeadId) {
+      await replacePrimaryLeadContact({
+        admin: supabaseAdmin as any,
+        leadId: String(createdLeadId),
+        contactTypeCode: primaryContactType,
+        contactValue: (system as any).primary_contact_value,
+      });
+
+      await replaceLeadCustomValues({
+        admin: supabaseAdmin as any,
+        teamId,
+        leadId: String(createdLeadId),
+        values: safeCustomValues,
+      });
+
+      const { data: refreshedRaw, error: refreshedError } = await supabaseAdmin
+        .from("leads")
+        .select(LEAD_SELECT_COLUMNS)
+        .eq("team_id", teamId)
+        .eq("id", createdLeadId)
+        .single();
+
+      if (!refreshedError && refreshedRaw) {
+        const hydratedRows = await hydrateLeadRows({
+          admin: supabaseAdmin as any,
+          teamId,
+          rows: [refreshedRaw as any],
+        });
+        normalizedCreatedLead = (hydratedRows[0] ?? refreshedRaw) as LeadApiRow;
+      }
+    }
+  } catch (normalizationError) {
+    console.error(
+      "[LeadsAPI] normalized lead relation sync failed after POST",
+      normalizationError,
+    );
+    return NextResponse.json(
+      { error: "Failed to create lead relations" },
+      { status: 500 },
+    );
+  }
 
   try {
     await syncLeadTranslationSources({
       teamId,
-      row: data as LeadApiRow,
+      row: normalizedCreatedLead,
       sourceLocale: locale,
     });
   } catch (translationError) {
@@ -914,24 +957,24 @@ export async function POST(req: Request) {
         leadId: createdLeadId,
         senderProfileId: prospectorId,
         eventType: "lead_created",
-        fallbackBody: buildLeadCreatedFallbackBody(data as LeadApiRow),
+        fallbackBody: buildLeadCreatedFallbackBody(normalizedCreatedLead),
         eventData: {
           lead_id: createdLeadId,
           team_id: teamId,
-          stage: (data as any).stage ?? stage ?? null,
-          stage_id: (data as any).stage_id ?? stage_id ?? null,
-          prospector_id: (data as any).prospector_id ?? prospectorId ?? null,
-          setter_id: (data as any).setter_id ?? setterId ?? null,
-          closer_id: (data as any).closer_id ?? null,
-          lead_name: (data as any).lead_name ?? null,
-          primary_contact_type: (data as any).primary_contact_type ?? null,
-          primary_contact_value: (data as any).primary_contact_value ?? null,
-          source_category: (data as any).source_category ?? null,
-          source_name: (data as any).source_name ?? null,
-          niche: (data as any).niche ?? null,
-          niche_id: (data as any).niche_id ?? null,
-          lead_type: (data as any).lead_type ?? null,
-          gender: (data as any).gender ?? null,
+          stage: normalizedCreatedLead.stage ?? stage ?? null,
+          stage_id: normalizedCreatedLead.stage_id ?? stage_id ?? null,
+          prospector_id: normalizedCreatedLead.prospector_id ?? prospectorId ?? null,
+          setter_id: normalizedCreatedLead.setter_id ?? setterId ?? null,
+          closer_id: normalizedCreatedLead.closer_id ?? null,
+          lead_name: normalizedCreatedLead.lead_name ?? null,
+          primary_contact_type: normalizedCreatedLead.primary_contact_type ?? null,
+          primary_contact_value: normalizedCreatedLead.primary_contact_value ?? null,
+          source_category: normalizedCreatedLead.source_category ?? null,
+          source_name: normalizedCreatedLead.source_name ?? null,
+          niche: normalizedCreatedLead.niche ?? null,
+          niche_id: normalizedCreatedLead.niche_id ?? null,
+          lead_type: normalizedCreatedLead.lead_type ?? null,
+          gender: normalizedCreatedLead.gender ?? null,
         },
       });
     }
@@ -968,10 +1011,10 @@ export async function POST(req: Request) {
     request: req,
     teamId,
     userId: auth.userId,
-    rows: [data as LeadApiRow],
+    rows: [normalizedCreatedLead],
   });
 
-  return NextResponse.json(localized[0] ?? data);
+  return NextResponse.json(localized[0] ?? normalizedCreatedLead);
 }
 
 export async function GET(req: Request) {
@@ -1073,10 +1116,21 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const previousLead = existingLead as LeadApiRow;
+  const hydratedPreviousLeadRows = await hydrateLeadRows({
+    admin: supabaseAdmin as any,
+    teamId,
+    rows: [existingLead as any],
+  });
+  const previousLead = (hydratedPreviousLeadRows[0] ??
+    existingLead) as LeadApiRow;
   const updates = body.updates ?? body;
   const payload: any = {};
   let shouldRecomputeScore = false;
+  let nextCustomValues: Record<string, any> | null = null;
+  let nextPrimaryContactType: string | null | undefined;
+  let nextPrimaryContactValue: unknown = undefined;
+  let nextSourceCategory: unknown = undefined;
+  let nextSourceName: unknown = undefined;
 
   if (updates.stage_id !== undefined || updates.stage !== undefined) {
     const incomingStageId =
@@ -1085,7 +1139,6 @@ export async function PATCH(req: Request) {
       typeof updates.stage === "string" ? updates.stage : null;
 
     let stage_id: string | null = null;
-    let stage: string | null = null;
 
     if (incomingStageId) {
       const st = await getStageById(teamId, incomingStageId);
@@ -1096,7 +1149,6 @@ export async function PATCH(req: Request) {
         );
       }
       stage_id = st.id;
-      stage = st.name;
     } else if (incomingStageName) {
       const st = await getStageByName(teamId, incomingStageName);
       if (!st) {
@@ -1106,28 +1158,21 @@ export async function PATCH(req: Request) {
         );
       }
       stage_id = st.id;
-      stage = st.name;
     } else {
       stage_id = null;
-      stage = null;
     }
 
-    if (stage_id !== null) payload.stage_id = stage_id;
-    payload.stage = stage;
+    payload.stage_id = stage_id;
   }
 
   if (updates.customValues !== undefined) {
     const { system: sysFromCustom, custom: safeCustomValues } =
       splitSystemAndCustom(updates.customValues);
 
-    payload.custom_values = safeCustomValues;
+    nextCustomValues = safeCustomValues;
 
     if ("lead_name" in sysFromCustom) {
       payload.lead_name = normalizeNullish(sysFromCustom.lead_name);
-    }
-
-    if ("niche" in sysFromCustom) {
-      payload.niche = normalizeNullish(sysFromCustom.niche);
     }
     if ("lead_type" in sysFromCustom) {
       payload.lead_type = normalizeNullish(sysFromCustom.lead_type);
@@ -1155,19 +1200,17 @@ export async function PATCH(req: Request) {
         sysFromCustom.primary_contact_value,
         sysFromCustom.source_name,
       );
-      if (pct) payload.primary_contact_type = pct;
+      nextPrimaryContactType = pct;
     }
     if ("primary_contact_value" in sysFromCustom) {
-      payload.primary_contact_value = normalizeNullish(
-        sysFromCustom.primary_contact_value,
-      );
+      nextPrimaryContactValue = sysFromCustom.primary_contact_value;
     }
 
     if ("source_category" in sysFromCustom) {
-      payload.source_category = normalizeNullish(sysFromCustom.source_category);
+      nextSourceCategory = sysFromCustom.source_category;
     }
     if ("source_name" in sysFromCustom) {
-      payload.source_name = normalizeNullish(sysFromCustom.source_name);
+      nextSourceName = sysFromCustom.source_name;
     }
 
     shouldRecomputeScore = true;
@@ -1201,10 +1244,7 @@ export async function PATCH(req: Request) {
         payload.niche = resolvedNiche.name;
       } else {
         payload.niche_id = null;
-        payload.niche = null;
       }
-    } else if ("niche" in sf) {
-      payload.niche = normalizeNullish(sf.niche);
     }
 
     if ("lead_type" in sf) {
@@ -1237,19 +1277,17 @@ export async function PATCH(req: Request) {
         sf.primary_contact_value,
         sf.source_name,
       );
-      if (pct) payload.primary_contact_type = pct;
+      nextPrimaryContactType = pct;
     }
     if ("primary_contact_value" in sf) {
-      payload.primary_contact_value = normalizeNullish(
-        sf.primary_contact_value,
-      );
+      nextPrimaryContactValue = sf.primary_contact_value;
     }
 
     if ("source_category" in sf) {
-      payload.source_category = normalizeNullish(sf.source_category);
+      nextSourceCategory = sf.source_category;
     }
     if ("source_name" in sf) {
-      payload.source_name = normalizeNullish(sf.source_name);
+      nextSourceName = sf.source_name;
     }
 
     shouldRecomputeScore = true;
@@ -1271,17 +1309,28 @@ export async function PATCH(req: Request) {
         : null;
   }
 
+  if (nextSourceCategory !== undefined || nextSourceName !== undefined) {
+    payload.source_id = await ensureLeadSourceId({
+      admin: supabaseAdmin as any,
+      teamId,
+      sourceCategory:
+        nextSourceCategory !== undefined
+          ? nextSourceCategory
+          : previousLead.source_category,
+      sourceName:
+        nextSourceName !== undefined ? nextSourceName : previousLead.source_name,
+    });
+  }
+
   payload.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("leads")
     .update(payload as never)
     .eq("team_id", teamId)
-    .eq("id", id)
-    .select(LEAD_SELECT_COLUMNS)
-    .single();
+    .eq("id", id);
 
-  if (error || !data) {
+  if (error) {
     console.error("[LeadsAPI] Error updating lead", error);
     return NextResponse.json(
       {
@@ -1292,7 +1341,69 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const updatedLead = data as LeadApiRow;
+  try {
+    if (nextCustomValues !== null) {
+      await replaceLeadCustomValues({
+        admin: supabaseAdmin as any,
+        teamId,
+        leadId: id,
+        values: nextCustomValues,
+      });
+    }
+
+    if (
+      nextPrimaryContactType !== undefined ||
+      nextPrimaryContactValue !== undefined
+    ) {
+      await replacePrimaryLeadContact({
+        admin: supabaseAdmin as any,
+        leadId: id,
+        contactTypeCode:
+          nextPrimaryContactType !== undefined
+            ? nextPrimaryContactType
+            : previousLead.primary_contact_type,
+        contactValue:
+          nextPrimaryContactValue !== undefined
+            ? nextPrimaryContactValue
+            : previousLead.primary_contact_value,
+      });
+    }
+  } catch (normalizationError) {
+    console.error(
+      "[LeadsAPI] normalized lead relation sync failed after PATCH",
+      normalizationError,
+    );
+    return NextResponse.json(
+      { error: "Failed to update lead relations" },
+      { status: 500 },
+    );
+  }
+
+  const { data: refreshedLeadRaw, error: refreshedLeadError } = await supabaseAdmin
+    .from("leads")
+    .select(LEAD_SELECT_COLUMNS)
+    .eq("team_id", teamId)
+    .eq("id", id)
+    .single();
+
+  if (refreshedLeadError || !refreshedLeadRaw) {
+    console.error("[LeadsAPI] Error reloading updated lead", refreshedLeadError);
+    return NextResponse.json(
+      {
+        error: refreshedLeadError?.message ?? "Failed to reload updated lead",
+        details: refreshedLeadError ?? null,
+      },
+      { status: 500 },
+    );
+  }
+
+  const hydratedUpdatedLeadRows = await hydrateLeadRows({
+    admin: supabaseAdmin as any,
+    teamId,
+    rows: [refreshedLeadRaw as any],
+  });
+  const updatedLead = (hydratedUpdatedLeadRows[0] ??
+    refreshedLeadRaw) as LeadApiRow;
 
   try {
     await syncLeadTranslationSources({
@@ -1320,7 +1431,7 @@ export async function PATCH(req: Request) {
         String(updatedLead.closer_id ?? "");
 
     const changedKeys = Object.keys(payload).filter(
-      (key) => key !== "updated_at" && key !== "stage" && key !== "stage_id",
+      (key) => key !== "updated_at" && key !== "stage_id",
     );
 
     if (stageChanged) {

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedRequestUser } from "@/features/auth/server/request-auth";
 import { syncEntityTranslationSources } from "@/features/crm/server/custom-value-translations";
+import { replaceLeadFieldOptions } from "@/features/crm/server/normalized-crm";
 import { readJsonBody } from "@/lib/http/request";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildConversionMetricLabel } from "@/features/crm/utils/conversionMetrics";
@@ -184,12 +185,26 @@ export async function POST(request: Request) {
       if (rows.length > 0) {
         const { data: insertedFields, error } = await supabase
           .from("lead_fields")
-          .insert(rows)
-          .select("id, label");
+          .insert(rows.map(({ options: _options, ...field }) => field))
+          .select("id, key, label");
         if (error) {
           console.error("[onboarding] lead_fields.insert", error);
           throw error;
         }
+
+        const optionsByKey = new Map(
+          rows.map((field) => [field.key, Array.isArray(field.options) ? field.options : []]),
+        );
+
+        await Promise.all(
+          ((Array.isArray(insertedFields) ? insertedFields : []) as any[]).map((row) =>
+            replaceLeadFieldOptions({
+              admin: supabase as any,
+              fieldId: String(row.id ?? ""),
+              options: optionsByKey.get(String(row.key ?? "")) ?? [],
+            }),
+          ),
+        );
 
         await syncEntityTranslationSources({
           admin: supabase as any,

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { applyEntityTranslations } from "@/features/crm/server/custom-value-translations";
+import {
+  hydrateLeadRows,
+  NORMALIZED_LEAD_SELECT_COLUMNS,
+} from "@/features/crm/server/normalized-crm";
 import { getAuthedBillingContextWithReason } from "@/features/billing/server/auth";
 import { billingContextErrorResponse } from "@/features/billing/server/http";
 import { applyBillingCustomerNameTranslations } from "@/features/billing/server/translations";
@@ -131,12 +135,14 @@ export async function GET(request: Request) {
       if (leadIds.length > 0) {
         const { data: leads } = await supabase
           .from("leads")
-          .select(
-            "id, lead_name, primary_contact_value, custom_values, stage, stage_id",
-          )
+          .select(NORMALIZED_LEAD_SELECT_COLUMNS)
           .in("id", leadIds);
 
-        const safeLeads = (Array.isArray(leads) ? leads : []) as LeadLabelRow[];
+        const safeLeads = (await hydrateLeadRows({
+          admin: supabase as any,
+          teamId: billing.ctx.teamId,
+          rows: (Array.isArray(leads) ? leads : []) as any[],
+        })) as LeadLabelRow[];
 
         await applyEntityTranslations({
           admin: supabase as any,

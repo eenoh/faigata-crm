@@ -5,6 +5,10 @@ import {
   deleteEntityTranslations,
   syncEntityTranslationSources,
 } from "@/features/crm/server/custom-value-translations";
+import {
+  getNormalizedLeadFieldDefinitions,
+  replaceLeadFieldOptions,
+} from "@/features/crm/server/normalized-crm";
 import { resolveRequestLocale } from "@/features/i18n/server/requestLocale";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { LeadFieldDefinition } from "@/features/crm/types/lead";
@@ -187,20 +191,35 @@ export async function POST(req: Request) {
       if (rows.length > 0) {
         const { data: savedRaw, error: saveError } = await supabaseAdmin
           .from("lead_fields")
-          .upsert(rows, { onConflict: "id" })
-          .select("id, label, options");
+          .upsert(
+            rows.map(({ options: _options, ...row }) => row),
+            { onConflict: "id" },
+          )
+          .select("id, key, label, type, position");
 
         if (saveError) {
           console.error("[lead-fields] upsert error", saveError);
           return json({ error: "Failed to save lead fields" }, 500);
         }
 
-        const savedRows = (Array.isArray(savedRaw) ? savedRaw : []).map(
-          (row: any) => ({
-            id: String(row?.id ?? ""),
-            label: String(row?.label ?? ""),
-            options: Array.isArray(row?.options) ? row.options.map(String) : [],
-          }),
+        const savedRows = (Array.isArray(savedRaw) ? savedRaw : []).map((row: any) => ({
+          id: String(row?.id ?? ""),
+          key: String(row?.key ?? ""),
+          label: String(row?.label ?? ""),
+        }));
+
+        const optionsByKey = new Map(
+          rows.map((row) => [row.key, Array.isArray(row.options) ? row.options : []]),
+        );
+
+        await Promise.all(
+          savedRows.map((row) =>
+            replaceLeadFieldOptions({
+              admin: supabaseAdmin as any,
+              fieldId: row.id,
+              options: optionsByKey.get(row.key) ?? [],
+            }),
+          ),
         );
 
         if (locale) {
@@ -216,7 +235,7 @@ export async function POST(req: Request) {
 
             await Promise.all(
               savedRows.flatMap((row) =>
-                row.options.map((option: string) =>
+                (optionsByKey.get(row.key) ?? []).map((option: string) =>
                   syncEntityTranslationSources({
                     admin: supabaseAdmin as any,
                     teamId,
@@ -244,18 +263,15 @@ export async function POST(req: Request) {
       return json({ ok: true, count: rows.length });
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("lead_fields")
-      .select("id, team_id, key, label, type, options, position")
-      .eq("team_id", teamId)
-      .order("position", { ascending: true });
-
-    if (error) {
+    let rows: LeadFieldDefinition[];
+    try {
+      rows = await getNormalizedLeadFieldDefinitions(supabaseAdmin as any, teamId);
+    } catch (error) {
       console.error("[lead-fields] fetch error", error);
       return json({ error: "Failed to fetch lead fields" }, 500);
     }
 
-    const rows = (Array.isArray(data) ? data : []) as DbLeadField[];
+    const dbRows = rows as DbLeadField[];
 
     if (locale) {
       try {
@@ -263,7 +279,7 @@ export async function POST(req: Request) {
           admin: supabaseAdmin as any,
           teamId,
           entityTable: "lead_fields",
-          rows,
+          rows: dbRows,
           requestedLocale: locale,
           fields: [
             {
@@ -285,8 +301,10 @@ export async function POST(req: Request) {
 
     const translatedOptionLabelsById = new Map<string, string[]>();
 
-    for (const row of rows) {
-      const sourceOptions = Array.isArray(row.options) ? row.options : [];
+    for (const row of dbRows) {
+      const sourceOptions = Array.isArray((row as any).options)
+        ? ((row as any).options as string[])
+        : [];
       const translatedOptions = await translateLeadFieldOptions(
         teamId,
         locale,
@@ -297,7 +315,7 @@ export async function POST(req: Request) {
       translatedOptionLabelsById.set(String(row.id), translatedOptions);
     }
 
-    const fields: LeadFieldDefinition[] = rows.map((field) => ({
+    const fields: LeadFieldDefinition[] = dbRows.map((field) => ({
       id: String(field.id),
       team_id: String(field.team_id),
       key: String(field.key),

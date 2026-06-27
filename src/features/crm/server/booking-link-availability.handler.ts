@@ -14,6 +14,7 @@ import {
   getGoogleAccessTokensForUsers,
   isGoogleReconnectRequiredError,
 } from "@/features/crm/server/google-calendar";
+import { attachBookingLinkWorkDays } from "@/features/crm/server/normalized-crm";
 import {
   getBookingInviteByToken,
   getBookingInviteState,
@@ -138,20 +139,25 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       slug,
       linkId: inviteLinkId,
       select:
-        "id, slug, owner_user_id, team_id, booking_type, duration_minutes, buffer_before_minutes, buffer_after_minutes, min_notice_hours, max_notice_days, primary_color, availability_mode, work_start_minute, work_end_minute, work_days",
+        "id, slug, owner_user_id, team_id, booking_type, duration_minutes, buffer_before_minutes, buffer_after_minutes, min_notice_hours, max_notice_days, primary_color, availability_mode, work_start_minute, work_end_minute",
     });
 
     const linkError = linkResult.error;
-    const link = (linkResult.data ?? null) as PublicBookingLinkRow | null;
+    const baseLink = (linkResult.data ?? null) as PublicBookingLinkRow | null;
 
     if (linkError) {
       console.error("[availability] booking link query error", linkError);
       return json({ error: "booking_link_query_failed" }, 500);
     }
 
-    if (!link) {
+    if (!baseLink) {
       return json({ error: "booking_link_not_found" }, 404);
     }
+
+    const [link] = await attachBookingLinkWorkDays({
+      admin: admin as any,
+      rows: [baseLink],
+    });
 
     if (token && inviteLinkId && String(link.slug ?? "") !== slug) {
       return json({ error: "token_slug_mismatch" }, 409);

@@ -1,5 +1,9 @@
 // src/app/api/crm/lead-scoring-config/route.ts
 import { NextResponse } from "next/server";
+import {
+  loadLeadScoringConfig,
+  saveLeadScoringConfig,
+} from "@/features/crm/server/normalized-crm";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { recomputeLeadScore } from "@/features/crm/scoring/recomputeLeadScore";
 import type {
@@ -173,25 +177,21 @@ export async function POST(req: Request) {
   }
 
   if (action === "get") {
-    const { data, error } = await supabaseAdmin
-      .from("lead_scoring_configs")
-      .select("config")
-      .eq("team_id", teamId)
-      .maybeSingle();
+    try {
+      const config =
+        (await loadLeadScoringConfig(supabaseAdmin as any, teamId)) ?? {
+          rules: [],
+          thresholds: sanitizeThresholds(undefined),
+        };
 
-    if (error) {
+      return json({
+        rules: Array.isArray(config.rules) ? config.rules : [],
+        thresholds: config.thresholds,
+      });
+    } catch (error) {
       console.error("[lead-scoring-config][get] error", error);
       return json({ error: "Failed to load config" }, 500);
     }
-
-    const config = (data?.config ?? {}) as Partial<LeadScoringConfig>;
-
-    return json({
-      rules: Array.isArray(config.rules) ? config.rules : [],
-      thresholds: (config.thresholds ?? undefined) as
-        | ScoreThresholds
-        | undefined,
-    });
   }
 
   // action === "save"
@@ -200,14 +200,13 @@ export async function POST(req: Request) {
     thresholds: sanitizeThresholds(body.thresholds),
   };
 
-  const { error } = await supabaseAdmin
-    .from("lead_scoring_configs")
-    .upsert(
-      { team_id: teamId, config, updated_at: new Date().toISOString() },
-      { onConflict: "team_id" },
-    );
-
-  if (error) {
+  try {
+    await saveLeadScoringConfig({
+      admin: supabaseAdmin as any,
+      teamId,
+      config,
+    });
+  } catch (error) {
     console.error("[lead-scoring-config][save] error", error);
     return json({ error: "Failed to save config" }, 500);
   }

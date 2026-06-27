@@ -1,5 +1,9 @@
 // src/app/api/crm/lead-scoring/route.ts
 import { NextResponse } from "next/server";
+import {
+  loadLeadScoringConfig,
+  saveLeadScoringConfig,
+} from "@/features/crm/server/normalized-crm";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { LeadScoringConfig } from "@/features/crm/scoring/types";
 
@@ -13,19 +17,13 @@ export async function GET(req: Request) {
   const teamId = getTeamId(req);
   if (!teamId) return json({ error: "Missing teamId" }, 400);
 
-  const { data, error } = await supabaseAdmin
-    .from("lead_scoring_configs")
-    .select("config")
-    .eq("team_id", teamId)
-    .maybeSingle();
-
-  if (error) {
+  try {
+    const config = await loadLeadScoringConfig(supabaseAdmin as any, teamId);
+    return json(config);
+  } catch (error) {
     console.error("[LeadScoring][GET] error", error);
     return json({ error: "Failed to load scoring config" }, 500);
   }
-
-  const cfg = (data?.config ?? null) as LeadScoringConfig | null;
-  return json(cfg);
 }
 
 // POST → upsert config
@@ -43,14 +41,13 @@ export async function POST(req: Request) {
   const config = (body?.config ?? null) as LeadScoringConfig | null;
   if (!config) return json({ error: "Missing config" }, 400);
 
-  const { error } = await supabaseAdmin
-    .from("lead_scoring_configs")
-    .upsert(
-      { team_id: teamId, config, updated_at: new Date().toISOString() },
-      { onConflict: "team_id" },
-    );
-
-  if (error) {
+  try {
+    await saveLeadScoringConfig({
+      admin: supabaseAdmin as any,
+      teamId,
+      config,
+    });
+  } catch (error) {
     console.error("[LeadScoring][POST] error", error);
     return json({ error: "Failed to save scoring config" }, 500);
   }
