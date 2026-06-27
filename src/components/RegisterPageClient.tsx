@@ -83,7 +83,6 @@ export function RegisterPageClient() {
   const { resolvedTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
-  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -130,11 +129,10 @@ export function RegisterPageClient() {
     let cancelled = false;
 
     (async () => {
-      const { data: userRes } = await supabase.auth.getUser();
-      const user = userRes.user ?? null;
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const user = sessionRes.session?.user ?? null;
 
       if (!user) {
-        if (!cancelled) setInitializing(false);
         return;
       }
 
@@ -145,7 +143,6 @@ export function RegisterPageClient() {
         .maybeSingle();
 
       if (cancelled) return;
-      setInitializing(false);
 
       if (profile?.team_id) {
         router.replace(nextPath ?? "/crm");
@@ -158,7 +155,6 @@ export function RegisterPageClient() {
     })().catch((error) => {
       console.error("[register] initialization failed", error);
       if (!cancelled) {
-        setInitializing(false);
         setStatusMessage(t("errors.initializationFailed"));
       }
     });
@@ -294,23 +290,6 @@ export function RegisterPageClient() {
     isDark ? "bg-slate-950 border border-slate-800" : "bg-white",
   );
 
-  if (initializing) {
-    return (
-      <main className={pageBg}>
-        <div
-          className={cn(
-            "w-full max-w-md backdrop-blur-xl shadow-2xl rounded-3xl p-8 border text-center text-sm",
-            isDark
-              ? "bg-slate-950/80 border-slate-800 text-slate-300"
-              : "bg-white/90 border-slate-200 text-slate-500",
-          )}
-        >
-          {t("states.checkingSession")}
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className={pageBg}>
       <div className={card}>
@@ -383,7 +362,7 @@ export function RegisterPageClient() {
           >
             {loading
               ? common("auth.creatingAccount")
-              : common("actions.continue")}
+              : common("auth.createAccount")}
           </button>
         </form>
 
